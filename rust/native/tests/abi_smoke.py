@@ -50,6 +50,8 @@ def main(library):
     api.meltype_commit.restype = c.c_void_p
     api.meltype_set_can_delete.argtypes = [c.c_void_p, c.c_int]
     api.meltype_set_private.argtypes = [c.c_void_p, c.c_int]
+    api.meltype_set_direct.argtypes = [c.c_void_p, c.c_int]
+    api.meltype_set_direct_detection.argtypes = [c.c_void_p, c.c_int]
     api.meltype_undo_commit.argtypes = [c.c_void_p, c.c_char_p]
     api.meltype_undo_commit.restype = c.c_void_p
 
@@ -95,6 +97,18 @@ def main(library):
             assert value["view"] is None
             api.meltype_set_private(handle, 1)
             assert not key(scalar=ord("a"))["consumed"]
+        finally:
+            api.meltype_destroy(handle)
+        handle = api.meltype_create()
+        try:
+            api.meltype_set_direct(handle, 1)
+            api.meltype_set_direct_detection(handle, 1)
+            value = result(api.meltype_handle_key(handle, 78,110,0,b"kon",b""))
+            assert not value["consumed"], "auto detection requires deletion capability"
+            api.meltype_set_can_delete(handle, 1)
+            value = result(api.meltype_handle_key(handle, 78,110,0,b"kon",b""))
+            assert value["commits"] == [{"deleteBefore":3,"text":"","expect":"kon"}]
+            assert value["view"]["text"] == "こん"
         finally:
             api.meltype_destroy(handle)
     print("Native ABI: callbacks, live conversion, multi-edit, guarded undo, selection reconversion and privacy passed")

@@ -1,0 +1,514 @@
+[
+  {
+    "typed": "konnichiwa",
+    "japanese": true
+  },
+  {
+    "typed": "arigatou",
+    "japanese": true
+  },
+  {
+    "typed": "ohayou",
+    "japanese": true
+  },
+  {
+    "typed": "watashi",
+    "japanese": true
+  },
+  {
+    "typed": "ashita",
+    "japanese": true
+  },
+  {
+    "typed": "konnitiwa",
+    "japanese": true
+  },
+  {
+    "typed": "konnichia",
+    "japanese": true
+  },
+  {
+    "typed": "arigatouu",
+    "japanese": true
+  },
+  {
+    "typed": "notasuku",
+    "japanese": true
+  },
+  {
+    "typed": "gamenwo",
+    "japanese": true
+  },
+  {
+    "typed": "fucarete",
+    "japanese": true
+  },
+  {
+    "typed": "hello",
+    "japanese": false
+  },
+  {
+    "typed": "github",
+    "japanese": false
+  },
+  {
+    "typed": "typescript",
+    "japanese": false
+  },
+  {
+    "typed": "javascript",
+    "japanese": false
+  },
+  {
+    "typed": "server",
+    "japanese": false
+  },
+  {
+    "typed": "terminal",
+    "japanese": false
+  },
+  {
+    "typed": "test",
+    "japanese": false
+  },
+  {
+    "typed": "kana",
+    "japanese": false
+  },
+  {
+    "typed": "sushi",
+    "japanese": false
+  },
+  {
+    "typed": "radio",
+    "japanese": false
+  },
+  {
+    "typed": "kyou",
+    "japanese": true
+  },
+  {
+    "typed": "desu",
+    "japanese": true
+  },
+  {
+    "typed": "masu",
+    "japanese": true
+  },
+  {
+    "typed": "sugoi",
+    "japanese": true
+  },
+  {
+    "typed": "tabemasu",
+    "japanese": true
+  },
+  {
+    "typed": "shigoto",
+    "japanese": true
+  },
+  {
+    "typed": "tomodachi",
+    "japanese": true
+  },
+  {
+    "typed": "daijoubu",
+    "japanese": true
+  },
+  {
+    "typed": "yoroshiku",
+    "japanese": true
+  },
+  {
+    "typed": "otsukare",
+    "japanese": true
+  },
+  {
+    "typed": "sumimasen",
+    "japanese": true
+  },
+  {
+    "typed": "onegaishimasu",
+    "japanese": true
+  },
+  {
+    "typed": "hontou",
+    "japanese": true
+  },
+  {
+    "typed": "mainichi",
+    "japanese": true
+  },
+  {
+    "typed": "nihongo",
+    "japanese": true
+  },
+  {
+    "typed": "kaigi",
+    "japanese": true
+  },
+  {
+    "typed": "shiryou",
+    "japanese": true
+  },
+  {
+    "typed": "kakunin",
+    "japanese": true
+  },
+  {
+    "typed": "ryoukai",
+    "japanese": true
+  },
+  {
+    "typed": "wakarimashita",
+    "japanese": true
+  },
+  {
+    "typed": "itadakimasu",
+    "japanese": true
+  },
+  {
+    "typed": "gomennasai",
+    "japanese": true
+  },
+  {
+    "typed": "zenzen",
+    "japanese": true
+  },
+  {
+    "typed": "chotto",
+    "japanese": true
+  },
+  {
+    "typed": "tanoshii",
+    "japanese": true
+  },
+  {
+    "typed": "kanashii",
+    "japanese": true
+  },
+  {
+    "typed": "benri",
+    "japanese": true
+  },
+  {
+    "typed": "himadana",
+    "japanese": true
+  },
+  {
+    "typed": "onakagasuita",
+    "japanese": true
+  },
+  {
+    "typed": "nemui",
+    "japanese": true
+  },
+  {
+    "typed": "tsukareta",
+    "japanese": true
+  },
+  {
+    "typed": "oishii",
+    "japanese": true
+  },
+  {
+    "typed": "ganbatte",
+    "japanese": true
+  },
+  {
+    "typed": "yukkuri",
+    "japanese": true
+  },
+  {
+    "typed": "haha",
+    "japanese": false
+  },
+  {
+    "typed": "hair",
+    "japanese": false
+  },
+  {
+    "typed": "suitable",
+    "japanese": false
+  },
+  {
+    "typed": "semantic",
+    "japanese": false
+  },
+  {
+    "typed": "madonna",
+    "japanese": false
+  },
+  {
+    "typed": "naked",
+    "japanese": false
+  },
+  {
+    "typed": "nerd",
+    "japanese": false
+  },
+  {
+    "typed": "hotel",
+    "japanese": false
+  },
+  {
+    "typed": "music",
+    "japanese": false
+  },
+  {
+    "typed": "seminar",
+    "japanese": false
+  },
+  {
+    "typed": "motive",
+    "japanese": false
+  },
+  {
+    "typed": "kidney",
+    "japanese": false
+  },
+  {
+    "typed": "sigoto",
+    "japanese": true
+  },
+  {
+    "typed": "tomodati",
+    "japanese": true
+  },
+  {
+    "typed": "otukare",
+    "japanese": true
+  },
+  {
+    "typed": "arigatou",
+    "japanese": true
+  },
+  {
+    "typed": "siryou",
+    "japanese": true
+  },
+  {
+    "typed": "konniti",
+    "japanese": true
+  },
+  {
+    "typed": "the",
+    "japanese": false
+  },
+  {
+    "typed": "and",
+    "japanese": false
+  },
+  {
+    "typed": "you",
+    "japanese": false
+  },
+  {
+    "typed": "make",
+    "japanese": false
+  },
+  {
+    "typed": "take",
+    "japanese": false
+  },
+  {
+    "typed": "same",
+    "japanese": false
+  },
+  {
+    "typed": "home",
+    "japanese": false
+  },
+  {
+    "typed": "time",
+    "japanese": false
+  },
+  {
+    "typed": "name",
+    "japanese": false
+  },
+  {
+    "typed": "made",
+    "japanese": false
+  },
+  {
+    "typed": "note",
+    "japanese": false
+  },
+  {
+    "typed": "open",
+    "japanese": false
+  },
+  {
+    "typed": "done",
+    "japanese": false
+  },
+  {
+    "typed": "tomorrow",
+    "japanese": false
+  },
+  {
+    "typed": "anatomy",
+    "japanese": false
+  },
+  {
+    "typed": "monday",
+    "japanese": false
+  },
+  {
+    "typed": "should",
+    "japanese": false
+  },
+  {
+    "typed": "shirt",
+    "japanese": false
+  },
+  {
+    "typed": "kitten",
+    "japanese": false
+  },
+  {
+    "typed": "matter",
+    "japanese": false
+  },
+  {
+    "typed": "item",
+    "japanese": false
+  },
+  {
+    "typed": "setting",
+    "japanese": false
+  },
+  {
+    "typed": "remote",
+    "japanese": false
+  },
+  {
+    "typed": "minute",
+    "japanese": false
+  },
+  {
+    "typed": "banana",
+    "japanese": false
+  },
+  {
+    "typed": "hamburger",
+    "japanese": false
+  },
+  {
+    "typed": "karate",
+    "japanese": false
+  },
+  {
+    "typed": "karaoke",
+    "japanese": false
+  },
+  {
+    "typed": "tsunami",
+    "japanese": false
+  },
+  {
+    "typed": "anime",
+    "japanese": false
+  },
+  {
+    "typed": "manga",
+    "japanese": false
+  },
+  {
+    "typed": "ninja",
+    "japanese": false
+  },
+  {
+    "typed": "samurai",
+    "japanese": false
+  },
+  {
+    "typed": "tofu",
+    "japanese": false
+  },
+  {
+    "typed": "kimono",
+    "japanese": false
+  },
+  {
+    "typed": "sake",
+    "japanese": false
+  },
+  {
+    "typed": "sumo",
+    "japanese": false
+  },
+  {
+    "typed": "tokyo",
+    "japanese": false
+  },
+  {
+    "typed": "kyoto",
+    "japanese": false
+  },
+  {
+    "typed": "honda",
+    "japanese": false
+  },
+  {
+    "typed": "toyota",
+    "japanese": false
+  },
+  {
+    "typed": "nintendo",
+    "japanese": false
+  },
+  {
+    "typed": "pokemon",
+    "japanese": false
+  },
+  {
+    "typed": "kawaii",
+    "japanese": false
+  },
+  {
+    "typed": "sensei",
+    "japanese": false
+  },
+  {
+    "typed": "senpai",
+    "japanese": false
+  },
+  {
+    "typed": "matcha",
+    "japanese": false
+  },
+  {
+    "typed": "wasabi",
+    "japanese": false
+  },
+  {
+    "typed": "tempura",
+    "japanese": false
+  },
+  {
+    "typed": "emoji",
+    "japanese": false
+  },
+  {
+    "typed": "sudoku",
+    "japanese": false
+  },
+  {
+    "typed": "demo",
+    "japanese": false
+  },
+  {
+    "typed": "node",
+    "japanese": false
+  },
+  {
+    "typed": "none",
+    "japanese": false
+  },
+  {
+    "typed": "kite",
+    "japanese": false
+  }
+]

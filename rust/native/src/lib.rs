@@ -383,6 +383,10 @@ pub extern "C" fn meltype_set_direct(handle: *mut c_void, enabled: i32) {
     set(handle, |s| s.direct = enabled != 0);
 }
 #[no_mangle]
+pub extern "C" fn meltype_set_direct_detection(handle: *mut c_void, enabled: i32) {
+    set(handle, |s| s.direct_detection = enabled != 0);
+}
+#[no_mangle]
 pub extern "C" fn meltype_set_code_input(handle: *mut c_void, enabled: i32) {
     set(handle, |s| s.code_input = enabled != 0);
 }
@@ -395,7 +399,7 @@ pub extern "C" fn meltype_set_private(handle: *mut c_void, enabled: i32) {
         s.private = enabled != 0;
     });
 }
-// This engine never deletes surrounding committed text.
+// Deletion is permitted only when the host supports expected-text validation.
 #[no_mangle]
 pub extern "C" fn meltype_set_can_delete(handle: *mut c_void, enabled: i32) {
     set(handle, |s| s.can_delete = enabled != 0);

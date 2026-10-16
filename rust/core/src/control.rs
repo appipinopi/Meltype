@@ -13,6 +13,32 @@ fn field<'a>(r: &'a Value, n: &str) -> io::Result<&'a str> {
 }
 pub fn execute(store: &Store, r: &Value) -> io::Result<Value> {
     match field(r, "op")? {
+        "detection_evaluate" => {
+            let raw = field(r, "text")?;
+            if raw.len() > 256 {
+                return Err(io::Error::other("detection text exceeds 256 bytes"));
+            }
+            let keys: Vec<i32> = if let Some(keys) = r["keys"].as_array() {
+                if keys.len() > 256 {
+                    return Err(io::Error::other("too many detection keys"));
+                }
+                keys.iter()
+                    .map(|key| {
+                        key.as_i64()
+                            .and_then(|n| i32::try_from(n).ok())
+                            .ok_or_else(|| io::Error::other("invalid key"))
+                    })
+                    .collect::<io::Result<_>>()?
+            } else {
+                raw.chars().map(|c| c.to_ascii_uppercase() as i32).collect()
+            };
+            Ok(serde_json::to_value(crate::detection::evaluate(
+                raw,
+                &keys,
+                r["final"].as_bool().unwrap_or(true),
+                &store.settings()?,
+            ))?)
+        }
         "settings_get" => Ok(serde_json::to_value(store.settings()?)?),
         "settings_set" => {
             let name = field(r, "name")?;

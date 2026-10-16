@@ -32,6 +32,8 @@ char *meltype_select_candidate(void *, int32_t index);
 char *meltype_select_prediction(void *, int32_t index);
 char *meltype_role_key(void *, int32_t vk);
 void meltype_set_direct(void *, int32_t);
+/* Auto detection additionally requires fresh before text and can_delete(1). */
+void meltype_set_direct_detection(void *, int32_t);
 void meltype_set_code_input(void *, int32_t);
 void meltype_set_private(void *, int32_t);
 void meltype_set_can_delete(void *, int32_t);

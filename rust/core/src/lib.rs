@@ -2,6 +2,7 @@
 // Copyright (C) 2026 appipinopi
 pub mod context;
 pub mod control;
+pub mod detection;
 pub mod dictionary;
 pub mod kana;
 pub mod linguistics;
@@ -11,5 +12,6 @@ pub mod romaji;
 pub mod session;
 pub mod settings;
 pub mod storage;
+pub mod typo;
 pub mod user_dictionary;
 pub use session::{Session, SessionResult};

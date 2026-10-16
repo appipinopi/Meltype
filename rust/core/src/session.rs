@@ -84,6 +84,12 @@ impl Clause {
     }
 }
 
+struct CommittedInput {
+    raw: String,
+    text: String,
+    keys: Vec<(i32, char, bool)>,
+}
+
 pub struct Session {
     raw: String,
     candidates: Vec<String>,
@@ -93,6 +99,8 @@ pub struct Session {
     selected_clause: usize,
     explicit: Option<String>,
     pub direct: bool,
+    pub direct_detection: bool,
+    pub direct_english_word: bool,
     pub code_input: bool,
     code_japanese: bool,
     pub private: bool,
@@ -110,8 +118,11 @@ pub struct Session {
     kana_text: String,
     process: String,
     pub can_delete: bool,
-    last_commit: Option<(String, String)>,
+    last_commit: Option<CommittedInput>,
+    typed_keys: Vec<(i32, char, bool)>,
     reconversion_origin: Option<String>,
+    context_is_fresh: bool,
+    composition_kana: bool,
 }
 
 impl Default for Session {
@@ -125,6 +136,8 @@ impl Default for Session {
             selected_clause: 0,
             explicit: None,
             direct: false,
+            direct_detection: false,
+            direct_english_word: false,
             code_input: false,
             code_japanese: false,
             private: false,
@@ -143,7 +156,10 @@ impl Default for Session {
             process: String::new(),
             can_delete: false,
             last_commit: None,
+            typed_keys: vec![],
             reconversion_origin: None,
+            context_is_fresh: false,
+            composition_kana: false,
         }
     }
 }
@@ -162,6 +178,13 @@ impl Session {
         })
     }
     pub fn set_context(&mut self, before: Option<&str>, after: Option<&str>) {
+        if self.private {
+            self.before.clear();
+            self.after.clear();
+            self.context_is_fresh = false;
+            return;
+        }
+        self.context_is_fresh = before.is_some();
         if let Some(before) = before {
             self.before = before
                 .chars()
@@ -282,6 +305,7 @@ impl Session {
     }
     pub fn caret_moved(&mut self, vk: i32, control: bool) {
         self.last_commit = None;
+        self.direct_english_word = false;
         if control || matches!(vk, 0 | 9 | 0x21..=0x28 | 0x2e) {
             self.code_japanese = false;
         }
@@ -290,11 +314,188 @@ impl Session {
         &self.raw
     }
     pub fn reading(&self) -> String {
-        if self.settings.text("InputStyle") == "Kana" {
+        if self.uses_kana() {
             self.kana_text.clone()
+        } else if let Some(fix) = self.romaji_fix() {
+            fix.kana
         } else {
             romaji::hiragana(&self.raw, true)
         }
+    }
+    fn refresh_kana(&mut self) {
+        if !["Kana", "Both"].contains(&self.settings.text("InputStyle")) {
+            return;
+        }
+        self.kana_text.clear();
+        for (vk, ch, shift) in &self.typed_keys {
+            let kana = crate::kana::key(*vk, *shift).unwrap_or(*ch);
+            if "゛゜".contains(kana) {
+                if let Some(combined) = self
+                    .kana_text
+                    .chars()
+                    .next_back()
+                    .and_then(|previous| crate::kana::combine(previous, kana))
+                {
+                    self.kana_text.pop();
+                    self.kana_text.push(combined);
+                    continue;
+                }
+            }
+            self.kana_text.push(kana);
+        }
+        if self.settings.text("InputStyle") == "Both" && self.raw.is_ascii() {
+            let keys: Vec<_> = self.typed_keys.iter().map(|(vk, _, _)| *vk).collect();
+            let score = crate::detection::evaluate(
+                &self.raw.to_ascii_lowercase(),
+                &keys,
+                false,
+                &self.settings,
+            );
+            let kana_score: i32 = score
+                .contributions
+                .iter()
+                .filter(|c| c.source == "Kana")
+                .map(|c| c.japanese)
+                .sum();
+            let romaji_score: i32 = score
+                .contributions
+                .iter()
+                .filter(|c| c.source != "Kana")
+                .map(|c| c.japanese)
+                .sum();
+            self.composition_kana = kana_score >= 2 && kana_score > romaji_score;
+        }
+    }
+    fn uses_kana(&self) -> bool {
+        self.settings.text("InputStyle") == "Kana"
+            || self.settings.text("InputStyle") == "Both" && self.composition_kana
+    }
+    fn detect_direct(&mut self, vk: i32, ch: i32, modifiers: i32) -> Option<SessionResult> {
+        if !self.direct
+            || !self.direct_detection
+            || !self.context_is_fresh
+            || !self.can_delete
+            || self.private
+            || self.code_input
+            || !self.raw.is_empty()
+            || !self.settings.boolean("Enabled")
+            || !self.settings.boolean("DirectModeAutoDetect")
+            || self.settings.text("DetectionLevel") == "Manual"
+            || modifiers & 15 != 0
+        {
+            return None;
+        }
+        self.context_is_fresh = false;
+        let c = char::from_u32(ch as u32)?;
+        if !c.is_ascii_lowercase() {
+            self.direct_english_word = false;
+            return None;
+        }
+        let prefix: String = self
+            .before
+            .chars()
+            .rev()
+            .take_while(char::is_ascii_alphabetic)
+            .collect::<String>()
+            .chars()
+            .rev()
+            .collect();
+        let boundary = &self.before[..self.before.len() - prefix.len()];
+        // An identifier, command, path or mention never becomes a Japanese word.
+        if boundary
+            .chars()
+            .next_back()
+            .is_some_and(|c| c.is_ascii_alphanumeric() || "_@$/\\.:+-".contains(c))
+            || prefix.len() >= self.settings.integer("MaxPendingKeys") as usize
+            || prefix.bytes().any(|c| c.is_ascii_uppercase())
+        {
+            self.direct_english_word = true;
+            return None;
+        }
+        let typed = format!("{prefix}{c}");
+        let mut keys: Vec<_> = prefix
+            .bytes()
+            .map(|b| b.to_ascii_uppercase() as i32)
+            .collect();
+        keys.push(if vk == 0 {
+            c.to_ascii_uppercase() as i32
+        } else {
+            vk
+        });
+        let result = crate::detection::evaluate(&typed, &keys, false, &self.settings);
+        self.direct_english_word = matches!(
+            result.verdict,
+            crate::detection::Verdict::English | crate::detection::Verdict::Unknown
+        );
+        if result.verdict != crate::detection::Verdict::Japanese
+            || self.preferences.english.get(&typed) == Some(&true)
+        {
+            return None;
+        }
+        self.direct = false;
+        self.direct_english_word = false;
+        self.composition_kana = self.settings.text("InputStyle") == "Both"
+            && result
+                .contributions
+                .iter()
+                .any(|c| c.source == "Kana" && c.japanese > 0)
+            && result
+                .contributions
+                .iter()
+                .all(|c| c.source == "Kana" || c.japanese == 0);
+        self.raw = typed;
+        self.typed_keys = self
+            .raw
+            .chars()
+            .zip(keys)
+            .map(|(c, vk)| (vk, c, false))
+            .collect();
+        self.before.truncate(boundary.len());
+        self.refresh_kana();
+        let mut result = self.result(true);
+        if !prefix.is_empty() {
+            result.commits.push(TextEdit {
+                delete_before: prefix.encode_utf16().count(),
+                text: String::new(),
+                expect: Some(prefix),
+            });
+        }
+        Some(result)
+    }
+    fn romaji_fix(&self) -> Option<crate::typo::Fix> {
+        if !self.settings.boolean("CorrectTypos")
+            || self.preferences.english.get(&self.raw.to_ascii_lowercase()) == Some(&true)
+            || !self.raw.bytes().all(|c| c.is_ascii_lowercase())
+        {
+            return None;
+        }
+        let corrector = crate::typo::Corrector::bundled();
+        let fix = corrector.fix(&self.raw, true)?;
+        // English word + Japanese particle/suffix is intentional mixed input.
+        // Do not reinterpret that word while repairing a following syllable.
+        let dictionary = Dictionary::bundled();
+        let mixed = dictionary.mixed(&self.raw, true);
+        if mixed == self.raw
+            || mixed.split(|c: char| !c.is_ascii_alphabetic()).any(|word| {
+                word.len() >= 4 || word.len() >= 3 && dictionary.is_common_english(word)
+            })
+        {
+            return None;
+        }
+        for end in 2..self.raw.len() {
+            let (word, rest) = self.raw.split_at(end);
+            if dictionary.is_english(word)
+                && (dictionary.is_japanese(rest)
+                    || [
+                        "ha", "ga", "wo", "ni", "de", "to", "no", "mo", "ya", "wa", "he",
+                    ]
+                    .contains(&rest)
+                    || corrector.is_common_japanese(rest))
+            {
+                return None;
+            }
+        }
+        Some(fix)
     }
     pub fn is_converting(&self) -> bool {
         !self.candidates.is_empty()
@@ -312,8 +513,13 @@ impl Session {
         if !self.live_clauses.is_empty() {
             return self.live_clauses.iter().map(Clause::text).collect();
         }
-        if self.settings.text("InputStyle") == "Kana" {
+        if self.uses_kana() {
             return self.punctuate(self.kana_text.clone());
+        }
+        if final_input {
+            if let Some(fix) = self.romaji_fix() {
+                return self.punctuate(fix.kana);
+            }
         }
         let text = match self.preferences.english.get(&self.raw.to_ascii_lowercase()) {
             Some(true) => self.raw.clone(),
@@ -415,7 +621,10 @@ impl Session {
     pub fn reset(&mut self) {
         self.last_commit = None;
         self.reconversion_origin = None;
+        self.composition_kana = false;
+        self.context_is_fresh = false;
         self.raw.clear();
+        self.typed_keys.clear();
         self.candidates.clear();
         self.clauses.clear();
         self.live_clauses.clear();
@@ -480,9 +689,14 @@ impl Session {
                 .collect();
         }
         let raw = self.raw.clone();
+        let keys = self.typed_keys.clone();
         self.reset();
         if !self.private && !text.is_empty() {
-            self.last_commit = Some((raw, text.clone()));
+            self.last_commit = Some(CommittedInput {
+                raw,
+                text: text.clone(),
+                keys,
+            });
         }
         SessionResult {
             consumed: !text.is_empty(),
@@ -547,6 +761,7 @@ impl Session {
             return self.result(false);
         }
         self.raw = reading.clone();
+        self.typed_keys = reading.chars().map(|c| (0, c, false)).collect();
         self.kana_text = reading;
         self.begin_conversion(vec![text.to_owned()]);
         if let Some(index) = self.candidates.iter().position(|c| c == text) {
@@ -563,7 +778,7 @@ impl Session {
         if !self.can_delete || self.private || !self.raw.is_empty() {
             return self.result(false);
         }
-        let Some((raw, text)) = self.last_commit.take() else {
+        let Some(CommittedInput { raw, text, keys }) = self.last_commit.take() else {
             return self.result(false);
         };
         if !self.before.ends_with(&text) {
@@ -571,9 +786,8 @@ impl Session {
         }
         self.before.truncate(self.before.len() - text.len());
         self.raw = raw;
-        if self.settings.text("InputStyle") == "Kana" {
-            self.kana_text = crate::user_dictionary::hiragana(&text);
-        }
+        self.typed_keys = keys;
+        self.refresh_kana();
         let mut result = self.result(true);
         result.commits.push(TextEdit {
             delete_before: text.encode_utf16().count(),
@@ -785,6 +999,9 @@ impl Session {
         if ch < 0 || char::from_u32(ch as u32).is_none() {
             return self.result(false);
         }
+        if let Some(result) = self.detect_direct(vk, ch, modifiers) {
+            return result;
+        }
         let code_direct = self.code_english();
         if modifiers & 14 == 2
             && !self.raw.is_empty()
@@ -871,7 +1088,8 @@ impl Session {
                 self.function_key = 0;
                 self.case_cycle = 0;
                 self.raw.pop();
-                self.kana_text.pop();
+                self.typed_keys.pop();
+                self.refresh_kana();
                 self.result(true)
             }
             0x0d => self.commit(),
@@ -995,21 +1213,23 @@ impl Session {
                     _ => self.raw.clone(),
                 };
                 let reading = self.reading();
-                self.explicit = Some(crate::protection::transform(&raw, |part| match vk {
-                    0x75 => {
-                        if self.settings.text("InputStyle") == "Kana" {
-                            reading.clone()
-                        } else {
-                            romaji::hiragana(part, true)
+                self.explicit = Some(if self.uses_kana() && vk <= 0x77 {
+                    match vk {
+                        0x75 => reading,
+                        0x76 => romaji::katakana(&reading),
+                        _ => crate::kana::halfwidth(&romaji::katakana(&reading)),
+                    }
+                } else {
+                    crate::protection::transform(&raw, |part| match vk {
+                        0x75 => romaji::hiragana(part, true),
+                        0x76 => romaji::katakana(&romaji::hiragana(part, true)),
+                        0x77 => {
+                            crate::kana::halfwidth(&romaji::katakana(&romaji::hiragana(part, true)))
                         }
-                    }
-                    0x76 => romaji::katakana(&romaji::hiragana(part, true)),
-                    0x77 => {
-                        crate::kana::halfwidth(&romaji::katakana(&romaji::hiragana(part, true)))
-                    }
-                    0x78 => crate::kana::fullwidth(part),
-                    _ => part.into(),
-                }));
+                        0x78 => crate::kana::fullwidth(part),
+                        _ => part.into(),
+                    })
+                });
                 self.result(true)
             }
             _ if ch >= 0x20 && ch != 0x7f => {
@@ -1033,26 +1253,9 @@ impl Session {
                     return result;
                 }
                 self.raw.push(char::from_u32(ch as u32).unwrap());
-                if self.settings.text("InputStyle") == "Kana" {
-                    if let Some(kana) = crate::kana::key(vk, modifiers & 1 != 0) {
-                        if "゛゜".contains(kana) {
-                            if let Some(last) = self.kana_text.chars().next_back() {
-                                if let Some(combined) = crate::kana::combine(last, kana) {
-                                    self.kana_text.pop();
-                                    self.kana_text.push(combined);
-                                } else {
-                                    self.kana_text.push(kana);
-                                }
-                            } else {
-                                self.kana_text.push(kana);
-                            }
-                        } else {
-                            self.kana_text.push(kana);
-                        }
-                    } else {
-                        self.kana_text.push(char::from_u32(ch as u32).unwrap());
-                    }
-                }
+                self.typed_keys
+                    .push((vk, char::from_u32(ch as u32).unwrap(), modifiers & 1 != 0));
+                self.refresh_kana();
                 let mut result = self.result(true);
                 result.commits = commits;
                 result

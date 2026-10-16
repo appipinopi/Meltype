@@ -61,11 +61,12 @@ unsafe fn request_inner(connection: *mut c_void, request: *const c_char) -> Opti
     let settings = meltype_core::settings::Settings::default()
         .for_app(request["process"].as_str().unwrap_or(""));
     let code = settings.text("AppProfile") == "Code";
+    let direct_detection = settings.boolean("DirectModeAutoDetect") && !code;
     if op == "hello" {
         if !settings.boolean("Enabled") {
             return Some(inactive());
         }
-        return Some(json!({"active":true,"code":code,"directDetection":false,"consumed":false,"commits":[],"view":null}).to_string());
+        return Some(json!({"active":true,"code":code,"directDetection":direct_detection,"consumed":false,"commits":[],"view":null}).to_string());
     }
     let sid = request["sid"].as_str()?;
     if sid.len() > 256 {
@@ -101,6 +102,8 @@ unsafe fn request_inner(connection: *mut c_void, request: *const c_char) -> Opti
         s.set_process(request["process"].as_str().unwrap_or(""));
         // Older TSF clients cannot notify caret movements or toggle code lines.
         s.code_input &= request["code"] == true;
+        s.direct_detection = direct_detection;
+        s.can_delete = request["canDelete"] == true;
         s.set_context(request["before"].as_str(), request["after"].as_str());
         if request["moved"] == true {
             s.caret_moved(0, false);
@@ -130,6 +133,11 @@ unsafe fn request_inner(connection: *mut c_void, request: *const c_char) -> Opti
             )
         }
         "commit" => meltype_commit(handle),
+        "reset" => run(handle, |s| {
+            s.reset();
+            s.direct = request["direct"] == true;
+            s.result(false)
+        }),
         "select" => {
             if request["prediction"] == true {
                 meltype_select_prediction(handle, number("index"))
@@ -146,7 +154,7 @@ unsafe fn request_inner(connection: *mut c_void, request: *const c_char) -> Opti
     };
     let text = take(result)?;
     let mut value: Value = serde_json::from_str(&text).ok()?;
-    let (active, effective_code, english) = super::sessions()
+    let (active, effective_code, english, switched, english_word) = super::sessions()
         .lock()
         .ok()?
         .get(&(handle as usize))
@@ -155,17 +163,40 @@ unsafe fn request_inner(connection: *mut c_void, request: *const c_char) -> Opti
                 s.settings.boolean("Enabled"),
                 s.code_input,
                 s.direct || s.code_english(),
+                request["direct"] == true && !s.direct,
+                s.direct_english_word,
             )
         })?;
     value["active"] = json!(active);
     value["code"] = json!(effective_code);
     value["english"] = json!(english);
-    value["directDetection"] = json!(false);
+    value["directDetection"] = json!(direct_detection && active);
+    value["switchToJapanese"] = json!(switched);
+    value["directEnglishWord"] = json!(english_word);
     Some(value.to_string())
 }
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn direct_detection_requires_deletion_capability_and_switches_mode() {
+        unsafe {
+            let connection = meltype_tip_create();
+            let call = |can_delete: bool| -> Value {
+                let request = CString::new(json!({"op":"key","sid":"direct","process":"notepad.exe","code":true,"direct":true,"canDelete":can_delete,"before":"kon","vk":78,"ch":110}).to_string()).unwrap();
+                serde_json::from_str(
+                    &take(meltype_tip_request(connection, request.as_ptr())).unwrap(),
+                )
+                .unwrap()
+            };
+            assert_eq!(call(false)["consumed"], false);
+            let value = call(true);
+            assert_eq!(value["switchToJapanese"], true);
+            assert_eq!(value["commits"][0]["expect"], "kon");
+            assert_eq!(value["view"]["text"], "こん");
+            meltype_tip_destroy(connection);
+        }
+    }
     #[test]
     fn code_toggle_and_caret_notification_reach_session() {
         unsafe {

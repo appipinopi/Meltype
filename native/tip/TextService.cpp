@@ -863,6 +863,16 @@ void TextService::HandleKey(ITfContext* context, UINT vk, wchar_t ch) {
         std::string request = "{\"op\":\"key\",\"sid\":\"" + sid_ + "\",\"vk\":" + std::to_string(vk) + ",\"ch\":" + std::to_string(ch) +
                               ",\"mods\":" + std::to_string(mods) + ",\"process\":" + JsonString(ProcessName()) + ",\"code\":true" +
                               std::string(",\"direct\":") + (!open_ ? "true" : "false");
+#ifdef MELTYPE_RUST_CORE
+        TF_SELECTION deletionSelection = {};
+        ULONG deletionFetched = 0;
+        BOOL selectionEmpty = FALSE;
+        if (SUCCEEDED(context->GetSelection(ec, TF_DEFAULT_SELECTION, 1, &deletionSelection, &deletionFetched)) && deletionFetched > 0) {
+            if (FAILED(deletionSelection.range->IsEmpty(ec, &selectionEmpty))) selectionEmpty = FALSE;
+            deletionSelection.range->Release();
+        }
+        request += std::string(",\"canDelete\":") + (selectionEmpty ? "true" : "false");
+#endif
         // 前に確定してからキャレットが動いた: Meltype.exe に、前の語を確定し直さないように伝える
         if (caretMoved_) request += ",\"moved\":true";
         // 入力を覚えないように求める入力欄: Meltype.exe に学習しないように伝える
@@ -921,7 +931,7 @@ void TextService::HandleKey(ITfContext* context, UINT vk, wchar_t ch) {
     });
     // 同期の編集セッションの終わりの通知 (OnEndEdit) はもう来ている。何も変えなかったときに印が残らないように戻す
     ownEdit_ = false;
-    if (SUCCEEDED(hr) && switchToJapanese && !open_) SetOpen(true);
+    if (SUCCEEDED(hr) && switchToJapanese && !keyFailed_ && !open_) SetOpen(true);
     if (FAILED(hr)) {
         TipLog(L"編集セッションを始められません: 0x%08X", hr);
         keyFailed_ = true;
@@ -1120,6 +1130,14 @@ void TextService::SurroundingText(TfEditCookie ec, ITfContext* context, std::wst
 // ---- 入力欄への反映 ----
 
 void TextService::Apply(TfEditCookie ec, ITfContext* context, const JsonValue& reply) {
+#ifdef MELTYPE_RUST_CORE
+    auto rejectEdits = [&]() {
+        JsonValue ignored;
+        Request("{\"op\":\"reset\",\"sid\":\"" + sid_ + "\",\"direct\":" + (!open_ ? "true" : "false") + "}", ignored);
+        keyFailed_ = true;
+        consumed_ = false;
+    };
+#endif
     // 1 つの応答の中の確定は、前の確定の後ろに続けて入れる (クリックで確定したときは、キャレットがもうクリックした所にあるので、
     // キャレットの位置に入れると、クリックした所に入ったり、選んでいた文字を上書きしたりする)
     Microsoft::WRL::ComPtr<ITfRange> next;
@@ -1138,11 +1156,28 @@ void TextService::Apply(TfEditCookie ec, ITfContext* context, const JsonValue& r
             ULONG fetched = 0;
             if (SUCCEEDED(context->GetSelection(ec, TF_DEFAULT_SELECTION, 1, &selection, &fetched)) && fetched > 0) range.Attach(selection.range);
         }
-        if (!range) continue;
+        if (!range) {
+#ifdef MELTYPE_RUST_CORE
+            if (deleteBefore > 0) { rejectEdits(); return; }
+#endif
+            continue;
+        }
         // 確定し直し: 前に確定した文字を消して入れ直す。前の文字が確定したときのままでなければ (アプリが書き換えた・前の文字を読めない)、
         // 関係ない文字を消したり、古い文字に重ねて入れたりしないように、確定し直さない (変換中の文字は、次の確定でそのまま確定する)
-        if (deleteBefore > 0 && !ExtendOverPrevious(ec, range.Get(), deleteBefore, edit[L"expect"])) continue;
-        if (!WriteCommit(ec, context, range.Get(), text)) continue;
+        if (deleteBefore > 0 && !ExtendOverPrevious(ec, range.Get(), deleteBefore, edit[L"expect"])) {
+#ifdef MELTYPE_RUST_CORE
+            rejectEdits();
+            return;
+#else
+            continue;
+#endif
+        }
+        if (!WriteCommit(ec, context, range.Get(), text)) {
+#ifdef MELTYPE_RUST_CORE
+            if (deleteBefore > 0) { rejectEdits(); return; }
+#endif
+            continue;
+        }
         next.Reset();
         if (SUCCEEDED(range->Clone(&next))) next->Collapse(ec, TF_ANCHOR_END);
     }

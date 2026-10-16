@@ -125,6 +125,9 @@ impl App {
             }
         });
         ui.label("LiveConversionは外部変換器を接続したデスクトップ入力で動作します。");
+        ui.label(
+            "英数状態の自動検知・閾値・TypoEnabledはWindows TSFと下の判定テストに反映します。",
+        );
         ui.label(format!("現在: {}", self.settings.text("ActiveProfile")));
         ui.checkbox(
             &mut self.show_all,
@@ -351,8 +354,39 @@ impl App {
         if ui.text_edit_singleline(&mut self.test_raw).changed() {
             self.test_session.reset();
             for c in self.test_raw.chars() {
-                self.test_session.key(0, c as i32, 0);
+                self.test_session.key(
+                    c.to_ascii_uppercase() as i32,
+                    c as i32,
+                    i32::from(c.is_ascii_uppercase()),
+                );
             }
+        }
+        if !self.test_raw.is_empty() && self.test_raw.len() <= 256 {
+            let keys: Vec<_> = self
+                .test_raw
+                .chars()
+                .map(|c| c.to_ascii_uppercase() as i32)
+                .collect();
+            let result = meltype_core::detection::evaluate(
+                &self.test_raw.to_ascii_lowercase(),
+                &keys,
+                true,
+                &self.settings,
+            );
+            let language = match result.verdict {
+                meltype_core::detection::Verdict::Japanese => "日本語",
+                meltype_core::detection::Verdict::English => "英語",
+                _ => "未確定",
+            };
+            ui.label(format!(
+                "英数状態での判定: {language}（日本語 {} / 英語 {}）",
+                result.japanese, result.english
+            ));
+            ui.collapsing("判定理由", |ui| {
+                for contribution in result.contributions {
+                    ui.label(contribution.reason);
+                }
+            });
         }
         ui.horizontal(|ui| {
             for (label, vk) in [
@@ -396,6 +430,10 @@ fn supported(key: &str) -> bool {
     [
         "Enabled",
         "LiveConversion",
+        "DirectModeAutoDetect",
+        "JapaneseThreshold",
+        "TypoEnabled",
+        "MaxPendingKeys",
         "AppRules",
         "AppKinds",
         "LearningEnabled",
@@ -418,7 +456,7 @@ fn supported(key: &str) -> bool {
 fn choices(key: &str) -> Option<&'static [&'static str]> {
     Some(match key {
         "DetectionLevel" => &["Aggressive", "Balanced", "Conservative", "Manual"],
-        "InputStyle" => &["Romaji", "Kana"],
+        "InputStyle" => &["Romaji", "Kana", "Both"],
         "Punctuation" => &[
             "Japanese",
             "FullWidthCommaPeriod",
