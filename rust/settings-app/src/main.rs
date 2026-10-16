@@ -6,15 +6,20 @@ use meltype_core::{control, settings::Settings, storage::Store, Session};
 use serde_json::{json, Value};
 mod metadata;
 mod rules;
+#[cfg(windows)]
+mod tray;
 mod widgets;
 
 fn main() -> eframe::Result {
+    let resident = cfg!(windows) && std::env::args().any(|a| a == "--tray");
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([740., 740.])
             .with_min_inner_size([480., 400.]),
         ..Default::default()
     };
+    let mut options = options;
+    options.viewport = options.viewport.with_visible(!resident);
     eframe::run_native(
         "Meltype 設定",
         options,
@@ -59,6 +64,10 @@ struct App {
     discard: bool,
     closing: bool,
     help: String,
+    #[cfg(windows)]
+    resident: bool,
+    #[cfg(windows)]
+    tray: Option<tray::Tray>,
     page: usize,
     status: String,
     filter: String,
@@ -103,6 +112,10 @@ impl App {
             discard: false,
             closing: false,
             help: "項目にカーソルを合わせると説明を表示します。".into(),
+            #[cfg(windows)]
+            resident: std::env::args().any(|a| a == "--tray"),
+            #[cfg(windows)]
+            tray: None,
             page: 0,
             status,
             filter: String::new(),
@@ -175,6 +188,113 @@ impl App {
             Err(error) => {
                 self.status = format!("保存できません: {error}");
                 false
+            }
+        }
+    }
+    fn finish(&mut self, ctx: &egui::Context, discard: bool) {
+        if !discard && !self.save() {
+            ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+            return;
+        }
+        if discard {
+            match self.store.settings() {
+                Ok(settings) => {
+                    self.opened = settings.clone();
+                    self.settings = settings.clone();
+                    self.test_session.settings = settings;
+                    self.complex.0.clear();
+                }
+                Err(error) => self.status = error.to_string(),
+            }
+        }
+        #[cfg(windows)]
+        if self.resident {
+            ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+            ctx.send_viewport_cmd(egui::ViewportCommand::Visible(false));
+            self.discard = false;
+            return;
+        }
+        self.discard = discard;
+        self.closing = true;
+        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+    }
+    #[cfg(windows)]
+    fn update_tray(&mut self, ctx: &egui::Context) {
+        if !self.resident {
+            return;
+        }
+        ctx.request_repaint_after(std::time::Duration::from_millis(500));
+        let settings = match self.store.settings() {
+            Ok(s) => s,
+            Err(e) => {
+                self.status = e.to_string();
+                return;
+            }
+        };
+        if self.tray.is_none() {
+            match tray::Tray::new(ctx, &settings, &self.store) {
+                Ok(tray) => self.tray = Some(tray),
+                Err(error) => {
+                    self.status = error;
+                    self.resident = false;
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
+                    return;
+                }
+            }
+        }
+        let actions = self.tray.as_ref().unwrap().poll();
+        for action in actions {
+            match action {
+                tray::Action::Page(page) => {
+                    // Keep an open draft; otherwise start a fresh settings window.
+                    if ctx.input(|i| i.viewport().minimized.unwrap_or(false))
+                        || self.settings.0 == self.opened.0
+                    {
+                        self.settings = settings.clone();
+                        self.opened = settings.clone();
+                        self.test_session.settings = settings.clone();
+                    }
+                    self.page = page;
+                    self.discard = false;
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(false));
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
+                }
+                tray::Action::Folder => {
+                    if let Err(e) = std::fs::create_dir_all(&self.store.directory).and_then(|()| {
+                        std::process::Command::new("explorer.exe")
+                            .arg(&self.store.directory)
+                            .spawn()
+                            .map(|_| ())
+                    }) {
+                        self.status = e.to_string();
+                    }
+                }
+                tray::Action::Quit => {
+                    if self.save() {
+                        if let Err(error) = self
+                            .store
+                            .change_settings(|s| s.set("Enabled", json!(false)))
+                        {
+                            self.status = error.to_string();
+                            continue;
+                        }
+                        self.closing = true;
+                        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                    }
+                }
+                action => {
+                    if let Err(error) = tray::write_action(&self.store, &action) {
+                        self.status = error;
+                    }
+                }
+            }
+        }
+        if let Ok(settings) = self.store.settings() {
+            if let Some(tray) = &mut self.tray {
+                if let Err(error) = tray.sync(&settings) {
+                    self.status = error;
+                }
             }
         }
     }
@@ -325,11 +445,13 @@ impl App {
                             return;
                         }
                         let row = ui.horizontal(|ui| {
+                            let label_width = ui.available_width() * 0.55;
                             let label = ui
                                 .allocate_ui_with_layout(
-                                    egui::vec2(ui.available_width() * 0.55, 28.),
+                                    egui::vec2(label_width, 28.),
                                     egui::Layout::left_to_right(egui::Align::Center),
                                     |ui| {
+                                        ui.set_min_width(label_width);
                                         ui.label(metadata::label(&key))
                                             .on_hover_text(metadata::description(&key))
                                     },
@@ -680,12 +802,10 @@ fn choices(key: &str) -> Option<&'static [&'static str]> {
 }
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
+        #[cfg(windows)]
+        self.update_tray(ctx);
         if ctx.input(|i| i.viewport().close_requested()) && !self.closing {
-            if self.discard || self.save() {
-                self.closing = true;
-            } else {
-                ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
-            }
+            self.finish(ctx, self.discard);
         }
         #[cfg(feature = "visual-test")]
         if let Ok(path) = std::env::var("MELTYPE_UI_CAPTURE") {
@@ -700,6 +820,14 @@ impl eframe::App for App {
                     std::fs::write(format!("{path}.rgba"), rgba).expect("write capture");
                     std::fs::write(format!("{path}.json"), json!(image.size).to_string())
                         .expect("write capture size");
+                    #[cfg(windows)]
+                    std::fs::write(
+                        format!("{path}.state.json"),
+                        json!({"resident":self.resident,"trayCreated":self.tray.is_some()})
+                            .to_string(),
+                    )
+                    .expect("write tray capture state");
+                    self.closing = true;
                     ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                 }
             }
@@ -745,13 +873,10 @@ impl eframe::App for App {
                 }
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if ui.button("キャンセル").clicked() {
-                        self.discard = true;
-                        self.closing = true;
-                        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                        self.finish(ctx, true);
                     }
-                    if ui.button("OK").clicked() && self.save() {
-                        self.closing = true;
-                        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                    if ui.button("OK").clicked() {
+                        self.finish(ctx, false);
                     }
                 });
             });
@@ -908,5 +1033,21 @@ mod tests {
         app.test_session.key(32, 32, 0);
         app.test_session.select(0);
         assert!(!dir.path().join("state.json").exists());
+    }
+    #[cfg(windows)]
+    #[test]
+    fn cancel_in_resident_mode_discards_the_draft_before_hiding() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = Store::new(dir.path());
+        let mut app = App::with_store(store.clone());
+        app.resident = true;
+        app.action(json!({"op":"settings_set","name":"LiveConversion","value":false}));
+        app.action(json!({"op":"profile_add","name":"未保存"}));
+        let ctx = egui::Context::default();
+        let _ = ctx.run(egui::RawInput::default(), |ctx| app.finish(ctx, true));
+        assert_eq!(app.settings.0, store.settings().unwrap().0);
+        assert_eq!(app.opened.0, app.settings.0);
+        assert!(!app.closing);
+        assert!(!dir.path().join("config.json").exists());
     }
 }
