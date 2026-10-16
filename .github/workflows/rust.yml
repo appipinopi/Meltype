@@ -37,6 +37,8 @@ jobs:
           python-version: '3.12'
       - name: Native ABI callbacks and live conversion
         run: python rust/native/tests/abi_smoke.py
+      - name: Settings UI labels match upstream
+        run: python tools/extract-rust-settings-ui.py --check
       - if: runner.os == 'Windows'
         shell: pwsh
         run: ./rust/build-windows.ps1 -WithTip -NativeOnly

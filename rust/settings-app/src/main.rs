@@ -4,6 +4,8 @@
 use eframe::egui;
 use meltype_core::{control, settings::Settings, storage::Store, Session};
 use serde_json::{json, Value};
+mod metadata;
+mod rules;
 
 fn main() -> eframe::Result {
     let options = eframe::NativeOptions {
@@ -64,6 +66,8 @@ struct App {
     result: Value,
     complex: BTreeEditor,
     show_all: bool,
+    #[cfg(feature = "visual-test")]
+    capture_frames: usize,
 }
 #[derive(Default)]
 struct BTreeEditor(std::collections::BTreeMap<String, String>);
@@ -95,6 +99,8 @@ impl App {
             result: Value::Null,
             complex: BTreeEditor::default(),
             show_all: false,
+            #[cfg(feature = "visual-test")]
+            capture_frames: 0,
         }
     }
     fn action(&mut self, request: Value) {
@@ -112,7 +118,26 @@ impl App {
     }
     fn settings(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
-            ui.label("プロファイル / Profile");
+            ui.label("プロファイル:");
+            let active = self.settings.text("ActiveProfile").to_owned();
+            let mut selected = active.clone();
+            egui::ComboBox::from_id_salt("active_profile")
+                .selected_text(&active)
+                .show_ui(ui, |ui| {
+                    if let Some(profiles) = self.settings.0["Profiles"].as_array() {
+                        for profile in profiles {
+                            if let Some(name) = profile["Name"].as_str() {
+                                ui.selectable_value(&mut selected, name.to_owned(), name);
+                            }
+                        }
+                    }
+                });
+            if selected != active {
+                self.action(json!({"op":"profile_switch","name":selected}));
+            }
+        });
+        ui.horizontal(|ui| {
+            ui.label("名前:");
             ui.text_edit_singleline(&mut self.profile);
             if ui.button("追加").clicked() {
                 self.action(json!({"op":"profile_add","name":self.profile}));
@@ -137,23 +162,52 @@ impl App {
             ui.label("検索 / Filter");
             ui.text_edit_singleline(&mut self.filter);
         });
-        let fields: Vec<_> = self
-            .settings
-            .0
+        let mut fields: Vec<_> = metadata::fields()
             .iter()
-            .filter(|(key, _)| {
-                !key.eq(&"Profiles")
-                    && (self.show_all || supported(key))
-                    && key.to_lowercase().contains(&self.filter.to_lowercase())
+            .filter_map(|f| {
+                let key = f["key"].as_str()?;
+                let value = self.settings.0.get(key)?;
+                let filter = self.filter.to_lowercase();
+                ((self.show_all || supported(key))
+                    && (key.to_lowercase().contains(&filter)
+                        || metadata::label(key).contains(&self.filter)
+                        || metadata::description(key).contains(&self.filter)))
+                .then(|| {
+                    (
+                        key.to_owned(),
+                        value.clone(),
+                        f["category"].as_str().unwrap_or("").to_owned(),
+                    )
+                })
             })
-            .map(|(key, value)| (key.clone(), value.clone()))
             .collect();
+        fields.sort_by(|a, b| a.2.cmp(&b.2));
         egui::ScrollArea::vertical().show(ui, |ui| {
-            for (key, mut value) in fields {
+            let mut category = String::new();
+            for (key, mut value, group) in fields {
+                if group != category {
+                    ui.add_space(12.);
+                    ui.heading(
+                        group
+                            .split_once(". ")
+                            .map_or(group.as_str(), |(_, label)| label),
+                    );
+                    ui.separator();
+                    category = group;
+                }
                 ui.push_id(&key, |ui| {
+                    if key == "AppRules" || key == "AppKinds" {
+                        ui.label(metadata::label(&key))
+                            .on_hover_text(metadata::description(&key));
+                        if rules::editor(ui, &key, &mut value, &self.settings) {
+                            self.action(json!({"op":"settings_set","name":key,"value":value}));
+                        }
+                        return;
+                    }
                     ui.horizontal(|ui| {
                         ui.set_min_width(650.);
-                        ui.label(&key);
+                        ui.label(metadata::label(&key))
+                            .on_hover_text(metadata::description(&key));
                         match &mut value {
                             Value::Bool(v) => {
                                 if ui.checkbox(v, "").changed() {
@@ -174,13 +228,13 @@ impl App {
                                 if let Some(choices) = choices(&key) {
                                     let old = text.clone();
                                     egui::ComboBox::from_id_salt(&key)
-                                        .selected_text(text.as_str())
+                                        .selected_text(metadata::choice(&key, text))
                                         .show_ui(ui, |ui| {
                                             for choice in choices {
                                                 ui.selectable_value(
                                                     text,
                                                     (*choice).to_owned(),
-                                                    *choice,
+                                                    metadata::choice(&key, choice),
                                                 );
                                             }
                                         });
@@ -475,6 +529,23 @@ fn choices(key: &str) -> Option<&'static [&'static str]> {
 }
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
+        #[cfg(feature = "visual-test")]
+        if let Ok(path) = std::env::var("MELTYPE_UI_CAPTURE") {
+            self.capture_frames += 1;
+            ctx.request_repaint();
+            if self.capture_frames == 20 {
+                ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot(egui::UserData::default()));
+            }
+            for event in ctx.input(|i| i.events.clone()) {
+                if let egui::Event::Screenshot { image, .. } = event {
+                    let rgba: Vec<u8> = image.pixels.iter().flat_map(|p| p.to_array()).collect();
+                    std::fs::write(format!("{path}.rgba"), rgba).expect("write capture");
+                    std::fs::write(format!("{path}.json"), json!(image.size).to_string())
+                        .expect("write capture size");
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                }
+            }
+        }
         egui::TopBottomPanel::top("tabs").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.heading("Meltype Rust");
