@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 lnkiai, appipinopi
 //! Thread-affine privacy cache and bounded reinjection bookkeeping.
+use super::keys;
 use std::{
     cell::RefCell,
     collections::HashMap,
@@ -105,16 +106,85 @@ struct Cache {
     result: i32,
     private: i32,
 }
+#[derive(Clone, Copy, Default)]
+#[repr(C)]
+pub struct Stale {
+    tries: u32,
+    key: u32,
+    time: u64,
+}
+#[derive(Clone, Copy, Default)]
+#[repr(C)]
+pub struct Passed {
+    key: i32,
+    control: i32,
+}
+struct Book {
+    down: [bool; 256],
+    pass_key: u32,
+    pass_time: u64,
+    generation: u64,
+    passed_key: u32,
+    passed_control: bool,
+    passed_time: u64,
+    passed_pending: bool,
+    stale: Stale,
+}
+impl Default for Book {
+    fn default() -> Self {
+        Self {
+            down: [false; 256],
+            pass_key: 0,
+            pass_time: 0,
+            generation: 0,
+            passed_key: 0,
+            passed_control: false,
+            passed_time: 0,
+            passed_pending: false,
+            stale: Stale::default(),
+        }
+    }
+}
+impl Book {
+    fn passed(&mut self, key: u32, control: bool, time: u64) {
+        self.passed_key = key;
+        self.passed_control = control;
+        self.passed_time = time;
+        self.passed_pending = true;
+    }
+    fn message(&mut self, mode: bool, changed: bool, time: u64, clicked: bool) -> Option<Passed> {
+        if !mode && !self.passed_pending {
+            return None;
+        }
+        self.passed_pending = false;
+        let recent = !clicked && time.wrapping_sub(self.passed_time) < 500;
+        Some(Passed {
+            key: if !mode || recent {
+                self.passed_key as i32
+            } else if changed {
+                0
+            } else {
+                -1
+            },
+            control: i32::from(self.passed_control && (!mode || recent)),
+        })
+    }
+}
 #[derive(Default)]
 struct State {
     cache: Option<Rc<Cache>>,
     epoch: u64,
     queue: Queue,
+    book: Book,
 }
 impl State {
     fn reset(&mut self) -> Self {
         let next = Self {
             epoch: self.epoch.wrapping_add(1),
+            book: Book {
+                generation: self.book.generation.wrapping_add(1),
+                ..Default::default()
+            },
             queue: Queue {
                 serial: self.queue.serial.wrapping_add(1),
                 ..Default::default()
@@ -296,7 +366,11 @@ pub unsafe extern "C" fn meltype_tsf_reinject(
         let Some(state) = state(handle) else {
             return -1;
         };
-        if key == 0 || key >= 256 {
+        if key >= 256 {
+            return -1;
+        }
+        state.borrow_mut().book.down[key as usize] = false;
+        if key == 0 {
             return -1;
         }
         let Some(_owner) = IUnknown::from_raw_borrowed(&lifetime).cloned() else {
@@ -348,9 +422,253 @@ pub unsafe extern "C" fn meltype_tsf_reinject(
     .unwrap_or(-1)
 }
 
+#[no_mangle]
+pub extern "C" fn meltype_tsf_key_foreground(handle: *mut c_void, foreground: i32) {
+    let _ = catch_unwind(AssertUnwindSafe(|| {
+        if foreground == 0 {
+            if let Some(state) = state(handle) {
+                let mut s = state.borrow_mut();
+                s.book.down.fill(false);
+                s.book.generation = s.book.generation.wrapping_add(1);
+            }
+        }
+    }));
+}
+/// # Safety
+/// Writable Stale output, on the token's creating thread.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_tsf_key_stale_read(handle: *mut c_void, out: *mut Stale) {
+    if out.is_null() {
+        return;
+    }
+    out.write(
+        catch_unwind(AssertUnwindSafe(|| {
+            state(handle)
+                .map(|s| s.borrow().book.stale)
+                .unwrap_or_default()
+        }))
+        .unwrap_or_default(),
+    );
+}
+#[no_mangle]
+pub extern "C" fn meltype_tsf_key_stale_write(
+    handle: *mut c_void,
+    tries: u32,
+    key: u32,
+    time: u64,
+) {
+    let _ = catch_unwind(AssertUnwindSafe(|| {
+        if let Some(s) = state(handle) {
+            s.borrow_mut().book.stale = Stale { tries, key, time };
+        }
+    }));
+}
+#[no_mangle]
+pub extern "C" fn meltype_tsf_key_stale_clear(handle: *mut c_void) {
+    let _ = catch_unwind(AssertUnwindSafe(|| {
+        if let Some(s) = state(handle) {
+            let mut s = s.borrow_mut();
+            s.book.stale.tries = 0;
+            s.book.stale.key = 0;
+        }
+    }));
+}
+/// mode=0 consumes a pending passed-key report; mode=1 reports selection/text
+/// movement using the recent key unless a mouse button is held.
+/// # Safety
+/// Writable output, on the token's creating thread.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_tsf_key_passed(
+    handle: *mut c_void,
+    mode: i32,
+    changed: i32,
+    out: *mut Passed,
+) -> i32 {
+    if out.is_null() {
+        return 0;
+    }
+    out.write(Passed::default());
+    i32::from(
+        catch_unwind(AssertUnwindSafe(|| {
+            let Some(s) = state(handle) else { return false };
+            let clicked = mode != 0
+                && changed != 0
+                && ((GetAsyncKeyState(VK_LBUTTON.0 as i32) | GetAsyncKeyState(VK_RBUTTON.0 as i32))
+                    as u16
+                    & 0x8000
+                    != 0);
+            let value =
+                s.borrow_mut()
+                    .book
+                    .message(mode != 0, changed != 0, GetTickCount64(), clicked);
+            if let Some(value) = value {
+                out.write(value);
+                true
+            } else {
+                false
+            }
+        }))
+        .unwrap_or(false),
+    )
+}
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct Entry {
+    owner: *mut c_void,
+    lifetime: *mut c_void,
+    would: Option<unsafe extern "C" fn(*mut c_void, *mut c_void, u32, u64, i32, *mut u16) -> i32>,
+    mark: Option<unsafe extern "C" fn(*mut c_void, u32, i32)>,
+    composing: Option<unsafe extern "C" fn(*mut c_void) -> i32>,
+    toggle: Option<unsafe extern "C" fn(*mut c_void, *mut c_void)>,
+    handle: Option<unsafe extern "C" fn(*mut c_void, *mut c_void, u32, u16)>,
+}
+/// kind: 0=test down,1=down,2=test up,3=up. Return whether the key is consumed.
+/// Callbacks run with no state borrow; owner/context survive reentrant actions.
+/// # Safety
+/// On the token's TSF thread; borrowed context and lifetime IUnknown, callbacks
+/// and state/code live until return and never throw. Up events need no callbacks.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_tsf_key_event(
+    handle: *mut c_void,
+    kind: u32,
+    context: *mut c_void,
+    key: u32,
+    message: u64,
+    entry: *const Entry,
+) -> i32 {
+    i32::from(
+        catch_unwind(AssertUnwindSafe(|| {
+            let Some(state) = state(handle) else {
+                return false;
+            };
+            if key >= 256 || kind > 3 {
+                return false;
+            }
+            if kind >= 2 {
+                let mut s = state.borrow_mut();
+                let down = s.book.down[key as usize];
+                if kind == 3 {
+                    s.book.down[key as usize] = false;
+                }
+                return down;
+            }
+            let Some(c) = entry.as_ref().copied() else {
+                return false;
+            };
+            let (Some(would), Some(mark), Some(composing), Some(toggle), Some(process)) =
+                (c.would, c.mark, c.composing, c.toggle, c.handle)
+            else {
+                return false;
+            };
+            let Some(_owner) = IUnknown::from_raw_borrowed(&c.lifetime).cloned() else {
+                return false;
+            };
+            let _context = ITfContext::from_raw_borrowed(&context).cloned();
+            let generation = state.borrow().book.generation;
+            let paired = kind == 1 && {
+                let s = state.borrow();
+                key == s.book.pass_key && GetTickCount64().wrapping_sub(s.book.pass_time) < 500
+            };
+            if paired || meltype_tsf_is_reinjected(handle, key) != 0 {
+                {
+                    let mut s = state.borrow_mut();
+                    s.book.pass_key = if kind == 0 { key } else { 0 };
+                    if kind == 0 {
+                        s.book.pass_time = GetTickCount64();
+                    }
+                }
+                mark(c.owner, key, 1);
+                return false;
+            }
+            state.borrow_mut().book.pass_key = 0;
+            let mut ch = 0;
+            let accepted = would(
+                c.owner,
+                context,
+                key,
+                message,
+                i32::from(kind == 0),
+                &mut ch,
+            ) != 0;
+            if state.borrow().book.generation != generation {
+                return false;
+            }
+            if !accepted {
+                if keys::meltype_tsf_key_flags(key, 0, 0) & 1 == 0 {
+                    let control = GetKeyState(VK_CONTROL.0 as i32) < 0;
+                    state
+                        .borrow_mut()
+                        .book
+                        .passed(key, control, GetTickCount64());
+                    mark(c.owner, key, 2);
+                }
+                return false;
+            }
+            if kind == 0 {
+                return true;
+            }
+            let flags =
+                keys::meltype_tsf_key_flags(key, message, keys::meltype_tsf_key_modifiers());
+            {
+                let mut s = state.borrow_mut();
+                if flags & 4 != 0 && s.book.down[key as usize] {
+                    return true;
+                }
+                s.book.down[key as usize] = true;
+            }
+            if flags & (2 | 4) != 0 && composing(c.owner) == 0 {
+                toggle(c.owner, context);
+            } else {
+                process(
+                    c.owner,
+                    context,
+                    key,
+                    keys::meltype_tsf_key_char(key, message) as u16,
+                );
+            }
+            true
+        }))
+        .unwrap_or(false),
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn passed_metadata_deadline_and_mouse_precedence() {
+        let mut b = Book::default();
+        b.passed(65, true, 100);
+        let recent = b.message(true, true, 599, false).unwrap();
+        assert_eq!((recent.key, recent.control), (65, 1));
+        assert!(b.message(false, false, 599, false).is_none());
+        let expired = b.message(true, true, 600, false).unwrap();
+        assert_eq!((expired.key, expired.control), (0, 0));
+        assert_eq!(b.message(true, false, 600, false).unwrap().key, -1);
+        b.passed(66, true, 1000);
+        let clicked = b.message(true, true, 1001, true).unwrap();
+        assert_eq!((clicked.key, clicked.control), (0, 0));
+        b.passed(67, true, 2000);
+        let pending = b.message(false, false, 9000, false).unwrap();
+        assert_eq!((pending.key, pending.control), (67, 1));
+    }
+    #[test]
+    fn reset_invalidates_dispatch_and_clears_consumed_keys_and_metadata() {
+        let mut s = State::default();
+        s.book.down[65] = true;
+        s.book.passed(65, true, 100);
+        s.book.stale = Stale {
+            tries: 3,
+            key: 65,
+            time: 999,
+        };
+        let old = s.reset();
+        assert!(old.book.down[65]);
+        assert_eq!(s.book.generation, old.book.generation + 1);
+        assert!(!s.book.down.iter().any(|x| *x));
+        assert!(!s.book.passed_pending);
+        assert_eq!(s.book.stale.time, 0);
+    }
     #[test]
     fn marker_and_timeout_boundaries() {
         let mut q = Queue::default();

@@ -37,6 +37,10 @@ int wmain() {
     assert(service->OnTestKeyUp(context,VK_KANJI,0,&eaten)==S_OK && eaten);
     assert(service->OnKeyUp(context,VK_KANJI,0,&eaten)==S_OK && eaten);
     assert(service->OnTestKeyUp(context,VK_KANJI,0,&eaten)==S_OK && !eaten);
+    assert(service->OnKeyDown(context,VK_KANJI,0,&eaten)==S_OK && eaten);
+    assert(service->OnSetFocus(FALSE)==S_OK);
+    assert(service->OnKeyUp(context,VK_KANJI,0,&eaten)==S_OK && !eaten);
+    assert(service->OnTestKeyUp(context,static_cast<WPARAM>(-1),0,&eaten)==S_OK && !eaten);
     assert(RustKeyFlags(VK_SHIFT,0,false)&1);
     assert(RustKeyFlags(VK_KANJI,0,false)&2);
     BYTE shifted[256]={};shifted[VK_SHIFT]=shifted[VK_LSHIFT]=0x80;
@@ -44,6 +48,13 @@ int wmain() {
     assert(RustKeyDown(VK_SHIFT) && RustKeyChar(VK_SPACE,0)==L' ');
     void* keyState=RustKeyStateCreate();
     assert(keyState);
+    RustKeyStale stale={};
+    RustKeyStaleWrite(keyState,3,65,0x123456789abcdef0ULL);
+    RustKeyStaleRead(keyState,stale);
+    assert(stale.tries==3 && stale.key==65 && stale.time==0x123456789abcdef0ULL);
+    RustKeyStaleClear(keyState);
+    RustKeyStaleRead(keyState,stale);
+    assert(stale.tries==0 && stale.key==0 && stale.time==0x123456789abcdef0ULL);
     int reads=0,privateField=0;
     auto reader=[](void* p,void*,int* field)->int {++*static_cast<int*>(p);*field=1;return -1;};
     assert(RustKeySecret(keyState,context,65,true,&reads,static_cast<ITfTextInputProcessorEx*>(service),reader,privateField)==-1);

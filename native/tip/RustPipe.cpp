@@ -70,6 +70,12 @@ struct RustApi {
     int (__cdecl *isReinjected)(void*,unsigned int) = nullptr;
     int (__cdecl *keySecret)(void*,void*,unsigned int,int,void*,void*,int (__cdecl *)(void*,void*,int*),int*) = nullptr;
     int (__cdecl *reinject)(void*,unsigned int,void*,void*,unsigned int (__cdecl *)(void*,const INPUT*,unsigned int),unsigned int*) = nullptr;
+    void (__cdecl *keyForeground)(void*,int) = nullptr;
+    void (__cdecl *keyStaleRead)(void*,RustKeyStale*) = nullptr;
+    void (__cdecl *keyStaleWrite)(void*,unsigned int,unsigned int,unsigned long long) = nullptr;
+    void (__cdecl *keyStaleClear)(void*) = nullptr;
+    int (__cdecl *keyPassed)(void*,int,int,RustKeyPassed*) = nullptr;
+    int (__cdecl *keyEvent)(void*,unsigned int,void*,unsigned int,unsigned long long,const RustKeyEntry*) = nullptr;
     RustApi() {
         wchar_t path[32768];
         const DWORD size = GetModuleFileNameW(g_module, path, ARRAYSIZE(path));
@@ -137,6 +143,12 @@ struct RustApi {
         isReinjected = reinterpret_cast<decltype(isReinjected)>(GetProcAddress(module, "meltype_tsf_is_reinjected"));
         keySecret = reinterpret_cast<decltype(keySecret)>(GetProcAddress(module, "meltype_tsf_key_secret"));
         reinject = reinterpret_cast<decltype(reinject)>(GetProcAddress(module, "meltype_tsf_reinject"));
+        keyForeground = reinterpret_cast<decltype(keyForeground)>(GetProcAddress(module, "meltype_tsf_key_foreground"));
+        keyStaleRead = reinterpret_cast<decltype(keyStaleRead)>(GetProcAddress(module, "meltype_tsf_key_stale_read"));
+        keyStaleWrite = reinterpret_cast<decltype(keyStaleWrite)>(GetProcAddress(module, "meltype_tsf_key_stale_write"));
+        keyStaleClear = reinterpret_cast<decltype(keyStaleClear)>(GetProcAddress(module, "meltype_tsf_key_stale_clear"));
+        keyPassed = reinterpret_cast<decltype(keyPassed)>(GetProcAddress(module, "meltype_tsf_key_passed"));
+        keyEvent = reinterpret_cast<decltype(keyEvent)>(GetProcAddress(module, "meltype_tsf_key_event"));
     }
     bool ready() const { return create && destroy && request && freeText; }
     // The module stays loaded for the process lifetime. Do not unload Rust
@@ -286,7 +298,7 @@ bool RustWouldEat(ITfContext* context,UINT key,LPARAM message,bool test,const Ru
     ch=0;
     return api().wouldEat && api().wouldEat(context,key,static_cast<ULONG_PTR>(message),test?1:0,&callbacks,&ch)!=0;
 }
-void* RustKeyStateCreate() {return api().keyStateCreate && api().keyStateReset && api().keyStateDestroy && api().keyCacheClear && api().isReinjected && api().keySecret && api().reinject ? api().keyStateCreate() : nullptr;}
+void* RustKeyStateCreate() {return api().keyStateCreate && api().keyStateReset && api().keyStateDestroy && api().keyCacheClear && api().isReinjected && api().keySecret && api().reinject && api().keyForeground && api().keyStaleRead && api().keyStaleWrite && api().keyStaleClear && api().keyPassed && api().keyEvent ? api().keyStateCreate() : nullptr;}
 void RustKeyStateReset(void* state) {if (api().keyStateReset) api().keyStateReset(state);}
 void RustKeyStateDestroy(void* state) {if (api().keyStateDestroy) api().keyStateDestroy(state);}
 void RustKeyCacheClear(void* state) {if (api().keyCacheClear) api().keyCacheClear(state);}
@@ -301,6 +313,14 @@ int RustReinject(void* state,UINT key,IUnknown* lifetime,DWORD& error,void* owne
     int result=api().reinject ? api().reinject(state,key,lifetime,owner,sender,&code) : -1;
     error=code;
     return result;
+}
+void RustKeyForeground(void* state,bool foreground) {if (api().keyForeground) api().keyForeground(state,foreground?1:0);}
+void RustKeyStaleRead(void* state,RustKeyStale& out) {out={};if (api().keyStaleRead) api().keyStaleRead(state,&out);}
+void RustKeyStaleWrite(void* state,unsigned int tries,unsigned int key,unsigned long long time) {if (api().keyStaleWrite) api().keyStaleWrite(state,tries,key,time);}
+void RustKeyStaleClear(void* state) {if (api().keyStaleClear) api().keyStaleClear(state);}
+bool RustKeyPassedRead(void* state,bool mode,bool changed,RustKeyPassed& out) {out={};return api().keyPassed && api().keyPassed(state,mode?1:0,changed?1:0,&out)!=0;}
+bool RustKeyEvent(void* state,unsigned int kind,ITfContext* context,UINT key,LPARAM message,const RustKeyEntry& entry) {
+    return api().keyEvent && api().keyEvent(state,kind,context,key,static_cast<ULONG_PTR>(message),&entry)!=0;
 }
 bool PipeClient::Transact(const std::string& request, std::string& response, DWORD, bool) {
     if (!api().ready()) return false;

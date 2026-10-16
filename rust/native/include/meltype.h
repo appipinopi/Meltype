@@ -209,6 +209,29 @@ int32_t meltype_tsf_is_reinjected(void *state, uint32_t key);
 struct tagINPUT;
 int32_t meltype_tsf_reinject(void *state, uint32_t key, void *lifetime, void *owner,
     uint32_t (*sender)(void *, const struct tagINPUT *inputs, uint32_t count), uint32_t *error);
+typedef struct MeltypeTsfKeyStale {uint32_t tries,key;uint64_t time;} MeltypeTsfKeyStale;
+typedef struct MeltypeTsfKeyPassed {int32_t key,control;} MeltypeTsfKeyPassed;
+void meltype_tsf_key_foreground(void *state, int32_t foreground);
+void meltype_tsf_key_stale_read(void *state, MeltypeTsfKeyStale *out);
+void meltype_tsf_key_stale_write(void *state, uint32_t tries, uint32_t key, uint64_t time);
+void meltype_tsf_key_stale_clear(void *state);
+/* mode 0 consumes pending key metadata once; mode 1 emits the recent key or
+   selection/text movement (0/-1), with mouse-button precedence on selection. */
+int32_t meltype_tsf_key_passed(void *state, int32_t mode, int32_t selection_changed, MeltypeTsfKeyPassed *out);
+typedef struct MeltypeTsfKeyEntry {
+    void *owner,*lifetime;
+    int32_t (*would)(void *, void *context, uint32_t key, uint64_t message, int32_t test, uint16_t *character);
+    void (*mark)(void *, uint32_t key, int32_t kind);
+    int32_t (*composing)(void *);
+    void (*toggle)(void *, void *context);
+    void (*handle)(void *, void *context, uint32_t key, uint16_t character);
+} MeltypeTsfKeyEntry;
+/* kind: 0 test down,1 down,2 test up,3 up. Returns consumed. mark kind 1 is
+   replay passthrough (clear English/mark moved), 2 ordinary passthrough (moved).
+   Native state owns consumed keys, replay test/down pairing and passed metadata.
+   Down callbacks/lifetime/context are borrowed on their TSF thread and must
+   survive until return; never throw. Up events need no callbacks/context. */
+int32_t meltype_tsf_key_event(void *state, uint32_t kind, void *context, uint32_t key, uint64_t message, const MeltypeTsfKeyEntry *entry);
 #endif
 #ifdef __cplusplus
 }

@@ -287,16 +287,19 @@ STDMETHODIMP TextService::ActivateEx(ITfThreadMgr* threadMgr, TfClientId clientI
 #else
     abandoned_.clear();
 #endif
-    staleCommitTries_ = 0;
-    staleVk_ = 0;
+    ResetStaleCommit();
 #ifndef MELTYPE_RUST_CORE
     for (Reinjected& pending : reinjected_) pending = {};
 #endif
+#ifndef MELTYPE_RUST_CORE
     passVk_ = 0;
+#endif
     passReason_ = nullptr;
     keyFailed_ = false;
     consumed_ = true;
+#ifndef MELTYPE_RUST_CORE
     for (bool& eaten : eatenDown_) eaten = false;
+#endif
     // サインインや UAC の画面では何もしない。
     // Meltype.exe より高い権限で動いているアプリ (管理者として動くアプリなど) は、つなぐときに断る (Pipe.cpp の IsTrustedServer)
     // (Meltype.exe 自身の画面でも使う。そのときは Meltype.exe が画面のスレッドを通さずに処理する: TipServer の Serve)
@@ -489,7 +492,11 @@ STDMETHODIMP TextService::OnSetFocus(BOOL foreground) {
     // キーを受け取らなくなった (スレッドが前面でなくなった・ほかの IME に移った): 受け取ったキーを離したことは届かないかもしれないので忘れる
     // (このスレッドで次に押したキーの、離したことまで受け取らないように)
     if (!foreground) {
+#ifdef MELTYPE_RUST_CORE
+        RustKeyForeground(keyState_,false);
+#else
         for (bool& eaten : eatenDown_) eaten = false;
+#endif
     }
     return S_OK;
 }
@@ -798,8 +805,9 @@ bool TextService::WouldEat(ITfContext* context, UINT vk, LPARAM lParam, wchar_t&
         this,static_cast<ITfTextInputProcessorEx*>(this),
         [](void* p,RustKeySnapshot* s) {
             auto* self=static_cast<TextService*>(p);
+            RustKeyStale stale={};RustKeyStaleRead(self->keyState_,stale);
             *s={self->composition_,self->compositionContext_,self->disabled_,self->open_,self->directDetection_,self->directEnglishWord_,
-                static_cast<unsigned int>(self->staleCommitTries_),self->staleVk_,self->staleTime_};
+                stale.tries,stale.key,stale.time};
         },
         [](void* p,unsigned int op,unsigned long long a,unsigned long long b) {
             auto* self=static_cast<TextService*>(p);
@@ -807,7 +815,7 @@ bool TextService::WouldEat(ITfContext* context, UINT vk, LPARAM lParam, wchar_t&
                 case 0:self->secretChecked_=false;self->secretWhileComposing_=false;break;
                 case 1:self->secretWhileComposing_=true;break;
                 case 2:self->directEnglishWord_=false;break;
-                case 3:self->staleCommitTries_=static_cast<int>(a>>32);self->staleVk_=static_cast<UINT>(a);self->staleTime_=b;break;
+                case 3:RustKeyStaleWrite(self->keyState_,static_cast<unsigned int>(a>>32),static_cast<unsigned int>(a),b);break;
                 case 4:self->secretChecked_=a!=0;break;
             }
         },
@@ -973,6 +981,9 @@ bool TextService::IsReinjected(UINT vk) {
 }
 
 STDMETHODIMP TextService::OnTestKeyDown(ITfContext* context, WPARAM wParam, LPARAM lParam, BOOL* eaten) {
+#ifdef MELTYPE_RUST_CORE
+    return DispatchKey(0,context,static_cast<UINT>(wParam),lParam,eaten);
+#else
     UINT vk = static_cast<UINT>(wParam);
     if (IsReinjected(vk)) {
         passVk_ = vk;  // アプリによっては、このあと OnKeyDown も呼ぶ
@@ -991,9 +1002,13 @@ STDMETHODIMP TextService::OnTestKeyDown(ITfContext* context, WPARAM wParam, LPAR
         RememberPassed(vk);
     }
     return S_OK;
+#endif
 }
 
 STDMETHODIMP TextService::OnKeyDown(ITfContext* context, WPARAM wParam, LPARAM lParam, BOOL* eaten) {
+#ifdef MELTYPE_RUST_CORE
+    return DispatchKey(1,context,static_cast<UINT>(wParam),lParam,eaten);
+#else
     UINT vk = static_cast<UINT>(wParam);
     if ((vk == passVk_ && GetTickCount64() - passTime_ < 500) || IsReinjected(vk)) {
         passVk_ = 0;
@@ -1023,17 +1038,51 @@ STDMETHODIMP TextService::OnKeyDown(ITfContext* context, WPARAM wParam, LPARAM l
     ch = CharOf(vk, lParam);
     HandleKey(context, vk, ch);
     return S_OK;
+#endif
 }
 
 STDMETHODIMP TextService::OnTestKeyUp(ITfContext*, WPARAM wParam, LPARAM, BOOL* eaten) {
+#ifdef MELTYPE_RUST_CORE
+    return DispatchKey(2,nullptr,wParam<256?static_cast<UINT>(wParam):256,0,eaten);
+#else
     *eaten = wParam < 256 && eatenDown_[wParam] ? TRUE : FALSE;
     return S_OK;
+#endif
 }
 
 STDMETHODIMP TextService::OnKeyUp(ITfContext*, WPARAM wParam, LPARAM, BOOL* eaten) {
+#ifdef MELTYPE_RUST_CORE
+    return DispatchKey(3,nullptr,wParam<256?static_cast<UINT>(wParam):256,0,eaten);
+#else
     *eaten = wParam < 256 && eatenDown_[wParam] ? TRUE : FALSE;
     if (wParam < 256) eatenDown_[wParam] = false;
     return S_OK;
+#endif
+}
+
+#ifdef MELTYPE_RUST_CORE
+HRESULT TextService::DispatchKey(unsigned int kind,ITfContext* context,UINT key,LPARAM message,BOOL* eaten) {
+    RustKeyEntry entry={
+        this,static_cast<ITfTextInputProcessorEx*>(this),
+        [](void* p,void* c,unsigned int key,unsigned long long msg,int test,wchar_t* ch)->int {
+            try {return static_cast<TextService*>(p)->WouldEat(static_cast<ITfContext*>(c),key,static_cast<LPARAM>(static_cast<ULONG_PTR>(msg)),*ch,test!=0)?1:0;} catch (...) {return 0;}
+        },
+        [](void* p,unsigned int,int mark) {auto* self=static_cast<TextService*>(p);if (mark==1) self->directEnglishWord_=false;self->caretMoved_=true;},
+        [](void* p)->int {return static_cast<TextService*>(p)->composition_?1:0;},
+        [](void* p,void* c) {try {static_cast<TextService*>(p)->ToggleInputMode(static_cast<ITfContext*>(c));}catch (...) {}},
+        [](void* p,void* c,unsigned int key,wchar_t ch) {try {static_cast<TextService*>(p)->HandleKey(static_cast<ITfContext*>(c),key,ch);}catch (...) {}},
+    };
+    *eaten=RustKeyEvent(keyState_,kind,context,key,message,entry)?TRUE:FALSE;
+    return S_OK;
+}
+#endif
+
+void TextService::ResetStaleCommit() {
+#ifdef MELTYPE_RUST_CORE
+    RustKeyStaleClear(keyState_);
+#else
+    staleCommitTries_=0;staleVk_=0;
+#endif
 }
 
 void TextService::HandleKey(ITfContext* context, UINT vk, wchar_t ch) {
@@ -1186,12 +1235,19 @@ void TextService::QueryMode(TfEditCookie ec, ITfContext* context, bool selection
     // passed: キャレットを動かしたキー (少し前にアプリに通したキー)。無ければ、キャレットが動いたなら 0 (クリックなど)、文字が変わっただけなら -1。
     // 改行の後の自動のインデントなど、キーに続くアプリの編集でも通知が来るので、通したキーは少しの間覚えておく。
     // ただし、マウスのボタンを押しているあいだに選択が変わったら、キーの直後でもクリックとして伝える
+#ifdef MELTYPE_RUST_CORE
+    RustKeyPassed info={};RustKeyPassedRead(keyState_,true,selectionChanged,info);
+    int passed=info.key;
+    bool control=info.control!=0;
+#else
     bool clicked = selectionChanged && ((GetAsyncKeyState(VK_LBUTTON) | GetAsyncKeyState(VK_RBUTTON)) & 0x8000) != 0;
     bool recent = !clicked && GetTickCount64() - passedTime_ < 500;
     int passed = recent ? static_cast<int>(passedVk_) : selectionChanged ? 0 : -1;
     passedPending_ = false;
+    bool control=recent && passedControl_;
+#endif
     std::string request = "{\"op\":\"mode\",\"sid\":\"" + sid_ + "\",\"process\":" + JsonString(ProcessName()) +
-                          ",\"passed\":" + std::to_string(passed) + (recent && passedControl_ ? ",\"ctrl\":true" : "") +
+                          ",\"passed\":" + std::to_string(passed) + (control ? ",\"ctrl\":true" : "") +
                           ",\"before\":" + JsonString(before) + "}";
     JsonValue reply;
     // キャレットを動かすたびに呼ぶので、応答が遅ければ待たない (表示が次のキーまで古いだけ)
@@ -1200,18 +1256,25 @@ void TextService::QueryMode(TfEditCookie ec, ITfContext* context, bool selection
     }
 }
 
+#ifndef MELTYPE_RUST_CORE
 void TextService::RememberPassed(UINT vk) {
     passedVk_ = vk;
     passedControl_ = KeyDown(VK_CONTROL);
     passedTime_ = GetTickCount64();
     passedPending_ = true;
 }
+#endif
 
 std::string TextService::PendingPassed() {
+#ifdef MELTYPE_RUST_CORE
+    RustKeyPassed info={};if (!RustKeyPassedRead(keyState_,false,false,info)) return "";
+    return ",\"passed\":"+std::to_string(info.key)+(info.control?",\"ctrl\":true":"");
+#else
     // アプリに通したキーを、まだ Meltype.exe に伝えていなければ伝える (編集の通知が来ないアプリでも、矢印などで移ったと分かるように)
     if (!passedPending_) return "";
     passedPending_ = false;
     return ",\"passed\":" + std::to_string(passedVk_) + (passedControl_ ? ",\"ctrl\":true" : "");
+#endif
 }
 
 void TextService::ApplyMode(const JsonValue& reply) {
@@ -1227,7 +1290,6 @@ void TextService::ApplyMode(const JsonValue& reply) {
 void TextService::Reinject(UINT vk) {
 #ifdef MELTYPE_RUST_CORE
     if (vk>=256) return;
-    eatenDown_[vk]=false;
     DWORD error=0;
     int result=RustReinject(keyState_,vk,static_cast<ITfTextInputProcessorEx*>(this),error);
     if (result==2) TipLog(L"同じキーの送り直しが続くので、やめます");
@@ -1588,8 +1650,7 @@ void TextService::EndComposition(TfEditCookie ec) {
     composition_->Release();
     composition_ = nullptr;
 #endif
-    staleCommitTries_ = 0;
-    staleVk_ = 0;
+    ResetStaleCommit();
 #ifndef MELTYPE_RUST_CORE
     if (compositionContext_ != nullptr) {
         compositionContext_->Release();
@@ -1638,8 +1699,7 @@ STDMETHODIMP TextService::OnCompositionTerminated(TfEditCookie ec, ITfCompositio
         compositionContext_ = nullptr;
     }
     if (candidates_) candidates_->Hide();
-    staleCommitTries_ = 0;
-    staleVk_ = 0;
+    ResetStaleCommit();
     lastConverting_ = false;
     if (HasResume()) return S_OK;
     // 入力欄の文字は、アプリが書き換えたかもしれない: 前に確定した語を、次のキーで確定し直さない (関係ない文字を消さないように)
@@ -1779,8 +1839,7 @@ void TextService::AbandonComposition() {
         });
 #endif
     }
-    staleCommitTries_ = 0;
-    staleVk_ = 0;
+    ResetStaleCommit();
     if (candidates_) candidates_->Hide();
     directEnglishWord_ = false;
     caretMoved_ = true;

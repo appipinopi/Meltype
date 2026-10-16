@@ -93,7 +93,9 @@ private:
     // キャレットが動いたときに、次に打つキーが英数か Meltype.exe に聞く (コードエディターのとき。編集の通知の中で呼ぶ)
     void QueryMode(TfEditCookie ec, ITfContext* context, bool selectionChanged);
     // アプリに通したキーを覚える (QueryMode で伝える)
+#ifndef MELTYPE_RUST_CORE
     void RememberPassed(UINT vk);
+#endif
     // まだ伝えていない、アプリに通したキー (要求に足す JSON。無ければ空)
     std::string PendingPassed();
     // 応答の code / english を入力モードの表示に反映する
@@ -133,7 +135,9 @@ private:
     int ReadSecretField(ITfContext* context);
 #ifdef MELTYPE_RUST_CORE
     int ReadSecretForKey(ITfContext*,UINT,bool);
+    HRESULT DispatchKey(unsigned int,ITfContext*,UINT,LPARAM,BOOL*);
 #endif
+    void ResetStaleCommit();
     std::string CommitRequest(bool moved) const;
     void UnadviseTextEditSink();
     void UpdateLangBar();
@@ -169,16 +173,18 @@ private:
     bool open_ = true;
     bool codeApp_ = false;         // コードエディター・ターミナル (Meltype.exe の応答の code)
     bool codeEnglish_ = false;     // 次に打つキーがコードの行なので英数のまま通る (Meltype.exe の応答の english)
+#ifndef MELTYPE_RUST_CORE
     UINT passedVk_ = 0;            // 最後にアプリに通したキー (キャレットが動いたときに Meltype.exe に伝える)
     bool passedControl_ = false;   // そのとき Ctrl を押していたか
     ULONGLONG passedTime_ = 0;
     bool passedPending_ = false;   // そのキーをまだ Meltype.exe に伝えていない
+#endif
     bool disabled_ = false;
     bool ownProcess_ = false;      // Meltype.exe 自身の中で動いている (要求にスレッドを付ける)  // Meltype.exe 自身の中では動かない (自分のサーバーを待って固まるため)
-    bool eatenDown_[256] = {};
 #ifdef MELTYPE_RUST_CORE
     void* keyState_ = nullptr;
 #else
+    bool eatenDown_[256] = {};
     struct Reinjected {
         UINT vk = 0;
         ULONGLONG time = 0;
@@ -192,9 +198,11 @@ private:
     std::wstring resumeText_;
 #endif
     bool lastConverting_ = false;  // 最後に置いた変換中の文字が、変換した状態か (打っている途中なら false)
+#ifndef MELTYPE_RUST_CORE
     int staleCommitTries_ = 0;     // 前の入力欄に残った変換中の文字を確定しようとした回数 (打鍵ごとに 1 回)
     UINT staleVk_ = 0;             // OnTestKeyDown で数えたキーと時刻 (続く OnKeyDown で数え直さない)
     ULONGLONG staleTime_ = 0;
+#endif
 #ifdef MELTYPE_RUST_CORE
     void* abandoned_ = nullptr;  // Rust owns retained and queued old compositions.
 #else
@@ -215,8 +223,10 @@ private:
     bool markerSeen_ = false;      // このアプリには送り直しの印が届く
     Reinjected reinjected_[4];     // 送り直して、まだ届いていないキー (それぞれ 1 回だけ素通しする)
 #endif
+#ifndef MELTYPE_RUST_CORE
     UINT passVk_ = 0;              // OnTestKeyDown で素通しにしたキー
     ULONGLONG passTime_ = 0;
+#endif
     bool caretMoved_ = false;      // 前に確定してから、キャレットが動いたかもしれない (次のキーで Meltype.exe に伝える)
     bool ownEdit_ = false;         // 自分の編集セッションが終わった通知を、キャレットが動いたことにしない
     bool secretChecked_ = false;   // このキーで、入力欄の種類 (パスワード欄でないこと) を確かめた

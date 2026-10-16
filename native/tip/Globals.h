@@ -114,6 +114,22 @@ void RustKeyCacheClear(void*);
 bool RustIsReinjected(void*,UINT);
 int RustKeySecret(void*,ITfContext*,UINT,bool,void*,IUnknown*,int (__cdecl *)(void*,void*,int*),int&);
 int RustReinject(void*,UINT,IUnknown*,DWORD&,void* = nullptr,unsigned int (__cdecl *)(void*,const INPUT*,unsigned int) = nullptr);
+struct RustKeyStale {unsigned int tries,key;unsigned long long time;};
+struct RustKeyPassed {int key,control;};
+struct RustKeyEntry {
+    void* owner;IUnknown* lifetime;
+    int (__cdecl *would)(void*,void*,unsigned int,unsigned long long,int,wchar_t*);
+    void (__cdecl *mark)(void*,unsigned int,int);
+    int (__cdecl *composing)(void*);
+    void (__cdecl *toggle)(void*,void*);
+    void (__cdecl *handle)(void*,void*,unsigned int,wchar_t);
+};
+void RustKeyForeground(void*,bool);
+void RustKeyStaleRead(void*,RustKeyStale&);
+void RustKeyStaleWrite(void*,unsigned int,unsigned int,unsigned long long);
+void RustKeyStaleClear(void*);
+bool RustKeyPassedRead(void*,bool,bool,RustKeyPassed&);
+bool RustKeyEvent(void*,unsigned int,ITfContext*,UINT,LPARAM,const RustKeyEntry&);
 #endif
 
 // 文字コードの変換
