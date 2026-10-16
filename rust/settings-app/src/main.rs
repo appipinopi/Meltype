@@ -398,7 +398,6 @@ fn supported(key: &str) -> bool {
         "AppKinds",
         "LearningEnabled",
         "InputStyle",
-        "DetectionLevel",
         "Punctuation",
         "CorrectTypos",
         "TranslationCandidates",
@@ -417,7 +416,7 @@ fn supported(key: &str) -> bool {
 fn choices(key: &str) -> Option<&'static [&'static str]> {
     Some(match key {
         "DetectionLevel" => &["Aggressive", "Balanced", "Conservative", "Manual"],
-        "InputStyle" => &["Romaji", "Kana", "Both"],
+        "InputStyle" => &["Romaji", "Kana"],
         "Punctuation" => &[
             "Japanese",
             "FullWidthCommaPeriod",
@@ -440,22 +439,27 @@ impl eframe::App for App {
                 ui.heading("Meltype Rust");
                 ui.label("移植プレビュー");
             });
-            ui.horizontal_wrapped(|ui| {
-                for (i, label) in [
-                    "設定",
-                    "ユーザー辞書",
-                    "定型文",
-                    "学習",
-                    "バックアップ",
-                    "入力テスト",
-                ]
-                .iter()
-                .enumerate()
-                {
-                    ui.selectable_value(&mut self.page, i, *label);
-                }
-            });
         });
+        egui::SidePanel::left("navigation")
+            .resizable(false)
+            .default_width(160.0)
+            .show(ctx, |ui| {
+                ui.vertical(|ui| {
+                    for (i, label) in [
+                        "設定",
+                        "ユーザー辞書",
+                        "定型文",
+                        "学習",
+                        "バックアップ",
+                        "入力テスト",
+                    ]
+                    .iter()
+                    .enumerate()
+                    {
+                        ui.selectable_value(&mut self.page, i, *label);
+                    }
+                });
+            });
         egui::TopBottomPanel::bottom("status").show(ctx, |ui| {
             ui.label(&self.status);
             ui.small(self.store.directory.to_string_lossy());

@@ -51,8 +51,21 @@ unsafe fn request_inner(connection: *mut c_void, request: *const c_char) -> Opti
     let sessions = all.get_mut(&(connection as usize))?;
     let inactive = || json!({"active":false,"consumed":false,"commits":[],"view":null}).to_string();
     let op = request["op"].as_str()?;
+    #[cfg(not(test))]
+    let settings =
+        meltype_core::storage::Store::new(meltype_core::storage::Store::default_directory())
+            .settings()
+            .unwrap_or_default()
+            .for_app(request["process"].as_str().unwrap_or(""));
+    #[cfg(test)]
+    let settings = meltype_core::settings::Settings::default()
+        .for_app(request["process"].as_str().unwrap_or(""));
+    let code = settings.text("AppProfile") == "Code";
     if op == "hello" {
-        return Some(json!({"active":true,"code":false,"directDetection":false,"consumed":false,"commits":[],"view":null}).to_string());
+        if !settings.boolean("Enabled") {
+            return Some(inactive());
+        }
+        return Some(json!({"active":true,"code":code,"directDetection":false,"consumed":false,"commits":[],"view":null}).to_string());
     }
     let sid = request["sid"].as_str()?;
     if sid.len() > 256 {
@@ -117,7 +130,7 @@ unsafe fn request_inner(connection: *mut c_void, request: *const c_char) -> Opti
     let text = take(result)?;
     let mut value: Value = serde_json::from_str(&text).ok()?;
     value["active"] = json!(true);
-    value["code"] = json!(false);
+    value["code"] = json!(code);
     value["english"] = json!(request["direct"] == true);
     value["directDetection"] = json!(false);
     Some(value.to_string())

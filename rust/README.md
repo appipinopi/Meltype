@@ -17,7 +17,7 @@ Rust 1.88以上。WindowsはMSVC C++ビルドツール、LinuxはCリンカー�
 
 | crate | 内容 |
 |---|---|
-| meltype-core | ローマ字表222件、日英混在の辞書分割、保護対象、かな・カタカナ変換、候補、入力セッション、セッション内の学習、ユーザー辞書API、Mozcヘルパー通信 |
+| meltype-core | ローマ字表222件、日英混在判定、保護範囲、JISかな・字種変換、候補・予測・意味・英訳・誤字提案、永続学習・設定・辞書・バックアップ、Mozcヘルパー通信 |
 | meltype-native | C ABI、既存フロントエンド用JSON、TSF用のプロセス内接続、Android JNI |
 | meltype-settings | Rust製の設定・辞書・定型文・学習削除・バックアップ・入力テスト画面 |
 | meltype-cli | 全デスクトップ共通の変換コマンド、JSON Linesセッション操作 |
