@@ -40,6 +40,22 @@ pub fn execute(store: &Store, r: &Value) -> io::Result<Value> {
             ))?)
         }
         "settings_get" => Ok(serde_json::to_value(store.settings()?)?),
+        "settings_merge" => {
+            let parse = |key| -> io::Result<crate::settings::Settings> {
+                crate::settings::Settings::parse(&serde_json::to_string(
+                    r.get(key)
+                        .ok_or_else(|| io::Error::other(format!("missing {key}")))?,
+                )?)
+                .map_err(io::Error::other)
+            };
+            let opened = parse("opened")?;
+            let edited = parse("edited")?;
+            store.change_settings(|current| {
+                *current = crate::settings::Settings::merge_edits(&opened, &edited, current);
+                Ok(())
+            })?;
+            Ok(json!({"saved":true}))
+        }
         "settings_set" => {
             let name = field(r, "name")?;
             let value = r

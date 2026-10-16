@@ -191,6 +191,78 @@ impl Settings {
                 .collect(),
         )
     }
+    fn values_of(&self, name: &str) -> Option<Map<String, Value>> {
+        if name == self.text("ActiveProfile") {
+            return self.profile_values().as_object().cloned();
+        }
+        self.0["Profiles"]
+            .as_array()?
+            .iter()
+            .find(|p| p["Name"] == name)?["Values"]
+            .as_object()
+            .cloned()
+    }
+    /// Apply only fields edited in a settings window, preserving newer tray or
+    /// other-process changes. Profile-local edits stay in their named profile.
+    pub fn merge_edits(opened: &Self, edited: &Self, current: &Self) -> Self {
+        if opened.0 == edited.0 {
+            return current.clone();
+        }
+        let mut merged = current.clone();
+        for key in SHARED
+            .iter()
+            .filter(|k| !["Profiles", "ActiveProfile"].contains(k))
+        {
+            if opened.0.get(*key) != edited.0.get(*key) {
+                if let Some(value) = edited.0.get(*key) {
+                    merged.0.insert((*key).into(), value.clone());
+                }
+            }
+        }
+        let names: Vec<_> = edited.0["Profiles"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|p| p["Name"].as_str())
+            .collect();
+        let active = if opened.text("ActiveProfile") != edited.text("ActiveProfile")
+            || !names.contains(&current.text("ActiveProfile"))
+        {
+            edited.text("ActiveProfile")
+        } else {
+            current.text("ActiveProfile")
+        };
+        let mut profiles = vec![];
+        for name in names {
+            let Some(edits) = edited.values_of(name) else {
+                continue;
+            };
+            let values = if let (Some(original), Some(mut values)) =
+                (opened.values_of(name), current.values_of(name))
+            {
+                for (key, value) in edits {
+                    if original.get(&key) != Some(&value) {
+                        values.insert(key, value);
+                    }
+                }
+                values
+            } else {
+                edits
+            };
+            if name == active {
+                for (key, value) in &values {
+                    if !SHARED.contains(&key.as_str()) {
+                        merged.0.insert(key.clone(), value.clone());
+                    }
+                }
+            }
+            profiles.push(json!({"Name":name,"Values":values}));
+        }
+        merged.0.insert("Profiles".into(), json!(profiles));
+        merged.0.insert("ActiveProfile".into(), json!(active));
+        merged.normalize();
+        merged
+    }
     pub fn add_profile(&mut self, name: &str) -> Result<(), String> {
         let name = name.trim();
         if name.is_empty() {
@@ -255,6 +327,91 @@ impl Settings {
             .unwrap()
             .retain(|p| p["Name"] != name);
         Ok(())
+    }
+    pub fn rename_profile(&mut self, old: &str, new: &str) -> Result<(), String> {
+        let new = new.trim();
+        if new.is_empty()
+            || self.0["Profiles"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|p| p["Name"] == new)
+        {
+            return Err("empty or duplicate profile name".into());
+        }
+        let profile = self.0["Profiles"]
+            .as_array_mut()
+            .unwrap()
+            .iter_mut()
+            .find(|p| p["Name"] == old)
+            .ok_or("unknown profile")?;
+        profile["Name"] = json!(new);
+        if self.text("ActiveProfile") == old {
+            self.0.insert("ActiveProfile".into(), json!(new));
+        }
+        Ok(())
+    }
+    pub fn remove_profile(&mut self, name: &str) -> Result<(), String> {
+        let names: Vec<String> = self.0["Profiles"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|p| p["Name"].as_str().map(str::to_owned))
+            .collect();
+        if names.len() <= 1 || !names.iter().any(|n| n == name) {
+            return Err("cannot remove the last or unknown profile".into());
+        }
+        if self.text("ActiveProfile") == name {
+            self.switch_profile(names.iter().find(|n| n.as_str() != name).unwrap())?;
+        }
+        self.delete_profile(name)
+    }
+    pub fn export_profile(&self) -> Value {
+        json!({"format":"meltype-profile","version":5,"name":self.text("ActiveProfile"),"values":self.profile_values()})
+    }
+    pub fn import_profile(&mut self, text: &str) -> Result<String, String> {
+        let file: Value = json5::from_str(text).map_err(|e| e.to_string())?;
+        if file["format"] != "meltype-profile" {
+            return Err("not a Meltype profile".into());
+        }
+        let raw = file["values"]
+            .as_object()
+            .ok_or("profile values must be an object")?;
+        let mut imported = Self::default();
+        for (key, value) in raw {
+            if imported.0.contains_key(key) && !SHARED.contains(&key.as_str()) {
+                imported.set(key, value.clone())?;
+            }
+        }
+        let name = file["name"].as_str().unwrap_or("").trim();
+        let name: String = if name.is_empty() {
+            "読み込んだプロファイル"
+        } else {
+            name
+        }
+        .chars()
+        .take(50)
+        .collect();
+        let mut unique = name.clone();
+        let mut i = 2;
+        while self.0["Profiles"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|p| p["Name"] == unique)
+        {
+            unique = format!("{name} ({i})");
+            i += 1;
+        }
+        self.add_profile(&unique)?;
+        let profile = self.0["Profiles"]
+            .as_array_mut()
+            .unwrap()
+            .last_mut()
+            .unwrap();
+        profile["Values"] = imported.profile_values();
+        self.switch_profile(&unique)?;
+        Ok(unique)
     }
     pub fn for_app(&self, process: &str) -> Self {
         let mut settings = self.clone();
