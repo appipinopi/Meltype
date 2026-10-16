@@ -121,7 +121,23 @@ public final class SettingsActivity extends Activity {
         }
     }
     private void learning() throws JSONException {
-        label(request("learning_list").toString(2));
+        JSONObject learned = request("learning_list");
+        JSONObject languages = learned.getJSONObject("languages");
+        label("覚えた入力言語");
+        Iterator<String> names = languages.keys();
+        while (names.hasNext()) {
+            String name = names.next(); JSONObject entry = languages.getJSONObject(name);
+            label(name + " → " + (entry.optBoolean("english") ? "英語" : "日本語"));
+        }
+        label("覚えた変換");
+        JSONObject conversions = learned.getJSONObject("conversions"); names = conversions.keys();
+        while (names.hasNext()) { String name = names.next(); label(name + " → " + conversions.getString(name)); }
+        label("覚えたフレーズ");
+        JSONArray phrases = learned.getJSONArray("phrases");
+        for (int i=0;i<phrases.length();i++) {
+            JSONObject phrase = phrases.getJSONObject(i);
+            label(phrase.getString("reading") + " → " + phrase.getString("text"));
+        }
         EditText key = field("削除する学習キー");
         button("指定した学習を削除",() -> { request("learning_remove","key",key.getText().toString()); show(3); });
         button("すべての学習を削除",() -> new AlertDialog.Builder(this).setMessage("学習した内容をすべて削除しますか？")
@@ -133,7 +149,11 @@ public final class SettingsActivity extends Activity {
         button("新規作成",() -> { request("profile_add","name",name.getText().toString()); show(4); });
         button("切り替え",() -> { request("profile_switch","name",name.getText().toString()); show(4); });
         button("削除",() -> { request("profile_delete","name",name.getText().toString()); show(4); });
-        label(request("settings_get").optJSONArray("Profiles").toString(2));
+        JSONArray available = request("settings_get").getJSONArray("Profiles");
+        for (int i=0;i<available.length();i++) {
+            String profileName = available.getJSONObject(i).getString("Name");
+            button(profileName,() -> name.setText(profileName));
+        }
     }
     private void backups() throws JSONException {
         button("バックアップを保存",() -> pick("backup_create",true));
