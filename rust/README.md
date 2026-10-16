@@ -41,7 +41,7 @@ Linux IBusのRust版は `bash rust/build-linux.sh` で `linux/build/Meltype-Rust
 
 | OS | ビルド | 残っているOS固有コード・制限 |
 |---|---|---|
-| Windows x64/x86 | `./rust/build-windows.ps1 -WithTip` | C++ TSFシェル + Rust DLL（表示属性COM・言語バー・入力モードアイコンはRust実装）。C#サーバー不要。出力は `native/tip/bin/rust-x64` と `rust-x86`。自動インストールしません。元と同じCOM登録IDなので、既存インストールと共存させる配布には未対応です。 |
+| Windows x64/x86 | `./rust/build-windows.ps1 -WithTip` | C++ TSFシェル + Rust DLL（表示属性COM・言語バー・候補／意味ウィンドウはRust実装）。C#サーバー不要。出力は `native/tip/bin/rust-x64` と `rust-x86`。自動インストールしません。元と同じCOM登録IDなので、既存インストールと共存させる配布には未対応です。 |
 | macOS | `bash rust/build-desktop.sh` | Swift InputMethodKitシェルとazooKey変換エンジンを再利用。出力 `mac/build/Meltype.app`。インストールしません。 |
 | Linux | `bash rust/build-desktop.sh` | Rust IBus実行ファイル。出力 `linux/build/Meltype-Rust-linux`。漢字変換には別途C++ Mozcヘルパーが必要です。fcitx5は既存C++アダプターを別途ビルドします。 |
 | Android | [android/README.md](../android/README.md) | Java InputMethodServiceとJNI。補助辞書による変換。 |
@@ -50,7 +50,9 @@ Linux IBusのRust版は `bash rust/build-linux.sh` で `linux/build/Meltype-Rust
 
 WindowsのRustビルドは、元の `DisplayAttributes.cpp` をコンパイルせず、Rustの `ITfDisplayAttributeInfo` / `IEnumTfDisplayAttributeInfo` を使用します。入力中の点線・変換済みの細線・選択文節の太線、GUID、日本語説明とアプリの色を維持します。COM参照は `Release`、説明のBSTRは `SysFreeString` で解放します。通常の文字列用 `meltype_free` と混用しないでください。`rust/native/tests/tsf_com_smoke.py` はSDK互換のvtableを実際に呼び、Rust DLLに実装があることも照合します。CIは64bitと32bitのPythonプロセスで、TSFシェルのCOMプロバイダーからの表示属性取得まで確認します。
 
-`LangBar.cpp` もRustビルドから除外し、入力モードボタン・`ITfSource` の通知購読・「あ／A」の描画・ツールチップ・クリックをRustで処理します。元と同じGUID・日本語表示・タスクバーの明暗に合わせた透明アイコンを使います。残るC++入力サービスにはモード取得と切替のコールバックだけを接続し、終了時に切り離します。コールバックは生成したTSFスレッドでだけ実行し、通知先が通知の途中で購読を解除する操作にも対応します。COM試験では両インターフェースの同一性、モード切替、再入する通知、終了後の切離し、アイコンの非空画素・透明度・リソース解放を確認します。現在の環境で描画した2種類のアイコンは元C++版と全画素が一致しています。キー処理・編集セッション・候補ウィンドウ・登録などのTSF接続にはまだC++が残っており、実際のタスクバー・各アプリ上での動作は未検証です。
+`LangBar.cpp` もRustビルドから除外し、入力モードボタン・`ITfSource` の通知購読・「あ／A」の描画・ツールチップ・クリックをRustで処理します。元と同じGUID・日本語表示・タスクバーの明暗に合わせた透明アイコンを使います。残るC++入力サービスにはモード取得と切替のコールバックだけを接続し、終了時に切り離します。コールバックは生成したTSFスレッドでだけ実行し、通知先が通知の途中で購読を解除する操作にも対応します。COM試験では両インターフェースの同一性、モード切替、再入する通知、終了後の切離し、アイコンの非空画素・透明度・リソース解放を確認します。現在の環境で描画した2種類のアイコンは元C++版と全画素が一致しています。
+
+`CandidateWindow.cpp` もRustビルドから除外しました。Direct2D／DirectWriteの候補・注釈・入力キー・訂正提案・予測表示、9件のページ、選択色、画面内配置、1.5秒後の意味欄をRustで処理します。ウィンドウは入力欄のフォーカスを奪いません。文字の寸法・フォント・余白・テーマ色・色付き絵文字の描画方式を元版から移し、現在の環境では6種類の表示と意味欄の寸法・クライアント画素が元C++版と一致します。`tsf_candidate_smoke.py` は実際の非アクティブHWNDを生成し、x64/x86でページ番号の対応・予測クリック・タイマー取消・画面端の配置・複数UIスレッド・クリック中の破棄を検証します。比較用の `reference_candidates.cpp` は元ソースを直接コンパイルするテスト専用DLLで、製品には同梱しません。キー処理・編集セッション・COMサーバー登録などのTSF接続にはまだC++が残り、実際のタスクバー・各アプリ・複数モニター上での動作は未検証です。
 
 ## 追加済みの共通機能
 

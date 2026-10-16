@@ -64,6 +64,15 @@ jobs:
       - name: Rust TSF COM objects and native provider delegation
         if: runner.os == 'Windows'
         run: python rust/native/tests/tsf_com_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll native/tip/bin/rust-x64/MeltypeTip.dll
+      - name: Build test-only upstream candidate renderer
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./rust/native/tests/build-reference-candidates.ps1
+      - name: Rust candidate HWND behavior and upstream rendering parity
+        if: runner.os == 'Windows'
+        env:
+          MELTYPE_CANDIDATE_PREVIEW: dist/candidate-preview-x64
+        run: python rust/native/tests/tsf_candidate_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll dist/candidate-reference/reference-x64.dll
       - uses: actions/setup-python@v5
         if: runner.os == 'Windows'
         with:
@@ -72,6 +81,17 @@ jobs:
       - name: Rust TSF COM calling conventions in a 32-bit process
         if: runner.os == 'Windows'
         run: python rust/native/tests/tsf_com_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll native/tip/bin/rust-x86/MeltypeTip.dll
+      - name: Rust candidate HWND behavior and rendering in a 32-bit process
+        if: runner.os == 'Windows'
+        env:
+          MELTYPE_CANDIDATE_PREVIEW: dist/candidate-preview-x86
+        run: python rust/native/tests/tsf_candidate_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll dist/candidate-reference/reference-x86.dll
+      - uses: actions/upload-artifact@v4
+        if: always() && runner.os == 'Windows'
+        with:
+          name: rust-TSF-candidate-previews
+          path: dist/candidate-preview-*/
+          if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         with:
           name: rust-${{ runner.os }}

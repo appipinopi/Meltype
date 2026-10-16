@@ -6,6 +6,7 @@
 #include "DisplayAttributes.h"
 #include "LangBar.h"
 #include "TextService.h"
+#include "CandidateWindow.h"
 
 namespace meltype {
 namespace {
@@ -20,6 +21,11 @@ struct RustApi {
     void* (__cdecl *langbar)(void*, int (__cdecl *)(void*), void (__cdecl *)(void*)) = nullptr;
     void (__cdecl *langbarUpdate)(void*) = nullptr;
     void (__cdecl *langbarDetach)(void*) = nullptr;
+    void* (__cdecl *candidateCreate)(void*, void (__cdecl *)(void*,int,int)) = nullptr;
+    int (__cdecl *candidateShow)(void*,const char*,const RECT*) = nullptr;
+    void (__cdecl *candidateHide)(void*) = nullptr;
+    int (__cdecl *candidateVisible)(void*) = nullptr;
+    void (__cdecl *candidateDestroy)(void*) = nullptr;
     RustApi() {
         wchar_t path[32768];
         const DWORD size = GetModuleFileNameW(g_module, path, ARRAYSIZE(path));
@@ -39,6 +45,11 @@ struct RustApi {
         langbar = reinterpret_cast<decltype(langbar)>(GetProcAddress(module, "meltype_tsf_create_langbar"));
         langbarUpdate = reinterpret_cast<decltype(langbarUpdate)>(GetProcAddress(module, "meltype_tsf_langbar_update"));
         langbarDetach = reinterpret_cast<decltype(langbarDetach)>(GetProcAddress(module, "meltype_tsf_langbar_detach"));
+        candidateCreate = reinterpret_cast<decltype(candidateCreate)>(GetProcAddress(module, "meltype_tsf_candidate_create"));
+        candidateShow = reinterpret_cast<decltype(candidateShow)>(GetProcAddress(module, "meltype_tsf_candidate_show"));
+        candidateHide = reinterpret_cast<decltype(candidateHide)>(GetProcAddress(module, "meltype_tsf_candidate_hide"));
+        candidateVisible = reinterpret_cast<decltype(candidateVisible)>(GetProcAddress(module, "meltype_tsf_candidate_visible"));
+        candidateDestroy = reinterpret_cast<decltype(candidateDestroy)>(GetProcAddress(module, "meltype_tsf_candidate_destroy"));
     }
     bool ready() const { return create && destroy && request && freeText; }
     // The module stays loaded for the process lifetime. Do not unload Rust
@@ -82,4 +93,44 @@ LangBarButton::~LangBarButton() {
 void LangBarButton::Update() { if (item_) api().langbarUpdate(item_); }
 void LangBarButton::Detach() { if (item_) api().langbarDetach(item_); }
 ULONG LangBarButton::Release() { delete this; return 0; }
+struct CandidateWindow::Impl {
+    SelectHandler callback;
+    void* handle = nullptr;
+    static void __cdecl Select(void* context, int index, int prediction) {
+        auto* self = static_cast<Impl*>(context);
+        // A selection can destroy the owner. Copy the callable before entering it.
+        SelectHandler callback = self->callback;
+        if (callback) callback(index, prediction != 0);
+    }
+};
+CandidateWindow::CandidateWindow(SelectHandler callback) : impl_(new Impl()) {
+    impl_->callback = std::move(callback);
+    if (api().candidateCreate && api().candidateShow && api().candidateHide && api().candidateVisible && api().candidateDestroy) {
+        impl_->handle = api().candidateCreate(impl_, Impl::Select);
+    }
+}
+CandidateWindow::~CandidateWindow() {
+    if (impl_->handle) api().candidateDestroy(impl_->handle);
+    delete impl_;
+}
+void CandidateWindow::Show(const CandidateView& view, const RECT& anchor) {
+    if (!impl_->handle) return;
+    auto list = [](const std::vector<std::wstring>& values) {
+        std::string json = "[";
+        for (size_t i = 0; i < values.size(); ++i) { if (i) json += ','; json += JsonString(values[i]); }
+        return json + ']';
+    };
+    std::string json = "{\"candidates\":" + list(view.candidates) + ",\"notes\":" + list(view.notes) +
+        ",\"selected\":" + std::to_string(view.selected) + ",\"suggestion\":" + JsonString(view.suggestion) +
+        ",\"meaning\":" + JsonString(view.meaning) + ",\"prediction\":" + (view.prediction ? "true" : "false") +
+        ",\"typed\":" + JsonString(view.typed) + "}";
+    api().candidateShow(impl_->handle, json.c_str(), &anchor);
+}
+void CandidateWindow::Hide() { if (impl_->handle) api().candidateHide(impl_->handle); }
+bool CandidateWindow::Visible() const { return impl_->handle && api().candidateVisible(impl_->handle) != 0; }
+// Rust owns its window classes and per-window drawing resources. The Rust DLL
+// stays loaded, so none of its window procedures point into this TSF shell.
+void CandidateWindow::RegisterClasses() {}
+void CandidateWindow::UnregisterClasses() {}
+void CandidateWindow::ReleaseFactories() {}
 } // namespace meltype

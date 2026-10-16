@@ -54,6 +54,14 @@ void *meltype_tsf_create_display_attribute_enum(void);
 void *meltype_tsf_create_langbar(void *context, int32_t (*read_mode)(void *), void (*toggle)(void *));
 void meltype_tsf_langbar_update(void *button);
 void meltype_tsf_langbar_detach(void *button);
+/* Thread-affine opaque candidate-window token. show takes UTF-8 JSON fields
+   candidates/notes/selected/suggestion/meaning/prediction/typed and a Windows RECT.
+   Click callbacks may hide/destroy the token. Destroy on its creating thread. */
+void *meltype_tsf_candidate_create(void *context, void (*select)(void *, int32_t, int32_t));
+int32_t meltype_tsf_candidate_show(void *, const char *json, const void *anchor_rect);
+void meltype_tsf_candidate_hide(void *);
+int32_t meltype_tsf_candidate_visible(void *);
+void meltype_tsf_candidate_destroy(void *);
 #endif
 #ifdef __cplusplus
 }

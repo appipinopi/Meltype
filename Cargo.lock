@@ -1856,6 +1856,7 @@ dependencies = [
  "jni 0.21.1",
  "libc",
  "meltype-core",
+ "serde",
  "serde_json",
  "tempfile",
  "windows",
