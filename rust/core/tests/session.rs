@@ -90,3 +90,58 @@ fn typing_after_conversion_keeps_commit() {
     assert_eq!(r.commits.len(), 1);
     assert_eq!(r.view.unwrap().text, "a");
 }
+
+#[test]
+fn segmented_conversion_selection_resize_cancel_and_learning() {
+    use meltype_core::session::Clause;
+    let mut s = Session::default();
+    type_text(&mut s, "hashiwotoru");
+    assert!(!s.begin_clauses(vec![Clause::new("ちがう".into(), vec!["違う".into()])]));
+    assert!(s.begin_clauses(vec![
+        Clause::new("はしを".into(), vec!["橋を".into(), "箸を".into()]),
+        Clause::new("とる".into(), vec!["取る".into(), "撮る".into()]),
+    ]));
+    assert_eq!(s.key(0x28, 0, 0).view.unwrap().text, "箸を取る");
+    let view = s.key(0x27, 0, 0).view.unwrap();
+    assert_eq!(view.selected_clause, 1);
+    assert_eq!(view.clauses, ["箸を", "取る"]);
+    assert!(s.select(1).commits.is_empty());
+    assert_eq!(s.display(false), "箸を撮る");
+    assert_eq!(s.commit().commits[0].text, "箸を撮る");
+    assert_eq!(s.preferences.selected["はしを"], "箸を");
+    type_text(&mut s, "hashi");
+    s.key(0x20, 32, 0);
+    let view = s.key(0x25, 0, 1).view.unwrap();
+    assert_eq!(view.clauses.len(), 2);
+    assert_eq!(view.clauses.concat(), view.text);
+    let view = s.key(0x27, 0, 1).view.unwrap();
+    assert_eq!(view.clauses.len(), 1);
+    let view = s.key(0x1b, 0, 0).view.unwrap();
+    assert!(!view.converting);
+    assert!(view.clauses.is_empty());
+    assert_eq!(view.text, "はし");
+}
+
+#[test]
+fn undo_requires_capability_and_matching_surrounding_text() {
+    let mut s = Session::default();
+    type_text(&mut s, "hashi");
+    s.key(0x20, 32, 0);
+    let text = s.commit().commits[0].text.clone();
+    assert!(!s.undo_commit().consumed);
+    s.can_delete = true;
+    s.set_context(Some(&format!("prefix{text}")), None);
+    let result = s.undo_commit();
+    assert_eq!(result.commits[0].expect.as_deref(), Some(text.as_str()));
+    assert_eq!(result.commits[0].delete_before, text.encode_utf16().count());
+    assert_eq!(result.view.unwrap().text, "はし");
+    s.commit();
+    s.set_context(Some("different"), None);
+    assert!(!s.undo_commit().consumed);
+    assert!(!s.undo_commit().consumed);
+    type_text(&mut s, "😀");
+    s.commit();
+    assert_eq!(s.undo_commit().commits[0].delete_before, 2);
+    s.reset();
+    assert!(!s.undo_commit().consumed);
+}

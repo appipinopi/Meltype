@@ -85,6 +85,54 @@ pub extern "system" fn Java_moe_meltype_rust_Native_key(
     java_result(&mut env, result)
 }
 #[no_mangle]
+pub extern "system" fn Java_moe_meltype_rust_Native_keyContext(
+    mut env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    vk: jint,
+    ch: jint,
+    modifiers: jint,
+    before: JString,
+    after: JString,
+) -> jstring {
+    let before = env
+        .get_string(&before)
+        .ok()
+        .and_then(|s| CString::new(String::from(s)).ok());
+    let after = env
+        .get_string(&after)
+        .ok()
+        .and_then(|s| CString::new(String::from(s)).ok());
+    let result = unsafe {
+        meltype_handle_key(
+            handle as *mut c_void,
+            vk,
+            ch,
+            modifiers,
+            before.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
+            after.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
+        )
+    };
+    java_result(&mut env, result)
+}
+#[no_mangle]
+pub extern "system" fn Java_moe_meltype_rust_Native_undo(
+    mut env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    before: JString,
+) -> jstring {
+    let Ok(before) = env.get_string(&before) else {
+        return std::ptr::null_mut();
+    };
+    let Ok(before) = CString::new(String::from(before)) else {
+        return std::ptr::null_mut();
+    };
+    meltype_set_can_delete(handle as *mut c_void, 1);
+    let result = unsafe { meltype_undo_commit(handle as *mut c_void, before.as_ptr()) };
+    java_result(&mut env, result)
+}
+#[no_mangle]
 pub extern "system" fn Java_moe_meltype_rust_Native_commit(
     mut env: JNIEnv,
     _class: JClass,

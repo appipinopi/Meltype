@@ -3,7 +3,7 @@
 //! C ABI for the existing macOS/Linux frontends and native embedding.
 //! Sessions use opaque integer tokens. Stale handles fail without dereferencing
 //! freed memory. Returned strings use malloc/free, including Swift callbacks.
-use meltype_core::Session;
+use meltype_core::{session::Clause, Session};
 mod tip;
 use std::{
     collections::HashMap,
@@ -225,13 +225,13 @@ pub unsafe extern "C" fn meltype_handle_key(
                 .map(Session::reading)
         });
         let mut external = Vec::new();
+        let mut segments = Vec::new();
         if let Some(reading) = reading {
             if let Ok(mut mozc) = MOZC.lock() {
                 if let Some(backend) = mozc.as_mut() {
-                    if let Ok(values) =
-                        backend.candidates(&reading, &read(before).unwrap_or_default())
+                    if let Ok(values) = backend.clauses(&reading, &read(before).unwrap_or_default())
                     {
-                        external.extend(values);
+                        segments = values;
                     } else {
                         *mozc = None;
                     }
@@ -245,7 +245,24 @@ pub unsafe extern "C" fn meltype_handle_key(
                         text.lines().map(|line| line.split_once('\t')).collect();
                     if let Some(clauses) = clauses {
                         if clauses.iter().map(|(r, _)| *r).collect::<String>() == reading {
-                            external.push(clauses.iter().map(|(_, t)| *t).collect::<String>());
+                            segments = clauses
+                                .into_iter()
+                                .map(|(r, t)| {
+                                    let mut candidates = vec![t.to_owned()];
+                                    if let (Some(callback), Ok(input)) =
+                                        (callbacks.candidates, CString::new(r))
+                                    {
+                                        if let Some(text) = take(callback(input.as_ptr())) {
+                                            candidates.extend(
+                                                text.lines()
+                                                    .filter(|s| !s.is_empty())
+                                                    .map(str::to_owned),
+                                            );
+                                        }
+                                    }
+                                    Clause::new(r.to_owned(), candidates)
+                                })
+                                .collect();
                         }
                     }
                 }
@@ -258,7 +275,9 @@ pub unsafe extern "C" fn meltype_handle_key(
         }
         run(handle, |s| {
             s.set_context(read(before).as_deref(), read(after).as_deref());
-            if !external.is_empty() {
+            if !segments.is_empty() && s.begin_clauses(segments) {
+                s.result(true)
+            } else if !external.is_empty() {
                 s.begin_conversion(external);
                 s.result(true)
             } else {
@@ -272,6 +291,21 @@ pub unsafe extern "C" fn meltype_handle_key(
 #[no_mangle]
 pub extern "C" fn meltype_commit(handle: *mut c_void) -> *mut c_char {
     run(handle, Session::commit)
+}
+/// # Safety
+/// before must be a valid NUL-terminated UTF-8 snapshot of text before the caret.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_undo_commit(
+    handle: *mut c_void,
+    before: *const c_char,
+) -> *mut c_char {
+    let Some(before) = read(before) else {
+        return std::ptr::null_mut();
+    };
+    run(handle, |s| {
+        s.set_context(Some(&before), None);
+        s.undo_commit()
+    })
 }
 #[no_mangle]
 pub extern "C" fn meltype_reset(handle: *mut c_void) -> *mut c_char {
@@ -314,7 +348,9 @@ pub extern "C" fn meltype_set_private(handle: *mut c_void, enabled: i32) {
 }
 // This engine never deletes surrounding committed text.
 #[no_mangle]
-pub extern "C" fn meltype_set_can_delete(_handle: *mut c_void, _enabled: i32) {}
+pub extern "C" fn meltype_set_can_delete(handle: *mut c_void, enabled: i32) {
+    set(handle, |s| s.can_delete = enabled != 0);
+}
 // NULL tells existing frontends to apply their regular mode-switch behavior.
 #[no_mangle]
 pub extern "C" fn meltype_role_key(handle: *mut c_void, vk: i32) -> *mut c_char {

@@ -15,6 +15,8 @@ use std::collections::BTreeMap;
 pub struct TextEdit {
     pub delete_before: usize,
     pub text: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expect: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -50,10 +52,42 @@ pub struct Preferences {
     pub user_dictionary: BTreeMap<String, Vec<String>>,
 }
 
+/// One converter segment. Reading boundaries are Unicode scalar boundaries.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Clause {
+    pub reading: String,
+    pub candidates: Vec<String>,
+    pub selected: usize,
+}
+impl Clause {
+    pub fn new(reading: String, mut candidates: Vec<String>) -> Self {
+        candidates.retain(|c| !c.is_empty());
+        let mut unique = Vec::new();
+        for candidate in candidates {
+            if !unique.contains(&candidate) {
+                unique.push(candidate);
+            }
+        }
+        if !unique.contains(&reading) {
+            unique.push(reading.clone());
+        }
+        Self {
+            reading,
+            candidates: unique,
+            selected: 0,
+        }
+    }
+    pub fn text(&self) -> &str {
+        &self.candidates[self.selected]
+    }
+}
+
 pub struct Session {
     raw: String,
     candidates: Vec<String>,
     selected: usize,
+    clauses: Vec<Clause>,
+    selected_clause: usize,
     explicit: Option<String>,
     pub direct: bool,
     pub code_input: bool,
@@ -71,6 +105,8 @@ pub struct Session {
     case_cycle: u8,
     kana_text: String,
     process: String,
+    pub can_delete: bool,
+    last_commit: Option<(String, String)>,
 }
 
 impl Default for Session {
@@ -79,6 +115,8 @@ impl Default for Session {
             raw: String::new(),
             candidates: vec![],
             selected: 0,
+            clauses: vec![],
+            selected_clause: 0,
             explicit: None,
             direct: false,
             code_input: false,
@@ -96,6 +134,8 @@ impl Default for Session {
             case_cycle: 0,
             kana_text: String::new(),
             process: String::new(),
+            can_delete: false,
+            last_commit: None,
         }
     }
 }
@@ -220,6 +260,9 @@ impl Session {
         if let Some(text) = &self.explicit {
             return text.clone();
         }
+        if !self.clauses.is_empty() {
+            return self.clauses.iter().map(Clause::text).collect();
+        }
         if let Some(text) = self.candidates.get(self.selected) {
             return text.clone();
         }
@@ -280,9 +323,9 @@ impl Session {
                     text: self.display(false),
                     converting: self.is_converting(),
                     selected_index: self.selected,
-                    selected_clause: 0,
+                    selected_clause: self.selected_clause,
                     hint: String::new(),
-                    clauses: vec![],
+                    clauses: self.clauses.iter().map(|c| c.text().to_owned()).collect(),
                     candidates: self.candidates.clone(),
                     meaning: if self.settings.boolean("ShowCandidateMeanings")
                         && self.is_converting()
@@ -323,8 +366,11 @@ impl Session {
         }
     }
     pub fn reset(&mut self) {
+        self.last_commit = None;
         self.raw.clear();
         self.candidates.clear();
+        self.clauses.clear();
+        self.selected_clause = 0;
         self.explicit = None;
         self.selected = 0;
         self.selected_prediction = -1;
@@ -346,6 +392,13 @@ impl Session {
                 reading: reading.clone(),
                 text: text.clone(),
             }];
+            for clause in &self.clauses {
+                changes.push(Change::Conversion {
+                    reading: clause.reading.clone(),
+                    text: clause.text().to_owned(),
+                    translation: false,
+                });
+            }
             if self.is_converting() {
                 changes.push(Change::Conversion {
                     reading: reading.clone(),
@@ -377,7 +430,11 @@ impl Session {
                 .rev()
                 .collect();
         }
+        let raw = self.raw.clone();
         self.reset();
+        if !self.private && !text.is_empty() {
+            self.last_commit = Some((raw, text.clone()));
+        }
         SessionResult {
             consumed: !text.is_empty(),
             commits: if text.is_empty() {
@@ -386,16 +443,48 @@ impl Session {
                 vec![TextEdit {
                     delete_before: 0,
                     text,
+                    expect: None,
                 }]
             },
             view: None,
         }
+    }
+    /// Restore the last committed input as a composition. The host must recheck
+    /// `expect` immediately before deleting; `delete_before` counts UTF-16 units.
+    pub fn undo_commit(&mut self) -> SessionResult {
+        if !self.can_delete || self.private || !self.raw.is_empty() {
+            return self.result(false);
+        }
+        let Some((raw, text)) = self.last_commit.take() else {
+            return self.result(false);
+        };
+        if !self.before.ends_with(&text) {
+            return self.result(false);
+        }
+        self.before.truncate(self.before.len() - text.len());
+        self.raw = raw;
+        if self.settings.text("InputStyle") == "Kana" {
+            self.kana_text = crate::user_dictionary::hiragana(&text);
+        }
+        let mut result = self.result(true);
+        result.commits.push(TextEdit {
+            delete_before: text.encode_utf16().count(),
+            text: String::new(),
+            expect: Some(text),
+        });
+        result
     }
     pub fn select(&mut self, index: usize) -> SessionResult {
         if index >= self.candidates.len() {
             return self.result(false);
         }
         self.selected = index;
+        if let Some(clause) = self.clauses.get_mut(self.selected_clause) {
+            clause.selected = index;
+            if self.clauses.len() > 1 {
+                return self.result(true);
+            }
+        }
         self.commit()
     }
     pub fn begin_conversion(&mut self, external: Vec<String>) {
@@ -443,6 +532,82 @@ impl Session {
         self.explicit = None;
         self.selected_prediction = -1;
     }
+    /// Accept segments only when they cover the entire current reading.
+    pub fn begin_clauses(&mut self, clauses: Vec<Clause>) -> bool {
+        if self.raw.is_empty()
+            || clauses.is_empty()
+            || clauses.iter().any(|c| {
+                c.reading.is_empty() || c.candidates.is_empty() || c.selected >= c.candidates.len()
+            })
+            || clauses
+                .iter()
+                .map(|c| c.reading.as_str())
+                .collect::<String>()
+                != self.reading()
+        {
+            return false;
+        }
+        self.clauses = clauses;
+        self.selected_clause = 0;
+        self.explicit = None;
+        self.selected_prediction = -1;
+        self.sync_clause();
+        true
+    }
+    fn sync_clause(&mut self) {
+        if let Some(clause) = self.clauses.get(self.selected_clause) {
+            self.candidates = clause.candidates.clone();
+            self.selected = clause.selected;
+        }
+    }
+    fn local_clause(&self, reading: String) -> Clause {
+        let mut candidates = self
+            .preferences
+            .user_dictionary
+            .get(&reading)
+            .cloned()
+            .unwrap_or_default();
+        candidates.extend(Dictionary::bundled().candidates(&reading));
+        candidates.extend(Linguistics::bundled().words(&reading));
+        if let Some(learned) = self.preferences.selected.get(&reading) {
+            candidates.insert(0, learned.clone());
+        }
+        Clause::new(reading, candidates)
+    }
+    fn resize_clause(&mut self, grow: bool) {
+        let index = self.selected_clause;
+        if self.clauses.is_empty() {
+            return;
+        }
+        let mut reading = self.clauses[index].reading.clone();
+        if grow {
+            if index + 1 >= self.clauses.len() {
+                return;
+            }
+            let mut next = self.clauses[index + 1].reading.clone();
+            let c = next.remove(0);
+            reading.push(c);
+            if next.is_empty() {
+                self.clauses.remove(index + 1);
+            } else {
+                self.clauses[index + 1] = self.local_clause(next);
+            }
+        } else {
+            if reading.chars().count() <= 1 {
+                return;
+            }
+            let c = reading.pop().unwrap();
+            let next = if index + 1 < self.clauses.len() {
+                format!("{c}{}", self.clauses.remove(index + 1).reading)
+            } else {
+                c.to_string()
+            };
+            let clause = self.local_clause(next);
+            self.clauses.insert(index + 1, clause);
+        }
+        self.clauses[index] = self.local_clause(reading);
+        self.sync_clause();
+    }
     /// Virtual keys follow the existing native ABI; modifiers: shift=1, ctrl=2,
     /// alt=4, command=8. Platform shortcuts commit first and pass through.
     pub fn key(&mut self, vk: i32, ch: i32, modifiers: i32) -> SessionResult {
@@ -469,6 +634,8 @@ impl Session {
                 }
                 if self.is_converting() {
                     self.candidates.clear();
+                    self.clauses.clear();
+                    self.selected_clause = 0;
                     self.explicit = None;
                 } else {
                     self.reset();
@@ -480,6 +647,8 @@ impl Session {
                     return self.result(false);
                 }
                 self.candidates.clear();
+                self.clauses.clear();
+                self.selected_clause = 0;
                 self.explicit = None;
                 self.raw.pop();
                 self.kana_text.pop();
@@ -555,6 +724,26 @@ impl Session {
                 }
                 self.result(true)
             }
+            0x25 | 0x27 if self.is_converting() => {
+                if self.clauses.is_empty() {
+                    self.clauses.push(Clause {
+                        reading: self.reading(),
+                        candidates: self.candidates.clone(),
+                        selected: self.selected,
+                    });
+                }
+                if modifiers & 1 != 0 {
+                    self.resize_clause(vk == 0x27);
+                } else {
+                    self.selected_clause = if vk == 0x25 {
+                        self.selected_clause.saturating_sub(1)
+                    } else {
+                        (self.selected_clause + 1).min(self.clauses.len() - 1)
+                    };
+                    self.sync_clause();
+                }
+                self.result(true)
+            }
             0x26 | 0x28 | 0x09 if self.is_converting() => {
                 self.cycle(if vk == 0x26 || modifiers & 1 != 0 {
                     -1
@@ -565,6 +754,8 @@ impl Session {
             }
             0x75..=0x79 if !self.raw.is_empty() => {
                 self.candidates.clear();
+                self.clauses.clear();
+                self.selected_clause = 0;
                 self.case_cycle = if self.function_key == vk {
                     (self.case_cycle + 1) % 3
                 } else {
@@ -607,6 +798,8 @@ impl Session {
                         self.commit().commits
                     } else {
                         self.candidates.clear();
+                        self.clauses.clear();
+                        self.selected_clause = 0;
                         vec![]
                     };
                 self.explicit = None;
@@ -652,6 +845,9 @@ impl Session {
     fn cycle(&mut self, direction: i32) {
         self.selected =
             (self.selected as i32 + direction).rem_euclid(self.candidates.len() as i32) as usize;
+        if let Some(clause) = self.clauses.get_mut(self.selected_clause) {
+            clause.selected = self.selected;
+        }
     }
 }
 

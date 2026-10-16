@@ -271,10 +271,10 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
                 // 確定し直し: キャレット (変換中の文字があればその先頭) の前の文字を置き換える。
                 let marked = client.markedRange()
                 let caret = marked.location != NSNotFound && marked.length > 0 ? marked.location : client.selectedRange().location
-                if caret != NSNotFound {
-                    let length = min(edit.deleteBefore, caret)
-                    range = NSRange(location: caret - length, length: length)
-                }
+                guard caret != NSNotFound, caret >= edit.deleteBefore,
+                      let expected = edit.expect, (expected as NSString).length == edit.deleteBefore else { return }
+                range = NSRange(location: caret - edit.deleteBefore, length: edit.deleteBefore)
+                guard client.attributedSubstring(from: range)?.string == expected else { return }
             }
             client.insertText(NSAttributedString(string: edit.text), replacementRange: range)
             hasMarkedText = false
