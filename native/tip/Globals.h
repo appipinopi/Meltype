@@ -51,6 +51,11 @@ HRESULT RustUnregisterServer();
 void RustSurroundingText(TfEditCookie, ITfContext*, std::wstring&, std::wstring&);
 bool RustExtendPrevious(TfEditCookie, ITfRange*, LONG, const std::wstring&);
 bool RustWriteRange(TfEditCookie, ITfContext*, ITfRange*, const std::wstring&, bool);
+struct JsonValue;
+ITfComposition* RustStartComposition(TfEditCookie, ITfContext*, ITfCompositionSink*, ITfRange*);
+bool RustUpdateComposition(TfEditCookie, ITfContext*, ITfComposition*, const JsonValue&, TfGuidAtom, TfGuidAtom, TfGuidAtom);
+void RustEndComposition(TfEditCookie, ITfContext*, ITfComposition*);
+void RustSetAttribute(TfEditCookie, ITfContext*, ITfRange*, TfGuidAtom);
 #endif
 
 // 文字コードの変換

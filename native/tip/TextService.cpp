@@ -1239,6 +1239,10 @@ bool TextService::ExtendOverPrevious(TfEditCookie ec, ITfRange* range, LONG coun
 
 bool TextService::WriteCommit(TfEditCookie ec, ITfContext* context, ITfRange* range, const std::wstring& text) {
     if (composition_ == nullptr) {
+#ifdef MELTYPE_RUST_CORE
+        composition_ = RustStartComposition(ec, context, static_cast<ITfCompositionSink*>(this), range);
+        if (composition_) { compositionContext_ = context; compositionContext_->AddRef(); }
+#else
         ITfContextComposition* contextComposition = nullptr;
         if (SUCCEEDED(context->QueryInterface(IID_ITfContextComposition, reinterpret_cast<void**>(&contextComposition)))) {
             if (SUCCEEDED(contextComposition->StartComposition(ec, range, static_cast<ITfCompositionSink*>(this), &composition_)) && composition_ != nullptr) {
@@ -1247,6 +1251,7 @@ bool TextService::WriteCommit(TfEditCookie ec, ITfContext* context, ITfRange* ra
             }
             contextComposition->Release();
         }
+#endif
     }
 #ifdef MELTYPE_RUST_CORE
     bool written = RustWriteRange(ec, context, range, text, keepAppCaret_);
@@ -1275,6 +1280,14 @@ bool TextService::WriteCommit(TfEditCookie ec, ITfContext* context, ITfRange* ra
 }
 
 void TextService::ApplyComposition(TfEditCookie ec, ITfContext* context, const JsonValue& view) {
+#ifdef MELTYPE_RUST_CORE
+    if (!composition_) {
+        composition_ = RustStartComposition(ec, context, static_cast<ITfCompositionSink*>(this), nullptr);
+        if (!composition_) { TipLog(L"変換中の文字を置けません"); return; }
+        compositionContext_ = context; compositionContext_->AddRef();
+    }
+    RustUpdateComposition(ec, context, composition_, view, atomInput_, atomConverted_, atomTarget_);
+#else
     const std::wstring& text = view[L"text"].Str();
     if (composition_ == nullptr) {
         TF_SELECTION selection = {};
@@ -1334,9 +1347,13 @@ void TextService::ApplyComposition(TfEditCookie ec, ITfContext* context, const J
         caretRange->Release();
     }
     range->Release();
+#endif
 }
 
 void TextService::SetAttribute(TfEditCookie ec, ITfContext* context, ITfRange* range, TfGuidAtom atom) {
+#ifdef MELTYPE_RUST_CORE
+    RustSetAttribute(ec, context, range, atom);
+#else
     if (atom == TF_INVALID_GUIDATOM) return;
     ITfProperty* property = nullptr;
     if (FAILED(context->GetProperty(GUID_PROP_ATTRIBUTE, &property))) return;
@@ -1346,10 +1363,22 @@ void TextService::SetAttribute(TfEditCookie ec, ITfContext* context, ITfRange* r
     value.lVal = static_cast<LONG>(atom);
     property->SetValue(ec, range, &value);
     property->Release();
+#endif
 }
 
 void TextService::EndComposition(TfEditCookie ec) {
     if (composition_ == nullptr) return;
+#ifdef MELTYPE_RUST_CORE
+    ITfComposition* ending = composition_;
+    ITfContext* endingContext = compositionContext_;
+    RustEndComposition(ec, endingContext, ending);
+    // EndComposition may synchronously notify the sink, which can release or
+    // replace the stored references. Never release them a second time.
+    if (composition_ == ending) { composition_->Release(); composition_ = nullptr; }
+    if (endingContext && compositionContext_ == endingContext) {
+        compositionContext_->Release(); compositionContext_ = nullptr;
+    }
+#else
     ITfRange* range = nullptr;
     if (compositionContext_ != nullptr && SUCCEEDED(composition_->GetRange(&range))) {
         ITfProperty* property = nullptr;
@@ -1362,12 +1391,15 @@ void TextService::EndComposition(TfEditCookie ec) {
     composition_->EndComposition(ec);
     composition_->Release();
     composition_ = nullptr;
+#endif
     staleCommitTries_ = 0;
     staleVk_ = 0;
+#ifndef MELTYPE_RUST_CORE
     if (compositionContext_ != nullptr) {
         compositionContext_->Release();
         compositionContext_ = nullptr;
     }
+#endif
 }
 
 STDMETHODIMP TextService::OnCompositionTerminated(TfEditCookie ec, ITfComposition* composition) {

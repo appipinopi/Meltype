@@ -85,6 +85,15 @@ int32_t meltype_tsf_extend_previous(void *range, uint32_t cookie, int32_t count,
     const uint16_t *expected, uint32_t length);
 int32_t meltype_tsf_write_range(void *context, void *range, uint32_t cookie,
     const uint16_t *text, uint32_t length, int32_t keep_caret);
+/* Start returns an owned ITfComposition. A NULL range uses the current selection.
+   All inputs are borrowed COM pointers. Composition views are UTF-8 JSON with
+   text/converting/clauses/selectedClause. End retains references across callbacks
+   and does not consume the caller's owned COM references. */
+void *meltype_tsf_start_composition(void *context, void *sink, void *range, uint32_t cookie);
+int32_t meltype_tsf_update_composition(void *context, void *composition, uint32_t cookie,
+    const char *view, uint32_t input_atom, uint32_t converted_atom, uint32_t target_atom);
+int32_t meltype_tsf_end_composition(void *context, void *composition, uint32_t cookie);
+void meltype_tsf_set_attribute(void *context, void *range, uint32_t cookie, uint32_t atom);
 #endif
 #ifdef __cplusplus
 }

@@ -10,6 +10,31 @@ use std::{
 };
 use windows::{core::Interface, Win32::UI::TextServices::*};
 type Surrounding = unsafe extern "C" fn(*mut c_void, *const u16, u32, *const u16, u32);
+pub(super) unsafe fn selection(context: &ITfContext, cookie: u32) -> Option<ITfRange> {
+    let mut value = [TF_SELECTION::default()];
+    let mut fetched = 0;
+    let status = context.GetSelection(cookie, TF_DEFAULT_SELECTION, &mut value, &mut fetched);
+    let range = ManuallyDrop::take(&mut value[0].range);
+    if status.is_err() || fetched == 0 {
+        return None;
+    }
+    range
+}
+pub(super) unsafe fn caret(context: &ITfContext, range: &ITfRange, cookie: u32) {
+    if let Ok(caret) = range.Clone() {
+        if caret.Collapse(cookie, TF_ANCHOR_END).is_ok() {
+            let mut value = [TF_SELECTION {
+                range: ManuallyDrop::new(Some(caret)),
+                style: TF_SELECTIONSTYLE {
+                    ase: TF_AE_NONE,
+                    fInterimChar: false.into(),
+                },
+            }];
+            let _ = context.SetSelection(cookie, &value);
+            drop(ManuallyDrop::take(&mut value[0].range));
+        }
+    }
+}
 fn guard(f: impl FnOnce() -> bool) -> i32 {
     i32::from(catch_unwind(AssertUnwindSafe(f)).unwrap_or(false))
 }
@@ -37,17 +62,7 @@ pub unsafe extern "C" fn meltype_tsf_read_surrounding(
         let Some(context) = ITfContext::from_raw_borrowed(&context) else {
             return false;
         };
-        let mut selection = [TF_SELECTION::default()];
-        let mut fetched = 0;
-        let status =
-            context.GetSelection(cookie, TF_DEFAULT_SELECTION, &mut selection, &mut fetched);
-        // TF_SELECTION has no Drop; adopt the returned COM reference even if a
-        // host reports an error after populating the output.
-        let range = ManuallyDrop::take(&mut selection[0].range);
-        if status.is_err() || fetched == 0 {
-            return false;
-        }
-        let Some(range) = range else {
+        let Some(range) = selection(context, cookie) else {
             return false;
         };
         let before = (|| {
@@ -162,19 +177,7 @@ pub unsafe extern "C" fn meltype_tsf_write_range(
             return false;
         }
         if keep_caret == 0 {
-            if let Ok(caret) = range.Clone() {
-                if caret.Collapse(cookie, TF_ANCHOR_END).is_ok() {
-                    let mut selection = [TF_SELECTION {
-                        range: ManuallyDrop::new(Some(caret)),
-                        style: TF_SELECTIONSTYLE {
-                            ase: TF_AE_NONE,
-                            fInterimChar: false.into(),
-                        },
-                    }];
-                    let _ = context.SetSelection(cookie, &selection);
-                    drop(ManuallyDrop::take(&mut selection[0].range));
-                }
-            }
+            caret(context, range, cookie);
         }
         true
     })

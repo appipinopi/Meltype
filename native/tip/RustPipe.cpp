@@ -34,6 +34,10 @@ struct RustApi {
     int (__cdecl *surrounding)(void*,unsigned int,void*,void (__cdecl *)(void*,const unsigned short*,unsigned int,const unsigned short*,unsigned int)) = nullptr;
     int (__cdecl *extendPrevious)(void*,unsigned int,int,const unsigned short*,unsigned int) = nullptr;
     int (__cdecl *writeRange)(void*,void*,unsigned int,const unsigned short*,unsigned int,int) = nullptr;
+    void* (__cdecl *startComposition)(void*,void*,void*,unsigned int) = nullptr;
+    int (__cdecl *updateComposition)(void*,void*,unsigned int,const char*,unsigned int,unsigned int,unsigned int) = nullptr;
+    int (__cdecl *endComposition)(void*,void*,unsigned int) = nullptr;
+    void (__cdecl *setAttribute)(void*,void*,unsigned int,unsigned int) = nullptr;
     RustApi() {
         wchar_t path[32768];
         const DWORD size = GetModuleFileNameW(g_module, path, ARRAYSIZE(path));
@@ -65,6 +69,10 @@ struct RustApi {
         surrounding = reinterpret_cast<decltype(surrounding)>(GetProcAddress(module, "meltype_tsf_read_surrounding"));
         extendPrevious = reinterpret_cast<decltype(extendPrevious)>(GetProcAddress(module, "meltype_tsf_extend_previous"));
         writeRange = reinterpret_cast<decltype(writeRange)>(GetProcAddress(module, "meltype_tsf_write_range"));
+        startComposition = reinterpret_cast<decltype(startComposition)>(GetProcAddress(module, "meltype_tsf_start_composition"));
+        updateComposition = reinterpret_cast<decltype(updateComposition)>(GetProcAddress(module, "meltype_tsf_update_composition"));
+        endComposition = reinterpret_cast<decltype(endComposition)>(GetProcAddress(module, "meltype_tsf_end_composition"));
+        setAttribute = reinterpret_cast<decltype(setAttribute)>(GetProcAddress(module, "meltype_tsf_set_attribute"));
     }
     bool ready() const { return create && destroy && request && freeText; }
     // The module stays loaded for the process lifetime. Do not unload Rust
@@ -136,6 +144,26 @@ bool RustExtendPrevious(TfEditCookie cookie,ITfRange* range,LONG count,const std
 }
 bool RustWriteRange(TfEditCookie cookie,ITfContext* context,ITfRange* range,const std::wstring& text,bool keepCaret) {
     return api().writeRange && api().writeRange(context,range,cookie,reinterpret_cast<const unsigned short*>(text.data()),static_cast<unsigned int>(text.size()),keepCaret ? 1 : 0) != 0;
+}
+ITfComposition* RustStartComposition(TfEditCookie cookie, ITfContext* context, ITfCompositionSink* sink, ITfRange* range) {
+    return api().startComposition ? static_cast<ITfComposition*>(api().startComposition(context,sink,range,cookie)) : nullptr;
+}
+bool RustUpdateComposition(TfEditCookie cookie,ITfContext* context,ITfComposition* composition,const JsonValue& view,TfGuidAtom input,TfGuidAtom converted,TfGuidAtom target) {
+    if (!api().updateComposition) return false;
+    std::string clauses = "[";
+    for (size_t i = 0; i < view[L"clauses"].array.size(); ++i) {
+        if (i) clauses += ',';
+        clauses += JsonString(view[L"clauses"].array[i].Str());
+    }
+    std::string json = "{\"text\":" + JsonString(view[L"text"].Str()) + ",\"converting\":" + (view[L"converting"].Bool() ? "true" : "false") +
+        ",\"clauses\":" + clauses + "],\"selectedClause\":" + std::to_string(view[L"selectedClause"].Int()) + "}";
+    return api().updateComposition(context,composition,cookie,json.c_str(),input,converted,target) != 0;
+}
+void RustEndComposition(TfEditCookie cookie,ITfContext* context,ITfComposition* composition) {
+    if (api().endComposition) api().endComposition(context,composition,cookie);
+}
+void RustSetAttribute(TfEditCookie cookie,ITfContext* context,ITfRange* range,TfGuidAtom atom) {
+    if (api().setAttribute) api().setAttribute(context,range,cookie,atom);
 }
 bool PipeClient::Transact(const std::string& request, std::string& response, DWORD, bool) {
     if (!api().ready()) return false;
