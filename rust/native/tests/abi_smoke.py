@@ -1,0 +1,94 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 appipinopi
+"""Exercise real C callbacks/ownership and multi-edit results in a fresh process."""
+import ctypes as c
+import json
+import os
+import sys
+import tempfile
+
+
+def main(library):
+    api = c.CDLL(library)
+    allocator = c.CDLL("ucrtbase") if os.name == "nt" else c.CDLL(None)
+    allocator.malloc.argtypes = [c.c_size_t]
+    allocator.malloc.restype = c.c_void_p
+    clauses_type = c.CFUNCTYPE(c.c_void_p, c.c_char_p, c.c_char_p)
+    candidates_type = c.CFUNCTYPE(c.c_void_p, c.c_char_p)
+    word_type = c.CFUNCTYPE(c.c_int, c.c_char_p)
+
+    def allocate(text):
+        value = text.encode("utf-8") + b"\0"
+        ptr = allocator.malloc(len(value))
+        if not ptr:
+            return None
+        c.memmove(ptr, value, len(value))
+        return ptr
+
+    @clauses_type
+    def clauses(reading, _context):
+        return allocate("はし\t橋") if reading == "はし".encode() else None
+
+    @candidates_type
+    def candidates(reading):
+        return allocate("橋\n箸") if reading == "はし".encode() else None
+
+    @word_type
+    def is_word(_word):
+        return 0
+
+    api.meltype_init.argtypes = [clauses_type, candidates_type, word_type]
+    api.meltype_init.restype = c.c_int
+    api.meltype_create.restype = c.c_void_p
+    api.meltype_destroy.argtypes = [c.c_void_p]
+    api.meltype_free.argtypes = [c.c_void_p]
+    api.meltype_handle_key.argtypes = [c.c_void_p, c.c_int, c.c_int, c.c_int, c.c_char_p, c.c_char_p]
+    api.meltype_handle_key.restype = c.c_void_p
+    api.meltype_commit.argtypes = [c.c_void_p]
+    api.meltype_commit.restype = c.c_void_p
+    api.meltype_set_can_delete.argtypes = [c.c_void_p, c.c_int]
+    api.meltype_set_private.argtypes = [c.c_void_p, c.c_int]
+    api.meltype_undo_commit.argtypes = [c.c_void_p, c.c_char_p]
+    api.meltype_undo_commit.restype = c.c_void_p
+
+    def result(ptr):
+        assert ptr, "null ABI response"
+        try:
+            return json.loads(c.string_at(ptr).decode("utf-8"))
+        finally:
+            api.meltype_free(ptr)
+
+    with tempfile.TemporaryDirectory(prefix="meltype-abi-") as directory:
+        os.environ["MELTYPE_RUST_DATA_DIR"] = directory
+        assert api.meltype_init(clauses, candidates, is_word) == 1
+        handle = api.meltype_create()
+        assert handle
+        try:
+            def key(vk=0, scalar=0):
+                return result(api.meltype_handle_key(handle, vk, scalar, 0, None, None))
+
+            for letter in "hashi":
+                value = key(scalar=ord(letter))
+            assert value["view"]["text"] == "橋"
+            assert not value["view"]["converting"]
+            assert key(32, 32)["view"]["clauses"] == ["橋"]
+            value = key(scalar=ord("k"))
+            assert value["commits"][0]["text"] == "橋"
+            assert value["view"]["text"] == "k", "new preedit lost after old commit"
+            assert key(scalar=ord("a"))["view"]["text"] == "か"
+            assert result(api.meltype_commit(handle))["commits"][0]["text"] == "か"
+            api.meltype_set_can_delete(handle, 1)
+            value = result(api.meltype_undo_commit(handle, "橋か".encode()))
+            assert value["commits"] == [{"deleteBefore": 1, "text": "", "expect": "か"}]
+            assert value["view"]["text"] == "か"
+            api.meltype_set_private(handle, 1)
+            assert not key(scalar=ord("a"))["consumed"]
+        finally:
+            api.meltype_destroy(handle)
+    print("Native ABI: callbacks, live conversion, multi-edit, guarded undo and privacy passed")
+
+
+if __name__ == "__main__":
+    filename = "meltype_native.dll" if os.name == "nt" else (
+        "libmeltype_native.dylib" if sys.platform == "darwin" else "libmeltype_native.so")
+    main(sys.argv[1] if len(sys.argv) > 1 else os.path.abspath(os.path.join("target", "release", filename)))

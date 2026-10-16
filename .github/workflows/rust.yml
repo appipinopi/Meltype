@@ -25,6 +25,11 @@ jobs:
       - run: cargo test --workspace --locked
       - run: cargo run -p meltype-core --example quality -- quality-report.json --check
       - run: cargo build --workspace --release --locked
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Native ABI callbacks and live conversion
+        run: python rust/native/tests/abi_smoke.py
       - if: runner.os == 'Windows'
         shell: pwsh
         run: ./rust/build-windows.ps1 -WithTip -NativeOnly
