@@ -120,6 +120,8 @@ private:
     void AbandonComposition();
     // アプリが確定した打ちかけの文字を、変換中に戻す (戻せなければ確定したことにする)。context が null なら確定したことにする
     void ResumeOrCommit(ITfContext* context);
+    void ClearResume();
+    bool HasResume() const;
     void CommitInSession(TfEditCookie ec, ITfContext* context, bool keepAppCaret);
     void SelectCandidate(int index, bool prediction);
     void Reinject(UINT vk);
@@ -168,9 +170,13 @@ private:
         UINT vk = 0;
         ULONGLONG time = 0;
     };
+#ifdef MELTYPE_RUST_CORE
+    void* resume_ = nullptr;  // Rust owns the saved range/context/text.
+#else
     Microsoft::WRL::ComPtr<ITfRange> resumeRange_;      // アプリが確定した打ちかけの文字 (次のキーで変換中に戻す)
     Microsoft::WRL::ComPtr<ITfContext> resumeContext_;
     std::wstring resumeText_;
+#endif
     bool lastConverting_ = false;  // 最後に置いた変換中の文字が、変換した状態か (打っている途中なら false)
     int staleCommitTries_ = 0;     // 前の入力欄に残った変換中の文字を確定しようとした回数 (打鍵ごとに 1 回)
     UINT staleVk_ = 0;             // OnTestKeyDown で数えたキーと時刻 (続く OnKeyDown で数え直さない)

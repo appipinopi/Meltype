@@ -38,6 +38,11 @@ struct RustApi {
     int (__cdecl *endComposition)(void*,void*,unsigned int) = nullptr;
     void (__cdecl *setAttribute)(void*,void*,unsigned int,unsigned int) = nullptr;
     int (__cdecl *applyCommits)(void*,unsigned int,const char*,void*,void* (__cdecl *)(void*),int (__cdecl *)(void*,void*,const unsigned short*,unsigned int)) = nullptr;
+    void* (__cdecl *captureResume)(void*,void*,unsigned int) = nullptr;
+    int (__cdecl *resumeMatches)(void*,void*) = nullptr;
+    void* (__cdecl *tryResume)(void*,void*,void*,unsigned int) = nullptr;
+    void (__cdecl *resumeAttribute)(void*,void*,unsigned int,unsigned int) = nullptr;
+    void (__cdecl *destroyResume)(void*) = nullptr;
     RustApi() {
         wchar_t path[32768];
         const DWORD size = GetModuleFileNameW(g_module, path, ARRAYSIZE(path));
@@ -73,6 +78,11 @@ struct RustApi {
         endComposition = reinterpret_cast<decltype(endComposition)>(GetProcAddress(module, "meltype_tsf_end_composition"));
         setAttribute = reinterpret_cast<decltype(setAttribute)>(GetProcAddress(module, "meltype_tsf_set_attribute"));
         applyCommits = reinterpret_cast<decltype(applyCommits)>(GetProcAddress(module, "meltype_tsf_apply_commits"));
+        captureResume = reinterpret_cast<decltype(captureResume)>(GetProcAddress(module, "meltype_tsf_capture_resume"));
+        resumeMatches = reinterpret_cast<decltype(resumeMatches)>(GetProcAddress(module, "meltype_tsf_resume_matches"));
+        tryResume = reinterpret_cast<decltype(tryResume)>(GetProcAddress(module, "meltype_tsf_try_resume"));
+        resumeAttribute = reinterpret_cast<decltype(resumeAttribute)>(GetProcAddress(module, "meltype_tsf_resume_attribute"));
+        destroyResume = reinterpret_cast<decltype(destroyResume)>(GetProcAddress(module, "meltype_tsf_destroy_resume"));
     }
     bool ready() const { return create && destroy && request && freeText; }
     // The module stays loaded for the process lifetime. Do not unload Rust
@@ -175,6 +185,18 @@ bool RustApplyCommits(TfEditCookie cookie,ITfContext* context,const JsonValue& r
     }
     return api().applyCommits(context,cookie,(json+"]").c_str(),owner,current,write) != 0;
 }
+void* RustCaptureResume(TfEditCookie cookie,ITfContext* context,ITfComposition* composition) {
+    if (!api().captureResume || !api().resumeMatches || !api().tryResume || !api().resumeAttribute || !api().destroyResume) return nullptr;
+    return api().captureResume(context,composition,cookie);
+}
+bool RustResumeMatches(void* state,ITfContext* context) { return api().resumeMatches && api().resumeMatches(state,context) != 0; }
+ITfComposition* RustTryResume(void* state,TfEditCookie cookie,ITfContext* context,ITfCompositionSink* sink) {
+    return api().tryResume ? static_cast<ITfComposition*>(api().tryResume(state,context,sink,cookie)) : nullptr;
+}
+void RustResumeAttribute(TfEditCookie cookie,ITfContext* context,ITfComposition* composition,TfGuidAtom atom) {
+    if (api().resumeAttribute) api().resumeAttribute(context,composition,cookie,atom);
+}
+void RustDestroyResume(void* state) { if (api().destroyResume) api().destroyResume(state); }
 bool PipeClient::Transact(const std::string& request, std::string& response, DWORD, bool) {
     if (!api().ready()) return false;
     if (!rustConnection_) rustConnection_ = api().create();

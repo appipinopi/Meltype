@@ -168,7 +168,7 @@ HRESULT RunEditSession(ITfContext* context, TfClientId clientId, DWORD flags, st
 
 TextService::TextService() { DllAddRef(); }
 
-TextService::~TextService() { DllRelease(); }
+TextService::~TextService() { ClearResume(); DllRelease(); }
 
 STDMETHODIMP TextService::QueryInterface(REFIID riid, void** ppv) {
     if (ppv == nullptr) return E_INVALIDARG;
@@ -221,9 +221,7 @@ STDMETHODIMP TextService::ActivateEx(ITfThreadMgr* threadMgr, TfClientId clientI
     secretChecked_ = false;
     ForgetSecretField();
     markerSeen_ = false;
-    resumeRange_.Reset();
-    resumeContext_.Reset();
-    resumeText_.clear();
+    ClearResume();
     lastConverting_ = false;
     reinjectGuardVk_ = 0;
     reinjectGuardCount_ = 0;
@@ -327,8 +325,7 @@ STDMETHODIMP TextService::Deactivate() {
     }
     // ここから後 (アプリが変換中の文字を確定した通知・あとから動く非同期の編集セッション) は、Meltype.exe につなぎ直さない
     deactivated_ = true;
-    resumeRange_.Reset();
-    resumeContext_.Reset();
+    ClearResume();
     ForgetSecretField();
     // 手放した変換中の文字は、終われるならここで終える (下線を残さない)。終えられなかったものは、手放したときに頼んだ
     // 非同期の編集セッションに任せて、ここでは持たない (入力欄を持ち続けて、この IME が解放されなくなるのを防ぐ)
@@ -1413,10 +1410,11 @@ STDMETHODIMP TextService::OnCompositionTerminated(TfEditCookie ec, ITfCompositio
     // 打っている途中 (変換していない) なら、Meltype.exe の側はまだ確定しない。空のノートに最初の文字を入れたときなどに、
     // アプリが入力欄を作り直して確定してしまうことがある (そのまま確定すると、ka が「kあ」になる)。
     // キャレットがその文字の後ろのままなら、次のキーで変換中に戻して続ける (ResumeOrCommit)
-    resumeRange_.Reset();
-    resumeContext_.Reset();
-    resumeText_.clear();
+    ClearResume();
     if (!disabled_ && !deactivated_ && !lastConverting_ && compositionContext_ != nullptr) {
+#ifdef MELTYPE_RUST_CORE
+        resume_ = RustCaptureResume(ec,compositionContext_,composition);
+#else
         Microsoft::WRL::ComPtr<ITfRange> range;
         if (SUCCEEDED(composition->GetRange(&range))) {
             wchar_t buffer[65];
@@ -1427,6 +1425,7 @@ STDMETHODIMP TextService::OnCompositionTerminated(TfEditCookie ec, ITfCompositio
                 resumeText_.assign(buffer, length);
             }
         }
+#endif
     }
     if (composition_ != nullptr) {
         composition_->Release();
@@ -1440,7 +1439,7 @@ STDMETHODIMP TextService::OnCompositionTerminated(TfEditCookie ec, ITfCompositio
     staleCommitTries_ = 0;
     staleVk_ = 0;
     lastConverting_ = false;
-    if (resumeRange_) return S_OK;
+    if (HasResume()) return S_OK;
     // 入力欄の文字は、アプリが書き換えたかもしれない: 前に確定した語を、次のキーで確定し直さない (関係ない文字を消さないように)
     directEnglishWord_ = false;
     caretMoved_ = true;
@@ -1451,7 +1450,43 @@ STDMETHODIMP TextService::OnCompositionTerminated(TfEditCookie ec, ITfCompositio
     return S_OK;
 }
 
+void TextService::ClearResume() {
+#ifdef MELTYPE_RUST_CORE
+    void* state = resume_; resume_ = nullptr;
+    if (state) RustDestroyResume(state);
+#else
+    resumeRange_.Reset(); resumeContext_.Reset(); resumeText_.clear();
+#endif
+}
+bool TextService::HasResume() const {
+#ifdef MELTYPE_RUST_CORE
+    return resume_ != nullptr;
+#else
+    return resumeRange_ != nullptr;
+#endif
+}
 void TextService::ResumeOrCommit(ITfContext* context) {
+#ifdef MELTYPE_RUST_CORE
+    if (!resume_) return;
+    void* state = resume_; resume_ = nullptr;
+    bool resumed = false;
+    if (context && !composition_ && RustResumeMatches(state,context)) {
+        RunEditSession(context,clientId_,TF_ES_SYNC | TF_ES_READWRITE,[&](TfEditCookie ec) {
+            if (composition_) return S_OK;
+            if (context == editSinkContext_) ownEdit_ = true;
+            void* pending = state; state = nullptr;
+            composition_ = RustTryResume(pending,ec,context,static_cast<ITfCompositionSink*>(this));
+            if (composition_) {
+                compositionContext_ = context; compositionContext_->AddRef(); resumed = true;
+                // Adopt before styling: SetValue may synchronously terminate it.
+                RustResumeAttribute(ec,context,composition_,atomInput_);
+            }
+            return S_OK;
+        });
+        ownEdit_ = false;
+    }
+    if (state) RustDestroyResume(state);
+#else
     if (!resumeRange_) return;
     Microsoft::WRL::ComPtr<ITfRange> range = resumeRange_;
     Microsoft::WRL::ComPtr<ITfContext> resumeContext = resumeContext_;
@@ -1488,6 +1523,7 @@ void TextService::ResumeOrCommit(ITfContext* context) {
         });
         ownEdit_ = false;
     }
+#endif
     if (resumed) {
         TipLog(L"アプリが確定した打ちかけの文字を、変換中に戻しました");
         return;

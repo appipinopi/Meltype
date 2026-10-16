@@ -38,7 +38,7 @@ pub(super) unsafe fn caret(context: &ITfContext, range: &ITfRange, cookie: u32) 
 fn guard(f: impl FnOnce() -> bool) -> i32 {
     i32::from(catch_unwind(AssertUnwindSafe(f)).unwrap_or(false))
 }
-unsafe fn read(range: &ITfRange, cookie: u32, limit: usize) -> Option<Vec<u16>> {
+pub(super) unsafe fn read(range: &ITfRange, cookie: u32, limit: usize) -> Option<Vec<u16>> {
     let mut text = vec![0; limit];
     let mut count = 0;
     range.GetText(cookie, 0, &mut text, &mut count).ok()?;

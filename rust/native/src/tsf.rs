@@ -9,6 +9,7 @@ mod edit_session;
 mod factory;
 mod langbar;
 mod ranges;
+mod recovery;
 mod registration;
 use std::{
     ffi::c_void,

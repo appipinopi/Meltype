@@ -99,6 +99,16 @@ void meltype_tsf_set_attribute(void *context, void *range, uint32_t cookie, uint
    Return 0 rejects the remaining batch; caller must reset the core session. */
 int32_t meltype_tsf_apply_commits(void *context, uint32_t cookie, const char *commits,
     void *owner, void *(*current)(void *), int32_t (*write)(void *, void *, const uint16_t *, uint32_t));
+/* Thread-affine opaque resume snapshot: capture only eligible unconverted input.
+   Try consumes on success/failure, returns owned ITfComposition, and never inserts
+   text. Destroy unused tokens on the creating thread. Matches compares context. */
+void *meltype_tsf_capture_resume(void *context, void *composition, uint32_t cookie);
+int32_t meltype_tsf_resume_matches(void *snapshot, void *context);
+void *meltype_tsf_try_resume(void *snapshot, void *context, void *sink, uint32_t cookie);
+/* Adopt the result before styling, so reentrant termination finds its owner.
+   This call retains context/composition across host callbacks. */
+void meltype_tsf_resume_attribute(void *context, void *composition, uint32_t cookie, uint32_t input_atom);
+void meltype_tsf_destroy_resume(void *snapshot);
 #endif
 #ifdef __cplusplus
 }

@@ -57,6 +57,11 @@ void RustEndComposition(TfEditCookie, ITfContext*, ITfComposition*);
 void RustSetAttribute(TfEditCookie, ITfContext*, ITfRange*, TfGuidAtom);
 bool RustApplyCommits(TfEditCookie,ITfContext*,const JsonValue&,void*,
     void* (__cdecl *)(void*),int (__cdecl *)(void*,void*,const unsigned short*,unsigned int));
+void* RustCaptureResume(TfEditCookie,ITfContext*,ITfComposition*);
+bool RustResumeMatches(void*,ITfContext*);
+ITfComposition* RustTryResume(void*,TfEditCookie,ITfContext*,ITfCompositionSink*);
+void RustResumeAttribute(TfEditCookie,ITfContext*,ITfComposition*,TfGuidAtom);
+void RustDestroyResume(void*);
 #endif
 
 // 文字コードの変換
