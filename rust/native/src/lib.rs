@@ -5,6 +5,8 @@
 //! freed memory. Returned strings use malloc/free, including Swift callbacks.
 use meltype_core::{session::Clause, Session};
 mod tip;
+#[cfg(windows)]
+mod tsf;
 use std::{
     collections::HashMap,
     ffi::{c_char, c_void, CStr, CString},

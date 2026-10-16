@@ -1858,6 +1858,7 @@ dependencies = [
  "meltype-core",
  "serde_json",
  "tempfile",
+ "windows",
 ]
 
 [[package]]

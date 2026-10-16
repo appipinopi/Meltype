@@ -3,6 +3,7 @@
 // Replaces Pipe.cpp for Rust preview builds. The TSF shell calls Rust inside
 // the client process; no C# daemon or named pipe is required.
 #include "Pipe.h"
+#include "DisplayAttributes.h"
 
 namespace meltype {
 namespace {
@@ -12,6 +13,8 @@ struct RustApi {
     void (__cdecl *destroy)(void*) = nullptr;
     char* (__cdecl *request)(void*, const char*) = nullptr;
     void (__cdecl *freeText)(void*) = nullptr;
+    void* (__cdecl *displayAttribute)(const GUID*) = nullptr;
+    void* (__cdecl *displayAttributeEnum)() = nullptr;
     RustApi() {
         wchar_t path[32768];
         const DWORD size = GetModuleFileNameW(g_module, path, ARRAYSIZE(path));
@@ -26,6 +29,8 @@ struct RustApi {
         destroy = reinterpret_cast<decltype(destroy)>(GetProcAddress(module, "meltype_tip_destroy"));
         request = reinterpret_cast<decltype(request)>(GetProcAddress(module, "meltype_tip_request"));
         freeText = reinterpret_cast<decltype(freeText)>(GetProcAddress(module, "meltype_free"));
+        displayAttribute = reinterpret_cast<decltype(displayAttribute)>(GetProcAddress(module, "meltype_tsf_create_display_attribute"));
+        displayAttributeEnum = reinterpret_cast<decltype(displayAttributeEnum)>(GetProcAddress(module, "meltype_tsf_create_display_attribute_enum"));
     }
     bool ready() const { return create && destroy && request && freeText; }
     // The module stays loaded for the process lifetime. Do not unload Rust
@@ -44,5 +49,11 @@ bool PipeClient::Transact(const std::string& request, std::string& response, DWO
 void PipeClient::Close() {
     if (rustConnection_ && api().ready()) api().destroy(rustConnection_);
     rustConnection_ = nullptr;
+}
+ITfDisplayAttributeInfo* CreateDisplayAttributeInfo(REFGUID guid) {
+    return api().displayAttribute ? static_cast<ITfDisplayAttributeInfo*>(api().displayAttribute(&guid)) : nullptr;
+}
+IEnumTfDisplayAttributeInfo* CreateDisplayAttributeEnum() {
+    return api().displayAttributeEnum ? static_cast<IEnumTfDisplayAttributeInfo*>(api().displayAttributeEnum()) : nullptr;
 }
 } // namespace meltype

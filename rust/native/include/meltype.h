@@ -44,6 +44,12 @@ char *meltype_version(void);
 char *meltype_data_directory(void);
 char *meltype_report_url(const char *);
 void meltype_free(void *);
+#ifdef _WIN32
+/* Owned TSF COM references, released with IUnknown::Release, NOT meltype_free.
+   guid is a pointer to a Windows GUID; unknown/null GUIDs return NULL. */
+void *meltype_tsf_create_display_attribute(const void *guid);
+void *meltype_tsf_create_display_attribute_enum(void);
+#endif
 #ifdef __cplusplus
 }
 #endif

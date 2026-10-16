@@ -25,7 +25,7 @@ function Get-Sha256([string]$path) {
 }
 
 $sources = 'Dll.cpp', 'TextService.cpp', 'CandidateWindow.cpp', 'DisplayAttributes.cpp', 'LangBar.cpp', 'Pipe.cpp', 'Json.cpp'
-if ($RustCore) { $sources = $sources | ForEach-Object { if ($_ -eq 'Pipe.cpp') { 'RustPipe.cpp' } else { $_ } } }
+if ($RustCore) { $sources = $sources | Where-Object { $_ -ne 'DisplayAttributes.cpp' } | ForEach-Object { if ($_ -eq 'Pipe.cpp') { 'RustPipe.cpp' } else { $_ } } }
 $coreDefine = if ($RustCore) { '/DMELTYPE_RUST_CORE' } else { '' }
 # /Brepro: 同じソースからは同じ DLL にする (日時を埋め込まない)。入れ直したときに、変わっていない DLL を登録し直さない (UAC を出さない) ため
 $optimize = if ($Configuration -eq 'Release') { '/O2 /MT /DNDEBUG' } else { '/Od /MTd /Zi' }

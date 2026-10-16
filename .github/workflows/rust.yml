@@ -61,6 +61,17 @@ jobs:
       - if: runner.os == 'Windows'
         shell: pwsh
         run: ./rust/build-windows.ps1 -WithTip -NativeOnly
+      - name: Rust TSF COM objects and native provider delegation
+        if: runner.os == 'Windows'
+        run: python rust/native/tests/tsf_com_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll native/tip/bin/rust-x64/MeltypeTip.dll
+      - uses: actions/setup-python@v5
+        if: runner.os == 'Windows'
+        with:
+          python-version: '3.12'
+          architecture: 'x86'
+      - name: Rust TSF COM calling conventions in a 32-bit process
+        if: runner.os == 'Windows'
+        run: python rust/native/tests/tsf_com_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll native/tip/bin/rust-x86/MeltypeTip.dll
       - uses: actions/upload-artifact@v4
         with:
           name: rust-${{ runner.os }}
