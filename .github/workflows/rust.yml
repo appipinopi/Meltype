@@ -8,6 +8,9 @@ on:
     paths: ['rust/**', 'android/**', 'Cargo.*', 'dictionaries/**', 'native/tip/**', '.github/workflows/rust.yml']
 permissions:
   contents: read
+concurrency:
+  group: rust-preview-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 jobs:
   desktop:
     strategy:
@@ -56,11 +59,15 @@ jobs:
         with:
           gradle-version: '8.13'
       - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018'
-      - run: cargo install cargo-ndk --locked
+      - run: cargo install cargo-ndk --version 4.1.2 --locked
       - name: Build JNI libraries
         env:
-          ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.2.12479018
-        run: cargo ndk -t arm64-v8a -t x86_64 -p 26 -o android/app/src/main/jniLibs build -p meltype-native --release --locked
+          CARGO_NDK_PLATFORM: '26'
+        run: |
+          export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/27.2.12479018"
+          export ANDROID_NDK_ROOT="$ANDROID_NDK_HOME"
+          export ANDROID_NDK="$ANDROID_NDK_HOME"
+          cargo ndk -t arm64-v8a -t x86_64 -o android/app/src/main/jniLibs build -p meltype-native --release --locked
       - run: gradle -p android assembleDebug lintDebug --no-daemon
       - uses: actions/upload-artifact@v4
         with:

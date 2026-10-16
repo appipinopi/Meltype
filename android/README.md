@@ -2,20 +2,20 @@
 
 Android 8.0 (API 26) 以降、arm64-v8a / x86_64。変換処理とセッションは Rust、InputMethodService のライフサイクルと入力欄・ソフトキーボード表示は Java です。ネットワーク権限は要求しません。元実装と同等の変換精度・機能を備えた完成版ではありません。
 
-必要なもの: Rust、JDK 17、Gradle 8.13、Android SDK platform 35 / build-tools 35.0.0、NDK 27.2.12479018。
+必要なもの: Rust 1.86以上、JDK 17、Gradle 8.13、Android SDK platform 35 / build-tools 35.0.0、NDK 27.2.12479018。
 
 リポジトリのルートで:
 
 ```sh
 rustup target add aarch64-linux-android x86_64-linux-android
-cargo install cargo-ndk --locked
+cargo install cargo-ndk --version 4.1.2 --locked
 export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/27.2.12479018"
-cargo ndk -t arm64-v8a -t x86_64 -p 26 -o android/app/src/main/jniLibs build -p meltype-native --release --locked
+CARGO_NDK_PLATFORM=26 cargo ndk -t arm64-v8a -t x86_64 -o android/app/src/main/jniLibs build -p meltype-native --release --locked
 gradle -p android assembleDebug lintDebug --no-daemon
 adb install -r android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Windows では `export` の代わりに PowerShell の `$env:ANDROID_NDK_HOME = ...` を使います。
+Windows では `export` の代わりに PowerShell の `$env:ANDROID_NDK_HOME = ...`、APIレベルには `$env:CARGO_NDK_PLATFORM = '26'` を使います。既存の `ANDROID_NDK_ROOT` / `ANDROID_NDK` があれば同じNDKのパスに揃えてください。
 
 設定 → システム → キーボード → 画面キーボードで **Meltype Rust Preview** を有効にし、入力方式を切り替えます。QWERTY ローマ字、変換・候補タップ・確定・削除、英数切替、ハードウェアキーに対応する実装です。パスワード・数字入力は直接入力にし、学習禁止の入力欄も入力を保持しません。現在の学習はセッション内だけで、ディスクには保存しません。
 

@@ -3,11 +3,13 @@
 package moe.meltype.rust;
 
 import android.inputmethodservice.InputMethodService;
+import android.os.Build;
 import android.text.InputType;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
@@ -68,7 +70,10 @@ public final class MeltypeService extends InputMethodService {
         add(actions, "⌫", () -> softwareKey(8,0));
         add(actions, "変換/空白", () -> softwareKey(32,32));
         add(actions, "確定/↵", () -> softwareKey(13,0));
-        add(actions, "🌐", () -> switchToNextInputMethod(false));
+        add(actions, "🌐", () -> {
+            if (Build.VERSION.SDK_INT >= 28) switchToNextInputMethod(false);
+            else ((InputMethodManager)getSystemService(INPUT_METHOD_SERVICE)).showInputMethodPicker();
+        });
         root.addView(actions); return root;
     }
     private void add(LinearLayout row, String label, Runnable action) {
