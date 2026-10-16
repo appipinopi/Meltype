@@ -145,7 +145,21 @@ def main(library):
             assert value["view"]["text"] == "google"
         finally:
             api.meltype_destroy(handle)
-    print("Native ABI: callbacks, live conversion, multi-edit, guarded undo/correction, selection reconversion, detection levels, manual Tab and privacy passed")
+        handle = api.meltype_create()
+        try:
+            setting("DetectionLevel", "Balanced")
+            setting("SigilWordsDirect", True)
+            for letter in "@src/app.ts":
+                value = key(scalar=ord(letter))
+                assert not value["consumed"] and value["view"] is None
+                assert value["commits"] == [], "sigil names must reach the app once, without synthetic commits"
+            for letter in "kyou":
+                value = result(api.meltype_handle_key(handle, 0, ord(letter), 0, b"@src/app.ts ", b""))
+            assert value["view"]["text"] == "きょう", "host-only whitespace must end sigil passthrough"
+            result(api.meltype_commit(handle))
+        finally:
+            api.meltype_destroy(handle)
+    print("Native ABI: callbacks, live conversion, multi-edit, guarded undo/correction, selection reconversion, detection levels, manual Tab, sigil passthrough and privacy passed")
 
 
 if __name__ == "__main__":

@@ -174,6 +174,11 @@ fn typo_repairs_flow_through_session_and_respect_protected_english_and_settings(
         ("@onegaishimsu", "@onegaishimsu"),
     ] {
         let mut s = Session::default();
+        // Exercise typo repair of protected composition rather than the
+        // separately tested SigilWordsDirect passthrough route.
+        s.settings
+            .set("SigilWordsDirect", serde_json::json!(false))
+            .unwrap();
         for c in raw.chars() {
             s.key(0, c as i32, 0);
         }

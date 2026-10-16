@@ -13,6 +13,7 @@ pub mod protection;
 pub mod romaji;
 pub mod session;
 pub mod settings;
+mod sigil;
 pub mod storage;
 pub mod time_candidates;
 pub mod typo;

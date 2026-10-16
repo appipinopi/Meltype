@@ -1006,6 +1006,7 @@ fn supported(key: &str) -> bool {
         "Enabled",
         "LiveConversion",
         "DirectModeAutoDetect",
+        "SigilWordsDirect",
         "DetectionLevel",
         "JapaneseThreshold",
         "TypoEnabled",

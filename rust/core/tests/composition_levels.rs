@@ -9,6 +9,8 @@ use serde_json::json;
 fn session(level: &str, raw: &str, before: &str, after: &str) -> Session {
     let mut s = Session::default();
     s.settings.set("DetectionLevel", json!(level)).unwrap();
+    // These tests exercise protected preedit transforms, not passthrough.
+    s.settings.set("SigilWordsDirect", json!(false)).unwrap();
     s.set_context(Some(before), Some(after));
     for c in raw.chars() {
         s.key(

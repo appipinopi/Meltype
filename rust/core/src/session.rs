@@ -126,6 +126,7 @@ pub struct Session {
     correctable: Vec<crate::commit_correction::Record>,
     space_started_conversion: bool,
     chosen_conversion: bool,
+    sigil: crate::sigil::Sigil,
 }
 
 impl Default for Session {
@@ -166,6 +167,7 @@ impl Default for Session {
             correctable: vec![],
             space_started_conversion: false,
             chosen_conversion: false,
+            sigil: Default::default(),
         }
     }
 }
@@ -192,6 +194,7 @@ impl Session {
         }
         self.context_is_fresh = before.is_some();
         if let Some(before) = before {
+            self.sigil.context(before);
             let expected: String = self.correctable.iter().map(|r| r.text.as_str()).collect();
             if !before.ends_with(&expected) {
                 self.correctable.clear();
@@ -228,6 +231,7 @@ impl Session {
     }
     pub fn set_process(&mut self, process: &str) {
         if self.process != process {
+            self.sigil = Default::default();
             self.correctable.clear();
             self.code_japanese = false;
             self.last_commit = None;
@@ -315,6 +319,7 @@ impl Session {
         true
     }
     pub fn caret_moved(&mut self, vk: i32, control: bool) {
+        self.sigil.lose();
         self.correctable.clear();
         self.last_commit = None;
         self.direct_english_word = false;
@@ -703,6 +708,7 @@ impl Session {
         }
     }
     pub fn reset(&mut self) {
+        self.sigil = Default::default();
         self.correctable.clear();
         self.space_started_conversion = false;
         self.chosen_conversion = false;
@@ -845,6 +851,9 @@ impl Session {
         let keys = self.typed_keys.clone();
         self.reset();
         self.correctable = records;
+        if !self.private {
+            self.sigil.append(&text);
+        }
         if !self.private && !text.is_empty() {
             self.last_commit = Some(CommittedInput {
                 raw,
@@ -1198,6 +1207,30 @@ impl Session {
         if ch < 0 || char::from_u32(ch as u32).is_none() {
             return self.result(false);
         }
+        let c = char::from_u32(ch as u32).unwrap();
+        if self.private {
+            self.sigil = Default::default();
+        }
+        if self.raw.is_empty()
+            && !self.private
+            && self.settings.boolean("Enabled")
+            && self.settings.boolean("SigilWordsDirect")
+            && !self.uses_kana()
+            && modifiers & 14 == 0
+            && self.sigil.passes(c)
+        {
+            self.correctable.clear();
+            self.last_commit = None;
+            self.sigil.passed(vk, c, modifiers);
+            return self.result(false);
+        }
+        let result = self.key_inner(vk, ch, modifiers);
+        if !result.consumed && !self.private {
+            self.sigil.passed(vk, c, modifiers);
+        }
+        result
+    }
+    fn key_inner(&mut self, vk: i32, ch: i32, modifiers: i32) -> SessionResult {
         if let Some(result) = self.detect_direct(vk, ch, modifiers) {
             return result;
         }
