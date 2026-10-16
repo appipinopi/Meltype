@@ -576,17 +576,27 @@ impl App {
     }
     fn dictionary(&mut self, ui: &mut egui::Ui) {
         ui.heading("Meltype ユーザー辞書");
-        let old_reading = self.reading.clone();
-        ui.horizontal_wrapped(|ui| {
-            ui.label("読み (ローマ字・ひらがな)");
-            ui.add(egui::TextEdit::singleline(&mut self.reading).desired_width(200.));
-        });
+        let reading_finished = ui
+            .horizontal_wrapped(|ui| {
+                ui.label("読み (ローマ字・ひらがな)");
+                ui.add(egui::TextEdit::singleline(&mut self.reading).desired_width(200.))
+                    .lost_focus()
+            })
+            .inner;
         let reading = meltype_core::user_dictionary::hiragana(&meltype_core::romaji::hiragana(
             self.reading.trim(),
             true,
         ));
         let mut candidates = meltype_core::dictionary::Dictionary::bundled().candidates(&reading);
+        let mut remove_reading = reading.clone();
         if let Ok(state) = self.store.load() {
+            if state
+                .preferences
+                .user_dictionary
+                .contains_key(self.reading.trim())
+            {
+                remove_reading = self.reading.trim().to_owned();
+            }
             if let Some(words) = state.preferences.user_dictionary.get(&reading) {
                 for word in words.iter().rev() {
                     candidates.retain(|candidate| candidate != word);
@@ -594,7 +604,7 @@ impl App {
                 }
             }
         }
-        if old_reading != self.reading && self.word.is_empty() {
+        if reading_finished && !reading.is_empty() && self.word.is_empty() {
             self.word = candidates.first().cloned().unwrap_or_default();
         }
         if self.reading.chars().any(|c| c.is_ascii_alphabetic()) {
@@ -620,7 +630,9 @@ impl App {
                 }
             }
             if ui.button("選んだ語を削除").clicked() {
-                self.action(json!({"op":"dictionary_remove","reading":reading,"word":self.word}));
+                self.action(
+                    json!({"op":"dictionary_remove","reading":remove_reading,"word":self.word}),
+                );
             }
         });
         ui.horizontal(|ui| {
