@@ -63,6 +63,13 @@ struct RustApi {
     int (__cdecl *keyDown)(int) = nullptr;
     unsigned int (__cdecl *keyChar)(unsigned int,unsigned long long) = nullptr;
     int (__cdecl *wouldEat)(void*,unsigned int,unsigned long long,int,const RustKeyCallbacks*,wchar_t*) = nullptr;
+    void* (__cdecl *keyStateCreate)() = nullptr;
+    void (__cdecl *keyStateReset)(void*) = nullptr;
+    void (__cdecl *keyStateDestroy)(void*) = nullptr;
+    void (__cdecl *keyCacheClear)(void*) = nullptr;
+    int (__cdecl *isReinjected)(void*,unsigned int) = nullptr;
+    int (__cdecl *keySecret)(void*,void*,unsigned int,int,void*,void*,int (__cdecl *)(void*,void*,int*),int*) = nullptr;
+    int (__cdecl *reinject)(void*,unsigned int,void*,void*,unsigned int (__cdecl *)(void*,const INPUT*,unsigned int),unsigned int*) = nullptr;
     RustApi() {
         wchar_t path[32768];
         const DWORD size = GetModuleFileNameW(g_module, path, ARRAYSIZE(path));
@@ -123,6 +130,13 @@ struct RustApi {
         keyDown = reinterpret_cast<decltype(keyDown)>(GetProcAddress(module, "meltype_tsf_key_down"));
         keyChar = reinterpret_cast<decltype(keyChar)>(GetProcAddress(module, "meltype_tsf_key_char"));
         wouldEat = reinterpret_cast<decltype(wouldEat)>(GetProcAddress(module, "meltype_tsf_would_eat"));
+        keyStateCreate = reinterpret_cast<decltype(keyStateCreate)>(GetProcAddress(module, "meltype_tsf_key_state_create"));
+        keyStateReset = reinterpret_cast<decltype(keyStateReset)>(GetProcAddress(module, "meltype_tsf_key_state_reset"));
+        keyStateDestroy = reinterpret_cast<decltype(keyStateDestroy)>(GetProcAddress(module, "meltype_tsf_key_state_destroy"));
+        keyCacheClear = reinterpret_cast<decltype(keyCacheClear)>(GetProcAddress(module, "meltype_tsf_key_cache_clear"));
+        isReinjected = reinterpret_cast<decltype(isReinjected)>(GetProcAddress(module, "meltype_tsf_is_reinjected"));
+        keySecret = reinterpret_cast<decltype(keySecret)>(GetProcAddress(module, "meltype_tsf_key_secret"));
+        reinject = reinterpret_cast<decltype(reinject)>(GetProcAddress(module, "meltype_tsf_reinject"));
     }
     bool ready() const { return create && destroy && request && freeText; }
     // The module stays loaded for the process lifetime. Do not unload Rust
@@ -271,6 +285,22 @@ wchar_t RustKeyChar(UINT key,LPARAM message) {return api().keyChar ? static_cast
 bool RustWouldEat(ITfContext* context,UINT key,LPARAM message,bool test,const RustKeyCallbacks& callbacks,wchar_t& ch) {
     ch=0;
     return api().wouldEat && api().wouldEat(context,key,static_cast<ULONG_PTR>(message),test?1:0,&callbacks,&ch)!=0;
+}
+void* RustKeyStateCreate() {return api().keyStateCreate && api().keyStateReset && api().keyStateDestroy && api().keyCacheClear && api().isReinjected && api().keySecret && api().reinject ? api().keyStateCreate() : nullptr;}
+void RustKeyStateReset(void* state) {if (api().keyStateReset) api().keyStateReset(state);}
+void RustKeyStateDestroy(void* state) {if (api().keyStateDestroy) api().keyStateDestroy(state);}
+void RustKeyCacheClear(void* state) {if (api().keyCacheClear) api().keyCacheClear(state);}
+bool RustIsReinjected(void* state,UINT key) {return api().isReinjected && api().isReinjected(state,key)!=0;}
+int RustKeySecret(void* state,ITfContext* context,UINT key,bool test,void* owner,IUnknown* lifetime,int (__cdecl *reader)(void*,void*,int*),int& privateField) {
+    privateField=0;
+    return api().keySecret ? api().keySecret(state,context,key,test?1:0,owner,lifetime,reader,&privateField) : 1;
+}
+int RustReinject(void* state,UINT key,IUnknown* lifetime,DWORD& error,void* owner,unsigned int (__cdecl *sender)(void*,const INPUT*,unsigned int)) {
+    error=0;
+    unsigned int code=0;
+    int result=api().reinject ? api().reinject(state,key,lifetime,owner,sender,&code) : -1;
+    error=code;
+    return result;
 }
 bool PipeClient::Transact(const std::string& request, std::string& response, DWORD, bool) {
     if (!api().ready()) return false;

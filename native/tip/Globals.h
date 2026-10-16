@@ -107,6 +107,13 @@ struct RustKeyCallbacks {
     void (__cdecl *pass)(void*,unsigned int);
 };
 bool RustWouldEat(ITfContext*,UINT,LPARAM,bool,const RustKeyCallbacks&,wchar_t&);
+void* RustKeyStateCreate();
+void RustKeyStateReset(void*);
+void RustKeyStateDestroy(void*);
+void RustKeyCacheClear(void*);
+bool RustIsReinjected(void*,UINT);
+int RustKeySecret(void*,ITfContext*,UINT,bool,void*,IUnknown*,int (__cdecl *)(void*,void*,int*),int&);
+int RustReinject(void*,UINT,IUnknown*,DWORD&,void* = nullptr,unsigned int (__cdecl *)(void*,const INPUT*,unsigned int) = nullptr);
 #endif
 
 // 文字コードの変換

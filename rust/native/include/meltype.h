@@ -190,6 +190,25 @@ typedef struct MeltypeTsfKeyCallbacks {
    4 checked=a. Pass: 0 clear,1 English,2 modifiers,3 disabled,4 continuing
    English,5 core unavailable,6 password. Secret: 0 ordinary,1 secret,-1 unknown. */
 int32_t meltype_tsf_would_eat(void *context, uint32_t key, uint64_t message, int32_t test, const MeltypeTsfKeyCallbacks *callbacks, uint16_t *character);
+/* Thread-affine key state: owns cached context and replay queue. Reset on a new
+   activation; clear cache on focus/deactivation. Destroy on its creating thread. */
+void *meltype_tsf_key_state_create(void);
+void meltype_tsf_key_state_reset(void *);
+void meltype_tsf_key_state_destroy(void *);
+void meltype_tsf_key_cache_clear(void *);
+/* Reader receives borrowed owner/context and writes private/no-learning. Owner
+   lifetime is a borrowed IUnknown retained across the call. Reuse one test-key
+   result for the same context/key within 200ms; never throw from callbacks. */
+int32_t meltype_tsf_key_secret(void *state, void *context, uint32_t key, int32_t test,
+    void *owner, void *lifetime, int32_t (*reader)(void *, void *, int32_t *private_field), int32_t *private_field);
+int32_t meltype_tsf_is_reinjected(void *state, uint32_t key);
+/* Return 1 sent, 2 loop suppressed, 0 send failed, -1 invalid. Sender borrows
+   two Windows INPUTs; NULL uses SendInput, nonnull substitutes transport.
+   Tests use substitutes and inject no keys. Optional error receives last-error.
+   All pointers/callbacks valid until return on the token's TSF thread. */
+struct tagINPUT;
+int32_t meltype_tsf_reinject(void *state, uint32_t key, void *lifetime, void *owner,
+    uint32_t (*sender)(void *, const struct tagINPUT *inputs, uint32_t count), uint32_t *error);
 #endif
 #ifdef __cplusplus
 }

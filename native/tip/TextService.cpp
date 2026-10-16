@@ -200,9 +200,18 @@ HRESULT RunEditSession(ITfContext* context, TfClientId clientId, DWORD flags, st
 }
 #endif
 
-TextService::TextService() { DllAddRef(); }
+TextService::TextService() {
+    DllAddRef();
+#ifdef MELTYPE_RUST_CORE
+    keyState_=RustKeyStateCreate();
+#endif
+}
 
 TextService::~TextService() {
+    deactivated_=true;
+#ifdef MELTYPE_RUST_CORE
+    void* keys=keyState_;keyState_=nullptr;RustKeyStateDestroy(keys);
+#endif
     ClearResume();
 #ifdef MELTYPE_RUST_CORE
     if (abandoned_) RustAbandonedDestroy(abandoned_);
@@ -260,11 +269,18 @@ STDMETHODIMP TextService::ActivateEx(ITfThreadMgr* threadMgr, TfClientId clientI
     ownEdit_ = false;
     secretChecked_ = false;
     ForgetSecretField();
+#ifdef MELTYPE_RUST_CORE
+    if (!keyState_) keyState_=RustKeyStateCreate();
+    RustKeyStateReset(keyState_);
+#else
     markerSeen_ = false;
+#endif
     ClearResume();
     lastConverting_ = false;
+#ifndef MELTYPE_RUST_CORE
     reinjectGuardVk_ = 0;
     reinjectGuardCount_ = 0;
+#endif
 #ifdef MELTYPE_RUST_CORE
     if (!abandoned_) abandoned_ = RustAbandonedCreate();
     RustAbandonedReset(abandoned_);
@@ -273,7 +289,9 @@ STDMETHODIMP TextService::ActivateEx(ITfThreadMgr* threadMgr, TfClientId clientI
 #endif
     staleCommitTries_ = 0;
     staleVk_ = 0;
+#ifndef MELTYPE_RUST_CORE
     for (Reinjected& pending : reinjected_) pending = {};
+#endif
     passVk_ = 0;
     passReason_ = nullptr;
     keyFailed_ = false;
@@ -766,8 +784,12 @@ void TextService::Hello() {
 }
 
 void TextService::ForgetSecretField() {
+#ifdef MELTYPE_RUST_CORE
+    RustKeyCacheClear(keyState_);
+#else
     secretVk_ = 0;
     secretContext_.Reset();
+#endif
 }
 
 bool TextService::WouldEat(ITfContext* context, UINT vk, LPARAM lParam, wchar_t& ch, bool test) {
@@ -912,21 +934,21 @@ bool TextService::WouldEat(ITfContext* context, UINT vk, LPARAM lParam, wchar_t&
 
 #ifdef MELTYPE_RUST_CORE
 int TextService::ReadSecretForKey(ITfContext* context,UINT vk,bool test) {
-    ULONGLONG now=GetTickCount64();
-    int secret;
-    if (!test && vk==secretVk_ && context==secretContext_.Get() && now-secretTime_<200) {
-        secret=secretResult_;privateField_=secretPrivate_;
-    } else {secret=ReadSecretField(context);}
-    ForgetSecretField();
-    if (test) {
-        secretVk_=vk;secretContext_=context;secretTime_=now;
-        secretResult_=secret;secretPrivate_=privateField_;
-    }
-    return secret;
+    int field=0;
+    int result=RustKeySecret(keyState_,context,vk,test,this,static_cast<ITfTextInputProcessorEx*>(this),
+        [](void* p,void* c,int* field)->int {
+            try {auto* self=static_cast<TextService*>(p);int result=self->ReadSecretField(static_cast<ITfContext*>(c));*field=self->privateField_?1:0;return result;}
+            catch (...) {*field=0;return 1;}
+        },field);
+    privateField_=field!=0;
+    return result;
 }
 #endif
 
 bool TextService::IsReinjected(UINT vk) {
+#ifdef MELTYPE_RUST_CORE
+    return RustIsReinjected(keyState_,vk);
+#else
     // 送り直したキーは 1 回だけ素通しする。送り直すときに付けた印 (dwExtraInfo) で見分ける。
     // 印は前のメッセージのものが残っていることがあるので、送り直してまだ届いていないキーと同じキーのときだけ見る。
     // 印が届かないアプリのために、時刻でも見分ける (少し経っても届かなければ忘れる。押しっぱなしの次のキーを素通ししないように)
@@ -947,6 +969,7 @@ bool TextService::IsReinjected(UINT vk) {
         return ours;
     }
     return false;
+#endif
 }
 
 STDMETHODIMP TextService::OnTestKeyDown(ITfContext* context, WPARAM wParam, LPARAM lParam, BOOL* eaten) {
@@ -1202,6 +1225,14 @@ void TextService::ApplyMode(const JsonValue& reply) {
 }
 
 void TextService::Reinject(UINT vk) {
+#ifdef MELTYPE_RUST_CORE
+    if (vk>=256) return;
+    eatenDown_[vk]=false;
+    DWORD error=0;
+    int result=RustReinject(keyState_,vk,static_cast<ITfTextInputProcessorEx*>(this),error);
+    if (result==2) TipLog(L"同じキーの送り直しが続くので、やめます");
+    else if (result!=1) TipLog(L"キーをアプリに送り直せません: %lu",error);
+#else
     // 受け取ったキーを使わなかった: アプリに送り直す (Ctrl などは押されたままなので、組み合わせもそのまま届く)
     eatenDown_[vk] = false;
     // 前に送り直した同じキーがまだ届いていない (見分けられずに受け取ってしまった) のに、また送り直そうとしている:
@@ -1250,6 +1281,7 @@ void TextService::Reinject(UINT vk) {
         slot->vk = 0;
         TipLog(L"キーをアプリに送り直せません: %lu", GetLastError());
     }
+#endif
 }
 
 bool TextService::Request(const std::string& json, JsonValue& reply, DWORD timeoutMs, bool optional) {

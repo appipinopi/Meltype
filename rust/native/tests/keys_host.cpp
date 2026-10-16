@@ -42,6 +42,28 @@ int wmain() {
     BYTE shifted[256]={};shifted[VK_SHIFT]=shifted[VK_LSHIFT]=0x80;
     assert(SetKeyboardState(shifted));
     assert(RustKeyDown(VK_SHIFT) && RustKeyChar(VK_SPACE,0)==L' ');
+    void* keyState=RustKeyStateCreate();
+    assert(keyState);
+    int reads=0,privateField=0;
+    auto reader=[](void* p,void*,int* field)->int {++*static_cast<int*>(p);*field=1;return -1;};
+    assert(RustKeySecret(keyState,context,65,true,&reads,static_cast<ITfTextInputProcessorEx*>(service),reader,privateField)==-1);
+    assert(privateField==1 && reads==1 && document.refs==2);
+    assert(RustKeySecret(keyState,context,65,false,&reads,static_cast<ITfTextInputProcessorEx*>(service),reader,privateField)==-1);
+    assert(privateField==1 && reads==1 && document.refs==1);
+    DWORD error=0;
+    auto sender=[](void*,const INPUT* inputs,unsigned int count)->unsigned int {
+        assert(count==2);
+        assert(inputs[0].type==INPUT_KEYBOARD && inputs[0].ki.wVk==65 && inputs[0].ki.dwFlags==0);
+        assert(inputs[1].ki.dwFlags==KEYEVENTF_KEYUP && inputs[0].ki.dwExtraInfo==0x4d4c5450);
+        return 2;  // Controlled transport: no key is injected.
+    };
+    assert(RustReinject(keyState,65,static_cast<ITfTextInputProcessorEx*>(service),error,nullptr,sender)==1 && error==0);
+    LPARAM extra=SetMessageExtraInfo(0x4d4c5450);
+    assert(RustIsReinjected(keyState,65) && !RustIsReinjected(keyState,65));
+    SetMessageExtraInfo(extra);
+    auto failure=[](void*,const INPUT*,unsigned int)->unsigned int {SetLastError(ERROR_ACCESS_DENIED);return 0;};
+    assert(RustReinject(keyState,66,static_cast<ITfTextInputProcessorEx*>(service),error,nullptr,failure)==0 && error==ERROR_ACCESS_DENIED);
+    RustKeyStateReset(keyState);RustKeyStateDestroy(keyState);
     State state{service};state.snapshot.open=1;
     RustKeyCallbacks callbacks={
         &state,static_cast<ITfTextInputProcessorEx*>(service),
@@ -67,5 +89,5 @@ int wmain() {
     assert(RustWouldEat(context,VK_SPACE,0,true,callbacks,ch));
     assert(ch==L' ' && state.checked && state.queries==1 && state.passes==1);
     assert(document.refs==1 && g_locks==0);
-    puts("Actual TSF key adapters: production test/down/up, toggles/modifiers/translation, callback layout, Shift+Space and owner release during ready callback passed");
+    puts("Actual TSF key adapters: production test/down/up, keyboard/callback ABI, cached private metadata, controlled replay/marker, Shift+Space and owner release passed");
 }

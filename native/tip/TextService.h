@@ -176,10 +176,14 @@ private:
     bool disabled_ = false;
     bool ownProcess_ = false;      // Meltype.exe 自身の中で動いている (要求にスレッドを付ける)  // Meltype.exe 自身の中では動かない (自分のサーバーを待って固まるため)
     bool eatenDown_[256] = {};
+#ifdef MELTYPE_RUST_CORE
+    void* keyState_ = nullptr;
+#else
     struct Reinjected {
         UINT vk = 0;
         ULONGLONG time = 0;
     };
+#endif
 #ifdef MELTYPE_RUST_CORE
     void* resume_ = nullptr;  // Rust owns the saved range/context/text.
 #else
@@ -204,22 +208,26 @@ private:
     bool ForgetAbandoned(ITfComposition* composition);
     // 終わるときに、手放した変換中の文字をその場で終える
     void EndAbandonedNow();
+#ifndef MELTYPE_RUST_CORE
     UINT reinjectGuardVk_ = 0;     // 同じキーを続けて送り直した回数 (送り直しが止まらなくなるのを防ぐ)
     ULONGLONG reinjectGuardTime_ = 0;
     int reinjectGuardCount_ = 0;
     bool markerSeen_ = false;      // このアプリには送り直しの印が届く
     Reinjected reinjected_[4];     // 送り直して、まだ届いていないキー (それぞれ 1 回だけ素通しする)
+#endif
     UINT passVk_ = 0;              // OnTestKeyDown で素通しにしたキー
     ULONGLONG passTime_ = 0;
     bool caretMoved_ = false;      // 前に確定してから、キャレットが動いたかもしれない (次のキーで Meltype.exe に伝える)
     bool ownEdit_ = false;         // 自分の編集セッションが終わった通知を、キャレットが動いたことにしない
     bool secretChecked_ = false;   // このキーで、入力欄の種類 (パスワード欄でないこと) を確かめた
     bool secretWhileComposing_ = false;  // 変換中にパスワード欄になったが、受け取る前に確定できなかった (キーの処理の中で確定して送り直す)
+#ifndef MELTYPE_RUST_CORE
     UINT secretVk_ = 0;            // OnTestKeyDown で入力欄の種類を読んだキー・入力欄・時刻・結果 (続く OnKeyDown で 1 回だけ使う)
     Microsoft::WRL::ComPtr<ITfContext> secretContext_;
     ULONGLONG secretTime_ = 0;
     int secretResult_ = -1;
     bool secretPrivate_ = false;
+#endif
     bool privateField_ = false;    // 前に入力欄の種類を読んだとき、入力を覚えないように求める入力欄 (IS_PRIVATE) だった
     const wchar_t* scopeSource_ = nullptr;  // 入力欄の種類を前に読んだところ (ログ用)
     bool keepAppCaret_ = false;    // 確定したあと、キャレットを動かさない (クリック・別の入力欄で確定したとき)
