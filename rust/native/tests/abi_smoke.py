@@ -50,6 +50,10 @@ def main(library):
     api.meltype_commit.restype = c.c_void_p
     api.meltype_control.argtypes = [c.c_void_p, c.c_char_p]
     api.meltype_control.restype = c.c_void_p
+    api.meltype_tip_create.restype = c.c_void_p
+    api.meltype_tip_request.argtypes = [c.c_void_p, c.c_char_p]
+    api.meltype_tip_request.restype = c.c_void_p
+    api.meltype_tip_destroy.argtypes = [c.c_void_p]
     api.meltype_set_can_delete.argtypes = [c.c_void_p, c.c_int]
     api.meltype_set_private.argtypes = [c.c_void_p, c.c_int]
     api.meltype_set_direct.argtypes = [c.c_void_p, c.c_int]
@@ -101,6 +105,25 @@ def main(library):
             assert not key(scalar=ord("a"))["consumed"]
         finally:
             api.meltype_destroy(handle)
+        connection = api.meltype_tip_create()
+        assert connection
+        try:
+            def tip(letter, before):
+                request = {"op":"key", "sid":"completion", "process":"notepad.exe",
+                           "ch":ord(letter), "before":before, "canDelete":True}
+                return result(api.meltype_tip_request(connection, json.dumps(request).encode()))
+
+            before = ""
+            for letter in "/review":
+                value = tip(letter, before)
+                assert value["active"] and not value["consumed"]
+                assert value["commits"] == [] and value["view"] is None
+                before += letter
+            for letter in "kyou":
+                value = tip(letter, "/review ")
+            assert value["consumed"] and value["view"]["text"] == "きょう"
+        finally:
+            api.meltype_tip_destroy(connection)
         handle = api.meltype_create()
         try:
             api.meltype_set_direct(handle, 1)
