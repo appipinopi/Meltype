@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 appipinopi
-param([switch]$WithTip)
+param([switch]$WithTip, [switch]$NativeOnly)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot
 Push-Location $root
@@ -8,7 +8,10 @@ try {
     foreach ($target in 'x86_64-pc-windows-msvc', 'i686-pc-windows-msvc') {
         rustup target add $target
         if ($LASTEXITCODE -ne 0) { throw "rustup failed: $target" }
-        cargo build --locked --release --workspace --target $target --target-dir "$root/target"
+        # The TSF bridge needs both DLL architectures; the settings UI runs as x64.
+        # CI already builds the host workspace before packaging the bridge.
+        $packages = if ($NativeOnly -or $target -eq 'i686-pc-windows-msvc') { @('-p', 'meltype-native') } else { @('--workspace') }
+        cargo build --locked --release @packages --target $target --target-dir "$root/target"
         if ($LASTEXITCODE -ne 0) { throw "cargo failed: $target" }
     }
     if ($WithTip) {

@@ -145,3 +145,61 @@ fn undo_requires_capability_and_matching_surrounding_text() {
     s.reset();
     assert!(!s.undo_commit().consumed);
 }
+
+#[test]
+fn live_preview_retains_reading_promotes_to_clauses_and_respects_settings() {
+    use meltype_core::session::Clause;
+    let mut s = Session::default();
+    type_text(&mut s, "hashi");
+    assert_eq!(s.live_reading().as_deref(), Some("はし"));
+    let clause = || Clause::new("はし".into(), vec!["橋".into(), "箸".into()]);
+    assert!(s.update_live_conversion(vec![clause()]));
+    assert!(!s.is_converting());
+    assert_eq!(s.display(false), "橋");
+    assert_eq!(s.reading(), "はし");
+    s.begin_conversion(vec![]);
+    assert!(s.is_converting());
+    assert_eq!(s.result(false).view.unwrap().clauses, ["橋"]);
+    s.select(1);
+    type_text(&mut s, "hashi");
+    s.update_live_conversion(vec![clause()]);
+    assert_eq!(s.display(false), "箸");
+    s.key(8, 0, 0);
+    assert_eq!(s.display(false), "hash");
+    s.reset();
+    type_text(&mut s, "hello");
+    assert!(s.live_reading().is_none());
+    s.reset();
+    type_text(&mut s, "hashi");
+    s.settings
+        .set("LiveConversion", serde_json::json!(false))
+        .unwrap();
+    assert!(!s.update_live_conversion(vec![clause()]));
+    assert_eq!(s.display(false), "はし");
+    s.settings
+        .set("LiveConversion", serde_json::json!(true))
+        .unwrap();
+    s.private = true;
+    assert!(s.live_reading().is_none());
+}
+
+#[test]
+fn code_line_toggle_survives_enter_and_resets_on_caret_move() {
+    let mut s = Session::default();
+    s.code_input = true;
+    s.set_context(Some("let value = "), None);
+    assert!(s.code_english());
+    assert!(!s.key(0, 'a' as i32, 0).consumed);
+    assert!(s.set_code_line(true));
+    type_text(&mut s, "nihongo");
+    assert_eq!(s.commit().commits[0].text, "にほんご");
+    s.caret_moved(13, false);
+    assert!(!s.code_english());
+    s.caret_moved(0x25, false);
+    assert!(s.code_english());
+    s.set_context(Some("// comment "), None);
+    assert!(!s.code_english());
+    assert!(!s.set_code_line(true));
+    type_text(&mut s, "nihongo");
+    assert_eq!(s.commit().commits[0].text, "にほんご");
+}

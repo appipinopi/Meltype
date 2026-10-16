@@ -97,23 +97,36 @@ unsafe fn request_inner(connection: *mut c_void, request: *const c_char) -> Opti
             .and_then(|n| i32::try_from(n).ok())
             .unwrap_or(0)
     };
+    set(handle, |s| {
+        s.set_process(request["process"].as_str().unwrap_or(""));
+        // Older TSF clients cannot notify caret movements or toggle code lines.
+        s.code_input &= request["code"] == true;
+        s.set_context(request["before"].as_str(), request["after"].as_str());
+        if request["moved"] == true {
+            s.caret_moved(0, false);
+        }
+        if let Some(passed) = request["passed"]
+            .as_i64()
+            .and_then(|n| i32::try_from(n).ok())
+        {
+            s.caret_moved(passed, request["ctrl"] == true);
+        }
+    });
     let result = match op {
         "key" => {
-            set(handle, |s| {
-                s.set_process(request["process"].as_str().unwrap_or(""))
-            });
             meltype_set_direct(handle, i32::from(request["direct"] == true));
             meltype_set_private(handle, i32::from(request["private"] == true));
             let before = request["before"]
                 .as_str()
                 .and_then(|s| CString::new(s).ok());
+            let after = request["after"].as_str().and_then(|s| CString::new(s).ok());
             meltype_handle_key(
                 handle,
                 number("vk"),
                 number("ch"),
                 number("mods"),
                 before.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
-                std::ptr::null(),
+                after.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
             )
         }
         "commit" => meltype_commit(handle),
@@ -124,20 +137,63 @@ unsafe fn request_inner(connection: *mut c_void, request: *const c_char) -> Opti
                 meltype_select_candidate(handle, number("index"))
             }
         }
-        "mode" | "toggle" => run(handle, |s| s.result(false)),
+        "mode" => run(handle, |s| s.result(false)),
+        "toggle" => run(handle, |s| {
+            let consumed = s.set_code_line(request["japanese"] == true);
+            s.result(consumed)
+        }),
         _ => return Some(inactive()),
     };
     let text = take(result)?;
     let mut value: Value = serde_json::from_str(&text).ok()?;
-    value["active"] = json!(true);
-    value["code"] = json!(code);
-    value["english"] = json!(request["direct"] == true);
+    let (active, effective_code, english) = super::sessions()
+        .lock()
+        .ok()?
+        .get(&(handle as usize))
+        .map(|s| {
+            (
+                s.settings.boolean("Enabled"),
+                s.code_input,
+                s.direct || s.code_english(),
+            )
+        })?;
+    value["active"] = json!(active);
+    value["code"] = json!(effective_code);
+    value["english"] = json!(english);
     value["directDetection"] = json!(false);
     Some(value.to_string())
 }
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn code_toggle_and_caret_notification_reach_session() {
+        unsafe {
+            let connection = meltype_tip_create();
+            let call = |op: &str, extra: Value| -> Value {
+                let mut request = json!({"op":op,"sid":"code","process":"Code.exe","code":true,"before":"let value = "});
+                request
+                    .as_object_mut()
+                    .unwrap()
+                    .extend(extra.as_object().unwrap().clone());
+                let request = CString::new(request.to_string()).unwrap();
+                serde_json::from_str(
+                    &take(meltype_tip_request(connection, request.as_ptr())).unwrap(),
+                )
+                .unwrap()
+            };
+            assert_eq!(call("mode", json!({}))["english"], true);
+            let result = call("toggle", json!({"japanese":true}));
+            assert_eq!(result["consumed"], true);
+            assert_eq!(result["english"], false);
+            assert_eq!(call("mode", json!({"passed":37}))["english"], true);
+            assert_eq!(
+                call("mode", json!({"before":"// comment "}))["english"],
+                false
+            );
+            meltype_tip_destroy(connection);
+        }
+    }
     #[test]
     fn sessions_are_scoped_to_connection() {
         unsafe {

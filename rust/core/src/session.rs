@@ -87,10 +87,12 @@ pub struct Session {
     candidates: Vec<String>,
     selected: usize,
     clauses: Vec<Clause>,
+    live_clauses: Vec<Clause>,
     selected_clause: usize,
     explicit: Option<String>,
     pub direct: bool,
     pub code_input: bool,
+    code_japanese: bool,
     pub private: bool,
     pub preferences: Preferences,
     pub settings: Settings,
@@ -116,10 +118,12 @@ impl Default for Session {
             candidates: vec![],
             selected: 0,
             clauses: vec![],
+            live_clauses: vec![],
             selected_clause: 0,
             explicit: None,
             direct: false,
             code_input: false,
+            code_japanese: false,
             private: false,
             preferences: Preferences::default(),
             settings: Settings::default(),
@@ -186,6 +190,10 @@ impl Session {
         Ok(result)
     }
     pub fn set_process(&mut self, process: &str) {
+        if self.process != process {
+            self.code_japanese = false;
+            self.last_commit = None;
+        }
         self.process = process.into();
         let settings = self
             .store
@@ -243,6 +251,37 @@ impl Session {
             self.result(false)
         }
     }
+    pub fn code_english(&self) -> bool {
+        self.code_input
+            && !self.code_japanese
+            && !self.direct
+            && crate::context::classify(&self.before) == crate::context::LineKind::Code
+    }
+    pub fn set_code_line(&mut self, japanese: bool) -> bool {
+        if !self.code_input || self.direct || !self.raw.is_empty() {
+            return false;
+        }
+        if japanese {
+            if self.code_japanese
+                || crate::context::classify(&self.before) != crate::context::LineKind::Code
+            {
+                return false;
+            }
+            self.code_japanese = true;
+        } else {
+            if !self.code_japanese {
+                return false;
+            }
+            self.code_japanese = false;
+        }
+        true
+    }
+    pub fn caret_moved(&mut self, vk: i32, control: bool) {
+        self.last_commit = None;
+        if control || matches!(vk, 0 | 9 | 0x21..=0x28 | 0x2e) {
+            self.code_japanese = false;
+        }
+    }
     pub fn raw(&self) -> &str {
         &self.raw
     }
@@ -265,6 +304,9 @@ impl Session {
         }
         if let Some(text) = self.candidates.get(self.selected) {
             return text.clone();
+        }
+        if !self.live_clauses.is_empty() {
+            return self.live_clauses.iter().map(Clause::text).collect();
         }
         if self.settings.text("InputStyle") == "Kana" {
             return self.punctuate(self.kana_text.clone());
@@ -370,6 +412,7 @@ impl Session {
         self.raw.clear();
         self.candidates.clear();
         self.clauses.clear();
+        self.live_clauses.clear();
         self.selected_clause = 0;
         self.explicit = None;
         self.selected = 0;
@@ -392,7 +435,7 @@ impl Session {
                 reading: reading.clone(),
                 text: text.clone(),
             }];
-            for clause in &self.clauses {
+            for clause in self.clauses.iter().chain(&self.live_clauses) {
                 changes.push(Change::Conversion {
                     reading: clause.reading.clone(),
                     text: clause.text().to_owned(),
@@ -491,6 +534,11 @@ impl Session {
         if self.raw.is_empty() || self.is_converting() {
             return;
         }
+        if !self.live_clauses.is_empty() {
+            let clauses = std::mem::take(&mut self.live_clauses);
+            self.begin_clauses(clauses);
+            return;
+        }
         let reading = self.reading();
         let mut candidates = self
             .preferences
@@ -532,8 +580,55 @@ impl Session {
         self.explicit = None;
         self.selected_prediction = -1;
     }
+    /// Request live conversion only for settled Japanese input. English islands
+    /// and protected tokens retain their original text.
+    pub fn live_reading(&self) -> Option<String> {
+        if !self.settings.boolean("LiveConversion")
+            || self.is_converting()
+            || self.explicit.is_some()
+            || self.direct
+            || self.private
+            || self.code_english()
+            || !self.settings.boolean("Enabled")
+            || self.raw.is_empty()
+        {
+            return None;
+        }
+        let reading = self.reading();
+        if reading.chars().count() < 2
+            || romaji::hiragana(&self.raw, false) != reading
+            || Dictionary::bundled()
+                .mixed(&self.raw, false)
+                .chars()
+                .any(|c| c.is_ascii_alphabetic())
+            || reading.chars().any(|c| !crate::linguistics::kana(c))
+        {
+            return None;
+        }
+        Some(reading)
+    }
+    pub fn update_live_conversion(&mut self, mut clauses: Vec<Clause>) -> bool {
+        let Some(reading) = self.live_reading() else {
+            return false;
+        };
+        if clauses.is_empty()
+            || clauses.iter().any(|c| {
+                c.reading.is_empty() || c.candidates.is_empty() || c.selected >= c.candidates.len()
+            })
+            || clauses
+                .iter()
+                .map(|c| c.reading.as_str())
+                .collect::<String>()
+                != reading
+        {
+            return false;
+        }
+        self.rank_clauses(&mut clauses);
+        self.live_clauses = clauses;
+        true
+    }
     /// Accept segments only when they cover the entire current reading.
-    pub fn begin_clauses(&mut self, clauses: Vec<Clause>) -> bool {
+    pub fn begin_clauses(&mut self, mut clauses: Vec<Clause>) -> bool {
         if self.raw.is_empty()
             || clauses.is_empty()
             || clauses.iter().any(|c| {
@@ -547,12 +642,22 @@ impl Session {
         {
             return false;
         }
+        self.rank_clauses(&mut clauses);
         self.clauses = clauses;
         self.selected_clause = 0;
         self.explicit = None;
         self.selected_prediction = -1;
         self.sync_clause();
         true
+    }
+    fn rank_clauses(&self, clauses: &mut [Clause]) {
+        for clause in clauses {
+            if let Some(preferred) = self.preferences.selected.get(&clause.reading) {
+                if let Some(index) = clause.candidates.iter().position(|c| c == preferred) {
+                    clause.selected = index;
+                }
+            }
+        }
     }
     fn sync_clause(&mut self) {
         if let Some(clause) = self.clauses.get(self.selected_clause) {
@@ -614,8 +719,7 @@ impl Session {
         if ch < 0 || char::from_u32(ch as u32).is_none() {
             return self.result(false);
         }
-        let code_direct = self.code_input
-            && crate::context::classify(&self.before) == crate::context::LineKind::Code;
+        let code_direct = self.code_english();
         if modifiers & 14 != 0
             || self.direct
             || self.private
@@ -635,6 +739,7 @@ impl Session {
                 if self.is_converting() {
                     self.candidates.clear();
                     self.clauses.clear();
+                    self.live_clauses.clear();
                     self.selected_clause = 0;
                     self.explicit = None;
                 } else {
@@ -648,6 +753,7 @@ impl Session {
                 }
                 self.candidates.clear();
                 self.clauses.clear();
+                self.live_clauses.clear();
                 self.selected_clause = 0;
                 self.explicit = None;
                 self.raw.pop();
@@ -755,6 +861,7 @@ impl Session {
             0x75..=0x79 if !self.raw.is_empty() => {
                 self.candidates.clear();
                 self.clauses.clear();
+                self.live_clauses.clear();
                 self.selected_clause = 0;
                 self.case_cycle = if self.function_key == vk {
                     (self.case_cycle + 1) % 3
@@ -799,6 +906,7 @@ impl Session {
                     } else {
                         self.candidates.clear();
                         self.clauses.clear();
+                        self.live_clauses.clear();
                         self.selected_clause = 0;
                         vec![]
                     };

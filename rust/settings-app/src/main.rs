@@ -124,6 +124,7 @@ impl App {
                 self.action(json!({"op":"profile_delete","name":self.profile}));
             }
         });
+        ui.label("LiveConversionは外部変換器を接続したデスクトップ入力で動作します。");
         ui.label(format!("現在: {}", self.settings.text("ActiveProfile")));
         ui.checkbox(
             &mut self.show_all,
@@ -394,6 +395,7 @@ impl App {
 fn supported(key: &str) -> bool {
     [
         "Enabled",
+        "LiveConversion",
         "AppRules",
         "AppKinds",
         "LearningEnabled",

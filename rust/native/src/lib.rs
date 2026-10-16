@@ -196,6 +196,53 @@ pub extern "C" fn meltype_destroy(handle: *mut c_void) {
     }
 }
 
+unsafe fn external_conversion(reading: &str, before: *const c_char) -> (Vec<Clause>, Vec<String>) {
+    let mut external = Vec::new();
+    let mut segments = Vec::new();
+    if let Ok(mut mozc) = MOZC.lock() {
+        if let Some(backend) = mozc.as_mut() {
+            if let Ok(values) = backend.clauses(reading, &read(before).unwrap_or_default()) {
+                segments = values;
+            } else {
+                *mozc = None;
+            }
+        }
+    }
+    let callbacks = CALLBACKS.lock().map(|c| *c).unwrap_or_default();
+    let input = CString::new(reading).unwrap();
+    if let Some(callback) = callbacks.clauses {
+        if let Some(text) = take(callback(input.as_ptr(), before)) {
+            let clauses: Option<Vec<_>> = text.lines().map(|line| line.split_once('\t')).collect();
+            if let Some(clauses) = clauses {
+                if clauses.iter().map(|(r, _)| *r).collect::<String>() == reading {
+                    segments = clauses
+                        .into_iter()
+                        .map(|(r, t)| {
+                            let mut candidates = vec![t.to_owned()];
+                            if let (Some(callback), Ok(input)) =
+                                (callbacks.candidates, CString::new(r))
+                            {
+                                if let Some(text) = take(callback(input.as_ptr())) {
+                                    candidates.extend(
+                                        text.lines().filter(|s| !s.is_empty()).map(str::to_owned),
+                                    );
+                                }
+                            }
+                            Clause::new(r.to_owned(), candidates)
+                        })
+                        .collect();
+                }
+            }
+        }
+    }
+    if let Some(callback) = callbacks.candidates {
+        if let Some(text) = take(callback(input.as_ptr())) {
+            external.extend(text.lines().filter(|s| !s.is_empty()).map(str::to_owned));
+        }
+    }
+    (segments, external)
+}
+
 /// # Safety
 /// before/after, when non-null, must point to valid NUL-terminated UTF-8.
 /// Calls for one session must be serialized. Registered callbacks must remain
@@ -219,61 +266,17 @@ pub unsafe extern "C" fn meltype_handle_key(
                         && !s.direct
                         && !s.private
                         && s.settings.boolean("Enabled")
-                        && !s.code_input
+                        && !s.code_english()
+                        && (s.display(true) != s.raw() || s.settings.boolean("SeparateKeyRoles"))
                         && modifiers & 14 == 0
                 })
                 .map(Session::reading)
         });
-        let mut external = Vec::new();
-        let mut segments = Vec::new();
-        if let Some(reading) = reading {
-            if let Ok(mut mozc) = MOZC.lock() {
-                if let Some(backend) = mozc.as_mut() {
-                    if let Ok(values) = backend.clauses(&reading, &read(before).unwrap_or_default())
-                    {
-                        segments = values;
-                    } else {
-                        *mozc = None;
-                    }
-                }
-            }
-            let callbacks = CALLBACKS.lock().map(|c| *c).unwrap_or_default();
-            let input = CString::new(reading.clone()).unwrap();
-            if let Some(callback) = callbacks.clauses {
-                if let Some(text) = take(callback(input.as_ptr(), before)) {
-                    let clauses: Option<Vec<_>> =
-                        text.lines().map(|line| line.split_once('\t')).collect();
-                    if let Some(clauses) = clauses {
-                        if clauses.iter().map(|(r, _)| *r).collect::<String>() == reading {
-                            segments = clauses
-                                .into_iter()
-                                .map(|(r, t)| {
-                                    let mut candidates = vec![t.to_owned()];
-                                    if let (Some(callback), Ok(input)) =
-                                        (callbacks.candidates, CString::new(r))
-                                    {
-                                        if let Some(text) = take(callback(input.as_ptr())) {
-                                            candidates.extend(
-                                                text.lines()
-                                                    .filter(|s| !s.is_empty())
-                                                    .map(str::to_owned),
-                                            );
-                                        }
-                                    }
-                                    Clause::new(r.to_owned(), candidates)
-                                })
-                                .collect();
-                        }
-                    }
-                }
-            }
-            if let Some(callback) = callbacks.candidates {
-                if let Some(text) = take(callback(input.as_ptr())) {
-                    external.extend(text.lines().filter(|s| !s.is_empty()).map(str::to_owned));
-                }
-            }
-        }
-        run(handle, |s| {
+        let (segments, external) = reading
+            .as_deref()
+            .map(|r| external_conversion(r, before))
+            .unwrap_or_default();
+        let result = run(handle, |s| {
             s.set_context(read(before).as_deref(), read(after).as_deref());
             if !segments.is_empty() && s.begin_clauses(segments) {
                 s.result(true)
@@ -283,7 +286,37 @@ pub unsafe extern "C" fn meltype_handle_key(
             } else {
                 s.key(vk, ch, modifiers)
             }
-        })
+        });
+        let live = if modifiers & 14 == 0 && (ch >= 0x20 || vk == 8) {
+            sessions()
+                .lock()
+                .ok()
+                .and_then(|all| all.get(&(handle as usize)).and_then(Session::live_reading))
+        } else {
+            None
+        };
+        if let Some(reading) = live {
+            let (mut clauses, candidates) = external_conversion(&reading, before);
+            if clauses.is_empty() && !candidates.is_empty() {
+                clauses.push(Clause::new(reading, candidates));
+            }
+            if !clauses.is_empty() {
+                if let Some(text) = take(result) {
+                    if let Ok(previous) = serde_json::from_str::<meltype_core::SessionResult>(&text)
+                    {
+                        return run(handle, |s| {
+                            s.update_live_conversion(clauses);
+                            let mut result = s.result(previous.consumed);
+                            result.commits = previous.commits;
+                            result
+                        });
+                    }
+                    return allocate(&text);
+                }
+                return std::ptr::null_mut();
+            }
+        }
+        result
     }))
     .unwrap_or(std::ptr::null_mut())
 }

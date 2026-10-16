@@ -27,7 +27,7 @@ jobs:
       - run: cargo build --workspace --release --locked
       - if: runner.os == 'Windows'
         shell: pwsh
-        run: ./rust/build-windows.ps1 -WithTip
+        run: ./rust/build-windows.ps1 -WithTip -NativeOnly
       - uses: actions/upload-artifact@v4
         with:
           name: rust-${{ runner.os }}
