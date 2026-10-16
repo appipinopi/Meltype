@@ -20,6 +20,7 @@ pub struct Corrector {
     function: HashSet<String>,
     max_length: usize,
     cache: Mutex<Cache>,
+    common_cache: Mutex<HashMap<String, bool>>,
 }
 impl Corrector {
     pub fn bundled() -> &'static Self {
@@ -36,6 +37,7 @@ impl Corrector {
             function,
             max_length: 0,
             cache: Mutex::new(HashMap::new()),
+            common_cache: Mutex::new(HashMap::new()),
         };
         for line in readings.lines().filter(|l| !l.starts_with('#')) {
             let mut fields = line.split('\t');
@@ -132,6 +134,27 @@ impl Corrector {
         }
     }
     pub fn is_common_japanese(&self, raw: &str) -> bool {
+        if raw.len() > 128 || !raw.bytes().all(|c| c.is_ascii_alphabetic()) {
+            return false;
+        }
+        if let Some(result) = self
+            .common_cache
+            .lock()
+            .ok()
+            .and_then(|cache| cache.get(raw).copied())
+        {
+            return result;
+        }
+        let result = self.common_uncached(raw);
+        if let Ok(mut cache) = self.common_cache.lock() {
+            if cache.len() >= 4096 {
+                cache.clear();
+            }
+            cache.insert(raw.into(), result);
+        }
+        result
+    }
+    fn common_uncached(&self, raw: &str) -> bool {
         let analysis = romaji::analyze(&raw.to_ascii_lowercase(), true);
         if !analysis.valid || !analysis.partial.is_empty() && analysis.partial != "n" {
             return false;

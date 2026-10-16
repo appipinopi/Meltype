@@ -2,7 +2,7 @@ name: Rust preview
 on:
   workflow_dispatch:
   pull_request:
-    paths: ['rust/**', 'android/**', 'Cargo.*', 'dictionaries/**', 'native/tip/**', '.github/workflows/rust.yml']
+    paths: ['rust/**', 'android/**', 'Cargo.*', 'dictionaries/**', 'native/tip/**', 'linux/fcitx5/**', '.github/workflows/rust.yml']
 permissions:
   contents: read
 concurrency:
@@ -24,6 +24,13 @@ jobs:
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo test --workspace --locked
       - run: cargo run -p meltype-core --example quality -- quality-report.json --check
+      - name: Build fcitx5 adapter
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake libfcitx5core-dev libfcitx5utils-dev libfcitx5config-dev
+          cmake -S linux/fcitx5 -B linux/build/fcitx5-rust
+          cmake --build linux/build/fcitx5-rust --parallel 2
       - run: cargo build --workspace --release --locked
       - uses: actions/setup-python@v5
         with:

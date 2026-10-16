@@ -146,8 +146,17 @@ pub fn execute(store: &Store, r: &Value) -> io::Result<Value> {
         }
         "learning_list" => {
             let s = store.load()?;
+            let languages: serde_json::Map<String, Value> = s
+                .language_counts
+                .iter()
+                .map(|(word, entry)| {
+                    let mut value = serde_json::to_value(entry).unwrap();
+                    value["active"] = json!(entry.active(word));
+                    (word.clone(), value)
+                })
+                .collect();
             Ok(
-                json!({"languages":s.language_counts,"conversions":s.preferences.selected,"translations":s.translations,"phrases":s.phrases}),
+                json!({"languages":languages,"conversions":s.preferences.selected,"translations":s.translations,"phrases":s.phrases}),
             )
         }
         "learning_clear" => {

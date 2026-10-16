@@ -60,6 +60,19 @@ pub struct LanguageEntry {
     pub explicit: bool,
     pub used: i64,
 }
+impl LanguageEntry {
+    pub fn active(&self, word: &str) -> bool {
+        if !self.english || self.count.max(1) >= 2 {
+            return true;
+        }
+        let analysis = crate::romaji::analyze(word, true);
+        !(crate::typo::Corrector::bundled().is_common_japanese(word)
+            || !self.explicit
+                && word.len() <= 2
+                && analysis.valid
+                && (analysis.partial.is_empty() || analysis.partial == "n"))
+    }
+}
 #[derive(Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Phrase {
@@ -87,6 +100,29 @@ pub enum Change {
     },
 }
 impl State {
+    fn rebuild_language_preferences(&mut self) {
+        for (word, entry) in &mut self.language_counts {
+            entry.count = entry.count.max(1);
+            if entry.active(word) {
+                self.preferences.english.insert(word.clone(), entry.english);
+            } else {
+                self.preferences.english.remove(word);
+            }
+        }
+        if self.language_counts.len() > 3000 {
+            let mut oldest: Vec<_> = self
+                .language_counts
+                .iter()
+                .map(|(word, entry)| (entry.used, word.clone()))
+                .collect();
+            oldest.sort();
+            for (_, word) in oldest.into_iter().take(self.language_counts.len() - 2700) {
+                self.language_counts.remove(&word);
+                self.preferences.english.remove(&word);
+                self.used.remove(&format!("language:{word}"));
+            }
+        }
+    }
     pub fn apply(&mut self, change: Change) {
         match change {
             Change::Language {
@@ -106,14 +142,24 @@ impl State {
                 entry.count = entry.count.saturating_add(1);
                 entry.explicit |= explicit;
                 entry.used = now();
-                self.preferences.english.insert(raw.clone(), english);
+                if entry.active(&raw) {
+                    self.preferences.english.insert(raw.clone(), english);
+                } else {
+                    self.preferences.english.remove(&raw);
+                }
                 self.used.insert(format!("language:{raw}"), now());
+                if self.language_counts.len() > 3000 {
+                    self.rebuild_language_preferences();
+                }
             }
             Change::Conversion {
                 reading,
                 text,
                 translation,
             } => {
+                if crate::time_candidates::is_dynamic_choice(&reading, &text) {
+                    return;
+                }
                 if reading.chars().count() < 2 || text.is_empty() {
                     return;
                 }
@@ -131,6 +177,9 @@ impl State {
                 self.used.insert(format!("conversion:{reading}"), now());
             }
             Change::Phrase { reading, text } => {
+                if crate::time_candidates::is_dynamic_choice(&reading, &text) {
+                    return;
+                }
                 if reading.chars().count() < 3
                     || reading == text
                     || text.is_empty()
@@ -271,11 +320,13 @@ impl Store {
     }
     pub fn load(&self) -> io::Result<State> {
         let path = self.directory.join("state.json");
-        match fs::read(&path) {
+        let mut state: State = match fs::read(&path) {
             Ok(bytes) => serde_json::from_slice(&bytes).map_err(io::Error::other),
             Err(e) if e.kind() == io::ErrorKind::NotFound => self.import_legacy(),
             Err(e) => Err(e),
-        }
+        }?;
+        state.rebuild_language_preferences();
+        Ok(state)
     }
     pub fn update<T>(&self, f: impl FnOnce(&mut State) -> io::Result<T>) -> io::Result<T> {
         let _lock = self.lock()?;

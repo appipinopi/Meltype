@@ -16,4 +16,5 @@ final class Native {
     static native String select(long handle, int index);
     static native void direct(long handle, boolean enabled);
     static native void privateInput(long handle, boolean enabled);
+    static native void canDelete(long handle, boolean enabled);
 }

@@ -111,7 +111,16 @@ def main(library):
             assert value["view"]["text"] == "こん"
         finally:
             api.meltype_destroy(handle)
-    print("Native ABI: callbacks, live conversion, multi-edit, guarded undo, selection reconversion and privacy passed")
+        handle = api.meltype_create()
+        try:
+            api.meltype_set_can_delete(handle, 1)
+            for letter in "site PR":
+                key(32 if letter == " " else 0, ord(letter))
+            value = result(api.meltype_commit(handle))
+            assert value["commits"] == [{"deleteBefore":2,"text":"して PR","expect":"して"}]
+        finally:
+            api.meltype_destroy(handle)
+    print("Native ABI: callbacks, live conversion, multi-edit, guarded undo/correction, selection reconversion and privacy passed")
 
 
 if __name__ == "__main__":

@@ -35,6 +35,7 @@ public final class MeltypeService extends InputMethodService {
     @Override public void onStartInput(EditorInfo info, boolean restarting) {
         super.onStartInput(info, restarting);
         Native.reset(session); composing = false; shifted = false;
+        Native.canDelete(session, false);
         int kind = info.inputType & InputType.TYPE_MASK_CLASS;
         int variation = info.inputType & InputType.TYPE_MASK_VARIATION;
         boolean password = kind == InputType.TYPE_CLASS_TEXT && (
@@ -151,6 +152,7 @@ public final class MeltypeService extends InputMethodService {
     }
     private String key(int vk, int scalar, int modifiers) {
         InputConnection connection = getCurrentInputConnection();
+        Native.canDelete(session, connection != null && !privateEditor && connection.getTextBeforeCursor(0,0) != null);
         CharSequence after = connection == null || privateEditor ? "" : connection.getTextAfterCursor(4000,0);
         return Native.keyContext(session,vk,scalar,modifiers,beforeCursor(),after == null ? "" : after.toString());
     }
@@ -182,12 +184,19 @@ public final class MeltypeService extends InputMethodService {
                     int count = edit.optInt("deleteBefore");
                     if (count > 0) {
                         String expect = edit.optString("expect", "");
-                        CharSequence actual = connection.getTextBeforeCursor(count,0);
-                        if (expect.length() != count || actual == null || !expect.contentEquals(actual)
+                        String pending = composing ? composingText : "";
+                        CharSequence actual = connection.getTextBeforeCursor(count + pending.length(),0);
+                        if (expect.length() != count || actual == null || !(expect + pending).contentEquals(actual)) {
+                            Native.reset(session); return false;
+                        }
+                        // Android's cursor follows the composing text. Remove that
+                        // verified span before deleting the committed prefix.
+                        if (!pending.isEmpty() && !connection.setComposingText("",1)
                                 || !connection.deleteSurroundingText(count,0)) {
                             Native.reset(session); composing = false; composingText = "";
                             return false;
                         }
+                        composing = false; composingText = "";
                     }
                     if (!edit.getString("text").isEmpty()) connection.commitText(edit.getString("text"),1);
                 }

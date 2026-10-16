@@ -79,7 +79,7 @@ public final class SettingsActivity extends Activity {
             {"Enabled","入力を有効にする"}, {"LearningEnabled","入力から学習する"},
             {"PredictiveCandidates","予測候補"}, {"TranslationCandidates","英訳候補"},
             {"ShowCandidateMeanings","候補の意味"}, {"ShowTypedKeys","入力したキーを表示"},
-            {"CorrectTypos","書き間違いの提案"}, {"SpaceAroundEnglish","英語の前後に空白"},
+            {"CorrectTypos","書き間違いの提案"}, {"AutoCorrectAfterCommit","次の語に合わせて確定後に訂正"}, {"SpaceAroundEnglish","英語の前後に空白"},
             {"SlashAsMiddleDot","スラッシュを中点にする"}, {"TabConversion","Tabで変換"},
             {"ContinueAfterConversion","変換後も入力を続ける"}, {"SeparateKeyRoles","変換キーの役割を分ける"}
         };
@@ -127,7 +127,8 @@ public final class SettingsActivity extends Activity {
         Iterator<String> names = languages.keys();
         while (names.hasNext()) {
             String name = names.next(); JSONObject entry = languages.getJSONObject(name);
-            label(name + " → " + (entry.optBoolean("english") ? "英語" : "日本語"));
+            label(name + " → " + (entry.optBoolean("english") ? "英語" : "日本語") +
+                    (entry.optBoolean("active",true) ? "" : "（もう一度英語で確定すると有効）"));
         }
         label("覚えた変換");
         JSONObject conversions = learned.getJSONObject("conversions"); names = conversions.keys();

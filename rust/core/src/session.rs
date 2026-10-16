@@ -123,6 +123,9 @@ pub struct Session {
     reconversion_origin: Option<String>,
     context_is_fresh: bool,
     composition_kana: bool,
+    correctable: Vec<crate::commit_correction::Record>,
+    space_started_conversion: bool,
+    chosen_conversion: bool,
 }
 
 impl Default for Session {
@@ -160,6 +163,9 @@ impl Default for Session {
             reconversion_origin: None,
             context_is_fresh: false,
             composition_kana: false,
+            correctable: vec![],
+            space_started_conversion: false,
+            chosen_conversion: false,
         }
     }
 }
@@ -186,6 +192,10 @@ impl Session {
         }
         self.context_is_fresh = before.is_some();
         if let Some(before) = before {
+            let expected: String = self.correctable.iter().map(|r| r.text.as_str()).collect();
+            if !before.ends_with(&expected) {
+                self.correctable.clear();
+            }
             self.before = before
                 .chars()
                 .rev()
@@ -218,6 +228,7 @@ impl Session {
     }
     pub fn set_process(&mut self, process: &str) {
         if self.process != process {
+            self.correctable.clear();
             self.code_japanese = false;
             self.last_commit = None;
         }
@@ -304,6 +315,7 @@ impl Session {
         true
     }
     pub fn caret_moved(&mut self, vk: i32, control: bool) {
+        self.correctable.clear();
         self.last_commit = None;
         self.direct_english_word = false;
         if control || matches!(vk, 0 | 9 | 0x21..=0x28 | 0x2e) {
@@ -525,11 +537,7 @@ impl Session {
             Some(true) => self.raw.clone(),
             Some(false) => romaji::hiragana(&self.raw, final_input),
             None => {
-                let english_context = self.before.split_whitespace().next_back().is_some_and(|s| {
-                    s.len() >= 2
-                        && s.chars()
-                            .all(|c| c.is_ascii_alphabetic() || ".,!?".contains(c))
-                }) && !self.before.chars().any(crate::linguistics::kanji);
+                let english_context = Dictionary::bundled().english_context(&self.before);
                 if self.settings.text("DetectionLevel") == "Manual"
                     || self.settings.text("DetectionLevel") == "Conservative"
                 {
@@ -555,14 +563,42 @@ impl Session {
             "ToutenFullWidthPeriod" => ('、', '．'),
             _ => ('、', '。'),
         };
-        text.chars()
-            .map(|c| match c {
-                '、' => comma,
-                '。' => period,
-                '/' if self.settings.boolean("SlashAsMiddleDot") => '・',
-                _ => c,
-            })
-            .collect()
+        let mut english = Dictionary::bundled().english_context(&self.before);
+        crate::protection::transform(&text, |part| {
+            part.chars()
+                .map(|c| {
+                    let latin_punctuation =
+                        english && !self.settings.boolean("JapanesePunctuationAfterEnglish");
+                    let output = match c {
+                        '、' => {
+                            if latin_punctuation {
+                                ','
+                            } else {
+                                comma
+                            }
+                        }
+                        '。' => {
+                            if latin_punctuation {
+                                '.'
+                            } else {
+                                period
+                            }
+                        }
+                        '!' if !latin_punctuation => '！',
+                        '?' if !latin_punctuation => '？',
+                        '~' if !latin_punctuation => '～',
+                        '/' if self.settings.boolean("SlashAsMiddleDot") => '・',
+                        _ => c,
+                    };
+                    if c.is_ascii_alphabetic() {
+                        english = true;
+                    } else if crate::linguistics::kana(c) || crate::linguistics::kanji(c) {
+                        english = false;
+                    }
+                    output
+                })
+                .collect()
+        })
     }
     pub fn result(&self, consumed: bool) -> SessionResult {
         SessionResult {
@@ -583,7 +619,17 @@ impl Session {
                     meaning: if self.settings.boolean("ShowCandidateMeanings")
                         && self.is_converting()
                     {
-                        Linguistics::bundled().meaning(&self.display(false), &self.reading())
+                        let text = self
+                            .candidates
+                            .get(self.selected)
+                            .cloned()
+                            .unwrap_or_else(|| self.display(false));
+                        let reading = self
+                            .clauses
+                            .get(self.selected_clause)
+                            .map(|c| c.reading.clone())
+                            .unwrap_or_else(|| self.reading());
+                        Linguistics::bundled().meaning(&text, &reading)
                     } else {
                         None
                     },
@@ -619,6 +665,9 @@ impl Session {
         }
     }
     pub fn reset(&mut self) {
+        self.correctable.clear();
+        self.space_started_conversion = false;
+        self.chosen_conversion = false;
         self.last_commit = None;
         self.reconversion_origin = None;
         self.composition_kana = false;
@@ -646,10 +695,20 @@ impl Session {
         }
         let reading = self.reading();
         if !self.private && !self.raw.is_empty() {
-            let mut changes = vec![Change::Phrase {
-                reading: reading.clone(),
-                text: text.clone(),
-            }];
+            let dynamic = crate::time_candidates::is_dynamic_choice(&reading, &text)
+                || self
+                    .clauses
+                    .iter()
+                    .chain(&self.live_clauses)
+                    .any(|c| crate::time_candidates::is_dynamic_choice(&c.reading, c.text()));
+            let mut changes = if dynamic {
+                vec![]
+            } else {
+                vec![Change::Phrase {
+                    reading: reading.clone(),
+                    text: text.clone(),
+                }]
+            };
             for clause in self.clauses.iter().chain(&self.live_clauses) {
                 changes.push(Change::Conversion {
                     reading: clause.reading.clone(),
@@ -657,7 +716,7 @@ impl Session {
                     translation: false,
                 });
             }
-            if self.is_converting() {
+            if self.is_converting() && !dynamic {
                 changes.push(Change::Conversion {
                     reading: reading.clone(),
                     text: text.clone(),
@@ -676,6 +735,60 @@ impl Session {
         if self.settings.boolean("SpaceAroundEnglish") {
             text = space_english(&text);
         }
+        let english =
+            !text.trim().is_empty() && text.trim().bytes().all(|b| b.is_ascii_alphabetic());
+        let after_english = Dictionary::bundled().english_context(&self.before);
+        let chosen = self.function_key != 0
+            || self.chosen_conversion
+            || self.selected_prediction >= 0
+            || self.is_converting() && self.selected != 0
+            || self.reconversion_origin.is_some();
+        let correction = if self.can_delete
+            && !self.private
+            && !self.direct
+            && !self.code_english()
+            && self.settings.boolean("AutoCorrectAfterCommit")
+            && !chosen
+        {
+            crate::commit_correction::replacement(
+                &self.correctable,
+                &self.raw,
+                english,
+                &self.before,
+                &self.preferences,
+            )
+        } else {
+            None
+        };
+        let mut records = std::mem::take(&mut self.correctable);
+        if let Some((original, replacement)) = &correction {
+            self.before.truncate(self.before.len() - original.len());
+            self.before.push_str(replacement);
+            records.clear();
+        }
+        let dictionary = Dictionary::bundled();
+        if !self.private
+            && !chosen
+            && self.reconversion_origin.is_none()
+            && dictionary.is_english(&self.raw)
+            && dictionary.is_japanese(&self.raw)
+        {
+            if records.last().is_some_and(|r| !r.space) {
+                records.clear();
+            }
+            records.push(crate::commit_correction::Record {
+                raw: self.raw.clone(),
+                text: text.clone(),
+                english,
+                space: self.space_started_conversion,
+                after_english,
+            });
+            if records.len() > 4 {
+                records.remove(0);
+            }
+        } else if !text.is_empty() {
+            records.clear();
+        }
         self.before.push_str(&text);
         if self.before.chars().count() > 4000 {
             self.before = self
@@ -691,6 +804,7 @@ impl Session {
         let raw = self.raw.clone();
         let keys = self.typed_keys.clone();
         self.reset();
+        self.correctable = records;
         if !self.private && !text.is_empty() {
             self.last_commit = Some(CommittedInput {
                 raw,
@@ -704,9 +818,13 @@ impl Session {
                 vec![]
             } else {
                 vec![TextEdit {
-                    delete_before: 0,
-                    text,
-                    expect: None,
+                    delete_before: correction
+                        .as_ref()
+                        .map_or(0, |(original, _)| original.encode_utf16().count()),
+                    text: correction
+                        .as_ref()
+                        .map_or(text.clone(), |(_, replacement)| replacement.clone() + &text),
+                    expect: correction.map(|(original, _)| original),
                 }]
             },
             view: None,
@@ -781,6 +899,7 @@ impl Session {
         let Some(CommittedInput { raw, text, keys }) = self.last_commit.take() else {
             return self.result(false);
         };
+        self.correctable.clear();
         if !self.before.ends_with(&text) {
             return self.result(false);
         }
@@ -800,6 +919,7 @@ impl Session {
         if index >= self.candidates.len() {
             return self.result(false);
         }
+        self.chosen_conversion = true;
         self.selected = index;
         if let Some(clause) = self.clauses.get_mut(self.selected_clause) {
             clause.selected = index;
@@ -848,6 +968,10 @@ impl Session {
                 unique.push(candidate);
             }
         }
+        let emoji = Dictionary::bundled().emoji(&reading);
+        unique.retain(|candidate| !emoji.contains(candidate));
+        unique.extend(emoji);
+        crate::math_candidates::augment(&reading, &self.before, &mut unique);
         if let Some(learned) = self.preferences.selected.get(&reading) {
             if let Some(i) = unique.iter().position(|s| s == learned) {
                 let value = unique.remove(i);
@@ -920,6 +1044,41 @@ impl Session {
                 != self.reading()
         {
             return false;
+        }
+        clauses = crate::time_candidates::join(clauses);
+        self.translation_candidates.clear();
+        let mut preceding = self.before.clone();
+        for clause in &mut clauses {
+            let mut values = vec![clause.text().to_owned()];
+            values.extend(
+                self.preferences
+                    .user_dictionary
+                    .get(&clause.reading)
+                    .cloned()
+                    .unwrap_or_default(),
+            );
+            values.extend(clause.candidates.clone());
+            values.extend(Dictionary::bundled().candidates(&clause.reading));
+            values.extend(Linguistics::bundled().words(&clause.reading));
+            if let Some(context) = Linguistics::bundled()
+                .context(&clause.reading, &format!("{}{}", self.before, self.after))
+            {
+                values.insert(0, context);
+            }
+            if self.settings.boolean("TranslationCandidates") {
+                let translations = Linguistics::bundled().translations(
+                    values.first().map(String::as_str).unwrap_or(""),
+                    &clause.reading,
+                );
+                self.translation_candidates.extend(translations.clone());
+                values.extend(translations);
+            }
+            let emoji = Dictionary::bundled().emoji(&clause.reading);
+            values.retain(|candidate| !emoji.contains(candidate));
+            values.extend(emoji);
+            crate::math_candidates::augment(&clause.reading, &preceding, &mut values);
+            *clause = Clause::new(clause.reading.clone(), values);
+            preceding.push_str(clause.text());
         }
         self.rank_clauses(&mut clauses);
         self.live_clauses.clear();
@@ -1028,13 +1187,16 @@ impl Session {
             || code_direct
             || !self.settings.boolean("Enabled")
         {
+            self.correctable.clear();
             let mut result = self.commit();
+            self.correctable.clear();
             result.consumed = false;
             return result;
         }
         match vk {
             0x20 if modifiers & 1 != 0 => {
                 let mut result = self.commit();
+                self.correctable.clear();
                 result.commits.push(TextEdit {
                     delete_before: 0,
                     text: "　".into(),
@@ -1044,7 +1206,10 @@ impl Session {
                 result.consumed = true;
                 result
             }
-            0x20 if self.raw.is_empty() => self.result(false),
+            0x20 if self.raw.is_empty() => {
+                self.correctable.clear();
+                self.result(false)
+            }
             0x10..=0x12 | 0xa0..=0xa5 | 0x5b..=0x5c => self.result(false),
             0x1b => {
                 if let Some(original) = self.reconversion_origin.take() {
@@ -1076,6 +1241,7 @@ impl Session {
             }
             0x08 => {
                 if self.raw.is_empty() {
+                    self.correctable.clear();
                     return self.result(false);
                 }
                 self.candidates.clear();
@@ -1092,7 +1258,12 @@ impl Session {
                 self.refresh_kana();
                 self.result(true)
             }
-            0x0d => self.commit(),
+            0x0d => {
+                if self.raw.is_empty() {
+                    self.correctable.clear();
+                }
+                self.commit()
+            }
             0x20 | 0x09
                 if self.raw.starts_with(self.settings.text("SnippetMark"))
                     && !self.settings.text("SnippetMark").is_empty()
@@ -1149,15 +1320,28 @@ impl Session {
                     && !self.settings.boolean("SeparateKeyRoles")
                     && (self.display(true) == self.raw
                         || self.before.is_empty()
-                            && Dictionary::bundled().is_common_english(&self.raw))
-                    && Dictionary::bundled().is_english(&self.raw)
+                            && Dictionary::bundled().is_common_english(&self.raw)
+                            && (!Dictionary::bundled().is_japanese(&self.raw)
+                                || self.raw.starts_with(|c: char| c.is_ascii_uppercase())
+                                || [
+                                    "no", "i", "we", "you", "they", "he", "she", "it", "the",
+                                    "this", "that", "please", "make", "do", "can", "will", "let",
+                                    "would", "should", "have", "has", "get", "take", "look",
+                                    "open", "run",
+                                ]
+                                .contains(&self.raw.to_ascii_lowercase().as_str())))
+                    && (Dictionary::bundled().is_english(&self.raw)
+                        || Dictionary::bundled().english_context(&self.before)
+                            && self.raw.bytes().all(|c| c.is_ascii_alphabetic()))
                 {
+                    self.space_started_conversion = true;
                     self.explicit = Some(self.raw.clone() + " ");
                     return self.commit();
                 }
                 if self.is_converting() {
                     self.cycle(if modifiers & 1 != 0 { -1 } else { 1 });
                 } else {
+                    self.space_started_conversion = true;
                     self.begin_conversion(vec![]);
                 }
                 self.result(true)
@@ -1261,13 +1445,16 @@ impl Session {
                 result
             }
             _ => {
+                self.correctable.clear();
                 let mut result = self.commit();
+                self.correctable.clear();
                 result.consumed = false;
                 result
             }
         }
     }
     fn cycle(&mut self, direction: i32) {
+        self.chosen_conversion = true;
         self.selected =
             (self.selected as i32 + direction).rem_euclid(self.candidates.len() as i32) as usize;
         if let Some(clause) = self.clauses.get_mut(self.selected_clause) {

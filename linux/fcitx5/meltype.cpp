@@ -47,6 +47,7 @@ struct Native {
     void (*destroy)(void *) = nullptr;
     char *(*handleKey)(void *, int, int, int, const char *, const char *) = nullptr;
     char *(*commit)(void *) = nullptr;
+    char *(*resetSession)(void *) = nullptr;
     char *(*selectCandidate)(void *, int) = nullptr;
     void (*setDirect)(void *, int) = nullptr;
     void (*setCanDelete)(void *, int) = nullptr; // 古い本体には無い
@@ -67,6 +68,7 @@ struct Native {
         destroy = reinterpret_cast<decltype(destroy)>(sym("meltype_destroy"));
         handleKey = reinterpret_cast<decltype(handleKey)>(sym("meltype_handle_key"));
         commit = reinterpret_cast<decltype(commit)>(sym("meltype_commit"));
+        resetSession = reinterpret_cast<decltype(resetSession)>(sym("meltype_reset"));
         selectCandidate = reinterpret_cast<decltype(selectCandidate)>(sym("meltype_select_candidate"));
         setDirect = reinterpret_cast<decltype(setDirect)>(sym("meltype_set_direct"));
         setCanDelete = reinterpret_cast<decltype(setCanDelete)>(sym("meltype_set_can_delete"));
@@ -322,6 +324,13 @@ size_t charLength(const std::string &text) {
     return n;
 }
 
+size_t utf16Length(const std::string &text) {
+    size_t units = 0;
+    for (unsigned char c : text)
+        if ((c & 0xC0) != 0x80) units += c >= 0xF0 ? 2 : 1;
+    return units;
+}
+
 class MeltypeEngine;
 
 // 入力欄ごとの本体のセッション
@@ -440,12 +449,12 @@ private:
     }
 
     // 入力欄のキャレットの前後の文字列 (それぞれ 20 文字まで)。入力欄が対応していなければ false。
-    static bool readSurrounding(fcitx::InputContext *ic, std::string &before, std::string &after) {
+    static bool readSurrounding(fcitx::InputContext *ic, std::string &before, std::string &after, size_t limit = 20) {
         if (!ic->capabilityFlags().test(fcitx::CapabilityFlag::SurroundingText) || !ic->surroundingText().isValid()) return false;
         const auto &text = ic->surroundingText().text();
         if (text.empty()) return false;
         size_t cursor = ic->surroundingText().cursor();
-        size_t start = cursor > 20 ? cursor - 20 : 0;
+        size_t start = cursor > limit ? cursor - limit : 0;
         size_t from = byteOffset(text, start), at = byteOffset(text, cursor), to = byteOffset(text, cursor + 20);
         before = text.substr(from, at - from);
         after = text.substr(at, to - at);
@@ -471,8 +480,20 @@ private:
             for (const auto &edit : commits->items) {
                 int remove = edit.integer("deleteBefore");
                 if (remove > 0) {
+                    const auto expected = edit.str("expect");
+                    std::string before, after;
+                    if (expected.empty() || utf16Length(expected) != static_cast<size_t>(remove)
+                        || !readSurrounding(ic, before, after, charLength(expected))
+                        || before.size() < expected.size()
+                        || before.compare(before.size() - expected.size(), expected.size(), expected) != 0) {
+                        auto *session = ic->propertyFor(&factory_)->session();
+                        if (native_.resetSession) native_.take(native_.resetSession(session));
+                        hidePreedit(ic);
+                        return;
+                    }
                     hidePreedit(ic);
-                    ic->deleteSurroundingText(-remove, static_cast<unsigned int>(remove));
+                    const auto count = static_cast<unsigned int>(charLength(expected));
+                    ic->deleteSurroundingText(-static_cast<int>(count), count);
                 } else {
                     ic->inputPanel().reset();
                     ic->propertyFor(&factory_)->preeditVisible = false;

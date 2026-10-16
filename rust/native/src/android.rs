@@ -133,6 +133,15 @@ pub extern "system" fn Java_moe_meltype_rust_Native_undo(
     java_result(&mut env, result)
 }
 #[no_mangle]
+pub extern "system" fn Java_moe_meltype_rust_Native_canDelete(
+    _env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    enabled: jboolean,
+) {
+    meltype_set_can_delete(handle as *mut c_void, i32::from(enabled != 0));
+}
+#[no_mangle]
 pub extern "system" fn Java_moe_meltype_rust_Native_reconvert(
     mut env: JNIEnv,
     _class: JClass,

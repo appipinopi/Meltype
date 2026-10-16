@@ -440,6 +440,7 @@ fn supported(key: &str) -> bool {
         "InputStyle",
         "Punctuation",
         "CorrectTypos",
+        "AutoCorrectAfterCommit",
         "TranslationCandidates",
         "PredictiveCandidates",
         "TabConversion",
