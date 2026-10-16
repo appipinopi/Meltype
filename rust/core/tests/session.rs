@@ -225,3 +225,28 @@ fn selection_reconversion_infers_reading_commits_and_cancels_without_learning() 
     assert!(!s.reconvert_selection("橋", Some("はし")).consumed);
     assert!(s.raw().is_empty());
 }
+
+#[test]
+fn composition_control_shortcuts_and_shift_space_match_native_key_roles() {
+    let mut s = Session::default();
+    type_text(&mut s, "kya");
+    assert_eq!(s.key(0x49, 0, 2).view.unwrap().text, "キャ");
+    assert_eq!(s.key(0x55, 0, 2).view.unwrap().text, "きゃ");
+    assert_eq!(s.key(0x4f, 0, 2).view.unwrap().text, "kya");
+    assert_eq!(s.key(0x50, 0, 2).view.unwrap().text, "ｋｙａ");
+    assert!(s.key(0x48, 0, 2).commits.is_empty());
+    assert_eq!(s.raw(), "ky");
+    s.key(0, 'a' as i32, 0);
+    let result = s.key(32, 32, 1);
+    assert_eq!(
+        result
+            .commits
+            .iter()
+            .map(|e| e.text.as_str())
+            .collect::<String>(),
+        "きゃ　"
+    );
+    assert!(result.view.is_none());
+    assert_eq!(s.key(32, 32, 1).commits[0].text, "　");
+    assert!(!s.key(32, 32, 0).consumed);
+}

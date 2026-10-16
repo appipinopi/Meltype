@@ -66,8 +66,8 @@ def main(library):
         handle = api.meltype_create()
         assert handle
         try:
-            def key(vk=0, scalar=0):
-                return result(api.meltype_handle_key(handle, vk, scalar, 0, None, None))
+            def key(vk=0, scalar=0, modifiers=0):
+                return result(api.meltype_handle_key(handle, vk, scalar, modifiers, None, None))
 
             for letter in "hashi":
                 value = key(scalar=ord(letter))
@@ -88,6 +88,11 @@ def main(library):
             assert value["selectionExpect"] == "橋"
             assert value["view"]["text"] == "橋"
             assert key(27)["commits"][0]["text"] == "橋"
+            for letter in "hashi":
+                key(scalar=ord(letter))
+            value = key(32,32,1)
+            assert [edit["text"] for edit in value["commits"]] == ["橋","　"]
+            assert value["view"] is None
             api.meltype_set_private(handle, 1)
             assert not key(scalar=ord("a"))["consumed"]
         finally:

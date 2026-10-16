@@ -268,7 +268,7 @@ pub unsafe extern "C" fn meltype_handle_key(
                         && s.settings.boolean("Enabled")
                         && !s.code_english()
                         && (s.display(true) != s.raw() || s.settings.boolean("SeparateKeyRoles"))
-                        && modifiers & 14 == 0
+                        && modifiers & 15 == 0
                 })
                 .map(Session::reading)
         });

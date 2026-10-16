@@ -786,6 +786,25 @@ impl Session {
             return self.result(false);
         }
         let code_direct = self.code_english();
+        if modifiers & 14 == 2
+            && !self.raw.is_empty()
+            && !self.direct
+            && !self.private
+            && !code_direct
+            && self.settings.boolean("Enabled")
+        {
+            let mapped = match vk {
+                0x48 => Some(8),
+                0x55 => Some(0x75),
+                0x49 => Some(0x76),
+                0x4f => Some(0x79),
+                0x50 => Some(0x78),
+                _ => None,
+            };
+            if let Some(mapped) = mapped {
+                return self.key(mapped, 0, modifiers & 1);
+            }
+        }
         if modifiers & 14 != 0
             || self.direct
             || self.private
@@ -797,6 +816,18 @@ impl Session {
             return result;
         }
         match vk {
+            0x20 if modifiers & 1 != 0 => {
+                let mut result = self.commit();
+                result.commits.push(TextEdit {
+                    delete_before: 0,
+                    text: "　".into(),
+                    expect: None,
+                });
+                self.before.push('　');
+                result.consumed = true;
+                result
+            }
+            0x20 if self.raw.is_empty() => self.result(false),
             0x10..=0x12 | 0xa0..=0xa5 | 0x5b..=0x5c => self.result(false),
             0x1b => {
                 if let Some(original) = self.reconversion_origin.take() {
@@ -835,6 +866,10 @@ impl Session {
                 self.live_clauses.clear();
                 self.selected_clause = 0;
                 self.explicit = None;
+                self.selected = 0;
+                self.selected_prediction = -1;
+                self.function_key = 0;
+                self.case_cycle = 0;
                 self.raw.pop();
                 self.kana_text.pop();
                 self.result(true)

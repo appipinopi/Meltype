@@ -129,7 +129,13 @@ public final class MeltypeService extends InputMethodService {
             case KeyEvent.KEYCODE_TAB -> 9;
             case KeyEvent.KEYCODE_F6 -> 0x75; case KeyEvent.KEYCODE_F7 -> 0x76;
             case KeyEvent.KEYCODE_F8 -> 0x77; case KeyEvent.KEYCODE_F9 -> 0x78; case KeyEvent.KEYCODE_F10 -> 0x79;
-            default -> 0;
+            case KeyEvent.KEYCODE_MINUS -> 0xbd; case KeyEvent.KEYCODE_EQUALS -> 0xbb;
+            case KeyEvent.KEYCODE_LEFT_BRACKET -> 0xdb; case KeyEvent.KEYCODE_RIGHT_BRACKET -> 0xdd;
+            case KeyEvent.KEYCODE_BACKSLASH -> 0xdc; case KeyEvent.KEYCODE_SEMICOLON -> 0xba;
+            case KeyEvent.KEYCODE_APOSTROPHE -> 0xde; case KeyEvent.KEYCODE_GRAVE -> 0xc0;
+            case KeyEvent.KEYCODE_COMMA -> 0xbc; case KeyEvent.KEYCODE_PERIOD -> 0xbe; case KeyEvent.KEYCODE_SLASH -> 0xbf;
+            default -> keyCode >= KeyEvent.KEYCODE_A && keyCode <= KeyEvent.KEYCODE_Z ? 0x41 + keyCode - KeyEvent.KEYCODE_A :
+                    keyCode >= KeyEvent.KEYCODE_0 && keyCode <= KeyEvent.KEYCODE_9 ? 0x30 + keyCode - KeyEvent.KEYCODE_0 : 0;
         };
         if (KeyEvent.isModifierKey(keyCode)) return super.onKeyDown(keyCode,event);
         int mods = (event.isShiftPressed()?1:0) | (event.isCtrlPressed()?2:0) | (event.isAltPressed()?4:0) | (event.isMetaPressed()?8:0);
