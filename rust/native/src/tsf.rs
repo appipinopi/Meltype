@@ -3,7 +3,9 @@
 //! Windows TSF COM objects. These use the generated Windows SDK vtables,
 //! including system calling conventions on x86, rather than a C++ bridge.
 mod candidates;
+mod factory;
 mod langbar;
+mod registration;
 use std::{
     ffi::c_void,
     mem::MaybeUninit,

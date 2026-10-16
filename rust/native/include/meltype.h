@@ -62,6 +62,14 @@ int32_t meltype_tsf_candidate_show(void *, const char *json, const void *anchor_
 void meltype_tsf_candidate_hide(void *);
 int32_t meltype_tsf_candidate_visible(void *);
 void meltype_tsf_candidate_destroy(void *);
+/* COM class factory: GUIDs/out and HRESULT follow the Windows ABI. The shell
+   callbacks construct the remaining text service and pin/unpin its DLL. */
+int32_t meltype_tsf_get_class_object(const void *clsid, const void *iid, void **out,
+    int32_t (*create)(const void *iid, void **out), void (*lock_shell)(int32_t));
+/* Explicit regsvr32 operations; mutate COM/profile/category registration.
+   path is the TSF shell DLL's UTF-16 path, length excludes a terminator. */
+int32_t meltype_tsf_register_server(const uint16_t *path, uint32_t length);
+int32_t meltype_tsf_unregister_server(void);
 #endif
 #ifdef __cplusplus
 }

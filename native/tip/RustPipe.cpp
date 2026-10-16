@@ -7,6 +7,7 @@
 #include "LangBar.h"
 #include "TextService.h"
 #include "CandidateWindow.h"
+#include <new>
 
 namespace meltype {
 namespace {
@@ -26,6 +27,9 @@ struct RustApi {
     void (__cdecl *candidateHide)(void*) = nullptr;
     int (__cdecl *candidateVisible)(void*) = nullptr;
     void (__cdecl *candidateDestroy)(void*) = nullptr;
+    HRESULT (__cdecl *classObject)(const GUID*,const GUID*,void**,HRESULT (__cdecl *)(const GUID*,void**),void (__cdecl *)(int)) = nullptr;
+    HRESULT (__cdecl *registerServer)(const wchar_t*,unsigned int) = nullptr;
+    HRESULT (__cdecl *unregisterServer)() = nullptr;
     RustApi() {
         wchar_t path[32768];
         const DWORD size = GetModuleFileNameW(g_module, path, ARRAYSIZE(path));
@@ -50,13 +54,38 @@ struct RustApi {
         candidateHide = reinterpret_cast<decltype(candidateHide)>(GetProcAddress(module, "meltype_tsf_candidate_hide"));
         candidateVisible = reinterpret_cast<decltype(candidateVisible)>(GetProcAddress(module, "meltype_tsf_candidate_visible"));
         candidateDestroy = reinterpret_cast<decltype(candidateDestroy)>(GetProcAddress(module, "meltype_tsf_candidate_destroy"));
+        classObject = reinterpret_cast<decltype(classObject)>(GetProcAddress(module, "meltype_tsf_get_class_object"));
+        registerServer = reinterpret_cast<decltype(registerServer)>(GetProcAddress(module, "meltype_tsf_register_server"));
+        unregisterServer = reinterpret_cast<decltype(unregisterServer)>(GetProcAddress(module, "meltype_tsf_unregister_server"));
     }
     bool ready() const { return create && destroy && request && freeText; }
     // The module stays loaded for the process lifetime. Do not unload Rust
     // thread state under the Windows loader lock during TSF DLL teardown.
 };
 RustApi& api() { static RustApi value; return value; }
+HRESULT __cdecl CreateTextService(const GUID* iid, void** out) {
+    auto* service = new (std::nothrow) TextService();
+    if (!service) return E_OUTOFMEMORY;
+    HRESULT result = service->QueryInterface(*iid, out);
+    service->Release();
+    return result;
 }
+void __cdecl LockShell(int lock) { if (lock) DllAddRef(); else DllRelease(); }
+}
+HRESULT RustGetClassObject(REFCLSID clsid, REFIID iid, void** out) {
+    if (!out) return E_INVALIDARG;
+    *out = nullptr;
+    if (!api().classObject) return CLASS_E_CLASSNOTAVAILABLE;
+    return api().classObject(&clsid,&iid,out,CreateTextService,LockShell);
+}
+HRESULT RustRegisterServer() {
+    if (!api().registerServer) return E_FAIL;
+    wchar_t path[32768];
+    DWORD length = GetModuleFileNameW(g_module,path,ARRAYSIZE(path));
+    if (!length || length >= ARRAYSIZE(path)) return E_FAIL;
+    return api().registerServer(path,length);
+}
+HRESULT RustUnregisterServer() { return api().unregisterServer ? api().unregisterServer() : E_FAIL; }
 bool PipeClient::Transact(const std::string& request, std::string& response, DWORD, bool) {
     if (!api().ready()) return false;
     if (!rustConnection_) rustConnection_ = api().create();

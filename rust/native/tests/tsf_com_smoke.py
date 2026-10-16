@@ -39,6 +39,8 @@ UNKNOWN = Guid.parse("00000000-0000-0000-c000-000000000046")
 INFO = Guid.parse("70528852-2f26-4aea-8c96-215150578932")
 ENUM = Guid.parse("7cef04d7-cb75-4e80-a7ab-5f5bc7d332de")
 PROVIDER = Guid.parse("fee47777-163c-4769-996a-6e9c50ad8f54")
+FACTORY = Guid.parse("00000001-0000-0000-c000-000000000046")
+SERVICE = Guid.parse("417d801b-a9bd-4c26-bd16-356a825a6998")
 SPECS = [
     ("c8107d36-2806-4d8f-a183-fd0aeb8ed862", "Meltype: 入力中", 2, 0, 0),
     ("e17aa399-c5eb-42e6-be45-c44f0651f2e2", "Meltype: 変換した文節", 1, 0, 2),
@@ -300,8 +302,59 @@ def verify_langbar(native):
     print("TSF language bar: Rust vtables, COM identity, mode click/reentrant notifications, sink ownership/unadvise, STA callbacks, icon resource cleanup and detach passed")
     return japanese_icon, latin_icon
 
+def verify_factory(native):
+    create_type = c.CFUNCTYPE(HR, c.POINTER(Guid), c.POINTER(P))
+    lock_type = c.CFUNCTYPE(None, HR)
+    pins = [0]
+    calls = []
+    @create_type
+    def create(iid, out):
+        calls.append(bytes(iid.contents))
+        out[0] = None
+        return NO_INTERFACE
+    @lock_type
+    def lock(value):
+        pins[0] += 1 if value else -1
+    native.meltype_tsf_get_class_object.argtypes = [c.POINTER(Guid), c.POINTER(Guid), c.POINTER(P), create_type, lock_type]
+    native.meltype_tsf_get_class_object.restype = HR
+    def get(clsid=SERVICE, iid=FACTORY):
+        out=P(123)
+        result=native.meltype_tsf_get_class_object(c.byref(clsid),c.byref(iid),c.byref(out),create,lock)
+        return result,out
+    result,out=get(clsid=UNKNOWN)
+    assert result == HR(0x80040111).value and not out.value and pins==[0]
+    result,out=get(iid=PROVIDER)
+    assert result == NO_INTERFACE and not out.value and pins==[0]
+    result,out=get()
+    assert result==0 and pins==[1]
+    pointer=out.value
+    assert_rust_vtable(pointer)
+    identity=P()
+    assert invoke(pointer,0,HR,[c.POINTER(Guid),c.POINTER(P)],c.byref(UNKNOWN),c.byref(identity))==0
+    assert identity.value==pointer
+    assert release(identity)==1 and pins==[1]
+    instance=P(123)
+    args=[P,c.POINTER(Guid),c.POINTER(P)]
+    assert invoke(pointer,3,HR,args,123,c.byref(UNKNOWN),c.byref(instance))==HR(0x80040110).value
+    assert not instance.value and calls==[]
+    assert invoke(pointer,3,HR,args,None,None,c.byref(instance))==INVALID
+    assert invoke(pointer,3,HR,args,None,c.byref(UNKNOWN),None)==INVALID
+    assert invoke(pointer,3,HR,args,None,c.byref(PROVIDER),c.byref(instance))==NO_INTERFACE
+    assert not instance.value and calls==[bytes(PROVIDER)]
+    assert invoke(pointer,4,HR,[HR],1)==0 and pins==[2]
+    assert invoke(pointer,4,HR,[HR],0)==0 and pins==[1]
+    assert release(pointer)==0 and pins==[0]
+    print("TSF factory: Rust vtable, class/interface rejection, COM identity/refcounts, no aggregation, creation failure and balanced DLL pins passed")
+
 def main():
     native = c.CDLL(str(Path(sys.argv[1]).resolve()))
+    # Invalid inputs fail before touching any real registration backend.
+    native.meltype_tsf_register_server.argtypes=[c.POINTER(c.c_uint16),U32]
+    native.meltype_tsf_register_server.restype=HR
+    assert native.meltype_tsf_register_server(None,0)==INVALID
+    invalid=(c.c_uint16*2)(65,0)
+    assert native.meltype_tsf_register_server(invalid,2)==INVALID
+    assert native.meltype_tsf_register_server(invalid,32768)==INVALID
     native.meltype_tsf_create_display_attribute.argtypes = [c.POINTER(Guid)]
     native.meltype_tsf_create_display_attribute.restype = P
     native.meltype_tsf_create_display_attribute_enum.restype = P
@@ -314,14 +367,41 @@ def main():
         assert release(pointer) == 0
     verify_enum(native.meltype_tsf_create_display_attribute_enum())
     verify_langbar(native)
+    verify_factory(native)
     if len(sys.argv) > 2:
         tip = c.WinDLL(str(Path(sys.argv[2]).resolve()))
         tip.DllGetClassObject.argtypes = [c.POINTER(Guid), c.POINTER(Guid), c.POINTER(P)]
         tip.DllGetClassObject.restype = HR
+        assert tip.DllCanUnloadNow()==0
+        pin_factory=P()
+        assert tip.DllGetClassObject(c.byref(SERVICE),c.byref(FACTORY),c.byref(pin_factory))==0
+        assert_rust_vtable(pin_factory)
+        assert invoke(pin_factory,4,HR,[HR],1)==0
+        assert release(pin_factory)==0
+        assert tip.DllCanUnloadNow()==1, "LockServer must survive the factory's last Release"
+        unlock_factory=P()
+        assert tip.DllGetClassObject(c.byref(SERVICE),c.byref(FACTORY),c.byref(unlock_factory))==0
+        assert invoke(unlock_factory,4,HR,[HR],0)==0
+        release(unlock_factory)
+        assert tip.DllCanUnloadNow()==0
+        # Rejected class/interface requests never pin the shell.
+        rejected=P(123)
+        assert tip.DllGetClassObject(c.byref(UNKNOWN),c.byref(FACTORY),c.byref(rejected))==HR(0x80040111).value
+        assert not rejected.value and tip.DllCanUnloadNow()==0
+        assert tip.DllGetClassObject(c.byref(SERVICE),c.byref(PROVIDER),c.byref(rejected))==NO_INTERFACE
+        assert not rejected.value and tip.DllCanUnloadNow()==0
         factory = P()
         assert tip.DllGetClassObject(c.byref(Guid.parse("417d801b-a9bd-4c26-bd16-356a825a6998")), c.byref(Guid.parse("00000001-0000-0000-c000-000000000046")), c.byref(factory)) == 0
+        assert_rust_vtable(factory)
+        assert tip.DllCanUnloadNow() == 1
+        assert invoke(factory,4,HR,[HR],1)==0
         provider = P()
         assert invoke(factory, 3, HR, [P, c.POINTER(Guid), c.POINTER(P)], None, c.byref(PROVIDER), c.byref(provider)) == 0
+        # A failed request cannot leak a C++ service reference.
+        rejected=P(123)
+        assert invoke(factory,3,HR,[P,c.POINTER(Guid),c.POINTER(P)],None,c.byref(FACTORY),c.byref(rejected))==NO_INTERFACE
+        assert rejected.value is None
+        assert invoke(factory,4,HR,[HR],0)==0
         release(factory)
         enumerator = P()
         assert invoke(provider, 3, HR, [c.POINTER(P)], c.byref(enumerator)) == 0

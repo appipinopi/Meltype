@@ -44,6 +44,11 @@ extern LONG g_locks;
 
 inline void DllAddRef() { InterlockedIncrement(&g_locks); }
 inline void DllRelease() { InterlockedDecrement(&g_locks); }
+#ifdef MELTYPE_RUST_CORE
+HRESULT RustGetClassObject(REFCLSID clsid, REFIID iid, void** out);
+HRESULT RustRegisterServer();
+HRESULT RustUnregisterServer();
+#endif
 
 // 文字コードの変換
 std::string ToUtf8(const std::wstring& text);
