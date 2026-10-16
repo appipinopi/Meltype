@@ -260,6 +260,10 @@ STDMETHODIMP TextService::ActivateEx(ITfThreadMgr* threadMgr, TfClientId clientI
     sid_ = RandomId();
     TipLog(L"Activate (%s)%s%s", ProcessName().c_str(), disabled_ ? L" 無効: " : L"", disabled_ ? reason : L"");
 
+#ifdef MELTYPE_RUST_CORE
+    threadSubscription_ = RustSubscribe(0,threadMgr_,clientId_,static_cast<ITfThreadMgrEventSink*>(this));
+    keySubscription_ = RustSubscribe(1,threadMgr_,clientId_,static_cast<ITfKeyEventSink*>(this));
+#else
     ITfSource* source = nullptr;
     if (SUCCEEDED(threadMgr_->QueryInterface(IID_ITfSource, reinterpret_cast<void**>(&source)))) {
         source->AdviseSink(IID_ITfThreadMgrEventSink, static_cast<ITfThreadMgrEventSink*>(this), &threadMgrCookie_);
@@ -270,6 +274,7 @@ STDMETHODIMP TextService::ActivateEx(ITfThreadMgr* threadMgr, TfClientId clientI
         keystroke->AdviseKeyEventSink(clientId_, static_cast<ITfKeyEventSink*>(this), TRUE);
         keystroke->Release();
     }
+#endif
 
     // 下線の種類を GUID → 番号 (atom) にしておく
     ITfCategoryMgr* category = nullptr;
@@ -282,19 +287,18 @@ STDMETHODIMP TextService::ActivateEx(ITfThreadMgr* threadMgr, TfClientId clientI
 
     // 日本語 / 英数 (IME の ON/OFF)。Meltype は日本語から始める (半角/全角 を押さなくてよいのが Meltype なので)
     // 何もしないプロセス (Meltype.exe 自身・サインインの画面) では、入力モードを変えず、タスクバーの「あ」も出さない (キーはそのまま通るので)
+#ifdef MELTYPE_RUST_CORE
+    if (!disabled_) modeSubscription_ = RustSubscribe(2,threadMgr_,clientId_,static_cast<ITfCompartmentEventSink*>(this));
+#else
     ITfCompartmentMgr* compartments = nullptr;
     if (!disabled_ && SUCCEEDED(threadMgr_->QueryInterface(IID_ITfCompartmentMgr, reinterpret_cast<void**>(&compartments)))) {
         ITfCompartment* openClose = nullptr;
         if (SUCCEEDED(compartments->GetCompartment(GUID_COMPARTMENT_KEYBOARD_OPENCLOSE, &openClose))) {
-#ifdef MELTYPE_RUST_CORE
-            RustWriteOpen(threadMgr_,clientId_,true);
-#else
             VARIANT value;
             VariantInit(&value);
             value.vt = VT_I4;
             value.lVal = 1;
             openClose->SetValue(clientId_, &value);
-#endif
             ITfSource* compartmentSource = nullptr;
             if (SUCCEEDED(openClose->QueryInterface(IID_ITfSource, reinterpret_cast<void**>(&compartmentSource)))) {
                 compartmentSource->AdviseSink(IID_ITfCompartmentEventSink, static_cast<ITfCompartmentEventSink*>(this), &compartmentCookie_);
@@ -304,6 +308,7 @@ STDMETHODIMP TextService::ActivateEx(ITfThreadMgr* threadMgr, TfClientId clientI
         }
         compartments->Release();
     }
+#endif
     open_ = !disabled_;
 
     candidates_ = std::make_unique<CandidateWindow>([this](int index, bool prediction) { SelectCandidate(index, prediction); });
@@ -369,6 +374,11 @@ STDMETHODIMP TextService::Deactivate() {
         langBar_ = nullptr;
     }
 
+#ifdef MELTYPE_RUST_CORE
+    void* mode = modeSubscription_; modeSubscription_ = nullptr; RustUnsubscribe(mode);
+    void* keys = keySubscription_; keySubscription_ = nullptr; RustUnsubscribe(keys);
+    void* thread = threadSubscription_; threadSubscription_ = nullptr; RustUnsubscribe(thread);
+#else
     ITfCompartmentMgr* compartments = nullptr;
     if (compartmentCookie_ != TF_INVALID_COOKIE && SUCCEEDED(threadMgr_->QueryInterface(IID_ITfCompartmentMgr, reinterpret_cast<void**>(&compartments)))) {
         ITfCompartment* openClose = nullptr;
@@ -395,6 +405,7 @@ STDMETHODIMP TextService::Deactivate() {
         source->Release();
     }
     threadMgrCookie_ = TF_INVALID_COOKIE;
+#endif
 
     if (composition_ != nullptr) {
         composition_->Release();
@@ -440,6 +451,10 @@ STDMETHODIMP TextService::OnSetFocus(BOOL foreground) {
 void TextService::AdviseTextEditSink(ITfDocumentMgr* documentMgr) {
     UnadviseTextEditSink();
     if (documentMgr == nullptr) return;
+#ifdef MELTYPE_RUST_CORE
+    editSubscription_ = RustSubscribe(3,documentMgr,clientId_,static_cast<ITfTextEditSink*>(this),&editSinkContext_);
+    ownEdit_ = false;
+#else
     ITfContext* context = nullptr;
     if (FAILED(documentMgr->GetTop(&context)) || context == nullptr) return;
     ITfSource* source = nullptr;
@@ -452,6 +467,7 @@ void TextService::AdviseTextEditSink(ITfDocumentMgr* documentMgr) {
     }
     ownEdit_ = false;
     context->Release();
+#endif
 }
 
 bool TextService::IsSecretField(TfEditCookie ec, ITfContext* context) {
@@ -547,6 +563,12 @@ std::string TextService::CommitRequest(bool moved) const {
 }
 
 void TextService::UnadviseTextEditSink() {
+#ifdef MELTYPE_RUST_CORE
+    void* subscription = editSubscription_; editSubscription_ = nullptr;
+    ITfContext* context = editSinkContext_; editSinkContext_ = nullptr;
+    RustUnsubscribe(subscription);
+    if (context) context->Release();
+#else
     if (editSinkContext_ == nullptr) return;
     ITfSource* source = nullptr;
     if (SUCCEEDED(editSinkContext_->QueryInterface(IID_ITfSource, reinterpret_cast<void**>(&source)))) {
@@ -556,6 +578,7 @@ void TextService::UnadviseTextEditSink() {
     editSinkContext_->Release();
     editSinkContext_ = nullptr;
     editSinkCookie_ = TF_INVALID_COOKIE;
+#endif
 }
 
 STDMETHODIMP TextService::OnEndEdit(ITfContext* context, TfEditCookie ec, ITfEditRecord* record) {

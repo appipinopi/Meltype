@@ -82,6 +82,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python rust/native/tests/tsf_fields_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_subscriptions_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           ./rust/native/tests/build-edit-session-host.ps1
       - name: Build test-only upstream candidate renderer
         if: runner.os == 'Windows'
@@ -120,6 +122,8 @@ jobs:
           python rust/native/tests/tsf_abandoned_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python rust/native/tests/tsf_fields_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_subscriptions_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
       - name: Rust candidate HWND behavior and rendering in a 32-bit process
         if: runner.os == 'Windows'
         env:

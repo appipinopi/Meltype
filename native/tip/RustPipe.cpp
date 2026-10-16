@@ -55,6 +55,8 @@ struct RustApi {
     int (__cdecl *readOpen)(void*) = nullptr;
     int (__cdecl *writeOpen)(void*,unsigned int,int) = nullptr;
     int (__cdecl *contextDisabled)(void*) = nullptr;
+    void* (__cdecl *subscribe)(unsigned int,void*,unsigned int,void*,void**) = nullptr;
+    void (__cdecl *unsubscribe)(void*) = nullptr;
     RustApi() {
         wchar_t path[32768];
         const DWORD size = GetModuleFileNameW(g_module, path, ARRAYSIZE(path));
@@ -107,6 +109,8 @@ struct RustApi {
         readOpen = reinterpret_cast<decltype(readOpen)>(GetProcAddress(module, "meltype_tsf_read_open"));
         writeOpen = reinterpret_cast<decltype(writeOpen)>(GetProcAddress(module, "meltype_tsf_write_open"));
         contextDisabled = reinterpret_cast<decltype(contextDisabled)>(GetProcAddress(module, "meltype_tsf_context_disabled"));
+        subscribe = reinterpret_cast<decltype(subscribe)>(GetProcAddress(module, "meltype_tsf_subscribe"));
+        unsubscribe = reinterpret_cast<decltype(unsubscribe)>(GetProcAddress(module, "meltype_tsf_unsubscribe"));
     }
     bool ready() const { return create && destroy && request && freeText; }
     // The module stays loaded for the process lifetime. Do not unload Rust
@@ -239,6 +243,11 @@ unsigned int RustInputScope(TfEditCookie cookie,ITfContext* context) { return ap
 int RustReadOpen(ITfThreadMgr* manager) { return api().readOpen ? api().readOpen(manager) : -2; }
 void RustWriteOpen(ITfThreadMgr* manager,TfClientId client,bool open) { if (api().writeOpen) api().writeOpen(manager,client,open ? 1 : 0); }
 bool RustContextDisabled(ITfContext* context) { return !api().contextDisabled || api().contextDisabled(context) != 0; }
+void* RustSubscribe(unsigned int kind,IUnknown* owner,TfClientId client,IUnknown* sink,ITfContext** context) {
+    if (context) *context = nullptr;
+    return api().subscribe && api().unsubscribe ? api().subscribe(kind,owner,client,sink,reinterpret_cast<void**>(context)) : nullptr;
+}
+void RustUnsubscribe(void* state) { if (state && api().unsubscribe) api().unsubscribe(state); }
 bool PipeClient::Transact(const std::string& request, std::string& response, DWORD, bool) {
     if (!api().ready()) return false;
     if (!rustConnection_) rustConnection_ = api().create();

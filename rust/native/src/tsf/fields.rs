@@ -28,7 +28,7 @@ impl Drop for ScopeList {
         }
     }
 }
-unsafe fn query<T: Interface>(owner: &IUnknown) -> Option<T> {
+pub(super) unsafe fn query<T: Interface>(owner: &IUnknown) -> Option<T> {
     let mut raw = ptr::null_mut();
     let status = (Interface::vtable(owner).QueryInterface)(owner.as_raw(), &T::IID, &mut raw);
     let value = (!raw.is_null()).then(|| T::from_raw(raw));
@@ -134,11 +134,14 @@ unsafe fn inspect(context: *mut c_void, cookie: u32) -> u32 {
 pub unsafe extern "C" fn meltype_tsf_input_scope(context: *mut c_void, cookie: u32) -> u32 {
     catch_unwind(AssertUnwindSafe(|| inspect(context, cookie))).unwrap_or(SECRET | UNREADABLE)
 }
-unsafe fn manager(owner: *mut c_void) -> Option<ITfCompartmentMgr> {
+pub(super) unsafe fn manager(owner: *mut c_void) -> Option<ITfCompartmentMgr> {
     let owner = IUnknown::from_raw_borrowed(&owner)?;
     query::<ITfCompartmentMgr>(owner)
 }
-unsafe fn compartment(manager: &ITfCompartmentMgr, guid: &GUID) -> Option<ITfCompartment> {
+pub(super) unsafe fn compartment(
+    manager: &ITfCompartmentMgr,
+    guid: &GUID,
+) -> Option<ITfCompartment> {
     let mut raw = ptr::null_mut();
     let status = (Interface::vtable(manager).GetCompartment)(manager.as_raw(), guid, &mut raw);
     let value = (!raw.is_null()).then(|| ITfCompartment::from_raw(raw));

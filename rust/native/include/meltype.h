@@ -137,6 +137,13 @@ int32_t meltype_tsf_context_disabled(void *context);
    Write: 1 on success, 0 on failure. */
 int32_t meltype_tsf_read_open(void *thread_manager);
 int32_t meltype_tsf_write_open(void *thread_manager, uint32_t client, int32_t open);
+/* Thread-affine subscriptions: 0 thread events, 1 foreground keys, 2 mode
+   (initially open), 3 top-context edits. Owner is thread manager except kind 3
+   (document manager). Sink implements that event interface. Kind 3 requires
+   context_out, returning an owned ITfContext on success; otherwise NULL.
+   Unsubscribe releases the retained original source, not a fresh lookup. */
+void *meltype_tsf_subscribe(uint32_t kind, void *owner, uint32_t client, void *sink, void **context_out);
+void meltype_tsf_unsubscribe(void *token);
 #endif
 #ifdef __cplusplus
 }

@@ -13,6 +13,7 @@ mod langbar;
 mod ranges;
 mod recovery;
 mod registration;
+mod subscriptions;
 use std::{
     ffi::c_void,
     mem::MaybeUninit,

@@ -29,11 +29,50 @@ struct Compartment final : ITfCompartment {
         VariantInit(data);data->vt=VT_I4;data->lVal=value;return S_OK;
     }
 };
+struct EventSink final : ITfThreadMgrEventSink {
+    ULONG refs=1;
+    STDMETHODIMP QueryInterface(REFIID iid,void** out) override {
+        *out=nullptr;
+        if (iid!=IID_IUnknown && iid!=IID_ITfThreadMgrEventSink) return E_NOINTERFACE;
+        *out=static_cast<ITfThreadMgrEventSink*>(this);AddRef();return S_OK;
+    }
+    STDMETHODIMP_(ULONG) AddRef() override {return ++refs;}
+    STDMETHODIMP_(ULONG) Release() override {return --refs;}
+    STDMETHODIMP OnInitDocumentMgr(ITfDocumentMgr*) override {return S_OK;}
+    STDMETHODIMP OnUninitDocumentMgr(ITfDocumentMgr*) override {return S_OK;}
+    STDMETHODIMP OnSetFocus(ITfDocumentMgr*,ITfDocumentMgr*) override {return S_OK;}
+    STDMETHODIMP OnPushContext(ITfContext*) override {return S_OK;}
+    STDMETHODIMP OnPopContext(ITfContext*) override {return S_OK;}
+};
+struct Source final : ITfSource {
+    ULONG refs=1;
+    IUnknown* sink=nullptr;
+    int removals=0;
+    STDMETHODIMP QueryInterface(REFIID iid,void** out) override {
+        *out=nullptr;
+        if (iid!=IID_IUnknown && iid!=IID_ITfSource) return E_NOINTERFACE;
+        *out=static_cast<ITfSource*>(this);AddRef();return S_OK;
+    }
+    STDMETHODIMP_(ULONG) AddRef() override {return ++refs;}
+    STDMETHODIMP_(ULONG) Release() override {return --refs;}
+    STDMETHODIMP AdviseSink(REFIID iid,IUnknown* owner,DWORD* cookie) override {
+        assert(iid==IID_ITfThreadMgrEventSink && !sink);
+        HRESULT hr=owner->QueryInterface(iid,reinterpret_cast<void**>(&sink));
+        if (SUCCEEDED(hr)) *cookie=33;
+        return hr;
+    }
+    STDMETHODIMP UnadviseSink(DWORD cookie) override {
+        assert(cookie==33 && sink);
+        IUnknown* old=sink;sink=nullptr;old->Release();++removals;return S_OK;
+    }
+};
 struct Manager final : ITfCompartmentMgr {
     ULONG refs = 1;
     Compartment open,disabled,empty;
+    Source source;
     STDMETHODIMP QueryInterface(REFIID iid,void** out) override {
         *out=nullptr;
+        if (iid==IID_ITfSource) {source.AddRef();*out=static_cast<ITfSource*>(&source);return S_OK;}
         if (iid!=IID_IUnknown && iid!=IID_ITfCompartmentMgr) return E_NOINTERFACE;
         *out=static_cast<ITfCompartmentMgr*>(this);AddRef();return S_OK;
     }
@@ -75,7 +114,13 @@ int wmain() {
     manager.disabled.value=0;manager.empty.value=-1;
     assert(RustContextDisabled(context));
     assert(RustContextDisabled(nullptr));
+    EventSink sink;
+    void* subscription=RustSubscribe(0,unknown,17,&sink);
+    assert(subscription && sink.refs==2 && manager.source.refs==2);
+    RustUnsubscribe(subscription);
+    RustUnsubscribe(subscription);
+    assert(sink.refs==1 && manager.source.refs==1 && manager.source.removals==1 && !manager.source.sink);
     assert(manager.refs==1 && manager.open.refs==1 && manager.disabled.refs==1 && manager.empty.refs==1);
     assert(g_locks==0);
-    puts("Actual TSF field adapters: input-scope API loading, mode reads/writes, client id, reentrant notification, refused write, disabled/empty context and COM cleanup passed");
+    puts("Actual TSF field adapters: input-scope/mode APIs, reentrant mode notification, disabled/empty context, Rust subscription/teardown, sink references and COM cleanup passed");
 }

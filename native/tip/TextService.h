@@ -138,10 +138,17 @@ private:
     LONG refs_ = 1;
     ITfThreadMgr* threadMgr_ = nullptr;
     TfClientId clientId_ = TF_CLIENTID_NULL;
+#ifdef MELTYPE_RUST_CORE
+    void* threadSubscription_ = nullptr;
+    void* keySubscription_ = nullptr;
+    void* modeSubscription_ = nullptr;
+    void* editSubscription_ = nullptr;
+#else
     DWORD threadMgrCookie_ = TF_INVALID_COOKIE;
     DWORD compartmentCookie_ = TF_INVALID_COOKIE;
-    ITfContext* editSinkContext_ = nullptr;
     DWORD editSinkCookie_ = TF_INVALID_COOKIE;
+#endif
+    ITfContext* editSinkContext_ = nullptr;
 
     ITfComposition* composition_ = nullptr;
     ITfContext* compositionContext_ = nullptr;

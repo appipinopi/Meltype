@@ -73,6 +73,8 @@ unsigned int RustInputScope(TfEditCookie,ITfContext*);
 int RustReadOpen(ITfThreadMgr*);
 void RustWriteOpen(ITfThreadMgr*,TfClientId,bool);
 bool RustContextDisabled(ITfContext*);
+void* RustSubscribe(unsigned int,IUnknown*,TfClientId,IUnknown*,ITfContext** = nullptr);
+void RustUnsubscribe(void*);
 #endif
 
 // 文字コードの変換
