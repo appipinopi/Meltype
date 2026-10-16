@@ -1,0 +1,48 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 appipinopi
+// Replaces Pipe.cpp for Rust preview builds. The TSF shell calls Rust inside
+// the client process; no C# daemon or named pipe is required.
+#include "Pipe.h"
+
+namespace meltype {
+namespace {
+struct RustApi {
+    HMODULE module = nullptr;
+    void* (__cdecl *create)() = nullptr;
+    void (__cdecl *destroy)(void*) = nullptr;
+    char* (__cdecl *request)(void*, const char*) = nullptr;
+    void (__cdecl *freeText)(void*) = nullptr;
+    RustApi() {
+        wchar_t path[32768];
+        const DWORD size = GetModuleFileNameW(g_module, path, ARRAYSIZE(path));
+        if (size == 0 || size >= ARRAYSIZE(path)) return;
+        std::wstring directory(path, size);
+        directory.resize(directory.find_last_of(L"\\/") + 1);
+        // Absolute path and restricted dependency search: never load from CWD.
+        module = LoadLibraryExW((directory + L"meltype_native.dll").c_str(), nullptr,
+                               LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32);
+        if (!module) return;
+        create = reinterpret_cast<decltype(create)>(GetProcAddress(module, "meltype_tip_create"));
+        destroy = reinterpret_cast<decltype(destroy)>(GetProcAddress(module, "meltype_tip_destroy"));
+        request = reinterpret_cast<decltype(request)>(GetProcAddress(module, "meltype_tip_request"));
+        freeText = reinterpret_cast<decltype(freeText)>(GetProcAddress(module, "meltype_free"));
+    }
+    bool ready() const { return create && destroy && request && freeText; }
+    // The module stays loaded for the process lifetime. Do not unload Rust
+    // thread state under the Windows loader lock during TSF DLL teardown.
+};
+RustApi& api() { static RustApi value; return value; }
+}
+bool PipeClient::Transact(const std::string& request, std::string& response, DWORD, bool) {
+    if (!api().ready()) return false;
+    if (!rustConnection_) rustConnection_ = api().create();
+    if (!rustConnection_) return false;
+    char* text = api().request(rustConnection_, request.c_str());
+    if (!text) return false;
+    response.assign(text); api().freeText(text); return true;
+}
+void PipeClient::Close() {
+    if (rustConnection_ && api().ready()) api().destroy(rustConnection_);
+    rustConnection_ = nullptr;
+}
+} // namespace meltype

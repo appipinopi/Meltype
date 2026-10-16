@@ -5,7 +5,7 @@
 #   powershell -ExecutionPolicy Bypass -File native\tip\build.ps1 [-Configuration Release|Debug]
 # 出力: native\tip\bin\x64\MeltypeTip.dll と native\tip\bin\x86\MeltypeTip.dll (32bit のアプリ用)
 
-param([ValidateSet('Release', 'Debug')][string]$Configuration = 'Release')
+param([ValidateSet('Release', 'Debug')][string]$Configuration = 'Release', [switch]$RustCore)
 
 $ErrorActionPreference = 'Stop'
 $here = $PSScriptRoot
@@ -25,6 +25,8 @@ function Get-Sha256([string]$path) {
 }
 
 $sources = 'Dll.cpp', 'TextService.cpp', 'CandidateWindow.cpp', 'DisplayAttributes.cpp', 'LangBar.cpp', 'Pipe.cpp', 'Json.cpp'
+if ($RustCore) { $sources = $sources | ForEach-Object { if ($_ -eq 'Pipe.cpp') { 'RustPipe.cpp' } else { $_ } } }
+$coreDefine = if ($RustCore) { '/DMELTYPE_RUST_CORE' } else { '' }
 # /Brepro: 同じソースからは同じ DLL にする (日時を埋め込まない)。入れ直したときに、変わっていない DLL を登録し直さない (UAC を出さない) ため
 $optimize = if ($Configuration -eq 'Release') { '/O2 /MT /DNDEBUG' } else { '/Od /MTd /Zi' }
 $libs = 'ole32.lib oleaut32.lib uuid.lib user32.lib gdi32.lib advapi32.lib d2d1.lib dwrite.lib dwmapi.lib'
@@ -32,13 +34,14 @@ $libs = 'ole32.lib oleaut32.lib uuid.lib user32.lib gdi32.lib advapi32.lib d2d1.
 foreach ($arch in 'x64', 'x86') {
     $out = Join-Path $here "bin\$arch"
     $obj = Join-Path $here "obj\$arch"
+    if ($RustCore) { $out = Join-Path $here "bin\rust-$arch"; $obj = Join-Path $here "obj\rust-$arch" }
     New-Item -ItemType Directory -Force -Path $out, $obj | Out-Null
     $vcarch = if ($arch -eq 'x64') { 'x64' } else { 'x64_x86' }
     $cmd = @(
         "`"$vcvars`" $vcarch >nul",
         "cd /d `"$here`"",
         "rc /nologo /fo `"$obj\MeltypeTip.res`" MeltypeTip.rc",
-        "cl /nologo /Brepro /std:c++17 /EHsc /W4 /wd4100 /utf-8 /DUNICODE /D_UNICODE $optimize /Fo`"$obj\\`" /Fd`"$obj\\`" /LD $($sources -join ' ') `"$obj\MeltypeTip.res`" /link /Brepro /DEF:MeltypeTip.def /IMPLIB:`"$obj\MeltypeTip.lib`" /OUT:`"$out\MeltypeTip.dll`" $libs"
+        "cl /nologo /Brepro /std:c++17 /EHsc /W4 /wd4100 /utf-8 /DUNICODE /D_UNICODE $coreDefine $optimize /Fo`"$obj\\`" /Fd`"$obj\\`" /LD $($sources -join ' ') `"$obj\MeltypeTip.res`" /link /Brepro /DEF:MeltypeTip.def /IMPLIB:`"$obj\MeltypeTip.lib`" /OUT:`"$out\MeltypeTip.dll`" $libs"
     ) -join ' && '
     Write-Host "== $arch =="
     cmd /c $cmd

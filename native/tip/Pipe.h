@@ -24,6 +24,9 @@ public:
     void Close();
 
 private:
+#ifdef MELTYPE_RUST_CORE
+    void* rustConnection_ = nullptr;
+#endif
     bool Connect();
     bool Wait(OVERLAPPED& overlapped, DWORD timeoutMs, DWORD& transferred);
 

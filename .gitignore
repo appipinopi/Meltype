@@ -33,3 +33,10 @@ native/tip/obj/
 
 # Python のキャッシュ (tools/*.py を動かすと作られる)
 __pycache__/
+
+# Rust / Android build output
+/target/
+android/.gradle/
+android/**/build/
+android/local.properties
+android/app/src/main/jniLibs/
