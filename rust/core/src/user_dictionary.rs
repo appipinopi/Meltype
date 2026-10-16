@@ -96,7 +96,7 @@ fn add(result: &mut Import, reading: &str, word: &str) {
         result.skipped += 1;
     }
 }
-fn decode(bytes: &[u8]) -> io::Result<(String, &'static str)> {
+pub(crate) fn decode(bytes: &[u8]) -> io::Result<(String, &'static str)> {
     let utf16 = |bytes: &[u8], be: bool| -> io::Result<String> {
         if !bytes.len().is_multiple_of(2) {
             return Err(io::Error::other("odd UTF-16 byte count"));

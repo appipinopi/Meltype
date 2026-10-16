@@ -11,6 +11,13 @@ fn field<'a>(r: &'a Value, n: &str) -> io::Result<&'a str> {
     r[n].as_str()
         .ok_or_else(|| io::Error::other(format!("missing {n}")))
 }
+fn snippet_name_valid(name: &str) -> bool {
+    !name.is_empty() && name.chars().all(|c| c.is_ascii_graphic() && c != ';')
+}
+fn snippet_text(text: &str) -> String {
+    text.replace("\r\n", "\n")
+        .replace(['\r', '\u{000c}', '\u{0085}', '\u{2028}', '\u{2029}'], "\n")
+}
 pub fn execute(store: &Store, r: &Value) -> io::Result<Value> {
     match field(r, "op")? {
         "detection_evaluate" => {
@@ -140,15 +147,11 @@ pub fn execute(store: &Store, r: &Value) -> io::Result<Value> {
         "snippet_set" => {
             let name = field(r, "name")?;
             let text = field(r, "text")?;
-            if name.is_empty()
-                || !name.chars().all(|c| c.is_ascii_graphic() && c != ';')
-                || text.is_empty()
-            {
+            if !snippet_name_valid(name) || text.is_empty() {
                 return Err(io::Error::other("invalid snippet"));
             }
             store.update(|s| {
-                s.snippets
-                    .insert(name.into(), text.replace("\r\n", "\n").replace('\r', "\n"));
+                s.snippets.insert(name.into(), snippet_text(text));
                 Ok(())
             })?;
             Ok(json!({"saved":true}))
@@ -158,6 +161,37 @@ pub fn execute(store: &Store, r: &Value) -> io::Result<Value> {
                 s.snippets.remove(field(r, "name")?);
                 Ok(())
             })?;
+            Ok(json!({"saved":true}))
+        }
+        "snippets_import" => {
+            let (text, _) = user_dictionary::decode(&std::fs::read(field(r, "path")?)?)?;
+            // Validate the entire document before acquiring the write lock.
+            // Upstream skips invalid names, empty values and null values.
+            let parsed: Option<std::collections::BTreeMap<String, Option<String>>> =
+                serde_json::from_str(&text)?;
+            let entries: Vec<_> = parsed
+                .unwrap_or_default()
+                .into_iter()
+                .filter_map(|(name, text)| {
+                    text.filter(|text| !text.is_empty())
+                        .filter(|_| snippet_name_valid(&name))
+                        .map(|text| (name, snippet_text(&text)))
+                })
+                .collect();
+            let count = entries.len();
+            if count > 0 {
+                store.update(|s| {
+                    s.snippets.extend(entries);
+                    Ok(())
+                })?;
+            }
+            Ok(json!({"imported":count}))
+        }
+        "snippets_export" => {
+            atomic_write(
+                Path::new(field(r, "path")?),
+                &serde_json::to_vec_pretty(&store.load()?.snippets)?,
+            )?;
             Ok(json!({"saved":true}))
         }
         "learning_list" => {

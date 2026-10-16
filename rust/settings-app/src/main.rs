@@ -79,7 +79,7 @@ struct App {
     word: String,
     snippet_name: String,
     snippet_text: String,
-    path: String,
+    restore_path: Option<std::path::PathBuf>,
     profile: String,
     profile_prompt: Option<bool>,
     confirm_remove: bool,
@@ -127,7 +127,7 @@ impl App {
             word: String::new(),
             snippet_name: String::new(),
             snippet_text: String::new(),
-            path: String::new(),
+            restore_path: None,
             profile: String::new(),
             profile_prompt: None,
             confirm_remove: false,
@@ -172,9 +172,20 @@ impl App {
         match control::execute(&self.store, &request) {
             Ok(result) => {
                 self.result = result;
-                self.status = "保存しました / Saved".into();
+                self.status = if let Some(count) = self.result["imported"].as_u64() {
+                    format!("{count} 件取り込みました。")
+                } else if operation.ends_with("_list") {
+                    "読み込みました。".into()
+                } else if operation == "backup_inspect" {
+                    "バックアップの内容を読み込みました。".into()
+                } else {
+                    "保存しました。".into()
+                };
             }
-            Err(error) => self.status = error.to_string(),
+            Err(error) => {
+                self.result = Value::Null;
+                self.status = error.to_string();
+            }
         }
     }
     fn save(&mut self) -> bool {
@@ -564,46 +575,100 @@ impl App {
             });
     }
     fn dictionary(&mut self, ui: &mut egui::Ui) {
-        ui.horizontal(|ui| {
-            ui.label("読み");
-            ui.text_edit_singleline(&mut self.reading);
-            ui.label("単語");
-            ui.text_edit_singleline(&mut self.word);
+        ui.heading("Meltype ユーザー辞書");
+        let old_reading = self.reading.clone();
+        ui.horizontal_wrapped(|ui| {
+            ui.label("読み (ローマ字・ひらがな)");
+            ui.add(egui::TextEdit::singleline(&mut self.reading).desired_width(200.));
+        });
+        let reading = meltype_core::user_dictionary::hiragana(&meltype_core::romaji::hiragana(
+            self.reading.trim(),
+            true,
+        ));
+        let mut candidates = meltype_core::dictionary::Dictionary::bundled().candidates(&reading);
+        if let Ok(state) = self.store.load() {
+            if let Some(words) = state.preferences.user_dictionary.get(&reading) {
+                for word in words.iter().rev() {
+                    candidates.retain(|candidate| candidate != word);
+                    candidates.insert(0, word.clone());
+                }
+            }
+        }
+        if old_reading != self.reading && self.word.is_empty() {
+            self.word = candidates.first().cloned().unwrap_or_default();
+        }
+        if self.reading.chars().any(|c| c.is_ascii_alphabetic()) {
+            ui.label(format!("→ {reading}"));
+        }
+        ui.horizontal_wrapped(|ui| {
+            ui.label("単語 (候補から選ぶか直接入力)");
+            ui.add(egui::TextEdit::singleline(&mut self.word).desired_width(200.));
+            egui::ComboBox::from_id_salt("dictionary_suggestions")
+                .selected_text("候補")
+                .show_ui(ui, |ui| {
+                    for word in candidates {
+                        ui.selectable_value(&mut self.word, word.clone(), word);
+                    }
+                });
         });
         ui.horizontal(|ui| {
-            if ui.button("登録 / Add").clicked() {
-                self.action(json!({"op":"dictionary_set","reading":self.reading,"word":self.word}));
+            if ui.button("登録").clicked() {
+                self.action(json!({"op":"dictionary_set","reading":reading,"word":self.word}));
+                if self.result["saved"] == true {
+                    self.reading.clear();
+                    self.word.clear();
+                }
             }
-            if ui.button("削除 / Remove").clicked() {
-                self.action(
-                    json!({"op":"dictionary_remove","reading":self.reading,"word":self.word}),
-                );
+            if ui.button("選んだ語を削除").clicked() {
+                self.action(json!({"op":"dictionary_remove","reading":reading,"word":self.word}));
             }
         });
         ui.horizontal(|ui| {
-            ui.label("ファイル");
-            ui.text_edit_singleline(&mut self.path);
-            if ui.button("取込").clicked() {
-                self.action(json!({"op":"dictionary_import","path":self.path}));
+            if ui.button("取り込む...").clicked() {
+                if let Some(path) = rfd::FileDialog::new()
+                    .set_title("ユーザー辞書を取り込む")
+                    .add_filter("辞書のテキストファイル", &["txt"])
+                    .add_filter("macOS のユーザ辞書", &["plist"])
+                    .add_filter("すべてのファイル", &["*"])
+                    .pick_file()
+                {
+                    self.action(json!({"op":"dictionary_import","path":path}));
+                }
             }
-            if ui.button("書出").clicked() {
-                self.action(json!({"op":"dictionary_export","path":self.path}));
+            if ui.button("書き出す...").clicked() {
+                if let Some(path) = rfd::FileDialog::new()
+                    .set_title("ユーザー辞書を書き出す")
+                    .add_filter("辞書のテキストファイル", &["txt"])
+                    .set_file_name("Meltype-ユーザー辞書.txt")
+                    .save_file()
+                {
+                    self.action(json!({"op":"dictionary_export","path":path}));
+                }
             }
         });
         match self.store.load() {
             Ok(state) => {
                 egui::ScrollArea::vertical().show(ui, |ui| {
-                    for (reading, words) in state.preferences.user_dictionary {
-                        for word in words {
-                            if ui
-                                .selectable_label(false, format!("{reading}　{word}"))
-                                .clicked()
-                            {
-                                self.reading = reading.clone();
-                                self.word = word;
+                    egui::Grid::new("dictionary_words")
+                        .min_col_width(150.)
+                        .striped(true)
+                        .show(ui, |ui| {
+                            ui.strong("読み");
+                            ui.strong("単語");
+                            ui.end_row();
+                            for (reading, words) in state.preferences.user_dictionary {
+                                for word in words {
+                                    let selected = self.reading == reading && self.word == word;
+                                    let a = ui.selectable_label(selected, &reading);
+                                    let b = ui.selectable_label(selected, &word);
+                                    if a.clicked() || b.clicked() {
+                                        self.reading = reading.clone();
+                                        self.word = word;
+                                    }
+                                    ui.end_row();
+                                }
                             }
-                        }
-                    }
+                        });
                 });
             }
             Err(e) => {
@@ -612,6 +677,8 @@ impl App {
         }
     }
     fn snippets(&mut self, ui: &mut egui::Ui) {
+        ui.heading("Meltype 定型文");
+        ui.label(format!("行の先頭か空白の直後に {}名前 と打って Space / Tab を押すと、登録した文に置き換えます。", self.settings.text("SnippetMark")));
         ui.horizontal(|ui| {
             ui.label("名前");
             ui.text_edit_singleline(&mut self.snippet_name);
@@ -622,29 +689,70 @@ impl App {
                 .desired_width(f32::INFINITY),
         );
         ui.horizontal(|ui| {
-            if ui.button("登録 / Save").clicked() {
+            if ui.button("登録").clicked() {
                 self.action(
                     json!({"op":"snippet_set","name":self.snippet_name,"text":self.snippet_text}),
                 );
             }
-            if ui.button("削除 / Remove").clicked() {
+            if ui.button("選んだ定型文を削除").clicked() {
                 self.action(json!({"op":"snippet_remove","name":self.snippet_name}));
+            }
+        });
+        ui.horizontal(|ui| {
+            if ui.button("取り込む...").clicked() {
+                if let Some(path) = rfd::FileDialog::new()
+                    .set_title("定型文を取り込む")
+                    .add_filter("定型文", &["json"])
+                    .pick_file()
+                {
+                    self.action(json!({"op":"snippets_import","path":path}));
+                }
+            }
+            if ui.button("書き出す...").clicked() {
+                if let Some(path) = rfd::FileDialog::new()
+                    .set_title("定型文を書き出す")
+                    .add_filter("定型文", &["json"])
+                    .set_file_name("Meltype-定型文.json")
+                    .save_file()
+                {
+                    self.action(json!({"op":"snippets_export","path":path}));
+                }
             }
         });
         if let Ok(state) = self.store.load() {
             egui::ScrollArea::vertical().show(ui, |ui| {
-                for (name, text) in state.snippets {
-                    if ui.selectable_label(false, &name).clicked() {
-                        self.snippet_name = name;
-                        self.snippet_text = text;
-                    }
-                }
+                egui::Grid::new("snippet_entries")
+                    .min_col_width(180.)
+                    .striped(true)
+                    .show(ui, |ui| {
+                        ui.strong("名前");
+                        ui.strong("文");
+                        ui.end_row();
+                        for (name, text) in state.snippets {
+                            let selected = self.snippet_name == name;
+                            let a = ui.selectable_label(
+                                selected,
+                                format!("{}{name}", self.settings.text("SnippetMark")),
+                            );
+                            let b = ui.add(
+                                egui::Label::new(text.replace('\n', " ⏎ "))
+                                    .truncate()
+                                    .sense(egui::Sense::click()),
+                            );
+                            if a.clicked() || b.clicked() {
+                                self.snippet_name = name;
+                                self.snippet_text = text;
+                            }
+                            ui.end_row();
+                        }
+                    });
             });
         }
     }
     fn learning(&mut self, ui: &mut egui::Ui) {
+        ui.heading("Meltype 学習した語");
         ui.horizontal(|ui| {
-            if ui.button("更新 / Refresh").clicked() {
+            if ui.button("更新").clicked() {
                 self.action(json!({"op":"learning_list"}));
             }
             if ui.button("直近1時間の学習を消去").clicked() {
@@ -655,34 +763,152 @@ impl App {
         });
         ui.collapsing("学習データをすべて消す", |ui| {
             ui.label("辞書と定型文は残ります。");
-            if ui.button("全学習を消去 / Clear all learning").clicked() {
+            if ui.button("全学習を消去").clicked() {
                 self.action(json!({"op":"learning_clear"}));
             }
         });
+        let data = match control::execute(&self.store, &json!({"op":"learning_list"})) {
+            Ok(data) => data,
+            Err(error) => {
+                ui.label(error.to_string());
+                return;
+            }
+        };
+        let mut remove = None;
         egui::ScrollArea::vertical().show(ui, |ui| {
-            ui.monospace(serde_json::to_string_pretty(&self.result).unwrap_or_default());
+            for (group, title) in [
+                ("languages", "日英の選び直し"),
+                ("conversions", "変換した語"),
+                ("translations", "英訳"),
+                ("phrases", "入力した文"),
+            ] {
+                ui.heading(title);
+                let mut rows = Vec::new();
+                if let Some(entries) = data[group].as_object() {
+                    for (key, value) in entries {
+                        if group == "languages" {
+                            rows.push((
+                                key.clone(),
+                                format!(
+                                    "{} ({} 回{})",
+                                    if value["english"] == true {
+                                        "英語"
+                                    } else {
+                                        "日本語"
+                                    },
+                                    value["count"],
+                                    if value["active"] == false {
+                                        "・確認待ち"
+                                    } else {
+                                        ""
+                                    }
+                                ),
+                            ));
+                        } else if let Some(text) = value.as_str() {
+                            rows.push((key.clone(), text.to_owned()));
+                        } else if let Some(choices) = value.as_object() {
+                            for (text, count) in choices {
+                                rows.push((key.clone(), format!("{text} ({count} 回)")));
+                            }
+                        }
+                    }
+                } else if let Some(entries) = data[group].as_array() {
+                    for value in entries {
+                        rows.push((
+                            value["reading"].as_str().unwrap_or_default().to_owned(),
+                            value["text"].as_str().unwrap_or_default().to_owned(),
+                        ));
+                    }
+                }
+                if rows.is_empty() {
+                    ui.label("まだありません。");
+                }
+                egui::Grid::new(group)
+                    .min_col_width(150.)
+                    .striped(true)
+                    .show(ui, |ui| {
+                        for (key, text) in rows {
+                            ui.label(&key);
+                            ui.add(egui::Label::new(text).wrap());
+                            if ui
+                                .button("忘れる")
+                                .on_hover_text("この語・読みの学習を忘れます。")
+                                .clicked()
+                            {
+                                let prefix = match group {
+                                    "languages" => "language",
+                                    "phrases" => "phrase",
+                                    _ => "conversion",
+                                };
+                                remove = Some(format!("{prefix}:{key}"));
+                            }
+                            ui.end_row();
+                        }
+                    });
+                ui.separator();
+            }
         });
+        if let Some(key) = remove {
+            self.action(json!({"op":"learning_remove","key":key}));
+        }
     }
     fn backup(&mut self, ui: &mut egui::Ui) {
-        ui.label("バックアップのファイル名（絶対パス）");
-        ui.text_edit_singleline(&mut self.path);
+        ui.heading("Meltype バックアップ");
         ui.horizontal(|ui| {
-            if ui.button("作成 / Create").clicked() {
-                self.action(json!({"op":"backup_create","path":self.path}));
+            if ui.button("バックアップを作成...").clicked() {
+                if let Some(path) = rfd::FileDialog::new()
+                    .set_title("バックアップを作成")
+                    .add_filter("Meltype バックアップ", &["meltype-backup", "json"])
+                    .set_file_name("Meltype.meltype-backup")
+                    .save_file()
+                {
+                    self.action(json!({"op":"backup_create","path":path}));
+                }
             }
-            if ui.button("内容を確認 / Inspect").clicked() {
-                self.action(json!({"op":"backup_inspect","path":self.path}));
+            if ui.button("バックアップを開く...").clicked() {
+                if let Some(path) = rfd::FileDialog::new()
+                    .set_title("バックアップの内容を確認")
+                    .add_filter("Meltype バックアップ", &["meltype-backup", "json"])
+                    .pick_file()
+                {
+                    self.action(json!({"op":"backup_inspect","path":path}));
+                    self.restore_path = self.result["files"].is_object().then_some(path);
+                }
             }
         });
-        ui.collapsing("バックアップを復元", |ui| {
-            ui.label("同名の現在のデータを上書きします。元データは .before-restore に残します。");
-            if ui.button("このファイルから復元 / Restore").clicked() {
-                self.action(json!({"op":"backup_restore","path":self.path}));
+        if let Some(path) = self.restore_path.clone() {
+            ui.label(path.display().to_string());
+            if let Some(files) = self.result["files"].as_object() {
+                ui.label(format!(
+                    "作成日時: {}",
+                    self.result["created"].as_str().unwrap_or("不明")
+                ));
+                for name in files.keys() {
+                    ui.label(name);
+                }
             }
-        });
-        if let Some(files) = self.result["files"].as_object() {
-            for name in files.keys() {
-                ui.label(name);
+            ui.collapsing("このバックアップから復元", |ui| {
+                ui.label("同名の現在のデータと編集中の設定を置き換えます。元データは .before-restore に残します。");
+                if ui.button("復元する").clicked() {
+                    self.restore_backup(&path);
+                }
+            });
+        }
+    }
+    fn restore_backup(&mut self, path: &std::path::Path) {
+        self.action(json!({"op":"backup_restore","path":path}));
+        if self.result["restored"].is_number() {
+            match self.store.settings() {
+                Ok(settings) => {
+                    self.opened = settings.clone();
+                    self.settings = settings.clone();
+                    self.test_session.reset();
+                    self.test_session.settings = settings;
+                    self.complex.0.clear();
+                    self.restore_path = None;
+                    self.status = "バックアップを復元しました。".into();
+                }
+                Err(error) => self.status = format!("復元した設定を読めません: {error}"),
             }
         }
     }
@@ -821,6 +1047,11 @@ impl eframe::App for App {
         #[cfg(feature = "visual-test")]
         if let Ok(path) = std::env::var("MELTYPE_UI_CAPTURE") {
             self.capture_frames += 1;
+            if self.capture_frames == 1 {
+                if let Ok(page) = std::env::var("MELTYPE_UI_PAGE") {
+                    self.page = page.parse::<usize>().unwrap_or(0).min(5);
+                }
+            }
             ctx.request_repaint();
             #[cfg(windows)]
             if self.capture_frames == 5 && std::env::var_os("MELTYPE_TRAY_SMOKE").is_some() {
@@ -881,7 +1112,7 @@ impl eframe::App for App {
             });
         egui::TopBottomPanel::bottom("status").show(ctx, |ui| {
             ui.horizontal(|ui| {
-                if ui.button("既定値に戻す").clicked() {
+                if self.page == 0 && ui.button("既定値に戻す").clicked() {
                     let defaults = Settings::default();
                     for (key, value) in defaults.0 {
                         if !["Profiles", "ActiveProfile", "SettingsVersion"].contains(&key.as_str())
@@ -1070,5 +1301,41 @@ mod tests {
         assert_eq!(app.opened.0, app.settings.0);
         assert!(!app.closing);
         assert!(!dir.path().join("config.json").exists());
+    }
+    #[test]
+    fn restoring_backup_replaces_the_open_draft_and_cannot_be_undone_by_saving_the_window() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = Store::new(dir.path().join("data"));
+        store
+            .change_settings(|s| s.set("Enabled", json!(false)))
+            .unwrap();
+        let backup = dir.path().join("settings.meltype-backup");
+        std::fs::write(&backup, store.backup().unwrap()).unwrap();
+        store
+            .change_settings(|s| s.set("Enabled", json!(true)))
+            .unwrap();
+        let mut app = App::with_store(store.clone());
+        app.action(
+            json!({"op":"settings_set","name":"Punctuation","value":"FullWidthCommaPeriod"}),
+        );
+        app.restore_backup(&backup);
+        let restored = store.settings().unwrap();
+        assert!(!restored.boolean("Enabled"));
+        assert_eq!(app.settings.0, restored.0);
+        assert_eq!(app.opened.0, restored.0);
+        assert_eq!(app.test_session.settings.0, restored.0);
+        assert!(app.save());
+        assert_eq!(store.settings().unwrap().0, restored.0);
+        let preserved = Store::new(dir.path().join("before"));
+        std::fs::create_dir_all(&preserved.directory).unwrap();
+        std::fs::copy(
+            store.directory.join("config.json.before-restore"),
+            preserved.directory.join("config.json"),
+        )
+        .unwrap();
+        assert!(preserved.settings().unwrap().boolean("Enabled"));
+        app.restore_backup(&dir.path().join("missing"));
+        assert!(app.result.is_null());
+        assert_eq!(app.settings.0, restored.0);
     }
 }

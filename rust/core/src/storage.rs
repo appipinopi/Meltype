@@ -225,6 +225,9 @@ impl State {
             self.preferences.selected.remove(reading);
             self.translations.remove(reading);
         }
+        if let Some(reading) = key.strip_prefix("phrase:") {
+            self.phrases.retain(|phrase| phrase.reading != reading);
+        }
         self.used.remove(key);
     }
     pub fn forget_since(&mut self, since: i64) -> usize {
