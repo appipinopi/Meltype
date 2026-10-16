@@ -643,6 +643,7 @@ impl Session {
             return false;
         }
         self.rank_clauses(&mut clauses);
+        self.live_clauses.clear();
         self.clauses = clauses;
         self.selected_clause = 0;
         self.explicit = None;

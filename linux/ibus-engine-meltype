@@ -69,6 +69,10 @@ _lib.meltype_handle_key.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int,
 _lib.meltype_handle_key.restype = ctypes.c_void_p
 _lib.meltype_commit.argtypes = [ctypes.c_void_p]
 _lib.meltype_commit.restype = ctypes.c_void_p
+_reset = getattr(_lib, "meltype_reset", None)
+if _reset is not None:
+    _reset.argtypes = [ctypes.c_void_p]
+    _reset.restype = ctypes.c_void_p
 _lib.meltype_select_candidate.argtypes = [ctypes.c_void_p, ctypes.c_int]
 _lib.meltype_select_candidate.restype = ctypes.c_void_p
 _lib.meltype_set_direct.argtypes = [ctypes.c_void_p, ctypes.c_int]
@@ -261,7 +265,7 @@ class MeltypeEngine(IBus.Engine):
                 before, _ = self._surrounding_text()
                 if (not expected or before is None or not before.endswith(expected)
                         or len(expected.encode("utf-16-le")) // 2 != edit["deleteBefore"]):
-                    _lib.meltype_reset(self._session)
+                    _result(_reset(self._session) if _reset else _lib.meltype_commit(self._session))
                     return
                 # IBus counts Unicode scalars, while the ABI counts UTF-16 units.
                 self.delete_surrounding_text(-len(expected), len(expected))
