@@ -40,7 +40,7 @@ if $uninstall; then
         exit 1
     fi
     rm -f -- "$component"
-    for file in meltype-ibus meltype-settings meltype-rs LICENSE THIRD-PARTY-NOTICES.md README.md MIGRATION.md install.sh .meltype-rust-ibus; do
+    for file in meltype-ibus meltype-settings meltype-rs LICENSE THIRD-PARTY-NOTICES.md README.md MIGRATION.md install.sh icon.png .meltype-rust-ibus; do
         rm -f -- "$target/$file"
     done
     for file in meltype_mozc_helper MOZC-LICENSE.txt MOZC-CREDITS.html; do
@@ -51,11 +51,11 @@ if $uninstall; then
     echo 'Removed the Rust IBus program and component. Settings and learning data remain.'
     exit 0
 fi
-for file in meltype-ibus meltype-settings meltype-rs; do
+for file in meltype-ibus meltype-settings meltype-rs icon.png; do
     [[ -f "$source_dir/$file" ]] || { echo "Missing $file" >&2; exit 1; }
 done
 mkdir -p "$target" "$components"
-for file in meltype-ibus meltype-settings meltype-rs LICENSE THIRD-PARTY-NOTICES.md README.md MIGRATION.md install.sh; do
+for file in meltype-ibus meltype-settings meltype-rs LICENSE THIRD-PARTY-NOTICES.md README.md MIGRATION.md install.sh icon.png; do
     if [[ -f "$source_dir/$file" ]]; then cp -- "$source_dir/$file" "$target/$file"; fi
 done
 chmod 755 "$target/meltype-ibus" "$target/meltype-settings" "$target/meltype-rs"

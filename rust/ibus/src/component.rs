@@ -9,6 +9,7 @@ fn escape(text: &str) -> String {
         .replace('\'', "&apos;")
 }
 pub fn xml(executable: &Path) -> String {
+    let icon = escape(&executable.with_file_name("icon.png").to_string_lossy());
     let executable = escape(&executable.to_string_lossy());
     // IBus executes this command with GLib shell parsing, not an actual shell.
     // Single quotes are escaped for that parser before the XML escaping pass.
@@ -29,6 +30,7 @@ pub fn xml(executable: &Path) -> String {
   <name>meltype-rust</name><longname>Meltype Rust</longname>
   <description>日本語と英語を打ち分ける日本語入力</description>
   <language>ja</language><license>GPL-3.0-or-later</license>
+  <icon>{icon}</icon>
   <author>Yukishiro, appipinopi</author><layout>default</layout><symbol>あ</symbol><rank>0</rank>
  </engine></engines>
 </component>

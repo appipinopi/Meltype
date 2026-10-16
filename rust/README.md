@@ -29,6 +29,8 @@ CLIは引数なしでstdinからJSONを1行ずつ受け取ります。`{"op":"ke
 
 Linux IBusのRust版は `bash rust/build-linux.sh` で `linux/build/Meltype-Rust-linux/` と、実行権限を保持する配布用の `linux/build/Meltype-Rust-linux.tar.gz` に組み立てます。ビルドには `libibus-1.0-dev` が必要で、実行時はシステムのIBus/GLibを利用します。Rust側のエンジンとOS接続は同じ実行ファイルに含まれ、Python、GI、別のRust DLLは実行時に不要です。既存のPython版は上流実装の参照用として残っています。fcitx5は引き続き既存C++アダプターです。
 
+入力ソース用アイコンは元版の `linux/icon.png` をそのまま同梱し、登録XMLにインストール先の絶対パスを記録します。日本語・空白・引用符を含む配置先でも、アイコンの内容と登録パスをインストール試験で照合します。
+
 生成フォルダーで `sudo bash install.sh --system` を明示的に実行すると、`/usr/libexec/meltype-rust/ibus` にプログラムを置き、IBusが通常読み込む `/usr/share/ibus/component/meltype-rust.xml` を登録します。既存の上流版の登録やRustの設定・学習データは置き換えません。IBusの再起動や入力ソースの選択は行わず、サインインし直した後に「Meltype Rust」を選びます。`sudo bash /usr/libexec/meltype-rust/ibus/install.sh --system --uninstall` は専用マーカーと登録名を確認して配布ファイルを削除し、設定・学習と未知のファイルは保持します。`--prefix` は別の絶対パスへの配置用です。登録・削除は一時フォルダーだけで検証しています。
 
 管理者権限を使わない `bash install.sh` はユーザーのデータフォルダーへ配置します。ただしIBusはこの登録先を通常は自動で読みません。この方式ではIBus起動前に `IBUS_COMPONENT_PATH` へ表示されたフォルダーとシステムの登録フォルダーを設定する必要があります。削除は `bash install.sh --uninstall` です。

@@ -55,6 +55,7 @@ class EngineTests(unittest.TestCase):
             bundle = cls.root / "bundle"
             bundle.mkdir()
             shutil.copy2(cls.executable, bundle / "meltype-ibus")
+            shutil.copy2(Path(__file__).resolve().parents[3] / "linux/icon.png", bundle / "icon.png")
             for name in ["meltype-settings", "meltype-rs"]:
                 (bundle / name).write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
             script = Path(__file__).resolve().parents[1] / "install.sh"

@@ -22,6 +22,7 @@ class Installation(unittest.TestCase):
         self.bundle = self.root / "bundle"
         self.bundle.mkdir()
         shutil.copy2(self.binary, self.bundle / "meltype-ibus")
+        shutil.copy2(Path(__file__).resolve().parents[3] / "linux/icon.png", self.bundle / "icon.png")
         self.script = self.bundle / "install.sh"
         shutil.copy2(Path(__file__).resolve().parents[1] / "install.sh", self.script)
         for name in ["meltype-settings", "meltype-rs"]:
@@ -39,6 +40,8 @@ class Installation(unittest.TestCase):
         component = ET.fromstring(self.component.read_text(encoding="utf-8"))
         self.assertEqual(component.findtext("name"), "org.freedesktop.IBus.MeltypeRust")
         self.assertEqual(component.findtext("engines/engine/name"), "meltype-rust")
+        self.assertEqual(component.findtext("engines/engine/icon"), str(self.target / "icon.png"))
+        self.assertEqual((self.target / "icon.png").read_bytes(), (self.bundle / "icon.png").read_bytes())
         command = shlex.split(component.findtext("exec"))
         self.assertEqual(command, [str(self.target / "meltype-ibus"), "--ibus"])
         version = subprocess.check_output([command[0], "--version"], text=True)
@@ -53,6 +56,7 @@ class Installation(unittest.TestCase):
         self.run_script("--uninstall")
         self.assertFalse(self.component.exists())
         self.assertFalse((self.target / "meltype-ibus").exists())
+        self.assertFalse((self.target / "icon.png").exists())
         self.assertEqual(settings.read_text(), '{"Enabled":true}')
         self.assertEqual(other_component.read_text(), "upstream component")
         self.assertEqual(unrelated.read_text(), "keep")
