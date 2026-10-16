@@ -10,6 +10,7 @@ mod edit_events;
 mod edit_session;
 mod factory;
 mod fields;
+mod keys;
 mod langbar;
 mod ranges;
 mod recovery;

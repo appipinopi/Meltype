@@ -158,6 +158,38 @@ typedef struct MeltypeTsfEditCallbacks {
     void (*commit)(void *);
 } MeltypeTsfEditCallbacks;
 int32_t meltype_tsf_edit_notification(void *context, void *record, uint32_t cookie, const MeltypeTsfEditCallbacks *callbacks);
+/* Key flags: modifier=1, Japanese toggle=2, Alt-grave toggle=4, composition
+   Ctrl shortcut=8. Modifier bits: Shift=1,Ctrl=2,Alt=4,Win=8. Keyboard reads and
+   translation use the caller's thread/layout; translation preserves dead keys. */
+uint32_t meltype_tsf_key_flags(uint32_t key, uint64_t message, uint32_t modifiers);
+uint32_t meltype_tsf_key_modifiers(void);
+int32_t meltype_tsf_key_down(int32_t key);
+uint32_t meltype_tsf_key_char(uint32_t key, uint64_t message);
+typedef struct MeltypeTsfKeySnapshot {
+    void *composition, *context;
+    int32_t disabled, open, detection, english;
+    uint32_t stale_tries, stale_vk;
+    uint64_t stale_time;
+} MeltypeTsfKeySnapshot;
+typedef struct MeltypeTsfKeyCallbacks {
+    void *owner, *lifetime;
+    void (*read)(void *, MeltypeTsfKeySnapshot *);
+    void (*update)(void *, uint32_t operation, uint64_t a, uint64_t b);
+    void (*resume)(void *, void *context);
+    int32_t (*commit_now)(void *, int32_t keep_caret);
+    void (*commit_async)(void *, int32_t keep_caret);
+    void (*abandon)(void *);
+    int32_t (*ready)(void *);
+    int32_t (*secret)(void *, uint32_t key, void *context, int32_t test);
+    void (*pass_reason)(void *, uint32_t reason);
+} MeltypeTsfKeyCallbacks;
+/* Synchronous acceptance. Borrowed context and lifetime IUnknown on the TSF
+   thread, writable UTF-16 output, callbacks/state/code valid until return.
+   Callbacks never throw. update: 0 reset flags,1 secret while composing,
+   2 clear English,3 stale tries/vk packed high/low32 in a and time b,
+   4 checked=a. Pass: 0 clear,1 English,2 modifiers,3 disabled,4 continuing
+   English,5 core unavailable,6 password. Secret: 0 ordinary,1 secret,-1 unknown. */
+int32_t meltype_tsf_would_eat(void *context, uint32_t key, uint64_t message, int32_t test, const MeltypeTsfKeyCallbacks *callbacks, uint16_t *character);
 #endif
 #ifdef __cplusplus
 }

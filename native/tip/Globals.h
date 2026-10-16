@@ -85,6 +85,28 @@ struct RustEditCallbacks {
     void (__cdecl *commit)(void*);
 };
 void RustEditNotification(TfEditCookie,ITfContext*,ITfEditRecord*,const RustEditCallbacks&);
+unsigned int RustKeyFlags(UINT,LPARAM,bool);
+bool RustKeyDown(int);
+wchar_t RustKeyChar(UINT,LPARAM);
+struct RustKeySnapshot {
+    void* composition; void* context;
+    int disabled,open,detection,english;
+    unsigned int staleTries,staleVk;
+    unsigned long long staleTime;
+};
+struct RustKeyCallbacks {
+    void* owner; IUnknown* lifetime;
+    void (__cdecl *read)(void*,RustKeySnapshot*);
+    void (__cdecl *update)(void*,unsigned int,unsigned long long,unsigned long long);
+    void (__cdecl *resume)(void*,void*);
+    int (__cdecl *commitNow)(void*,int);
+    void (__cdecl *commitAsync)(void*,int);
+    void (__cdecl *abandon)(void*);
+    int (__cdecl *ready)(void*);
+    int (__cdecl *secret)(void*,unsigned int,void*,int);
+    void (__cdecl *pass)(void*,unsigned int);
+};
+bool RustWouldEat(ITfContext*,UINT,LPARAM,bool,const RustKeyCallbacks&,wchar_t&);
 #endif
 
 // 文字コードの変換

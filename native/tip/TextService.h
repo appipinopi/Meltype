@@ -131,6 +131,9 @@ private:
     bool IsSecretField(TfEditCookie ec, ITfContext* context);
     // 入力欄の種類を読む読み取りの編集セッション。1 = パスワード欄、0 = 違う、-1 = 読めない (キーの編集セッションの中で読む)
     int ReadSecretField(ITfContext* context);
+#ifdef MELTYPE_RUST_CORE
+    int ReadSecretForKey(ITfContext*,UINT,bool);
+#endif
     std::string CommitRequest(bool moved) const;
     void UnadviseTextEditSink();
     void UpdateLangBar();

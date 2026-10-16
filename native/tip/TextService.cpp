@@ -64,6 +64,9 @@ constexpr ULONG_PTR kReinjectMarker = 0x4D4C5450;
 
 // 修飾キーだけのキー (それ自体では入力にならない)
 bool IsModifier(UINT vk) {
+#ifdef MELTYPE_RUST_CORE
+    return (RustKeyFlags(vk,0,false)&1)!=0;
+#else
     switch (vk) {
         case VK_SHIFT: case VK_LSHIFT: case VK_RSHIFT:
         case VK_CONTROL: case VK_LCONTROL: case VK_RCONTROL:
@@ -73,15 +76,31 @@ bool IsModifier(UINT vk) {
         default:
             return false;
     }
+#endif
 }
 
 // 半角/全角 キー (日本語キーボード)
-bool IsHankakuZenkaku(UINT vk) { return vk == VK_KANJI || vk == 0xF3 || vk == 0xF4; }
+bool IsHankakuZenkaku(UINT vk) {
+#ifdef MELTYPE_RUST_CORE
+    return (RustKeyFlags(vk,0,false)&2)!=0;
+#else
+    return vk == VK_KANJI || vk == 0xF3 || vk == 0xF4;
+#endif
+}
 
-bool KeyDown(int vk) { return (GetKeyState(vk) & 0x8000) != 0; }
+bool KeyDown(int vk) {
+#ifdef MELTYPE_RUST_CORE
+    return RustKeyDown(vk);
+#else
+    return (GetKeyState(vk) & 0x8000) != 0;
+#endif
+}
 
 // US 配列の Alt + ` (半角/全角キー相当)。Alt はキーイベントの lParam も確認する。
 bool IsAltGraveToggle(UINT vk, LPARAM lParam) {
+#ifdef MELTYPE_RUST_CORE
+    return (RustKeyFlags(vk,lParam,true)&4)!=0;
+#else
     const ULONG_PTR message = static_cast<ULONG_PTR>(lParam);
     const UINT scan = static_cast<UINT>((message >> 16) & 0xFF);
     const bool graveKey = vk == VK_OEM_3 || (scan == 0x29 && (message & (static_cast<ULONG_PTR>(1) << 24)) == 0);
@@ -89,16 +108,24 @@ bool IsAltGraveToggle(UINT vk, LPARAM lParam) {
                          KeyDown(VK_MENU);
     return graveKey && altDown && !KeyDown(VK_CONTROL) && !KeyDown(VK_SHIFT) &&
            !KeyDown(VK_LWIN) && !KeyDown(VK_RWIN);
+#endif
 }
 
 // 変換中に Meltype.exe が受け持つ Ctrl+英字 (CompositionController.ControlShortcut と合わせる)。Alt・Windows キーと一緒なら違う
 bool IsCompositionShortcut(UINT vk) {
+#ifdef MELTYPE_RUST_CORE
+    return (RustKeyFlags(vk,0,true)&8)!=0;
+#else
     if (!KeyDown(VK_CONTROL) || KeyDown(VK_MENU) || KeyDown(VK_LWIN) || KeyDown(VK_RWIN)) return false;
     return vk == 'H' || vk == 'U' || vk == 'I' || vk == 'O' || vk == 'P';
+#endif
 }
 
 // そのキーで入力される文字 (無ければ 0)
 wchar_t CharOf(UINT vk, LPARAM lParam) {
+#ifdef MELTYPE_RUST_CORE
+    return RustKeyChar(vk,lParam);
+#else
     BYTE state[256] = {};
     if (!GetKeyboardState(state)) return 0;
     // Ctrl を押していても、文字としては Ctrl なしの文字を見る
@@ -109,6 +136,7 @@ wchar_t CharOf(UINT vk, LPARAM lParam) {
     // 4 = キーボードの状態 (デッドキー) を変えない (Windows 10 1607 以降)
     int n = ToUnicode(vk, scan, state, buffer, 8, 4);
     return n == 1 ? buffer[0] : 0;
+#endif
 }
 
 std::string RandomId() {
@@ -743,6 +771,40 @@ void TextService::ForgetSecretField() {
 }
 
 bool TextService::WouldEat(ITfContext* context, UINT vk, LPARAM lParam, wchar_t& ch, bool test) {
+#ifdef MELTYPE_RUST_CORE
+    RustKeyCallbacks callbacks = {
+        this,static_cast<ITfTextInputProcessorEx*>(this),
+        [](void* p,RustKeySnapshot* s) {
+            auto* self=static_cast<TextService*>(p);
+            *s={self->composition_,self->compositionContext_,self->disabled_,self->open_,self->directDetection_,self->directEnglishWord_,
+                static_cast<unsigned int>(self->staleCommitTries_),self->staleVk_,self->staleTime_};
+        },
+        [](void* p,unsigned int op,unsigned long long a,unsigned long long b) {
+            auto* self=static_cast<TextService*>(p);
+            switch (op) {
+                case 0:self->secretChecked_=false;self->secretWhileComposing_=false;break;
+                case 1:self->secretWhileComposing_=true;break;
+                case 2:self->directEnglishWord_=false;break;
+                case 3:self->staleCommitTries_=static_cast<int>(a>>32);self->staleVk_=static_cast<UINT>(a);self->staleTime_=b;break;
+                case 4:self->secretChecked_=a!=0;break;
+            }
+        },
+        [](void* p,void* c) {try {static_cast<TextService*>(p)->ResumeOrCommit(static_cast<ITfContext*>(c));} catch (...) {}},
+        [](void* p,int keep)->int {try {return static_cast<TextService*>(p)->CommitNow(keep!=0)?1:0;} catch (...) {return 0;}},
+        [](void* p,int keep) {try {static_cast<TextService*>(p)->CommitAsync(keep!=0);} catch (...) {}},
+        [](void* p) {try {static_cast<TextService*>(p)->AbandonComposition();} catch (...) {}},
+        [](void* p)->int {try {return static_cast<TextService*>(p)->ServerReady()?1:0;} catch (...) {return 0;}},
+        [](void* p,unsigned int key,void* c,int test)->int {try {return static_cast<TextService*>(p)->ReadSecretForKey(static_cast<ITfContext*>(c),key,test!=0);} catch (...) {return 1;}},
+        [](void* p,unsigned int code) {
+            auto* self=static_cast<TextService*>(p);
+            static const wchar_t* reasons[]={nullptr,L"英数",L"Ctrl・Alt・Windows キーを押している",L"この入力欄では使わない",L"英語の単語の続き",L"Meltype.exe が使えない",L"パスワードの入力欄"};
+            const wchar_t* reason=code<ARRAYSIZE(reasons)?reasons[code]:nullptr;
+            if (reason && self->passReason_!=reason) TipLog(L"キーを通します: %s",reason);
+            self->passReason_=reason;
+        },
+    };
+    return RustWouldEat(context,vk,lParam,test,callbacks,ch);
+#else
     ch = 0;
     secretChecked_ = false;
     secretWhileComposing_ = false;
@@ -845,7 +907,24 @@ bool TextService::WouldEat(ITfContext* context, UINT vk, LPARAM lParam, wchar_t&
     secretChecked_ = secret == 0;
     passReason_ = nullptr;
     return true;
+#endif
 }
+
+#ifdef MELTYPE_RUST_CORE
+int TextService::ReadSecretForKey(ITfContext* context,UINT vk,bool test) {
+    ULONGLONG now=GetTickCount64();
+    int secret;
+    if (!test && vk==secretVk_ && context==secretContext_.Get() && now-secretTime_<200) {
+        secret=secretResult_;privateField_=secretPrivate_;
+    } else {secret=ReadSecretField(context);}
+    ForgetSecretField();
+    if (test) {
+        secretVk_=vk;secretContext_=context;secretTime_=now;
+        secretResult_=secret;secretPrivate_=privateField_;
+    }
+    return secret;
+}
+#endif
 
 bool TextService::IsReinjected(UINT vk) {
     // 送り直したキーは 1 回だけ素通しする。送り直すときに付けた印 (dwExtraInfo) で見分ける。

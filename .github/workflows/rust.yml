@@ -87,6 +87,13 @@ jobs:
           python rust/native/tests/tsf_edit_events_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           ./rust/native/tests/build-edit-session-host.ps1
+      - name: Original key helper comparison DLLs
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./rust/native/tests/build-reference-keys.ps1
+      - name: Rust key acceptance and original helper parity
+        if: runner.os == 'Windows'
+        run: python rust/native/tests/tsf_keys_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll dist/key-reference/reference-x64.dll
       - name: Build test-only upstream candidate renderer
         if: runner.os == 'Windows'
         shell: pwsh
@@ -128,6 +135,9 @@ jobs:
           python rust/native/tests/tsf_subscriptions_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python rust/native/tests/tsf_edit_events_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
+      - name: Rust key acceptance and helper parity in a 32-bit process
+        if: runner.os == 'Windows'
+        run: python rust/native/tests/tsf_keys_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll dist/key-reference/reference-x86.dll
       - name: Rust candidate HWND behavior and rendering in a 32-bit process
         if: runner.os == 'Windows'
         env:

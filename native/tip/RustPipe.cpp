@@ -58,6 +58,11 @@ struct RustApi {
     void* (__cdecl *subscribe)(unsigned int,void*,unsigned int,void*,void**) = nullptr;
     void (__cdecl *unsubscribe)(void*) = nullptr;
     int (__cdecl *editNotification)(void*,void*,unsigned int,const RustEditCallbacks*) = nullptr;
+    unsigned int (__cdecl *keyFlags)(unsigned int,unsigned long long,unsigned int) = nullptr;
+    unsigned int (__cdecl *keyModifiers)() = nullptr;
+    int (__cdecl *keyDown)(int) = nullptr;
+    unsigned int (__cdecl *keyChar)(unsigned int,unsigned long long) = nullptr;
+    int (__cdecl *wouldEat)(void*,unsigned int,unsigned long long,int,const RustKeyCallbacks*,wchar_t*) = nullptr;
     RustApi() {
         wchar_t path[32768];
         const DWORD size = GetModuleFileNameW(g_module, path, ARRAYSIZE(path));
@@ -113,6 +118,11 @@ struct RustApi {
         subscribe = reinterpret_cast<decltype(subscribe)>(GetProcAddress(module, "meltype_tsf_subscribe"));
         unsubscribe = reinterpret_cast<decltype(unsubscribe)>(GetProcAddress(module, "meltype_tsf_unsubscribe"));
         editNotification = reinterpret_cast<decltype(editNotification)>(GetProcAddress(module, "meltype_tsf_edit_notification"));
+        keyFlags = reinterpret_cast<decltype(keyFlags)>(GetProcAddress(module, "meltype_tsf_key_flags"));
+        keyModifiers = reinterpret_cast<decltype(keyModifiers)>(GetProcAddress(module, "meltype_tsf_key_modifiers"));
+        keyDown = reinterpret_cast<decltype(keyDown)>(GetProcAddress(module, "meltype_tsf_key_down"));
+        keyChar = reinterpret_cast<decltype(keyChar)>(GetProcAddress(module, "meltype_tsf_key_char"));
+        wouldEat = reinterpret_cast<decltype(wouldEat)>(GetProcAddress(module, "meltype_tsf_would_eat"));
     }
     bool ready() const { return create && destroy && request && freeText; }
     // The module stays loaded for the process lifetime. Do not unload Rust
@@ -252,6 +262,15 @@ void* RustSubscribe(unsigned int kind,IUnknown* owner,TfClientId client,IUnknown
 void RustUnsubscribe(void* state) { if (state && api().unsubscribe) api().unsubscribe(state); }
 void RustEditNotification(TfEditCookie cookie,ITfContext* context,ITfEditRecord* record,const RustEditCallbacks& callbacks) {
     if (api().editNotification) api().editNotification(context,record,cookie,&callbacks);
+}
+unsigned int RustKeyFlags(UINT key,LPARAM message,bool state) {
+    return api().keyFlags ? api().keyFlags(key,static_cast<ULONG_PTR>(message),state && api().keyModifiers ? api().keyModifiers() : 0) : 0;
+}
+bool RustKeyDown(int key) {return api().keyDown && api().keyDown(key)!=0;}
+wchar_t RustKeyChar(UINT key,LPARAM message) {return api().keyChar ? static_cast<wchar_t>(api().keyChar(key,static_cast<ULONG_PTR>(message))) : 0;}
+bool RustWouldEat(ITfContext* context,UINT key,LPARAM message,bool test,const RustKeyCallbacks& callbacks,wchar_t& ch) {
+    ch=0;
+    return api().wouldEat && api().wouldEat(context,key,static_cast<ULONG_PTR>(message),test?1:0,&callbacks,&ch)!=0;
 }
 bool PipeClient::Transact(const std::string& request, std::string& response, DWORD, bool) {
     if (!api().ready()) return false;
