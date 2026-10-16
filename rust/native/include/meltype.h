@@ -59,6 +59,12 @@ void meltype_tsf_langbar_detach(void *button);
    Click callbacks may hide/destroy the token. Destroy on its creating thread. */
 void *meltype_tsf_candidate_create(void *context, void (*select)(void *, int32_t, int32_t));
 int32_t meltype_tsf_candidate_show(void *, const char *json, const void *anchor_rect);
+/* TSF core-view projection and placement. Borrowed context/composition, valid
+   read cookie and UTF-8 reply view. No COM calls for hidden views/stale tokens. */
+int32_t meltype_tsf_candidate_show_tsf(void *token, void *context, void *composition, uint32_t cookie, const char *view);
+/* Writes a RECT. Return 1 for TSF text geometry, 0 for caret/cursor fallback,
+   -1 for invalid JSON/null output. Never edits the document. */
+int32_t meltype_tsf_candidate_anchor(void *context, void *composition, uint32_t cookie, const char *view, void *rect);
 void meltype_tsf_candidate_hide(void *);
 int32_t meltype_tsf_candidate_visible(void *);
 void meltype_tsf_candidate_destroy(void *);

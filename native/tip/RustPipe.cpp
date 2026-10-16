@@ -24,6 +24,7 @@ struct RustApi {
     void (__cdecl *langbarDetach)(void*) = nullptr;
     void* (__cdecl *candidateCreate)(void*, void (__cdecl *)(void*,int,int)) = nullptr;
     int (__cdecl *candidateShow)(void*,const char*,const RECT*) = nullptr;
+    int (__cdecl *candidateShowTsf)(void*,void*,void*,unsigned int,const char*) = nullptr;
     void (__cdecl *candidateHide)(void*) = nullptr;
     int (__cdecl *candidateVisible)(void*) = nullptr;
     void (__cdecl *candidateDestroy)(void*) = nullptr;
@@ -71,6 +72,7 @@ struct RustApi {
         langbarDetach = reinterpret_cast<decltype(langbarDetach)>(GetProcAddress(module, "meltype_tsf_langbar_detach"));
         candidateCreate = reinterpret_cast<decltype(candidateCreate)>(GetProcAddress(module, "meltype_tsf_candidate_create"));
         candidateShow = reinterpret_cast<decltype(candidateShow)>(GetProcAddress(module, "meltype_tsf_candidate_show"));
+        candidateShowTsf = reinterpret_cast<decltype(candidateShowTsf)>(GetProcAddress(module, "meltype_tsf_candidate_show_tsf"));
         candidateHide = reinterpret_cast<decltype(candidateHide)>(GetProcAddress(module, "meltype_tsf_candidate_hide"));
         candidateVisible = reinterpret_cast<decltype(candidateVisible)>(GetProcAddress(module, "meltype_tsf_candidate_visible"));
         candidateDestroy = reinterpret_cast<decltype(candidateDestroy)>(GetProcAddress(module, "meltype_tsf_candidate_destroy"));
@@ -295,6 +297,20 @@ void CandidateWindow::Show(const CandidateView& view, const RECT& anchor) {
     api().candidateShow(impl_->handle, json.c_str(), &anchor);
 }
 void CandidateWindow::Hide() { if (impl_->handle) api().candidateHide(impl_->handle); }
+void CandidateWindow::ShowTsf(TfEditCookie cookie,ITfContext* context,ITfComposition* composition,const JsonValue& view) {
+    if (!impl_->handle || !api().candidateShowTsf) return;
+    std::string json = "{";
+    for (const wchar_t* name : {L"candidates",L"notes",L"predictions",L"clauses"}) {
+        json += JsonString(name) + ":[";
+        const auto& values = view[name].array;
+        for (size_t i=0;i<values.size();++i) { if (i) json += ','; json += JsonString(values[i].Str()); }
+        json += "],";
+    }
+    for (const wchar_t* name : {L"suggestion",L"meaning",L"typed",L"text"}) json += JsonString(name) + ":" + JsonString(view[name].Str()) + ',';
+    for (const wchar_t* name : {L"selectedIndex",L"selectedPrediction",L"selectedClause"}) json += JsonString(name) + ":" + std::to_string(view[name].Int()) + ',';
+    json += std::string("\"converting\":") + (view[L"converting"].Bool() ? "true}" : "false}");
+    api().candidateShowTsf(impl_->handle,context,composition,cookie,json.c_str());
+}
 bool CandidateWindow::Visible() const { return impl_->handle && api().candidateVisible(impl_->handle) != 0; }
 // Rust owns its window classes and per-window drawing resources. The Rust DLL
 // stays loaded, so none of its window procedures point into this TSF shell.

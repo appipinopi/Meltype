@@ -1687,6 +1687,9 @@ void TextService::SelectCandidate(int index, bool prediction) {
 
 void TextService::ShowCandidates(TfEditCookie ec, ITfContext* context, const JsonValue& view) {
     if (!candidates_) return;
+#ifdef MELTYPE_RUST_CORE
+    candidates_->ShowTsf(ec,context,composition_,view);
+#else
     CandidateView data;
     for (const JsonValue& item : view[L"candidates"].array) data.candidates.push_back(item.Str());
     for (const JsonValue& item : view[L"notes"].array) data.notes.push_back(item.Str());
@@ -1756,6 +1759,7 @@ void TextService::ShowCandidates(TfEditCookie ec, ITfContext* context, const Jso
         }
     }
     candidates_->Show(data, anchor);
+#endif
 }
 
 // ---- 下線の種類 ----

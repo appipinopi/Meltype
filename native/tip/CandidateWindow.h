@@ -35,6 +35,9 @@ public:
 
     // anchor は選んでいる文節の画面上の四角形。その左下に出す (画面からはみ出すなら上)。
     void Show(const CandidateView& view, const RECT& anchor);
+#ifdef MELTYPE_RUST_CORE
+    void ShowTsf(TfEditCookie,ITfContext*,ITfComposition*,const struct JsonValue&);
+#endif
     void Hide();
     bool Visible() const;
 
