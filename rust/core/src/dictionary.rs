@@ -52,6 +52,7 @@ impl Dictionary {
                 dict.english
                     .extend(words(source).map(str::to_ascii_lowercase));
             }
+            dict.english.extend(dict.readable_english.iter().cloned());
             for source in [
                 include_str!("../../../dictionaries/candidates.txt"),
                 include_str!("../../../dictionaries/loanwords.txt"),
@@ -156,6 +157,9 @@ impl Dictionary {
         for token in raw.split_inclusive(char::is_whitespace) {
             let word = token.trim_end_matches(char::is_whitespace);
             if word.contains("://")
+                || word.bytes().any(|c| c.is_ascii_digit())
+                    && word.bytes().any(|c| c.is_ascii_alphabetic())
+                    && word.bytes().all(|c| c.is_ascii_alphanumeric())
                 || word.contains('@')
                 || word.starts_with(['/', '$'])
                 || word.contains('\\')
@@ -198,7 +202,20 @@ impl Dictionary {
 
     fn mixed_word(&self, raw: &str, final_input: bool) -> String {
         let lower = raw.to_ascii_lowercase();
-        if raw == "I" || raw.len() >= 2 && raw.bytes().all(|c| c.is_ascii_uppercase()) {
+        if !raw.is_empty() && raw.bytes().all(|c| c.is_ascii_uppercase()) {
+            return raw.to_owned();
+        }
+        if ["no", "ya", "repo"].contains(&lower.as_str()) {
+            return romaji::hiragana(raw, final_input);
+        }
+        let suffix = if lower.ends_with("pedias") {
+            6
+        } else if lower.ends_with("pedia") {
+            5
+        } else {
+            0
+        };
+        if suffix > 0 && (lower.len() == suffix || lower.len() >= suffix + 3) {
             return raw.to_owned();
         }
         if self.japanese.contains(&lower) {
@@ -208,9 +225,7 @@ impl Dictionary {
         if !self.readable_english.contains(&lower) && self.kana_words.contains(&reading) {
             return reading;
         }
-        if self.english.contains(&lower)
-            || raw.chars().filter(char::is_ascii_uppercase).count() >= 2
-        {
+        if self.english.contains(&lower) {
             return raw.to_owned();
         }
         // Shortest-path segmentation over ASCII byte boundaries. Unknown syllables
@@ -227,7 +242,9 @@ impl Dictionary {
                     || self.kana_words.contains(&piece_reading)
                     || ["ha", "wa", "wo", "ga", "no", "ni", "de", "to", "mo", "he"]
                         .contains(&piece);
-                let en = piece.len() >= 3 && self.english.contains(piece) && !jp;
+                let acronym =
+                    piece.len() >= 2 && raw[i..end].bytes().all(|c| c.is_ascii_uppercase());
+                let en = (piece.len() >= 3 && self.english.contains(piece) && !jp) || acronym;
                 let cost = if jp {
                     0.3
                 } else if en {

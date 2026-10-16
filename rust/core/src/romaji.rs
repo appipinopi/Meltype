@@ -71,7 +71,10 @@ pub fn hiragana(raw: &str, final_input: bool) -> String {
             '-' => 'ー',
             '[' => '「',
             ']' => '」',
-            _ => first,
+            _ => raw[raw.len() - rest.len()..]
+                .chars()
+                .next()
+                .unwrap_or(first),
         });
         rest = &rest[first.len_utf8()..];
     }

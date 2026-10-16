@@ -40,5 +40,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("{text}");
     }
     eprintln!("Upstream typing cases: {pass}/{}", results.len());
+    if std::env::args().any(|s| s == "--check") && pass < 191 {
+        return Err(
+            "typing compatibility regressed below the recorded migration baseline (191/216)".into(),
+        );
+    }
     Ok(())
 }

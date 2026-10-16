@@ -1,9 +1,6 @@
 name: Rust preview
 on:
   workflow_dispatch:
-  push:
-    branches: [codex/rust-cross-platform]
-    paths: ['rust/**', 'android/**', 'Cargo.*', 'dictionaries/**', 'native/tip/**', '.github/workflows/rust.yml']
   pull_request:
     paths: ['rust/**', 'android/**', 'Cargo.*', 'dictionaries/**', 'native/tip/**', '.github/workflows/rust.yml']
 permissions:
@@ -26,7 +23,7 @@ jobs:
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo test --workspace --locked
-      - run: cargo run -p meltype-core --example quality -- quality-report.json
+      - run: cargo run -p meltype-core --example quality -- quality-report.json --check
       - run: cargo build --workspace --release --locked
       - if: runner.os == 'Windows'
         shell: pwsh
