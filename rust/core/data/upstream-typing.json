@@ -1,0 +1,1298 @@
+[
+  {
+    "category": "日本語",
+    "typed": "kyouhaiitenkidesune",
+    "expected": "きょうはいいてんきですね",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "hosuthingu",
+    "expected": "ほすてぃんぐ",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "tsukuenouenoitsumonohon",
+    "expected": "つくえのうえのいつものほん",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "matsurinokatsudounoketsuron",
+    "expected": "まつりのかつどうのけつろん",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "watashihagakuseidesu",
+    "expected": "わたしはがくせいです",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "arigatougozaimasu",
+    "expected": "ありがとうございます",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "yoroshikuonegaishimasu",
+    "expected": "よろしくおねがいします",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "ashitahaamedesu",
+    "expected": "あしたはあめです",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "konnnichiha",
+    "expected": "こんにちは",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "nihongowobenkyoushiteimasu",
+    "expected": "にほんごをべんきょうしています",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "kaigiha3jikaradesu",
+    "expected": "かいぎは3じからです",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "sushigatabetai",
+    "expected": "すしがたべたい",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "anatahadaredesuka",
+    "expected": "あなたはだれですか",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "sorehachigaimasu",
+    "expected": "それはちがいます",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "kinouhatanoshikatta",
+    "expected": "きのうはたのしかった",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "mainichiasagohanwotabemasu",
+    "expected": "まいにちあさごはんをたべます",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "denshaninoriokureteshimatta",
+    "expected": "でんしゃにのりおくれてしまった",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "nanimoshiranai",
+    "expected": "なにもしらない",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "makenaide",
+    "expected": "まけないで",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "sonotoori",
+    "expected": "そのとおり",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "hontouni",
+    "expected": "ほんとうに",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "dokodemoii",
+    "expected": "どこでもいい",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "chottomatte",
+    "expected": "ちょっとまって",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "kaimononiikimasu",
+    "expected": "かいものにいきます",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "namaewooshiete",
+    "expected": "なまえをおしえて",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "kanjiwokaku",
+    "expected": "かんじをかく",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "sakewonomu",
+    "expected": "さけをのむ",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "animegasuki",
+    "expected": "あにめがすき",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "mangawoyomu",
+    "expected": "まんがをよむ",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "karaokeniiku",
+    "expected": "からおけにいく",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "itadakimasu",
+    "expected": "いただきます",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "otsukaresamadesu",
+    "expected": "おつかれさまです",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "sumimasen",
+    "expected": "すみません",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "daijoubu",
+    "expected": "だいじょうぶ",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "ganbatte",
+    "expected": "がんばって",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "tanakasannnihanashita",
+    "expected": "たなかさんにはなした",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "toukyouniiku",
+    "expected": "とうきょうにいく",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "kore ha pen desu",
+    "expected": "これはぺんです",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "sore de ii",
+    "expected": "それでいい",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "watashi ha sushi ga suki",
+    "expected": "わたしはすしがすき",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "nani wo shiteru no",
+    "expected": "なにをしてるの",
+    "before": ""
+  },
+  {
+    "category": "曖昧な語",
+    "typed": "same",
+    "expected": "さめ",
+    "before": ""
+  },
+  {
+    "category": "曖昧な語",
+    "typed": "mine",
+    "expected": "みね",
+    "before": ""
+  },
+  {
+    "category": "曖昧な語",
+    "typed": "sake",
+    "expected": "さけ",
+    "before": ""
+  },
+  {
+    "category": "曖昧な語",
+    "typed": "sushi",
+    "expected": "すし",
+    "before": ""
+  },
+  {
+    "category": "曖昧な語",
+    "typed": "sushi",
+    "expected": "sushi",
+    "before": "I like "
+  },
+  {
+    "category": "曖昧な語",
+    "typed": "sushi",
+    "expected": "すし",
+    "before": "今日は"
+  },
+  {
+    "category": "曖昧な語",
+    "typed": "repo",
+    "expected": "れぽ",
+    "before": ""
+  },
+  {
+    "category": "曖昧な語",
+    "typed": "make",
+    "expected": "make",
+    "before": "Please "
+  },
+  {
+    "category": "英語",
+    "typed": "hello",
+    "expected": "hello",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "google",
+    "expected": "google",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "github",
+    "expected": "github",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "python",
+    "expected": "python",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "javascript",
+    "expected": "javascript",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "thank you",
+    "expected": "thank you",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "good morning",
+    "expected": "good morning",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "I love you",
+    "expected": "I love you",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "see you later",
+    "expected": "see you later",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "what is this",
+    "expected": "what is this",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "how are you",
+    "expected": "how are you",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "the quick brown fox",
+    "expected": "the quick brown fox",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "please check the log",
+    "expected": "please check the log",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "open the file",
+    "expected": "open the file",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "run the tests",
+    "expected": "run the tests",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "git push origin main",
+    "expected": "git push origin main",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "npm install",
+    "expected": "npm install",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "meeting at nine",
+    "expected": "meeting at nine",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "I want to go to the park",
+    "expected": "I want to go to the park",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "make sure you have time",
+    "expected": "make sure you have time",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "this is a pen",
+    "expected": "this is a pen",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "my name is taro",
+    "expected": "my name is taro",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "do it now",
+    "expected": "do it now",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "let me know",
+    "expected": "let me know",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "can you send me the file",
+    "expected": "can you send me the file",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "kyouhagoogledekensaku",
+    "expected": "きょうはgoogleでけんさく",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "tanaka@example.com",
+    "expected": "tanaka@example.com",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "yamada.taro@example.co.jp",
+    "expected": "yamada.taro@example.co.jp",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "foo_bar@example.com",
+    "expected": "foo_bar@example.com",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "taro+news@example.com",
+    "expected": "taro+news@example.com",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "yamada-taro@example.com",
+    "expected": "yamada-taro@example.com",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "reflectsareta",
+    "expected": "reflectされた",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "selectshita",
+    "expected": "selectした",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "inviteshimashita",
+    "expected": "inviteしました",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "invitewookutta",
+    "expected": "inviteをおくった",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "githubnipushshita",
+    "expected": "githubにpushした",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "pythondekaita",
+    "expected": "pythonでかいた",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "korehathin",
+    "expected": "これはthin",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "zoomdekaigi",
+    "expected": "zoomでかいぎ",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "slackderenraku",
+    "expected": "slackでれんらく",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "amazondekaimono",
+    "expected": "amazonでかいもの",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "youtubewomiru",
+    "expected": "youtubeをみる",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "chatgptnikiku",
+    "expected": "chatgptにきく",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "netflixdemiru",
+    "expected": "netflixでみる",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "discordnisanka",
+    "expected": "discordにさんか",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "linewookuru",
+    "expected": "lineをおくる",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "apinoerror",
+    "expected": "apiのerror",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "bugwonaosu",
+    "expected": "bugをなおす",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "windowsnoupdate",
+    "expected": "windowsのupdate",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "shiryouwookurimasu",
+    "expected": "しりょうをおくります",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "kakuninshitekudasai",
+    "expected": "かくにんしてください",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "yoroshiidesuka",
+    "expected": "よろしいですか",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "ryoukaishimashita",
+    "expected": "りょうかいしました",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "ashitanokaiginitsuite",
+    "expected": "あしたのかいぎについて",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "shoushouomachikudasai",
+    "expected": "しょうしょうおまちください",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "otsukaresamadeshita",
+    "expected": "おつかれさまでした",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "tesutogaowarimashita",
+    "expected": "てすとがおわりました",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "sonokenhakentoushimasu",
+    "expected": "そのけんはけんとうします",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "mouichidoonegaishimasu",
+    "expected": "もういちどおねがいします",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "nanjigaiidesuka",
+    "expected": "なんじがいいですか",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "zenzenmondainai",
+    "expected": "ぜんぜんもんだいない",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "tokorodesa",
+    "expected": "ところでさ",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "hayakukaerou",
+    "expected": "はやくかえろう",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "kyouhasamuine",
+    "expected": "きょうはさむいね",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "good job",
+    "expected": "good job",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "see you tomorrow",
+    "expected": "see you tomorrow",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "no problem",
+    "expected": "no problem",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "hello world",
+    "expected": "hello world",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "thank you so much",
+    "expected": "thank you so much",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "we need to fix the bug",
+    "expected": "we need to fix the bug",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "please take a look at this",
+    "expected": "please take a look at this",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "the meeting is at nine",
+    "expected": "the meeting is at nine",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "happy birthday",
+    "expected": "happy birthday",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "what time is it",
+    "expected": "what time is it",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "reactdekaita",
+    "expected": "reactでかいた",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "dockergaugokanai",
+    "expected": "dockerがうごかない",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "typescriptnikaeta",
+    "expected": "typescriptにかえた",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "excelnofairu",
+    "expected": "excelのふぁいる",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "spotifydekiku",
+    "expected": "spotifyできく",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "microsoftnokaisha",
+    "expected": "microsoftのかいしゃ",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "kyouhaclaudetohanashita",
+    "expected": "きょうはclaudeとはなした",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "pythonnobug",
+    "expected": "pythonのbug",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "GitHub no repo",
+    "expected": "GitHub のれぽ",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "Google to Apple",
+    "expected": "Google とApple",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "yagithub",
+    "expected": "やgithub",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "kyouhayagithub",
+    "expected": "きょうはやgithub",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "hagithub",
+    "expected": "はgithub",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "githubya",
+    "expected": "githubや",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "githubni",
+    "expected": "githubに",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "yapython",
+    "expected": "やpython",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "yacursor",
+    "expected": "やcursor",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "yaslack",
+    "expected": "やslack",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "yastack",
+    "expected": "やstack",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "yaplay",
+    "expected": "やplay",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "yasync",
+    "expected": "やsync",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "delight",
+    "expected": "delight",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "devote",
+    "expected": "devote",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "morally",
+    "expected": "morally",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "kokodevote",
+    "expected": "ここでvote",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "githubdevote",
+    "expected": "githubでvote",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "chottodehijacked",
+    "expected": "ちょっとでhijacked",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "korekarastories",
+    "expected": "これからstories",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "devtoprod",
+    "expected": "devとprod",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "edittopub",
+    "expected": "editとpub",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "dottonet",
+    "expected": "dotとnet",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "rdstoredshift",
+    "expected": "rdsとredshift",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "mottopython",
+    "expected": "もっとpython",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "uikittoswiftui",
+    "expected": "uikitとswiftui",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "teishutsushita",
+    "expected": "ていしゅつした",
+    "before": ""
+  },
+  {
+    "category": "日本語",
+    "typed": "ochitsuite",
+    "expected": "おちついて",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "kyoucommitsuru",
+    "expected": "きょうcommitする",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "shutsita",
+    "expected": "shutした",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "sitePR",
+    "expected": "してPR",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "site PR",
+    "expected": "して PR",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "pedia",
+    "expected": "pedia",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "protopedia",
+    "expected": "protopedia",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "conservapedia",
+    "expected": "conservapedia",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "wikipedia",
+    "expected": "wikipedia",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "wikipedias",
+    "expected": "wikipedias",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "protopedias",
+    "expected": "protopedias",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "Protopedia",
+    "expected": "Protopedia",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "Protopedias",
+    "expected": "Protopedias",
+    "before": ""
+  },
+  {
+    "category": "混在",
+    "typed": "worldpedia",
+    "expected": "worldpedia",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "yahoo",
+    "expected": "yahoo",
+    "before": ""
+  },
+  {
+    "category": "短い語",
+    "typed": "no",
+    "expected": "の",
+    "before": "GitHub"
+  },
+  {
+    "category": "短い語",
+    "typed": "de",
+    "expected": "で",
+    "before": "Chrome"
+  },
+  {
+    "category": "短い語",
+    "typed": "ni",
+    "expected": "に",
+    "before": "今日は GitHub "
+  },
+  {
+    "category": "短い語",
+    "typed": "ga",
+    "expected": "が",
+    "before": "Python"
+  },
+  {
+    "category": "短い語",
+    "typed": "ya",
+    "expected": "や",
+    "before": "GitHub"
+  },
+  {
+    "category": "短い語",
+    "typed": "to",
+    "expected": "to",
+    "before": "I want "
+  },
+  {
+    "category": "短い語",
+    "typed": "is",
+    "expected": "is",
+    "before": "this "
+  },
+  {
+    "category": "短い語",
+    "typed": "at",
+    "expected": "at",
+    "before": "look "
+  },
+  {
+    "category": "短い語",
+    "typed": "a",
+    "expected": "a",
+    "before": "this is "
+  },
+  {
+    "category": "記号・数字",
+    "typed": "!",
+    "expected": "！",
+    "before": ""
+  },
+  {
+    "category": "記号・数字",
+    "typed": "?",
+    "expected": "？",
+    "before": ""
+  },
+  {
+    "category": "記号・数字",
+    "typed": "~",
+    "expected": "～",
+    "before": ""
+  },
+  {
+    "category": "記号・数字",
+    "typed": "!",
+    "expected": "!",
+    "before": "Hello"
+  },
+  {
+    "category": "記号・数字",
+    "typed": "kore,sore.",
+    "expected": "これ、それ。",
+    "before": ""
+  },
+  {
+    "category": "記号・数字",
+    "typed": "[kagi]",
+    "expected": "「かぎ」",
+    "before": ""
+  },
+  {
+    "category": "記号・数字",
+    "typed": "ra-men",
+    "expected": "らーめん",
+    "before": ""
+  },
+  {
+    "category": "記号・数字",
+    "typed": "3.14",
+    "expected": "3.14",
+    "before": ""
+  },
+  {
+    "category": "記号・数字",
+    "typed": "2026/09/30",
+    "expected": "2026/09/30",
+    "before": ""
+  },
+  {
+    "category": "記号・数字",
+    "typed": "10ji",
+    "expected": "10じ",
+    "before": ""
+  },
+  {
+    "category": "綴り",
+    "typed": "xa",
+    "expected": "ぁ",
+    "before": ""
+  },
+  {
+    "category": "綴り",
+    "typed": "la",
+    "expected": "ぁ",
+    "before": ""
+  },
+  {
+    "category": "綴り",
+    "typed": "mala",
+    "expected": "まぁ",
+    "before": ""
+  },
+  {
+    "category": "綴り",
+    "typed": "ltu",
+    "expected": "っ",
+    "before": ""
+  },
+  {
+    "category": "綴り",
+    "typed": "moraltute",
+    "expected": "もらって",
+    "before": ""
+  },
+  {
+    "category": "綴り",
+    "typed": "moraltsute",
+    "expected": "もらって",
+    "before": ""
+  },
+  {
+    "category": "綴り",
+    "typed": "kyouhamoraltute",
+    "expected": "きょうはもらって",
+    "before": ""
+  },
+  {
+    "category": "綴り",
+    "typed": "thi",
+    "expected": "てぃ",
+    "before": ""
+  },
+  {
+    "category": "綴り",
+    "typed": "fa",
+    "expected": "ふぁ",
+    "before": ""
+  },
+  {
+    "category": "綴り",
+    "typed": "je",
+    "expected": "じぇ",
+    "before": ""
+  },
+  {
+    "category": "綴り",
+    "typed": "nn",
+    "expected": "ん",
+    "before": ""
+  },
+  {
+    "category": "綴り",
+    "typed": "kanji",
+    "expected": "かんじ",
+    "before": ""
+  },
+  {
+    "category": "大文字",
+    "typed": "Tokyo",
+    "expected": "Tokyo",
+    "before": ""
+  },
+  {
+    "category": "大文字",
+    "typed": "Apple",
+    "expected": "Apple",
+    "before": ""
+  },
+  {
+    "category": "大文字",
+    "typed": "I",
+    "expected": "I",
+    "before": ""
+  },
+  {
+    "category": "大文字",
+    "typed": "W",
+    "expected": "W",
+    "before": ""
+  },
+  {
+    "category": "大文字",
+    "typed": "kaW",
+    "expected": "かW",
+    "before": ""
+  },
+  {
+    "category": "大文字",
+    "typed": "AInituite",
+    "expected": "AIについて",
+    "before": ""
+  },
+  {
+    "category": "大文字",
+    "typed": "AIdekiru",
+    "expected": "AIできる",
+    "before": ""
+  },
+  {
+    "category": "大文字",
+    "typed": "McAfeeto",
+    "expected": "McAfeeと",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "overcute",
+    "expected": "overcute",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "i18n",
+    "expected": "i18n",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "l10n",
+    "expected": "l10n",
+    "before": ""
+  },
+  {
+    "category": "英語",
+    "typed": "h2o",
+    "expected": "h2o",
+    "before": ""
+  }
+]

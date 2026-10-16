@@ -27,7 +27,7 @@ public final class MeltypeService extends InputMethodService {
     private LinearLayout candidates;
     private TextView preview;
 
-    @Override public void onCreate() { super.onCreate(); session = Native.create(); }
+    @Override public void onCreate() { super.onCreate(); session = Native.create(getFilesDir().getAbsolutePath()); }
     @Override public void onDestroy() { Native.destroy(session); session = 0; super.onDestroy(); }
     @Override public void onStartInput(EditorInfo info, boolean restarting) {
         super.onStartInput(info, restarting);
@@ -129,6 +129,11 @@ public final class MeltypeService extends InputMethodService {
                         for (int i=0;i<choices.length();i++) {
                             final int index=i; Button button=new Button(this); button.setText(choices.getString(i));
                             button.setOnClickListener(v -> apply(Native.select(session,index))); candidates.addView(button);
+                        }
+                        JSONArray predictions = view.optJSONArray("predictions");
+                        if (predictions != null) for (int i=0;i<predictions.length();i++) {
+                            final int index=i; Button button=new Button(this); button.setText(predictions.getString(i));
+                            button.setOnClickListener(v -> apply(Native.predict(session,index))); candidates.addView(button);
                         }
                     }
                 }

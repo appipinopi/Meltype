@@ -41,6 +41,11 @@ fn run(
     catch_unwind(AssertUnwindSafe(|| {
         let mut all = sessions().lock().ok()?;
         let session = all.get_mut(&(handle as usize))?;
+        if session.raw().is_empty() {
+            if let Err(error) = session.reload() {
+                session.storage_error = Some(error.to_string());
+            }
+        }
         Some(allocate(&serde_json::to_string(&f(session)).ok()?))
     }))
     .ok()
@@ -120,9 +125,68 @@ pub extern "C" fn meltype_create() -> *mut c_void {
         let Ok(mut all) = sessions().lock() else {
             return std::ptr::null_mut();
         };
-        all.insert(id, Session::default());
+        #[cfg(not(test))]
+        let session = Session::open(meltype_core::storage::Store::new(
+            meltype_core::storage::Store::default_directory(),
+        ))
+        .unwrap_or_else(|error| {
+            let mut session = Session::default();
+            session.storage_error = Some(error.to_string());
+            session
+        });
+        #[cfg(test)]
+        let session = Session::default();
+        all.insert(id, session);
         id as *mut c_void
     })
+    .unwrap_or(std::ptr::null_mut())
+}
+/// # Safety
+/// directory must be a valid NUL-terminated UTF-8 filesystem path.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_create_at(directory: *const c_char) -> *mut c_void {
+    catch_unwind(|| {
+        let Some(directory) = read(directory) else {
+            return std::ptr::null_mut();
+        };
+        let Ok(session) = Session::open(meltype_core::storage::Store::new(directory)) else {
+            return std::ptr::null_mut();
+        };
+        let id = NEXT.fetch_add(1, Ordering::Relaxed);
+        let Ok(mut all) = sessions().lock() else {
+            return std::ptr::null_mut();
+        };
+        all.insert(id, session);
+        id as *mut c_void
+    })
+    .unwrap_or(std::ptr::null_mut())
+}
+/// # Safety
+/// request must be valid NUL-terminated UTF-8 JSON. Returned JSON is freed with
+/// meltype_free, including error results. File operations are explicitly named.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_control(
+    handle: *mut c_void,
+    request: *const c_char,
+) -> *mut c_char {
+    catch_unwind(AssertUnwindSafe(|| {
+        let result = (|| -> Result<serde_json::Value, String> {
+            let text = read(request).ok_or("invalid request")?;
+            if text.len() > 1024 * 1024 {
+                return Err("request too large".into());
+            }
+            let request = serde_json::from_str(&text).map_err(|e| e.to_string())?;
+            let mut all = sessions().lock().map_err(|e| e.to_string())?;
+            all.get_mut(&(handle as usize))
+                .ok_or("invalid session")?
+                .control(&request)
+                .map_err(|e| e.to_string())
+        })();
+        allocate(&match result {
+            Ok(value) => value.to_string(),
+            Err(error) => serde_json::json!({"error":error}).to_string(),
+        })
+    }))
     .unwrap_or(std::ptr::null_mut())
 }
 #[no_mangle]
@@ -143,7 +207,7 @@ pub unsafe extern "C" fn meltype_handle_key(
     ch: i32,
     modifiers: i32,
     before: *const c_char,
-    _after: *const c_char,
+    after: *const c_char,
 ) -> *mut c_char {
     catch_unwind(AssertUnwindSafe(|| {
         let reading = sessions().lock().ok().and_then(|all| {
@@ -154,6 +218,7 @@ pub unsafe extern "C" fn meltype_handle_key(
                         && !s.raw().is_empty()
                         && !s.direct
                         && !s.private
+                        && s.settings.boolean("Enabled")
                         && !s.code_input
                         && modifiers & 14 == 0
                 })
@@ -192,6 +257,7 @@ pub unsafe extern "C" fn meltype_handle_key(
             }
         }
         run(handle, |s| {
+            s.set_context(read(before).as_deref(), read(after).as_deref());
             if !external.is_empty() {
                 s.begin_conversion(external);
                 s.result(true)
@@ -217,6 +283,10 @@ pub extern "C" fn meltype_reset(handle: *mut c_void) -> *mut c_char {
 #[no_mangle]
 pub extern "C" fn meltype_select_candidate(handle: *mut c_void, index: i32) -> *mut c_char {
     run(handle, |s| s.select(index as usize))
+}
+#[no_mangle]
+pub extern "C" fn meltype_select_prediction(handle: *mut c_void, index: i32) -> *mut c_char {
+    run(handle, |s| s.select_prediction(index as usize))
 }
 fn set(handle: *mut c_void, f: impl FnOnce(&mut Session)) {
     if let Ok(mut all) = sessions().lock() {
@@ -247,8 +317,20 @@ pub extern "C" fn meltype_set_private(handle: *mut c_void, enabled: i32) {
 pub extern "C" fn meltype_set_can_delete(_handle: *mut c_void, _enabled: i32) {}
 // NULL tells existing frontends to apply their regular mode-switch behavior.
 #[no_mangle]
-pub extern "C" fn meltype_role_key(_handle: *mut c_void, _vk: i32) -> *mut c_char {
-    std::ptr::null_mut()
+pub extern "C" fn meltype_role_key(handle: *mut c_void, vk: i32) -> *mut c_char {
+    let enabled = sessions()
+        .lock()
+        .ok()
+        .and_then(|all| {
+            all.get(&(handle as usize))
+                .map(|s| s.settings.boolean("SeparateKeyRoles") && !s.raw().is_empty())
+        })
+        .unwrap_or(false);
+    if enabled {
+        run(handle, |s| s.key(vk, 0, 0))
+    } else {
+        std::ptr::null_mut()
+    }
 }
 #[no_mangle]
 pub extern "C" fn meltype_version() -> *mut c_char {
@@ -256,22 +338,7 @@ pub extern "C" fn meltype_version() -> *mut c_char {
 }
 #[no_mangle]
 pub extern "C" fn meltype_data_directory() -> *mut c_char {
-    let base = std::env::var_os("MELTYPE_RUST_DATA_DIR")
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(|| {
-            let base = if cfg!(target_os = "windows") {
-                std::env::var_os("LOCALAPPDATA")
-            } else {
-                std::env::var_os("XDG_DATA_HOME").or_else(|| {
-                    std::env::var_os("HOME").map(|p| {
-                        std::path::PathBuf::from(p)
-                            .join(".local/share")
-                            .into_os_string()
-                    })
-                })
-            };
-            std::path::PathBuf::from(base.unwrap_or_else(|| ".".into())).join("MeltypeRust")
-        });
+    let base = meltype_core::storage::Store::default_directory();
     allocate(&base.to_string_lossy())
 }
 #[no_mangle]
@@ -292,6 +359,39 @@ mod android;
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn persistent_control_and_prediction() {
+        unsafe {
+            let directory = tempfile::tempdir().unwrap();
+            let path = CString::new(directory.path().to_str().unwrap()).unwrap();
+            let handle = meltype_create_at(path.as_ptr());
+            assert!(!handle.is_null());
+            let request =
+                CString::new(r#"{"op":"dictionary_set","reading":"めるたいぷ","word":"Meltype"}"#)
+                    .unwrap();
+            let result: serde_json::Value =
+                serde_json::from_str(&take(meltype_control(handle, request.as_ptr())).unwrap())
+                    .unwrap();
+            assert_eq!(result["saved"], true);
+            for c in "meru".chars() {
+                let result =
+                    meltype_handle_key(handle, 0, c as i32, 0, std::ptr::null(), std::ptr::null());
+                meltype_free(result.cast());
+            }
+            let result: serde_json::Value =
+                serde_json::from_str(&take(meltype_select_prediction(handle, 0)).unwrap()).unwrap();
+            assert_eq!(result["commits"][0]["text"], "Meltype");
+            meltype_destroy(handle);
+            let reopened = meltype_create_at(path.as_ptr());
+            assert!(!reopened.is_null());
+            let request = CString::new(r#"{"op":"dictionary_list"}"#).unwrap();
+            let result: serde_json::Value =
+                serde_json::from_str(&take(meltype_control(reopened, request.as_ptr())).unwrap())
+                    .unwrap();
+            assert_eq!(result["めるたいぷ"][0], "Meltype");
+            meltype_destroy(reopened);
+        }
+    }
     #[test]
     fn lifecycle_and_unicode() {
         unsafe {

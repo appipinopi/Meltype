@@ -2,7 +2,7 @@
 // Copyright (C) 2026 appipinopi
 use super::*;
 use jni::{
-    objects::JClass,
+    objects::{JClass, JString},
     sys::{jboolean, jint, jlong, jstring},
     JNIEnv,
 };
@@ -14,8 +14,46 @@ fn java_result(env: &mut JNIEnv, result: *mut c_char) -> jstring {
         .unwrap_or(std::ptr::null_mut())
 }
 #[no_mangle]
-pub extern "system" fn Java_moe_meltype_rust_Native_create(_env: JNIEnv, _class: JClass) -> jlong {
-    meltype_create() as jlong
+pub extern "system" fn Java_moe_meltype_rust_Native_create(
+    mut env: JNIEnv,
+    _class: JClass,
+    directory: JString,
+) -> jlong {
+    let Ok(directory) = env.get_string(&directory) else {
+        return 0;
+    };
+    let Ok(directory) = CString::new(String::from(directory)) else {
+        return 0;
+    };
+    unsafe { meltype_create_at(directory.as_ptr()) as jlong }
+}
+#[no_mangle]
+pub extern "system" fn Java_moe_meltype_rust_Native_control(
+    mut env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    request: JString,
+) -> jstring {
+    let Ok(request) = env.get_string(&request) else {
+        return std::ptr::null_mut();
+    };
+    let Ok(request) = CString::new(String::from(request)) else {
+        return std::ptr::null_mut();
+    };
+    let result = unsafe { meltype_control(handle as *mut c_void, request.as_ptr()) };
+    java_result(&mut env, result)
+}
+#[no_mangle]
+pub extern "system" fn Java_moe_meltype_rust_Native_predict(
+    mut env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    index: jint,
+) -> jstring {
+    java_result(
+        &mut env,
+        meltype_select_prediction(handle as *mut c_void, index),
+    )
 }
 #[no_mangle]
 pub extern "system" fn Java_moe_meltype_rust_Native_destroy(

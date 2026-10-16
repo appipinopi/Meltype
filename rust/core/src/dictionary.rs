@@ -10,6 +10,9 @@ pub struct Dictionary {
     english: HashSet<String>,
     japanese: HashSet<String>,
     candidates: HashMap<String, Vec<String>>,
+    kana_words: HashSet<String>,
+    common_english: HashSet<String>,
+    readable_english: HashSet<String>,
 }
 
 fn words(text: &str) -> impl Iterator<Item = &str> {
@@ -27,6 +30,18 @@ impl Dictionary {
                     .map(str::to_owned)
                     .collect(),
                 candidates: HashMap::new(),
+                kana_words: include_str!("../../../dictionaries/readings.txt")
+                    .lines()
+                    .filter(|l| !l.starts_with('#'))
+                    .filter_map(|l| l.split_whitespace().next())
+                    .map(str::to_owned)
+                    .collect(),
+                common_english: words(include_str!("../../../dictionaries/english.txt"))
+                    .map(str::to_owned)
+                    .collect(),
+                readable_english: words(include_str!("../../../dictionaries/english-readable.txt"))
+                    .map(str::to_owned)
+                    .collect(),
             };
             for source in [
                 include_str!("../../../dictionaries/english.txt"),
@@ -121,6 +136,20 @@ impl Dictionary {
     }
 
     pub fn mixed(&self, raw: &str, final_input: bool) -> String {
+        let first = raw
+            .split_whitespace()
+            .next()
+            .unwrap_or("")
+            .to_ascii_lowercase();
+        let english_sentence = raw.contains(' ')
+            && [
+                "i", "the", "please", "what", "how", "this", "my", "do", "let", "can", "make",
+                "git", "npm", "good", "thank", "see", "run", "open", "meeting",
+            ]
+            .contains(&first.as_str());
+        self.mixed_context(raw, final_input, english_sentence)
+    }
+    pub fn mixed_context(&self, raw: &str, final_input: bool, english_context: bool) -> String {
         let mut out = String::new();
         let mut start = 0;
         // Preserve URLs, email, file names, and agent commands as whole spans.
@@ -131,7 +160,14 @@ impl Dictionary {
                 || word.starts_with(['/', '$'])
                 || word.contains('\\')
                 || word.contains('_')
-                || word.contains('.') && word.contains(char::is_alphanumeric)
+                || word.split_once('.').is_some_and(|(left, right)| {
+                    !left.is_empty()
+                        && !right.is_empty()
+                        && left.bytes().all(|c| c.is_ascii_alphanumeric() || c == b'-')
+                        && right
+                            .bytes()
+                            .all(|c| c.is_ascii_alphanumeric() || c == b'.')
+                })
             {
                 out.push_str(token);
             } else {
@@ -141,7 +177,11 @@ impl Dictionary {
                         run.push(c);
                     } else {
                         if !run.is_empty() {
-                            out.push_str(&self.mixed_word(&run, final_input));
+                            if english_context && self.is_english(&run) {
+                                out.push_str(&run);
+                            } else {
+                                out.push_str(&self.mixed_word(&run, final_input));
+                            }
                             run.clear();
                         }
                         if c != '\0' {
@@ -158,8 +198,15 @@ impl Dictionary {
 
     fn mixed_word(&self, raw: &str, final_input: bool) -> String {
         let lower = raw.to_ascii_lowercase();
+        if raw == "I" || raw.len() >= 2 && raw.bytes().all(|c| c.is_ascii_uppercase()) {
+            return raw.to_owned();
+        }
         if self.japanese.contains(&lower) {
             return romaji::hiragana(raw, final_input);
+        }
+        let reading = romaji::hiragana(raw, final_input);
+        if !self.readable_english.contains(&lower) && self.kana_words.contains(&reading) {
+            return reading;
         }
         if self.english.contains(&lower)
             || raw.chars().filter(char::is_ascii_uppercase).count() >= 2
@@ -175,7 +222,9 @@ impl Dictionary {
         for i in 0..n {
             for end in i + 1..=n.min(i + 40) {
                 let piece = &lower[i..end];
+                let piece_reading = romaji::hiragana(piece, true);
                 let jp = self.japanese.contains(piece)
+                    || self.kana_words.contains(&piece_reading)
                     || ["ha", "wa", "wo", "ga", "no", "ni", "de", "to", "mo", "he"]
                         .contains(&piece);
                 let en = piece.len() >= 3 && self.english.contains(piece) && !jp;
@@ -216,5 +265,50 @@ impl Dictionary {
         }
         result.push_str(&romaji::hiragana(&japanese, final_input));
         result
+    }
+    pub fn is_english(&self, raw: &str) -> bool {
+        self.english.contains(&raw.to_ascii_lowercase())
+    }
+    pub fn is_common_english(&self, raw: &str) -> bool {
+        self.common_english.contains(&raw.to_ascii_lowercase())
+    }
+    pub fn is_japanese(&self, raw: &str) -> bool {
+        self.japanese.contains(&raw.to_ascii_lowercase())
+            || self.kana_words.contains(&romaji::hiragana(raw, true))
+    }
+    pub fn english_prefix(&self, raw: &str) -> bool {
+        let raw = raw.to_ascii_lowercase();
+        self.english.iter().any(|w| w.starts_with(&raw))
+    }
+    pub fn japanese_prefix(&self, raw: &str) -> bool {
+        let raw = raw.to_ascii_lowercase();
+        self.japanese.iter().any(|w| w.starts_with(&raw))
+    }
+    pub fn predict_english(&self, raw: &str) -> Vec<String> {
+        if raw.len() < 3 || !raw.bytes().all(|c| c.is_ascii_alphabetic()) {
+            return vec![];
+        }
+        let lower = raw.to_ascii_lowercase();
+        let mut words: Vec<_> = self
+            .english
+            .iter()
+            .filter(|s| s.starts_with(&lower) && s.len() > lower.len())
+            .collect();
+        words.sort_by_key(|s| (!self.common_english.contains(*s), s.len(), *s));
+        words
+            .into_iter()
+            .take(5)
+            .map(|s| {
+                if raw.bytes().all(|c| c.is_ascii_uppercase()) {
+                    s.to_ascii_uppercase()
+                } else if raw.as_bytes()[0].is_ascii_uppercase() {
+                    let mut s = s.clone();
+                    s[..1].make_ascii_uppercase();
+                    s
+                } else {
+                    s.clone()
+                }
+            })
+            .collect()
     }
 }

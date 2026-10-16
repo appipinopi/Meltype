@@ -7,6 +7,13 @@ use std::io::{self, BufRead};
 #[derive(Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case")]
 enum Request {
+    Context {
+        before: Option<String>,
+        after: Option<String>,
+    },
+    SelectPrediction {
+        index: usize,
+    },
     Key {
         vk: i32,
         #[serde(default)]
@@ -26,6 +33,13 @@ enum Request {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<_> = std::env::args().skip(1).collect();
+    let store =
+        meltype_core::storage::Store::new(meltype_core::storage::Store::default_directory());
+    if args.first().is_some_and(|a| a == "--control") {
+        let request = serde_json::from_str(args.get(1).ok_or("--control requires JSON")?)?;
+        println!("{}", meltype_core::control::execute(&store, &request)?);
+        return Ok(());
+    }
     if args.first().is_some_and(|a| a == "--version") {
         println!("Meltype Rust {}", env!("CARGO_PKG_VERSION"));
         return Ok(());
@@ -44,12 +58,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .into(),
         );
     }
-    let mut session = Session::default();
+    let mut session = Session::open(store)?;
     for line in io::stdin().lock().lines() {
         let line = line?;
         let result = match serde_json::from_str::<Request>(&line) {
             Ok(request) => {
                 let result = match request {
+                    Request::Context { before, after } => {
+                        session.set_context(before.as_deref(), after.as_deref());
+                        session.result(false)
+                    }
+                    Request::SelectPrediction { index } => session.select_prediction(index),
                     Request::Key { vk, ch, modifiers } => session.key(vk, ch, modifiers),
                     Request::Commit => session.commit(),
                     Request::Reset => {

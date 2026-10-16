@@ -3,7 +3,9 @@
 package moe.meltype.rust;
 final class Native {
     static { System.loadLibrary("meltype_native"); }
-    static native long create();
+    static native long create(String directory);
+    static native String control(long handle,String request);
+    static native String predict(long handle,int index);
     static native void destroy(long handle);
     static native String key(long handle, int vk, int scalar, int modifiers);
     static native String commit(long handle);

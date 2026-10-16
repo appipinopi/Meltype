@@ -86,6 +86,9 @@ unsafe fn request_inner(connection: *mut c_void, request: *const c_char) -> Opti
     };
     let result = match op {
         "key" => {
+            set(handle, |s| {
+                s.set_process(request["process"].as_str().unwrap_or(""))
+            });
             meltype_set_direct(handle, i32::from(request["direct"] == true));
             meltype_set_private(handle, i32::from(request["private"] == true));
             let before = request["before"]
@@ -101,8 +104,12 @@ unsafe fn request_inner(connection: *mut c_void, request: *const c_char) -> Opti
             )
         }
         "commit" => meltype_commit(handle),
-        "select" if request["prediction"] != true => {
-            meltype_select_candidate(handle, number("index"))
+        "select" => {
+            if request["prediction"] == true {
+                meltype_select_prediction(handle, number("index"))
+            } else {
+                meltype_select_candidate(handle, number("index"))
+            }
         }
         "mode" | "toggle" => run(handle, |s| s.result(false)),
         _ => return Some(inactive()),
