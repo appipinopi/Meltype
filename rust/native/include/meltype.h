@@ -70,6 +70,11 @@ int32_t meltype_tsf_get_class_object(const void *clsid, const void *iid, void **
    path is the TSF shell DLL's UTF-16 path, length excludes a terminator. */
 int32_t meltype_tsf_register_server(const uint16_t *path, uint32_t length);
 int32_t meltype_tsf_unregister_server(void);
+/* Borrowed ITfContext; transfers action_context ownership on every return path.
+   destroy is required and called exactly once. Keep callbacks/code alive until
+   destroy, including async requests. Use on the creating TSF thread. */
+int32_t meltype_tsf_request_edit_session(void *context, uint32_t client, uint32_t flags,
+    void *action_context, int32_t (*action)(void *, uint32_t), void (*destroy)(void *));
 #endif
 #ifdef __cplusplus
 }

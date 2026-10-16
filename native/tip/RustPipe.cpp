@@ -30,6 +30,7 @@ struct RustApi {
     HRESULT (__cdecl *classObject)(const GUID*,const GUID*,void**,HRESULT (__cdecl *)(const GUID*,void**),void (__cdecl *)(int)) = nullptr;
     HRESULT (__cdecl *registerServer)(const wchar_t*,unsigned int) = nullptr;
     HRESULT (__cdecl *unregisterServer)() = nullptr;
+    HRESULT (__cdecl *editSession)(void*,unsigned int,unsigned int,void*,HRESULT (__cdecl *)(void*,unsigned int),void (__cdecl *)(void*)) = nullptr;
     RustApi() {
         wchar_t path[32768];
         const DWORD size = GetModuleFileNameW(g_module, path, ARRAYSIZE(path));
@@ -57,6 +58,7 @@ struct RustApi {
         classObject = reinterpret_cast<decltype(classObject)>(GetProcAddress(module, "meltype_tsf_get_class_object"));
         registerServer = reinterpret_cast<decltype(registerServer)>(GetProcAddress(module, "meltype_tsf_register_server"));
         unregisterServer = reinterpret_cast<decltype(unregisterServer)>(GetProcAddress(module, "meltype_tsf_unregister_server"));
+        editSession = reinterpret_cast<decltype(editSession)>(GetProcAddress(module, "meltype_tsf_request_edit_session"));
     }
     bool ready() const { return create && destroy && request && freeText; }
     // The module stays loaded for the process lifetime. Do not unload Rust
@@ -86,6 +88,31 @@ HRESULT RustRegisterServer() {
     return api().registerServer(path,length);
 }
 HRESULT RustUnregisterServer() { return api().unregisterServer ? api().unregisterServer() : E_FAIL; }
+namespace {
+struct EditAction {
+    std::function<HRESULT(TfEditCookie)> action;
+    explicit EditAction(std::function<HRESULT(TfEditCookie)> value) : action(std::move(value)) { DllAddRef(); }
+    ~EditAction() {
+        // Captures may own C++ COM objects with destructors in this shell.
+        // Destroy those captures before dropping the DLL's final pin.
+        action = {};
+        DllRelease();
+    }
+    static HRESULT __cdecl Invoke(void* context, unsigned int cookie) {
+        try { return static_cast<EditAction*>(context)->action(cookie); }
+        catch (...) { return E_FAIL; }
+    }
+    static void __cdecl Destroy(void* context) { delete static_cast<EditAction*>(context); }
+};
+}
+HRESULT RunEditSession(ITfContext* context, TfClientId client, DWORD flags, std::function<HRESULT(TfEditCookie)> action) {
+    if (!context) return E_INVALIDARG;
+    if (!api().editSession) return E_FAIL;
+    auto* owned = new (std::nothrow) EditAction(std::move(action));
+    if (!owned) return E_OUTOFMEMORY;
+    // Rust consumes owned on success, immediate failure and queued execution.
+    return api().editSession(context,client,flags,owned,EditAction::Invoke,EditAction::Destroy);
+}
 bool PipeClient::Transact(const std::string& request, std::string& response, DWORD, bool) {
     if (!api().ready()) return false;
     if (!rustConnection_) rustConnection_ = api().create();

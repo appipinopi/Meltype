@@ -56,7 +56,9 @@ WindowsのRustビルドは、元の `DisplayAttributes.cpp` をコンパイル�
 
 WindowsのクラスファクトリーもRustへ移しました。Rustビルドは元のC++ `ClassFactory` を除外し、`DllGetClassObject` からRustの `IClassFactory` を返します。クラスとインターフェースの照合、非集約の生成、参照管理、`LockServer` をRustで処理し、未移植の入力サービスの生成だけをC++コールバックへ渡します。ファクトリーが存在する間と明示的なサーバーロックの間は、コールバックを持つTSF DLLを使用中として保持します。
 
-明示的な `DllRegisterServer` / `DllUnregisterServer` もRustの登録処理へ接続しました。元と同じHKLMのCOM登録先、日本語プロファイルID・言語ID、5種類のカテゴリ、Apartment設定、シェルDLLのアイコンを使います。登録が失敗した場合のカテゴリ・プロファイル・COMの後片付けと、削除を続行する動作を代替バックエンドで検証します。実際のユーザー環境への登録・解除・有効化は行っておらず、その動作は未検証です。キー処理・入力編集・COMサーバーの薄いDLL入口は引き続きC++です。
+明示的な `DllRegisterServer` / `DllUnregisterServer` もRustの登録処理へ接続しました。元と同じHKLMのCOM登録先、日本語プロファイルID・言語ID、5種類のカテゴリ、Apartment設定、シェルDLLのアイコンを使います。登録が失敗した場合のカテゴリ・プロファイル・COMの後片付けと、削除を続行する動作を代替バックエンドで検証します。実際のユーザー環境への登録・解除・有効化は行っておらず、その動作は未検証です。
+
+編集セッションの `ITfEditSession` オブジェクト・`RequestEditSession` 呼出・即時結果と非同期結果の扱いもRustへ移しました。非同期要求ではOSが保持するCOM参照が残る間、C++側の入力編集コールバックとDLLを保持します。実行・取消・即時拒否の各経路でコールバックを一度だけ解放し、捕捉したCOM参照などを破棄してからDLLの使用中参照を解放します。`tsf_edit_session_smoke.py` は制御したITfContextを使い、x64/x86で6経路の実COM呼出を確認します。`build-edit-session-host.ps1` は実際のTSFシェルのオブジェクトファイルをテストプログラムへリンクし、捕捉したC++ラムダの寿命・DLL参照も確認します。テストは実際の入力欄やIME登録を操作しません。キー処理・選択範囲と未確定文字の編集そのもの・COMサーバーの薄いDLL入口は引き続きC++です。
 
 ## 追加済みの共通機能
 

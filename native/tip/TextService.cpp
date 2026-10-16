@@ -15,6 +15,7 @@
 namespace meltype {
 namespace {
 
+#ifndef MELTYPE_RUST_CORE
 class EditSession final : public ITfEditSession {
 public:
     explicit EditSession(std::function<HRESULT(TfEditCookie)> action) : action_(std::move(action)) {}
@@ -41,6 +42,7 @@ private:
     LONG refs_ = 1;
     std::function<HRESULT(TfEditCookie)> action_;
 };
+#endif
 
 // 入力欄の種類 (InputScope) のプロパティ。{1713DD5A-68E7-4A5B-9AF6-592A595C778D}
 constexpr GUID kPropInputScope = {0x1713dd5a, 0x68e7, 0x4a5b, {0x9a, 0xf6, 0x59, 0x2a, 0x59, 0x5c, 0x77, 0x8d}};
@@ -153,6 +155,7 @@ std::wstring ProcessName() {
 
 }  // namespace
 
+#ifndef MELTYPE_RUST_CORE
 HRESULT RunEditSession(ITfContext* context, TfClientId clientId, DWORD flags, std::function<HRESULT(TfEditCookie)> action) {
     if (context == nullptr) return E_INVALIDARG;
     auto* session = new EditSession(std::move(action));
@@ -161,6 +164,7 @@ HRESULT RunEditSession(ITfContext* context, TfClientId clientId, DWORD flags, st
     session->Release();
     return FAILED(hr) ? hr : result;
 }
+#endif
 
 TextService::TextService() { DllAddRef(); }
 

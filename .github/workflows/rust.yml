@@ -64,6 +64,13 @@ jobs:
       - name: Rust TSF COM objects and native provider delegation
         if: runner.os == 'Windows'
         run: python rust/native/tests/tsf_com_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll native/tip/bin/rust-x64/MeltypeTip.dll
+      - name: Rust TSF edit-session scheduling and captured shell actions
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python rust/native/tests/tsf_edit_session_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./rust/native/tests/build-edit-session-host.ps1
       - name: Build test-only upstream candidate renderer
         if: runner.os == 'Windows'
         shell: pwsh
@@ -81,6 +88,9 @@ jobs:
       - name: Rust TSF COM calling conventions in a 32-bit process
         if: runner.os == 'Windows'
         run: python rust/native/tests/tsf_com_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll native/tip/bin/rust-x86/MeltypeTip.dll
+      - name: Rust TSF edit-session scheduling in a 32-bit process
+        if: runner.os == 'Windows'
+        run: python rust/native/tests/tsf_edit_session_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
       - name: Rust candidate HWND behavior and rendering in a 32-bit process
         if: runner.os == 'Windows'
         env:
