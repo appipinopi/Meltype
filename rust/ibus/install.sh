@@ -64,6 +64,7 @@ if [[ -d "$source_dir/mozc" ]]; then
     for file in meltype_mozc_helper MOZC-LICENSE.txt MOZC-CREDITS.html; do
         if [[ -f "$source_dir/mozc/$file" ]]; then cp -- "$source_dir/mozc/$file" "$target/mozc/$file"; fi
     done
+    if [[ -f "$target/mozc/meltype_mozc_helper" ]]; then chmod 755 "$target/mozc/meltype_mozc_helper"; fi
 fi
 printf 'Meltype Rust IBus\n' > "$target/.meltype-rust-ibus"
 # Generate paths after copying: current_exe must refer to the installed binary.

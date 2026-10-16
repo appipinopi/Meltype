@@ -73,17 +73,27 @@ class Installation(unittest.TestCase):
 
     def test_system_prefix_registers_and_removes_only_owned_files(self):
         prefix = self.root / "system prefix"
+        mozc = self.bundle / "mozc"
+        mozc.mkdir()
+        (mozc / "meltype_mozc_helper").write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        (mozc / "MOZC-LICENSE.txt").write_text("test license", encoding="utf-8")
+        # Artifact downloads do not preserve executable permissions.
+        (mozc / "meltype_mozc_helper").chmod(0o644)
         self.run_script("--system", "--prefix", str(prefix))
         component = prefix / "share/ibus/component/meltype-rust.xml"
         binary = prefix / "libexec/meltype-rust/ibus/meltype-ibus"
         command = shlex.split(ET.parse(component).findtext("exec"))
         self.assertEqual(command, [str(binary), "--ibus"])
         self.assertIn("Meltype Rust IBus", subprocess.check_output([str(binary), "--version"], text=True))
+        helper = binary.parent / "mozc/meltype_mozc_helper"
+        self.assertTrue(os.access(helper, os.X_OK))
+        self.assertEqual((helper.parent / "MOZC-LICENSE.txt").read_text(), "test license")
         other = component.with_name("meltype.xml")
         other.write_text("upstream", encoding="utf-8")
-        self.run_script("--system", "--prefix", str(prefix), "--uninstall")
+        subprocess.run(["bash", str(binary.with_name("install.sh")), "--system", "--prefix", str(prefix), "--uninstall"], env=self.env, check=True, capture_output=True)
         self.assertFalse(component.exists())
         self.assertFalse(binary.exists())
+        self.assertFalse(helper.exists())
         self.assertEqual(other.read_text(), "upstream")
 
 if __name__ == "__main__":

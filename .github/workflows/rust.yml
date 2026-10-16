@@ -57,7 +57,7 @@ jobs:
         if: runner.os == 'Linux'
         with:
           name: rust-IBus-Linux
-          path: linux/build/Meltype-Rust-linux/
+          path: linux/build/Meltype-Rust-linux.tar.gz
       - if: runner.os == 'Windows'
         shell: pwsh
         run: ./rust/build-windows.ps1 -WithTip -NativeOnly

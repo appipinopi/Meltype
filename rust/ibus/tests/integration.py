@@ -66,6 +66,7 @@ class EngineTests(unittest.TestCase):
         os.environ["IBUS_COMPONENT_PATH"] = str(components)
         (cls.root / "data").mkdir()
         (cls.root / "data/config.json").write_text(json.dumps({"LiveConversion":False, "PredictiveCandidates":False, "SigilWordsDirect":True}), encoding="utf-8")
+        (cls.root / "data/state.json").write_text(json.dumps({"preferences":{"user_dictionary":{"めるたいぷ":[f"候補{i}" for i in range(18)]}}}), encoding="utf-8")
         cls.daemon_log = (cls.root / "daemon.log").open("w+")
         cls.daemon = subprocess.Popen(["ibus-daemon", "--single", "--panel", "disable", "--config", "disable", "--emoji-extension", "disable", "--address", os.environ["IBUS_ADDRESS"], "--cache=none", "--timeout=3000"], stdout=cls.daemon_log, stderr=subprocess.STDOUT)
         cls.addClassCleanup(cls.stop, cls.daemon)
@@ -73,6 +74,9 @@ class EngineTests(unittest.TestCase):
         wait(lambda: (cls.root / "ibus-bus").exists(), "isolated IBus socket")
         cls.bus = IBus.Bus.new()
         wait(cls.bus.is_connected, "IBus connection")
+        cls.panel = IBus.PanelService.new(cls.bus.get_connection())
+        cls.bus.request_name("org.freedesktop.IBus.Panel", 4)
+        cls.addClassCleanup(cls.panel.destroy)
         cls.engine_log = (cls.root / "engine.log").open("w+")
         if cls.installed:
             wait(lambda: any(e.get_name() == "meltype-rust" for e in cls.bus.list_engines()), "Rust component discovery")
@@ -95,6 +99,7 @@ class EngineTests(unittest.TestCase):
         self.document = ""
         self.marked = ""
         self.candidates = []
+        self.selected_candidate = 0
         self.deletions = []
         self.auxiliary = ""
         self.context_requests = 0
@@ -138,6 +143,7 @@ class EngineTests(unittest.TestCase):
 
     def lookup(self, _ic, table, visible):
         self.candidates = [table.get_candidate(i).get_text() for i in range(table.get_number_of_candidates())] if visible else []
+        self.selected_candidate = table.get_cursor_pos()
 
     def delete(self, _ic, offset, count):
         self.deletions.append((offset, count))
@@ -176,6 +182,40 @@ class EngineTests(unittest.TestCase):
         self.surrounding()
         self.assertTrue(all(self.type("kyou")))
         self.assertEqual(self.marked, "きょう")
+
+    def test_candidate_panel_click_selects_the_requested_candidate(self):
+        self.type("hashi")
+        self.key(IBus.KEY_space, " ")
+        index = next(i for i, value in enumerate(self.candidates) if value.startswith("箸"))
+        self.panel.candidate_clicked(index, 1, 0)
+        pump()
+        self.assertEqual(self.document, "箸")
+        self.assertEqual(self.marked, "")
+
+    def test_candidate_panel_paging_click_uses_the_current_page(self):
+        self.type("merutaipu")
+        self.key(IBus.KEY_space, " ")
+        self.assertGreaterEqual(len(self.candidates), 18)
+        self.assertEqual(self.selected_candidate, 0)
+        self.panel.page_down()
+        pump()
+        self.assertEqual(self.selected_candidate, 9)
+        self.panel.page_up()
+        pump()
+        self.assertEqual(self.selected_candidate, 0)
+        self.panel.cursor_down()
+        pump()
+        self.assertEqual(self.selected_candidate, 1)
+        self.panel.cursor_up()
+        pump()
+        self.assertEqual(self.selected_candidate, 0)
+        self.panel.page_down()
+        pump()
+        expected = self.candidates[10]
+        self.panel.candidate_clicked(1, 1, 0)
+        pump()
+        self.assertEqual(self.document, expected)
+        self.assertEqual(self.marked, "")
 
     def test_direct_mode_jis_keys_and_unicode(self):
         self.assertTrue(self.key(IBus.KEY_Muhenkan))

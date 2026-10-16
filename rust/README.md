@@ -27,7 +27,7 @@ CLIは引数なしでstdinからJSONを1行ずつ受け取ります。`{"op":"ke
 
 ## OSとの接続
 
-Linux IBusのRust版は `bash rust/build-linux.sh` で `linux/build/Meltype-Rust-linux/` に組み立てます。ビルドには `libibus-1.0-dev` が必要で、実行時はシステムのIBus/GLibを利用します。Rust側のエンジンとOS接続は同じ実行ファイルに含まれ、Python、GI、別のRust DLLは実行時に不要です。既存のPython版は上流実装の参照用として残っています。fcitx5は引き続き既存C++アダプターです。
+Linux IBusのRust版は `bash rust/build-linux.sh` で `linux/build/Meltype-Rust-linux/` と、実行権限を保持する配布用の `linux/build/Meltype-Rust-linux.tar.gz` に組み立てます。ビルドには `libibus-1.0-dev` が必要で、実行時はシステムのIBus/GLibを利用します。Rust側のエンジンとOS接続は同じ実行ファイルに含まれ、Python、GI、別のRust DLLは実行時に不要です。既存のPython版は上流実装の参照用として残っています。fcitx5は引き続き既存C++アダプターです。
 
 生成フォルダーで `sudo bash install.sh --system` を明示的に実行すると、`/usr/libexec/meltype-rust/ibus` にプログラムを置き、IBusが通常読み込む `/usr/share/ibus/component/meltype-rust.xml` を登録します。既存の上流版の登録やRustの設定・学習データは置き換えません。IBusの再起動や入力ソースの選択は行わず、サインインし直した後に「Meltype Rust」を選びます。`sudo bash /usr/libexec/meltype-rust/ibus/install.sh --system --uninstall` は専用マーカーと登録名を確認して配布ファイルを削除し、設定・学習と未知のファイルは保持します。`--prefix` は別の絶対パスへの配置用です。登録・削除は一時フォルダーだけで検証しています。
 
@@ -35,7 +35,7 @@ Linux IBusのRust版は `bash rust/build-linux.sh` で `linux/build/Meltype-Rust
 
 `meltype-ibus --version` は版を表示し、`--print-component` は実行ファイルの現在位置に対応するIBusのXMLを出力します。`--ibus` は登録されたIBusから起動される入口で、引数なしは検証用の動的コンポーネント登録です。どちらも通常のユーザー設定へ入力ソースを追加しません。Mozcヘルパーは `mozc/meltype_mozc_helper` または `MELTYPE_MOZC_HELPER` で指定します。ヘルパーを同梱できないビルドは内蔵補助辞書に限られ、元版の変換語彙とは同等ではありません。
 
-`xvfb-run -a dbus-run-session -- /usr/bin/python3 rust/ibus/tests/integration.py target/release/meltype-ibus` は別のIBusデーモンと合成入力欄でRust実行ファイルを検証します。`MELTYPE_IBUS_TEST_INSTALLED=1` を付けると、一時フォルダーへの実インストール後にXMLからIBusが自動起動する経路で同じ8ケースを検証します。Python/GIはこのテスト用クライアントだけで使用します。フォーカスを外した場合はIBusが表示中の未確定文字を確定するため、Rustは同じ文字を再挿入せず、その表示を学習します。Enterによる確定では従来どおり末尾の `n` もかなに確定します。通常のデスクトップアプリ・Wayland/X11・サインインし直した後の動作は未検証です。
+`xvfb-run -a dbus-run-session -- /usr/bin/python3 rust/ibus/tests/integration.py target/release/meltype-ibus` は別のIBusデーモン・候補パネル・合成入力欄でRust実行ファイルを検証します。`MELTYPE_IBUS_TEST_INSTALLED=1` を付けると、一時フォルダーへの実インストール後にXMLからIBusが自動起動する経路で同じ10ケースを検証します。Python/GIはこのテスト用クライアントだけで使用します。フォーカスを外した場合はIBusが表示中の未確定文字を確定するため、Rustは同じ文字を再挿入せず、その表示を学習します。Enterによる確定では従来どおり末尾の `n` もかなに確定します。通常のデスクトップアプリ・Wayland/X11・サインインし直した後の動作は未検証です。
 
 | OS | ビルド | 残っているOS固有コード・制限 |
 |---|---|---|
