@@ -48,6 +48,8 @@ def main(library):
     api.meltype_reconvert_selection.restype = c.c_void_p
     api.meltype_commit.argtypes = [c.c_void_p]
     api.meltype_commit.restype = c.c_void_p
+    api.meltype_control.argtypes = [c.c_void_p, c.c_char_p]
+    api.meltype_control.restype = c.c_void_p
     api.meltype_set_can_delete.argtypes = [c.c_void_p, c.c_int]
     api.meltype_set_private.argtypes = [c.c_void_p, c.c_int]
     api.meltype_set_direct.argtypes = [c.c_void_p, c.c_int]
@@ -118,9 +120,32 @@ def main(library):
                 key(32 if letter == " " else 0, ord(letter))
             value = result(api.meltype_commit(handle))
             assert value["commits"] == [{"deleteBefore":2,"text":"して PR","expect":"して"}]
+            def setting(name, value):
+                response = result(api.meltype_control(handle, json.dumps({"op":"settings_set", "name":name, "value":value}).encode()))
+                assert response.get("saved"), response
+
+            setting("DetectionLevel", "Manual")
+            setting("CorrectTypos", False)
+            setting("TabConversion", False)
+            for letter in "google":
+                value = key(scalar=ord(letter))
+            assert value["view"]["text"] == "ごおgぇ"
+            assert "Tab → google" in value["view"]["hint"]
+            assert value["view"]["suggestion"] == "google"
+            value = key(9)
+            assert value["consumed"] and value["view"]["text"] == "google"
+            assert result(api.meltype_commit(handle))["commits"][0]["text"] == "google"
+            setting("DetectionLevel", "Conservative")
+            for letter in "amazon":
+                value = key(scalar=ord(letter))
+            assert value["view"]["text"] == "あまぞn"
+            result(api.meltype_commit(handle))
+            for letter in "google":
+                value = key(scalar=ord(letter))
+            assert value["view"]["text"] == "google"
         finally:
             api.meltype_destroy(handle)
-    print("Native ABI: callbacks, live conversion, multi-edit, guarded undo/correction, selection reconversion and privacy passed")
+    print("Native ABI: callbacks, live conversion, multi-edit, guarded undo/correction, selection reconversion, detection levels, manual Tab and privacy passed")
 
 
 if __name__ == "__main__":

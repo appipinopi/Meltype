@@ -533,28 +533,60 @@ impl Session {
                 return self.punctuate(fix.kana);
             }
         }
+        let dictionary = Dictionary::bundled();
+        let detected = || {
+            dictionary.composition(
+                &self.raw,
+                final_input,
+                &self.before,
+                &self.after,
+                self.settings.text("DetectionLevel"),
+            )
+        };
         let text = match self.preferences.english.get(&self.raw.to_ascii_lowercase()) {
+            _ if self.settings.text("DetectionLevel") == "Manual" => detected(),
             Some(true) => self.raw.clone(),
             Some(false) => romaji::hiragana(&self.raw, final_input),
-            None => {
-                let english_context = Dictionary::bundled().english_context(&self.before);
-                if self.settings.text("DetectionLevel") == "Manual"
-                    || self.settings.text("DetectionLevel") == "Conservative"
-                {
-                    romaji::hiragana(&self.raw, final_input)
-                } else {
-                    Dictionary::bundled().mixed_context(&self.raw, final_input, english_context)
-                }
-            }
+            None => detected(),
         };
         let text = crate::protection::transform(&self.raw, |part| {
             if part == self.raw {
                 text.clone()
+            } else if self.settings.text("DetectionLevel") == "Balanced" {
+                dictionary.mixed(part, final_input)
             } else {
-                Dictionary::bundled().mixed(part, final_input)
+                dictionary.composition(
+                    part,
+                    final_input,
+                    &self.before,
+                    &self.after,
+                    self.settings.text("DetectionLevel"),
+                )
             }
         });
         self.punctuate(text)
+    }
+    fn language_suggestion(&self) -> Option<String> {
+        (self.settings.text("DetectionLevel") == "Manual"
+            && self.explicit.is_none()
+            && !self.is_converting()
+            && !self.uses_kana()
+            && Dictionary::bundled().is_english(&self.raw)
+            && self.display(false) != self.raw)
+            .then(|| self.raw.clone())
+    }
+    fn english_at_word_end(&self) -> bool {
+        if self.settings.text("DetectionLevel") == "Manual"
+            || self.raw.len() < 2
+            || !self.raw.bytes().all(|c| c.is_ascii_alphabetic())
+            || !Dictionary::bundled().is_english(&self.raw)
+        {
+            return false;
+        }
+        let analysis = romaji::analyze(&self.raw.to_ascii_lowercase(), false);
+        analysis.valid
+            && !analysis.partial.is_empty()
+            && !["n", "nn"].contains(&analysis.partial.as_str())
     }
     fn punctuate(&self, text: String) -> String {
         let (comma, period) = match self.settings.text("Punctuation") {
@@ -601,6 +633,7 @@ impl Session {
         })
     }
     pub fn result(&self, consumed: bool) -> SessionResult {
+        let language_suggestion = self.language_suggestion();
         SessionResult {
             consumed,
             selection_expect: None,
@@ -613,7 +646,10 @@ impl Session {
                     converting: self.is_converting(),
                     selected_index: self.selected,
                     selected_clause: self.selected_clause,
-                    hint: String::new(),
+                    hint: language_suggestion
+                        .as_ref()
+                        .map(|s| format!("Tab → {s}"))
+                        .unwrap_or_default(),
                     clauses: self.clauses.iter().map(|c| c.text().to_owned()).collect(),
                     candidates: self.candidates.clone(),
                     meaning: if self.settings.boolean("ShowCandidateMeanings")
@@ -633,7 +669,9 @@ impl Session {
                     } else {
                         None
                     },
-                    suggestion: if self.settings.boolean("CorrectTypos") && !self.is_converting() {
+                    suggestion: if let Some(suggestion) = language_suggestion {
+                        Some(suggestion)
+                    } else if self.settings.boolean("CorrectTypos") && !self.is_converting() {
                         Linguistics::bundled().misspelling(&self.reading())
                     } else {
                         None
@@ -748,6 +786,7 @@ impl Session {
             && !self.direct
             && !self.code_english()
             && self.settings.boolean("AutoCorrectAfterCommit")
+            && self.settings.text("DetectionLevel") != "Manual"
             && !chosen
         {
             crate::commit_correction::replacement(
@@ -769,6 +808,7 @@ impl Session {
         let dictionary = Dictionary::bundled();
         if !self.private
             && !chosen
+            && self.settings.text("DetectionLevel") != "Manual"
             && self.reconversion_origin.is_none()
             && dictionary.is_english(&self.raw)
             && dictionary.is_japanese(&self.raw)
@@ -1280,6 +1320,13 @@ impl Session {
                 self.commit()
             }
             0x09 if !self.raw.is_empty() && !self.is_converting() => {
+                if let Some(suggestion) = self.language_suggestion() {
+                    self.explicit = Some(suggestion);
+                    self.function_key = 0x79;
+                    self.case_cycle = 0;
+                    self.selected_prediction = -1;
+                    return self.result(true);
+                }
                 if let Some(suggestion) = self.result(false).view.and_then(|v| v.suggestion) {
                     self.explicit = Some(crate::user_dictionary::hiragana(&suggestion));
                     return self.result(true);
@@ -1319,7 +1366,10 @@ impl Session {
                 if !self.is_converting()
                     && !self.settings.boolean("SeparateKeyRoles")
                     && (self.display(true) == self.raw
+                        || self.english_at_word_end()
                         || self.before.is_empty()
+                            && !["Manual", "Conservative"]
+                                .contains(&self.settings.text("DetectionLevel"))
                             && Dictionary::bundled().is_common_english(&self.raw)
                             && (!Dictionary::bundled().is_japanese(&self.raw)
                                 || self.raw.starts_with(|c: char| c.is_ascii_uppercase())

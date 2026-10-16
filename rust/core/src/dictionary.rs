@@ -5,6 +5,7 @@ use std::{
     collections::{HashMap, HashSet},
     sync::OnceLock,
 };
+mod composition;
 
 pub struct Dictionary {
     english: HashSet<String>,
