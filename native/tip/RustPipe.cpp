@@ -57,6 +57,7 @@ struct RustApi {
     int (__cdecl *contextDisabled)(void*) = nullptr;
     void* (__cdecl *subscribe)(unsigned int,void*,unsigned int,void*,void**) = nullptr;
     void (__cdecl *unsubscribe)(void*) = nullptr;
+    int (__cdecl *editNotification)(void*,void*,unsigned int,const RustEditCallbacks*) = nullptr;
     RustApi() {
         wchar_t path[32768];
         const DWORD size = GetModuleFileNameW(g_module, path, ARRAYSIZE(path));
@@ -111,6 +112,7 @@ struct RustApi {
         contextDisabled = reinterpret_cast<decltype(contextDisabled)>(GetProcAddress(module, "meltype_tsf_context_disabled"));
         subscribe = reinterpret_cast<decltype(subscribe)>(GetProcAddress(module, "meltype_tsf_subscribe"));
         unsubscribe = reinterpret_cast<decltype(unsubscribe)>(GetProcAddress(module, "meltype_tsf_unsubscribe"));
+        editNotification = reinterpret_cast<decltype(editNotification)>(GetProcAddress(module, "meltype_tsf_edit_notification"));
     }
     bool ready() const { return create && destroy && request && freeText; }
     // The module stays loaded for the process lifetime. Do not unload Rust
@@ -248,6 +250,9 @@ void* RustSubscribe(unsigned int kind,IUnknown* owner,TfClientId client,IUnknown
     return api().subscribe && api().unsubscribe ? api().subscribe(kind,owner,client,sink,reinterpret_cast<void**>(context)) : nullptr;
 }
 void RustUnsubscribe(void* state) { if (state && api().unsubscribe) api().unsubscribe(state); }
+void RustEditNotification(TfEditCookie cookie,ITfContext* context,ITfEditRecord* record,const RustEditCallbacks& callbacks) {
+    if (api().editNotification) api().editNotification(context,record,cookie,&callbacks);
+}
 bool PipeClient::Transact(const std::string& request, std::string& response, DWORD, bool) {
     if (!api().ready()) return false;
     if (!rustConnection_) rustConnection_ = api().create();

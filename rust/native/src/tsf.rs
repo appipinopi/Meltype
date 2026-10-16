@@ -6,6 +6,7 @@ mod abandoned;
 mod candidates;
 mod commits;
 mod composition;
+mod edit_events;
 mod edit_session;
 mod factory;
 mod fields;

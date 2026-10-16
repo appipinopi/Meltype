@@ -144,6 +144,20 @@ int32_t meltype_tsf_write_open(void *thread_manager, uint32_t client, int32_t op
    Unsubscribe releases the retained original source, not a fresh lookup. */
 void *meltype_tsf_subscribe(uint32_t kind, void *owner, uint32_t client, void *sink, void **context_out);
 void meltype_tsf_unsubscribe(void *token);
+/* Synchronous edit-event callbacks. lifetime is a borrowed IUnknown retained
+   across dispatch. current returns borrowed composition and writes its context.
+   query/moved/commit implement owner actions; commit preserves the app caret.
+   All callback code/state must remain valid until return; never throw. */
+typedef struct MeltypeTsfEditCallbacks {
+    void *owner;
+    void *lifetime;
+    int32_t (*take_own)(void *);
+    void *(*current)(void *, void **context);
+    void (*query)(void *, uint32_t cookie, void *context, int32_t changed);
+    void (*moved)(void *, int32_t reset_english);
+    void (*commit)(void *);
+} MeltypeTsfEditCallbacks;
+int32_t meltype_tsf_edit_notification(void *context, void *record, uint32_t cookie, const MeltypeTsfEditCallbacks *callbacks);
 #endif
 #ifdef __cplusplus
 }

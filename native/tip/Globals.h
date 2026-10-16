@@ -75,6 +75,16 @@ void RustWriteOpen(ITfThreadMgr*,TfClientId,bool);
 bool RustContextDisabled(ITfContext*);
 void* RustSubscribe(unsigned int,IUnknown*,TfClientId,IUnknown*,ITfContext** = nullptr);
 void RustUnsubscribe(void*);
+struct RustEditCallbacks {
+    void* owner;
+    IUnknown* lifetime;
+    int (__cdecl *takeOwn)(void*);
+    void* (__cdecl *current)(void*,void**);
+    void (__cdecl *query)(void*,unsigned int,void*,int);
+    void (__cdecl *moved)(void*,int);
+    void (__cdecl *commit)(void*);
+};
+void RustEditNotification(TfEditCookie,ITfContext*,ITfEditRecord*,const RustEditCallbacks&);
 #endif
 
 // 文字コードの変換
