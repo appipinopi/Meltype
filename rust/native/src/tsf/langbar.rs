@@ -464,7 +464,7 @@ unsafe fn create_icon(open: bool) -> windows::core::Result<HICON> {
     );
     let _ = GdiFlush();
     let dark = dark();
-    for pixel in pixels.chunks_exact_mut(4) {
+    for pixel in pixels.as_chunks_mut::<4>().0 {
         let alpha = pixel[1];
         let value = if dark { alpha } else { 0 };
         pixel.copy_from_slice(&[value, value, value, alpha]);
