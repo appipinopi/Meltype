@@ -201,6 +201,7 @@ pub fn write_action(store: &Store, action: &Action) -> Result<(), String> {
 }
 fn text_icon(enabled: bool) -> Result<Icon, String> {
     let font = [
+        "C:/Windows/Fonts/YuGothB.ttc",
         "C:/Windows/Fonts/YuGothM.ttc",
         "C:/Windows/Fonts/meiryo.ttc",
         "C:/Windows/Fonts/segoeui.ttf",
@@ -219,25 +220,39 @@ fn text_icon(enabled: bool) -> Result<Icon, String> {
     } else {
         'M'
     };
-    let glyph = font.as_scaled(PxScale::from(27.)).scaled_glyph(character);
+    let glyph = font.as_scaled(PxScale::from(15.)).scaled_glyph(character);
     let outline = font
         .outline_glyph(glyph)
         .ok_or("tray icon glyph unavailable")?;
     let bounds = outline.px_bounds();
     let mut rgba = vec![0_u8; 32 * 32 * 4];
+    // Upstream CreateIcon uses a 30px accent/gray circle with white text.
+    let background = if enabled {
+        [0_u8, 120, 212]
+    } else {
+        [120_u8, 120, 120]
+    };
+    for y in 0..32 {
+        for x in 0..32 {
+            let distance = ((x as f32 + 0.5 - 16.).powi(2) + (y as f32 + 0.5 - 16.).powi(2)).sqrt();
+            let alpha = ((15.5 - distance).clamp(0., 1.) * 255.) as u8;
+            let i = (y * 32 + x) * 4;
+            rgba[i..i + 3].copy_from_slice(&background);
+            rgba[i + 3] = alpha;
+        }
+    }
     let left = (32. - bounds.width()) / 2.;
-    let top = (32. - bounds.height()) / 2.;
+    let top = (32. - bounds.height()) / 2. + 1.;
     outline.draw(|x, y, coverage| {
         let x = x as usize + left.max(0.) as usize;
         let y = y as usize + top.max(0.) as usize;
         if x < 32 && y < 32 {
             let i = (y * 32 + x) * 4;
-            rgba[i..i + 4].copy_from_slice(&[
-                if enabled { 0 } else { 120 },
-                120,
-                if enabled { 212 } else { 120 },
-                (coverage * 255.) as u8,
-            ]);
+            for channel in 0..3 {
+                rgba[i + channel] =
+                    (background[channel] as f32 * (1. - coverage) + 255. * coverage) as u8;
+            }
+            rgba[i + 3] = 255;
         }
     });
     Icon::from_rgba(rgba, 32, 32).map_err(|e| e.to_string())
