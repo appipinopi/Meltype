@@ -1,0 +1,454 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Yukishiro, appipinopi
+//! User-logon task. Registration happens only on an explicit tray action.
+use eframe::egui;
+use std::{
+    ffi::OsString,
+    io::Write,
+    os::windows::process::CommandExt,
+    path::PathBuf,
+    sync::mpsc::{self, Receiver},
+    time::{Duration, Instant},
+};
+use windows_sys::Win32::Security::Authentication::Identity::{GetUserNameExW, NameSamCompatible};
+#[derive(Clone)]
+struct Spec {
+    user: String,
+    executable: PathBuf,
+    task: String,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum RunEntry {
+    Exists,
+    Enable,
+    Disable,
+}
+impl Spec {
+    fn current() -> Result<Self, String> {
+        let mut count = 0;
+        unsafe {
+            GetUserNameExW(NameSamCompatible, std::ptr::null_mut(), &mut count);
+        }
+        if count == 0 || count > 32768 {
+            return Err("Windowsのユーザー名を取得できません".into());
+        }
+        let mut buffer = vec![0; count as usize];
+        if !unsafe { GetUserNameExW(NameSamCompatible, buffer.as_mut_ptr(), &mut count) } {
+            return Err(std::io::Error::last_os_error().to_string());
+        }
+        let user = String::from_utf16(&buffer[..count as usize]).map_err(|e| e.to_string())?;
+        Ok(Self::new(
+            user,
+            std::env::current_exe().map_err(|e| e.to_string())?,
+        ))
+    }
+    fn new(user: String, executable: PathBuf) -> Self {
+        let hash = user
+            .to_lowercase()
+            .as_bytes()
+            .iter()
+            .fold(0xcbf29ce484222325_u64, |h, b| {
+                (h ^ *b as u64).wrapping_mul(0x100000001b3)
+            });
+        Self {
+            user,
+            executable,
+            task: format!("MeltypeRust-{hash:016x}"),
+        }
+    }
+    fn xml(&self) -> String {
+        let user = escape(&self.user);
+        let exe = escape(&self.executable.to_string_lossy());
+        let directory = escape(
+            &self
+                .executable
+                .parent()
+                .unwrap_or_else(|| std::path::Path::new("."))
+                .to_string_lossy(),
+        );
+        format!(
+            r#"<?xml version="1.0" encoding="UTF-16"?>
+<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+<RegistrationInfo><Description>Meltype Rust をサインインしたらすぐ起動する</Description></RegistrationInfo>
+<Triggers><LogonTrigger><Enabled>true</Enabled><UserId>{user}</UserId></LogonTrigger></Triggers>
+<Principals><Principal id="Author"><UserId>{user}</UserId><LogonType>InteractiveToken</LogonType><RunLevel>LeastPrivilege</RunLevel></Principal></Principals>
+<Settings><MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy><DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries><StopIfGoingOnBatteries>false</StopIfGoingOnBatteries><ExecutionTimeLimit>PT0S</ExecutionTimeLimit><Priority>5</Priority></Settings>
+<Actions Context="Author"><Exec><Command>{exe}</Command><Arguments>--tray</Arguments><WorkingDirectory>{directory}</WorkingDirectory></Exec></Actions></Task>"#
+        )
+    }
+    fn query(
+        &self,
+        run: &mut impl FnMut(&[OsString]) -> Result<i32, String>,
+    ) -> Result<bool, String> {
+        match run(&["/Query".into(), "/TN".into(), self.task.clone().into()])? {
+            0 => Ok(true),
+            1 => Ok(false),
+            code => Err(format!("起動設定を取得できません (終了コード{code})")),
+        }
+    }
+    fn set(
+        &self,
+        enabled: bool,
+        run: &mut impl FnMut(&[OsString]) -> Result<i32, String>,
+    ) -> Result<bool, String> {
+        let code = if enabled {
+            let mut file = tempfile::NamedTempFile::new().map_err(|e| e.to_string())?;
+            let bytes: Vec<_> = std::iter::once(0xfeff_u16)
+                .chain(self.xml().encode_utf16())
+                .flat_map(u16::to_le_bytes)
+                .collect();
+            file.write_all(&bytes)
+                .and_then(|()| file.flush())
+                .map_err(|e| e.to_string())?;
+            run(&[
+                "/Create".into(),
+                "/TN".into(),
+                self.task.clone().into(),
+                "/XML".into(),
+                file.path().into(),
+                "/F".into(),
+            ])?
+        } else if self.query(run)? {
+            run(&[
+                "/Delete".into(),
+                "/TN".into(),
+                self.task.clone().into(),
+                "/F".into(),
+            ])?
+        } else {
+            return Ok(false);
+        };
+        if code != 0 {
+            return Err(format!("起動設定を変更できません (終了コード{code})"));
+        }
+        Ok(enabled)
+    }
+    fn query_combined(
+        &self,
+        run: &mut impl FnMut(&[OsString]) -> Result<i32, String>,
+        registry: &mut impl FnMut(RunEntry) -> Result<bool, String>,
+    ) -> Result<bool, String> {
+        match self.query(run) {
+            Ok(true) => Ok(true),
+            Ok(false) => registry(RunEntry::Exists),
+            Err(error) => {
+                if registry(RunEntry::Exists)? {
+                    Ok(true)
+                } else {
+                    Err(error)
+                }
+            }
+        }
+    }
+    fn set_combined(
+        &self,
+        enabled: bool,
+        run: &mut impl FnMut(&[OsString]) -> Result<i32, String>,
+        registry: &mut impl FnMut(RunEntry) -> Result<bool, String>,
+    ) -> Result<bool, String> {
+        if enabled {
+            if self.set(true, run).is_ok() {
+                // A redundant owned Run entry is harmless: the process lock
+                // still prevents duplicates if cleanup is denied by policy.
+                if registry(RunEntry::Exists) == Ok(true) {
+                    let _ = registry(RunEntry::Disable);
+                }
+                Ok(true)
+            } else {
+                registry(RunEntry::Enable)
+            }
+        } else {
+            let scheduled = self.set(false, run);
+            let legacy = registry(RunEntry::Disable);
+            scheduled?;
+            legacy?;
+            Ok(false)
+        }
+    }
+}
+fn registry(spec: &Spec, action: RunEntry) -> Result<bool, String> {
+    use windows_sys::{
+        core::w,
+        Win32::{
+            Foundation::{ERROR_FILE_NOT_FOUND, ERROR_PATH_NOT_FOUND},
+            System::Registry::*,
+        },
+    };
+    let name: Vec<u16> = spec.task.encode_utf16().chain(Some(0)).collect();
+    let path = w!("Software\\Microsoft\\Windows\\CurrentVersion\\Run");
+    let error = |code| std::io::Error::from_raw_os_error(code as i32).to_string();
+    if action == RunEntry::Exists {
+        let code = unsafe {
+            RegGetValueW(
+                HKEY_CURRENT_USER,
+                path,
+                name.as_ptr(),
+                RRF_RT_REG_SZ,
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+            )
+        };
+        return match code {
+            0 => Ok(true),
+            ERROR_FILE_NOT_FOUND | ERROR_PATH_NOT_FOUND => Ok(false),
+            _ => Err(error(code)),
+        };
+    }
+    if action == RunEntry::Disable {
+        let code = unsafe { RegDeleteKeyValueW(HKEY_CURRENT_USER, path, name.as_ptr()) };
+        return match code {
+            0 | ERROR_FILE_NOT_FOUND | ERROR_PATH_NOT_FOUND => Ok(false),
+            _ => Err(error(code)),
+        };
+    }
+    struct Key(HKEY);
+    impl Drop for Key {
+        fn drop(&mut self) {
+            unsafe {
+                RegCloseKey(self.0);
+            }
+        }
+    }
+    let mut raw = std::ptr::null_mut();
+    let code = unsafe {
+        RegCreateKeyExW(
+            HKEY_CURRENT_USER,
+            path,
+            0,
+            std::ptr::null(),
+            0,
+            KEY_SET_VALUE,
+            std::ptr::null(),
+            &mut raw,
+            std::ptr::null_mut(),
+        )
+    };
+    if code != 0 {
+        return Err(error(code));
+    }
+    let key = Key(raw);
+    let command = format!("\"{}\" --tray", spec.executable.to_string_lossy());
+    let bytes: Vec<u8> = command
+        .encode_utf16()
+        .chain(Some(0))
+        .flat_map(u16::to_le_bytes)
+        .collect();
+    let code = unsafe {
+        RegSetValueExW(
+            key.0,
+            name.as_ptr(),
+            0,
+            REG_SZ,
+            bytes.as_ptr(),
+            bytes.len() as u32,
+        )
+    };
+    if code != 0 {
+        return Err(error(code));
+    }
+    Ok(true)
+}
+fn escape(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&apos;")
+}
+fn run(args: &[OsString]) -> Result<i32, String> {
+    let system = std::env::var_os("SystemRoot").ok_or("SystemRootがありません")?;
+    let mut child = std::process::Command::new(PathBuf::from(system).join("System32/schtasks.exe"))
+        .args(args)
+        .creation_flags(0x08000000)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .map_err(|e| e.to_string())?;
+    let deadline = Instant::now() + Duration::from_secs(10);
+    loop {
+        if let Some(status) = child.try_wait().map_err(|e| e.to_string())? {
+            return Ok(status.code().unwrap_or(-1));
+        }
+        if Instant::now() >= deadline {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err("起動設定の処理がタイムアウトしました".into());
+        }
+        std::thread::sleep(Duration::from_millis(40));
+    }
+}
+pub struct Startup {
+    spec: Spec,
+    receiver: Option<Receiver<Result<bool, String>>>,
+    pub enabled: Option<bool>,
+    pub pending: bool,
+}
+impl Startup {
+    pub fn new(ctx: &egui::Context) -> Result<Self, String> {
+        let mut result = Self {
+            spec: Spec::current()?,
+            receiver: None,
+            enabled: None,
+            pending: false,
+        };
+        result.request(None, ctx)?;
+        Ok(result)
+    }
+    pub fn request(&mut self, value: Option<bool>, ctx: &egui::Context) -> Result<(), String> {
+        if self.pending {
+            return Err("起動設定の処理中です".into());
+        }
+        let spec = self.spec.clone();
+        let ctx = ctx.clone();
+        let (sender, receiver) = mpsc::channel();
+        std::thread::Builder::new()
+            .name("meltype-startup".into())
+            .spawn(move || {
+                let result = match value {
+                    Some(value) => {
+                        spec.set_combined(value, &mut run, &mut |action| registry(&spec, action))
+                    }
+                    None => spec.query_combined(&mut run, &mut |action| registry(&spec, action)),
+                };
+                let _ = sender.send(result);
+                ctx.request_repaint();
+            })
+            .map_err(|e| e.to_string())?;
+        self.receiver = Some(receiver);
+        self.pending = true;
+        Ok(())
+    }
+    pub fn poll(&mut self) -> Option<Result<bool, String>> {
+        let receiver = self.receiver.as_ref()?;
+        let result = match receiver.try_recv() {
+            Ok(result) => result,
+            Err(mpsc::TryRecvError::Empty) => return None,
+            Err(mpsc::TryRecvError::Disconnected) => Err("起動設定の処理が終了しました".into()),
+        };
+        self.receiver = None;
+        self.pending = false;
+        if let Ok(enabled) = result {
+            self.enabled = Some(enabled);
+        }
+        Some(result)
+    }
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn spec() -> Spec {
+        Spec::new(
+            "DOMAIN\\藤島&<\"'".into(),
+            PathBuf::from("C:/Some & <folder>/Meltype/settings.exe"),
+        )
+    }
+    #[test]
+    fn task_xml_round_trips_paths_and_uses_current_user_least_privilege_logon() {
+        let spec = spec();
+        let xml = spec.xml();
+        let document = roxmltree::Document::parse(&xml).unwrap();
+        let text = |name| {
+            document
+                .descendants()
+                .find(|n| n.has_tag_name(name))
+                .unwrap()
+                .text()
+                .unwrap()
+        };
+        assert_eq!(text("UserId"), spec.user);
+        assert_eq!(text("Command"), spec.executable.to_string_lossy());
+        assert_eq!(text("Arguments"), "--tray");
+        assert_eq!(text("RunLevel"), "LeastPrivilege");
+        assert_eq!(text("LogonType"), "InteractiveToken");
+        assert_eq!(text("DisallowStartIfOnBatteries"), "false");
+        assert_eq!(text("ExecutionTimeLimit"), "PT0S");
+        assert!(spec.task.starts_with("MeltypeRust-"));
+        assert_ne!(spec.task, "Meltype");
+        assert_eq!(
+            spec.task,
+            Spec::new(spec.user.to_uppercase(), spec.executable.clone()).task
+        );
+        assert_ne!(
+            spec.task,
+            Spec::new("OtherUser".into(), spec.executable.clone()).task
+        );
+    }
+    #[test]
+    fn startup_mutations_target_only_the_owned_task_and_write_utf16_without_a_shell() {
+        let spec = spec();
+        let mut calls = vec![];
+        assert!(spec
+            .set(true, &mut |args| {
+                calls.push(args.to_vec());
+                let file = std::fs::read(&args[4]).unwrap();
+                assert_eq!(&file[..2], &[0xff, 0xfe]);
+                let units: Vec<u16> = file[2..]
+                    .as_chunks::<2>()
+                    .0
+                    .iter()
+                    .map(|b| u16::from_le_bytes([b[0], b[1]]))
+                    .collect();
+                assert_eq!(String::from_utf16(&units).unwrap(), spec.xml());
+                Ok(0)
+            })
+            .unwrap());
+        assert_eq!(calls[0][0], "/Create");
+        assert_eq!(calls[0][2], spec.task.as_str());
+        assert!(!std::path::Path::new(&calls[0][4]).exists());
+        calls.clear();
+        assert!(!spec
+            .set(false, &mut |args| {
+                calls.push(args.to_vec());
+                Ok(0)
+            })
+            .unwrap());
+        assert_eq!(calls.len(), 2);
+        assert_eq!(calls[1][0], "/Delete");
+        assert_eq!(calls[1][2], spec.task.as_str());
+        calls.clear();
+        assert!(!spec
+            .set(false, &mut |args| {
+                calls.push(args.to_vec());
+                Ok(1)
+            })
+            .unwrap());
+        assert_eq!(calls.len(), 1);
+        assert!(spec.set(true, &mut |_| Ok(5)).is_err());
+    }
+    #[test]
+    fn startup_falls_back_to_owned_run_entry_and_disables_both_without_touching_real_registry() {
+        let spec = spec();
+        let mut entries = vec![];
+        assert!(spec
+            .set_combined(true, &mut |_| Ok(5), &mut |action| {
+                entries.push(action);
+                Ok(true)
+            })
+            .unwrap());
+        assert_eq!(entries, [RunEntry::Enable]);
+        entries.clear();
+        assert!(spec
+            .set_combined(true, &mut |_| Ok(0), &mut |action| {
+                entries.push(action);
+                Ok(true)
+            })
+            .unwrap());
+        assert_eq!(entries, [RunEntry::Exists, RunEntry::Disable]);
+        entries.clear();
+        assert!(!spec
+            .set_combined(false, &mut |_| Ok(0), &mut |action| {
+                entries.push(action);
+                Ok(false)
+            })
+            .unwrap());
+        assert_eq!(entries, [RunEntry::Disable]);
+        assert!(spec
+            .query_combined(&mut |_| Ok(1), &mut |_| Ok(true))
+            .unwrap());
+        assert!(spec
+            .set_combined(true, &mut |_| Ok(5), &mut |_| Err("denied".into()))
+            .is_err());
+    }
+}

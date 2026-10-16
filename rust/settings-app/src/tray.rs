@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Yukishiro, appipinopi
 //! Windows TSF companion. Menus use the same settings store as the input DLL.
+use crate::{
+    startup::Startup,
+    windows_services::{self, Hotkey},
+};
 use ab_glyph::{Font, FontArc, PxScale, ScaleFont};
 use eframe::egui;
 use meltype_core::{settings::Settings, storage::Store};
@@ -17,6 +21,9 @@ pub enum Action {
     Level(String),
     Folder,
     Quit,
+    Startup,
+    Status(String),
+    Error(String),
 }
 enum Event {
     Menu(MenuId),
@@ -24,6 +31,9 @@ enum Event {
 }
 pub struct Tray {
     _lock: std::fs::File,
+    // Drop the subclass/hotkey before dropping its tray-owned native window.
+    _hotkey: Option<Hotkey>,
+    hotkey_receiver: Receiver<()>,
     icon: TrayIcon,
     enabled: CheckMenuItem,
     status: MenuItem,
@@ -33,6 +43,13 @@ pub struct Tray {
     actions: Vec<(MenuId, Action)>,
     receiver: Receiver<Event>,
     last_enabled: bool,
+    last_profile: String,
+    startup: Option<Startup>,
+    startup_item: CheckMenuItem,
+    startup_user_request: bool,
+    ctx: egui::Context,
+    warnings: Vec<String>,
+    guid: u128,
 }
 impl Tray {
     pub fn new(ctx: &egui::Context, settings: &Settings, store: &Store) -> Result<Self, String> {
@@ -76,6 +93,9 @@ impl Tray {
         menu.append(&level_menu).map_err(|e| e.to_string())?;
         let profiles = Submenu::new("プロファイル", true);
         menu.append(&profiles).map_err(|e| e.to_string())?;
+        let startup_item = CheckMenuItem::new("Windows の起動時に起動", false, false, None);
+        menu.append(&startup_item).map_err(|e| e.to_string())?;
+        actions.push((startup_item.id().clone(), Action::Startup));
         for (label, action) in [
             ("設定...", Action::Page(0)),
             ("ユーザー辞書...", Action::Page(1)),
@@ -94,12 +114,37 @@ impl Tray {
         let quit = MenuItem::new("終了", true, None);
         menu.append(&quit).map_err(|e| e.to_string())?;
         actions.push((quit.id().clone(), Action::Quit));
+        let guid = windows_services::tray_guid(&store.directory);
         let icon = TrayIconBuilder::new()
             .with_menu(Box::new(menu))
+            .with_guid(guid)
             .with_tooltip("Meltype")
             .with_icon(text_icon(settings.boolean("Enabled"))?)
             .build()
             .map_err(|e| e.to_string())?;
+        let mut warnings = vec![];
+        let (hotkey_sender, hotkey_receiver) = mpsc::channel();
+        let hotkey = match Hotkey::attach(icon.window_handle(), hotkey_sender, ctx) {
+            Ok(hotkey) => {
+                if let Some(name) = hotkey.name {
+                    enabled.set_text(format!("Meltype を有効にする ({name})"));
+                } else {
+                    warnings.push("一時停止/再開のホットキーは、候補がすべて使用中のため登録できませんでした。".into());
+                }
+                Some(hotkey)
+            }
+            Err(error) => {
+                warnings.push(format!("ホットキー: {error}"));
+                None
+            }
+        };
+        let startup = match Startup::new(ctx) {
+            Ok(startup) => Some(startup),
+            Err(error) => {
+                warnings.push(format!("起動設定: {error}"));
+                None
+            }
+        };
         let (sender, receiver) = mpsc::channel();
         let menu_sender = sender.clone();
         let menu_ctx = ctx.clone();
@@ -116,6 +161,8 @@ impl Tray {
         }));
         let mut tray = Self {
             _lock: lock,
+            _hotkey: hotkey,
+            hotkey_receiver,
             icon,
             enabled,
             status,
@@ -125,12 +172,34 @@ impl Tray {
             actions,
             receiver,
             last_enabled: settings.boolean("Enabled"),
+            last_profile: settings.text("ActiveProfile").into(),
+            startup,
+            startup_item,
+            startup_user_request: false,
+            ctx: ctx.clone(),
+            warnings,
+            guid,
         };
         tray.sync(settings)?;
         Ok(tray)
     }
     pub fn sync(&mut self, settings: &Settings) -> Result<(), String> {
         let enabled = settings.boolean("Enabled");
+        let message = if enabled != self.last_enabled {
+            Some(if enabled {
+                "Meltype を有効にしました".to_owned()
+            } else {
+                "Meltype を一時停止しました".to_owned()
+            })
+        } else if settings.text("ActiveProfile") != self.last_profile {
+            Some(format!(
+                "プロファイルを「{}」にしました",
+                settings.text("ActiveProfile")
+            ))
+        } else {
+            None
+        };
+        self.last_profile = settings.text("ActiveProfile").into();
         self.enabled.set_checked(enabled);
         self.status.set_text(if enabled {
             "Meltype: 有効"
@@ -171,10 +240,27 @@ impl Tray {
         for (name, item) in &self.profile_items {
             item.set_checked(name == settings.text("ActiveProfile"));
         }
+        if let Some(startup) = &self.startup {
+            self.startup_item
+                .set_checked(startup.enabled.unwrap_or(false));
+            self.startup_item
+                .set_enabled(!startup.pending && startup.enabled.is_some());
+        }
+        if settings.boolean("ShowNotifications") {
+            if let Some(message) = message {
+                windows_services::notify(
+                    self.icon.window_handle(),
+                    self.guid,
+                    "Meltype",
+                    &message,
+                )?;
+            }
+        }
         Ok(())
     }
-    pub fn poll(&self) -> Vec<Action> {
-        self.receiver
+    pub fn poll(&mut self) -> Vec<Action> {
+        let mut actions: Vec<Action> = self
+            .receiver
             .try_iter()
             .filter_map(|event| match event {
                 Event::Toggle => Some(Action::Toggle),
@@ -184,7 +270,52 @@ impl Tray {
                     .find(|(key, _)| key == &id)
                     .map(|(_, action)| action.clone()),
             })
-            .collect()
+            .collect();
+        actions.extend(self.hotkey_receiver.try_iter().map(|()| Action::Toggle));
+        actions.extend(self.warnings.drain(..).map(Action::Status));
+        if actions.iter().any(|a| matches!(a, Action::Startup)) {
+            if let Some(startup) = &mut self.startup {
+                if let Some(enabled) = startup.enabled {
+                    match startup.request(Some(!enabled), &self.ctx) {
+                        Ok(()) => self.startup_user_request = true,
+                        Err(error) => actions.push(Action::Error(error)),
+                    }
+                }
+            }
+            actions.retain(|a| !matches!(a, Action::Startup));
+        }
+        if let Some(startup) = &mut self.startup {
+            if let Some(result) = startup.poll() {
+                match result {
+                    Ok(enabled) if self.startup_user_request => actions.push(Action::Status(
+                        if enabled {
+                            "Windows の起動時に Meltype を起動します。"
+                        } else {
+                            "Windows の起動時に Meltype を起動しません。"
+                        }
+                        .into(),
+                    )),
+                    Err(error) => actions.push(Action::Error(error)),
+                    _ => {}
+                }
+                self.startup_user_request = false;
+            }
+        }
+        actions
+    }
+    #[cfg(feature = "visual-test")]
+    pub fn hotkey_name(&self) -> Option<&str> {
+        self._hotkey.as_ref().and_then(|h| h.name)
+    }
+    #[cfg(feature = "visual-test")]
+    pub fn startup_status(&self) -> (Option<bool>, bool) {
+        self.startup
+            .as_ref()
+            .map_or((None, false), |s| (s.enabled, s.pending))
+    }
+    #[cfg(feature = "visual-test")]
+    pub fn exercise_hotkey(&self) {
+        windows_services::dispatch_test_hotkey(self.icon.window_handle());
     }
 }
 pub fn write_action(store: &Store, action: &Action) -> Result<(), String> {

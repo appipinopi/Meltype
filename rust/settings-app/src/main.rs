@@ -7,8 +7,12 @@ use serde_json::{json, Value};
 mod metadata;
 mod rules;
 #[cfg(windows)]
+mod startup;
+#[cfg(windows)]
 mod tray;
 mod widgets;
+#[cfg(windows)]
+mod windows_services;
 
 fn main() -> eframe::Result {
     let resident = cfg!(windows) && std::env::args().any(|a| a == "--tray");
@@ -242,7 +246,7 @@ impl App {
                 }
             }
         }
-        let actions = self.tray.as_ref().unwrap().poll();
+        let actions = self.tray.as_mut().unwrap().poll();
         for action in actions {
             match action {
                 tray::Action::Page(page) => {
@@ -282,6 +286,12 @@ impl App {
                         self.closing = true;
                         ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                     }
+                }
+                tray::Action::Status(message) => self.status = message,
+                tray::Action::Error(message) => {
+                    self.status = message;
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
                 }
                 action => {
                     if let Err(error) = tray::write_action(&self.store, &action) {
@@ -780,6 +790,7 @@ fn supported(key: &str) -> bool {
         "SlashAsMiddleDot",
     ]
     .contains(&key)
+        || cfg!(windows) && key == "ShowNotifications"
 }
 fn choices(key: &str) -> Option<&'static [&'static str]> {
     Some(match key {
@@ -811,7 +822,17 @@ impl eframe::App for App {
         if let Ok(path) = std::env::var("MELTYPE_UI_CAPTURE") {
             self.capture_frames += 1;
             ctx.request_repaint();
-            if self.capture_frames == 20 {
+            #[cfg(windows)]
+            if self.capture_frames == 5 && std::env::var_os("MELTYPE_TRAY_SMOKE").is_some() {
+                if let Some(tray) = &self.tray {
+                    tray.exercise_hotkey();
+                }
+            }
+            #[cfg(windows)]
+            let ready = self.tray.as_ref().is_none_or(|t| !t.startup_status().1);
+            #[cfg(not(windows))]
+            let ready = true;
+            if self.capture_frames >= 20 && ready {
                 ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot(egui::UserData::default()));
             }
             for event in ctx.input(|i| i.events.clone()) {
@@ -823,7 +844,7 @@ impl eframe::App for App {
                     #[cfg(windows)]
                     std::fs::write(
                         format!("{path}.state.json"),
-                        json!({"resident":self.resident,"trayCreated":self.tray.is_some()})
+                        json!({"resident":self.resident,"trayCreated":self.tray.is_some(),"hotkey":self.tray.as_ref().and_then(|t|t.hotkey_name()),"startup":self.tray.as_ref().map(|t|t.startup_status()),"status":self.status})
                             .to_string(),
                     )
                     .expect("write tray capture state");

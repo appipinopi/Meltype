@@ -1860,9 +1860,11 @@ dependencies = [
  "fs2",
  "meltype-core",
  "rfd",
+ "roxmltree",
  "serde_json",
  "tempfile",
  "tray-icon",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
