@@ -49,6 +49,11 @@ void meltype_free(void *);
    guid is a pointer to a Windows GUID; unknown/null GUIDs return NULL. */
 void *meltype_tsf_create_display_attribute(const void *guid);
 void *meltype_tsf_create_display_attribute_enum(void);
+/* TSF mode button: COM Release owns the returned interface. Call detach before
+   destroying the context or callback code; callbacks run on the creating thread. */
+void *meltype_tsf_create_langbar(void *context, int32_t (*read_mode)(void *), void (*toggle)(void *));
+void meltype_tsf_langbar_update(void *button);
+void meltype_tsf_langbar_detach(void *button);
 #endif
 #ifdef __cplusplus
 }

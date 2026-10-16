@@ -2,6 +2,7 @@
 // Copyright (C) 2026 lnkiai, appipinopi
 //! Windows TSF COM objects. These use the generated Windows SDK vtables,
 //! including system calling conventions on x86, rather than a C++ bridge.
+mod langbar;
 use std::{
     ffi::c_void,
     mem::MaybeUninit,
@@ -188,11 +189,7 @@ unsafe extern "system" fn next(
         return E_INVALIDARG;
     }
     let index = &state(this).index;
-    let start = index
-        .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |i| {
-            Some(i.saturating_add(count).min(SPECS.len() as u32))
-        })
-        .unwrap();
+    let start = advance(index, count);
     let actual = count.min(SPECS.len() as u32 - start);
     for i in 0..actual {
         out.add(i as usize)
@@ -212,16 +209,21 @@ unsafe extern "system" fn reset_enum(this: *mut c_void) -> HRESULT {
     S_OK
 }
 unsafe extern "system" fn skip(this: *mut c_void, count: u32) -> HRESULT {
-    let old = state(this)
-        .index
-        .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |i| {
-            Some(i.saturating_add(count).min(SPECS.len() as u32))
-        })
-        .unwrap();
+    let old = advance(&state(this).index, count);
     if count <= SPECS.len() as u32 - old {
         S_OK
     } else {
         S_FALSE
+    }
+}
+fn advance(index: &AtomicU32, count: u32) -> u32 {
+    let mut old = index.load(Ordering::Relaxed);
+    loop {
+        let new = old.saturating_add(count).min(SPECS.len() as u32);
+        match index.compare_exchange_weak(old, new, Ordering::Relaxed, Ordering::Relaxed) {
+            Ok(_) => return old,
+            Err(actual) => old = actual,
+        }
     }
 }
 

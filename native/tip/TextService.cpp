@@ -289,7 +289,7 @@ STDMETHODIMP TextService::ActivateEx(ITfThreadMgr* threadMgr, TfClientId clientI
         langBar_ = new LangBarButton(this);
         ITfLangBarItemMgr* items = nullptr;
         if (SUCCEEDED(threadMgr_->QueryInterface(IID_ITfLangBarItemMgr, reinterpret_cast<void**>(&items)))) {
-            items->AddItem(langBar_);
+            if (langBar_->Item()) items->AddItem(langBar_->Item());
             items->Release();
         }
     }
@@ -337,7 +337,7 @@ STDMETHODIMP TextService::Deactivate() {
     if (langBar_ != nullptr) {
         ITfLangBarItemMgr* items = nullptr;
         if (SUCCEEDED(threadMgr_->QueryInterface(IID_ITfLangBarItemMgr, reinterpret_cast<void**>(&items)))) {
-            items->RemoveItem(langBar_);
+            if (langBar_->Item()) items->RemoveItem(langBar_->Item());
             items->Release();
         }
         langBar_->Detach();

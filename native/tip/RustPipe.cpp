@@ -4,6 +4,8 @@
 // the client process; no C# daemon or named pipe is required.
 #include "Pipe.h"
 #include "DisplayAttributes.h"
+#include "LangBar.h"
+#include "TextService.h"
 
 namespace meltype {
 namespace {
@@ -15,6 +17,9 @@ struct RustApi {
     void (__cdecl *freeText)(void*) = nullptr;
     void* (__cdecl *displayAttribute)(const GUID*) = nullptr;
     void* (__cdecl *displayAttributeEnum)() = nullptr;
+    void* (__cdecl *langbar)(void*, int (__cdecl *)(void*), void (__cdecl *)(void*)) = nullptr;
+    void (__cdecl *langbarUpdate)(void*) = nullptr;
+    void (__cdecl *langbarDetach)(void*) = nullptr;
     RustApi() {
         wchar_t path[32768];
         const DWORD size = GetModuleFileNameW(g_module, path, ARRAYSIZE(path));
@@ -31,6 +36,9 @@ struct RustApi {
         freeText = reinterpret_cast<decltype(freeText)>(GetProcAddress(module, "meltype_free"));
         displayAttribute = reinterpret_cast<decltype(displayAttribute)>(GetProcAddress(module, "meltype_tsf_create_display_attribute"));
         displayAttributeEnum = reinterpret_cast<decltype(displayAttributeEnum)>(GetProcAddress(module, "meltype_tsf_create_display_attribute_enum"));
+        langbar = reinterpret_cast<decltype(langbar)>(GetProcAddress(module, "meltype_tsf_create_langbar"));
+        langbarUpdate = reinterpret_cast<decltype(langbarUpdate)>(GetProcAddress(module, "meltype_tsf_langbar_update"));
+        langbarDetach = reinterpret_cast<decltype(langbarDetach)>(GetProcAddress(module, "meltype_tsf_langbar_detach"));
     }
     bool ready() const { return create && destroy && request && freeText; }
     // The module stays loaded for the process lifetime. Do not unload Rust
@@ -56,4 +64,22 @@ ITfDisplayAttributeInfo* CreateDisplayAttributeInfo(REFGUID guid) {
 IEnumTfDisplayAttributeInfo* CreateDisplayAttributeEnum() {
     return api().displayAttributeEnum ? static_cast<IEnumTfDisplayAttributeInfo*>(api().displayAttributeEnum()) : nullptr;
 }
+namespace {
+int __cdecl ReadMode(void* service) { return static_cast<TextService*>(service)->IsOpen() ? 1 : 0; }
+void __cdecl ToggleMode(void* service) { static_cast<TextService*>(service)->ToggleInputMode(nullptr); }
+}
+LangBarButton::LangBarButton(TextService* service) {
+    DllAddRef();
+    if (api().langbar && api().langbarUpdate && api().langbarDetach) {
+        item_ = static_cast<ITfLangBarItemButton*>(api().langbar(service, ReadMode, ToggleMode));
+    }
+}
+LangBarButton::~LangBarButton() {
+    Detach();
+    if (item_) item_->Release();
+    DllRelease();
+}
+void LangBarButton::Update() { if (item_) api().langbarUpdate(item_); }
+void LangBarButton::Detach() { if (item_) api().langbarDetach(item_); }
+ULONG LangBarButton::Release() { delete this; return 0; }
 } // namespace meltype

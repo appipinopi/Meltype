@@ -11,9 +11,25 @@ namespace meltype {
 
 class TextService;
 
+#ifdef MELTYPE_RUST_CORE
+// The COM interfaces, notifications and icon belong to Rust. This temporary
+// owner only connects the remaining C++ text service's mode callbacks.
+class LangBarButton final {
+public:
+    explicit LangBarButton(TextService* service);
+    ITfLangBarItem* Item() const { return item_; }
+    void Update();
+    void Detach();
+    ULONG Release();
+private:
+    ~LangBarButton();
+    ITfLangBarItemButton* item_ = nullptr;
+};
+#else
 class LangBarButton final : public ITfLangBarItemButton, public ITfSource {
 public:
     explicit LangBarButton(TextService* service);
+    ITfLangBarItem* Item() { return this; }
 
     // IUnknown
     STDMETHODIMP QueryInterface(REFIID riid, void** ppv) override;
@@ -49,5 +65,6 @@ private:
     TextService* service_;  // Deactivate で Detach して nullptr にする
     ITfLangBarItemSink* sink_ = nullptr;
 };
+#endif
 
 }  // namespace meltype

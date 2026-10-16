@@ -40,6 +40,7 @@
 - [x] Linux IBusのPythonランタイムをRust実行ファイルへ移植（キー受信・確定・文節表示・候補・意味・予測・モード切替・周辺文字照合・プライバシー）
 - [ ] Windows TSF、macOS InputMethodKit、fcitx5、Androidの残りの接続処理のRust化
 - [x] Windows TSFの表示属性COMオブジェクトをRust化（3種類の下線・GUID・列挙・参照管理、x64/x86の実COM呼出とC++プロバイダー経由を確認）
+- [x] Windows TSFの言語バーCOM・入力モード表示・クリック・通知・テーマ対応アイコンをRust化（x64/x86のCOM試験、通知中の解除・切離し・GDI解放、現在の環境で元C++版とアイコン画素が一致）
 - [ ] 元の回帰ケースとの比較、4OSの実際の入力動作
 
 ## 共通実装の進捗（OSの実機確認とは分けて記録）

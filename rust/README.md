@@ -39,14 +39,16 @@ Linux IBusのRust版は `bash rust/build-linux.sh` で `linux/build/Meltype-Rust
 
 | OS | ビルド | 残っているOS固有コード・制限 |
 |---|---|---|
-| Windows x64/x86 | `./rust/build-windows.ps1 -WithTip` | C++ TSFシェル + Rust DLL（下線の表示属性COMはRust実装）。C#サーバー不要。出力は `native/tip/bin/rust-x64` と `rust-x86`。自動インストールしません。元と同じCOM登録IDなので、既存インストールと共存させる配布には未対応です。 |
+| Windows x64/x86 | `./rust/build-windows.ps1 -WithTip` | C++ TSFシェル + Rust DLL（表示属性COM・言語バー・入力モードアイコンはRust実装）。C#サーバー不要。出力は `native/tip/bin/rust-x64` と `rust-x86`。自動インストールしません。元と同じCOM登録IDなので、既存インストールと共存させる配布には未対応です。 |
 | macOS | `bash rust/build-desktop.sh` | Swift InputMethodKitシェルとazooKey変換エンジンを再利用。出力 `mac/build/Meltype.app`。インストールしません。 |
 | Linux | `bash rust/build-desktop.sh` | Rust IBus実行ファイル。出力 `linux/build/Meltype-Rust-linux`。漢字変換には別途C++ Mozcヘルパーが必要です。fcitx5は既存C++アダプターを別途ビルドします。 |
 | Android | [android/README.md](../android/README.md) | Java InputMethodServiceとJNI。補助辞書による変換。 |
 
 デスクトップの既存ビルド手順はそのままで、上記のRust用ビルドだけがRustエンジンを選びます。C APIは `rust/native/include/meltype.h` を参照。戻り値はmalloc由来で `meltype_free` で解放し、同一セッションの呼び出しを直列化してください。Macの変換コールバックはmalloc由来の文字列を返します。LinuxのMozcヘルパーには上流と同じC/US/RSプロトコルで接続し、応答のタイムアウトとサイズ制限を設けています。
 
-WindowsのRustビルドは、元の `DisplayAttributes.cpp` をコンパイルせず、Rustの `ITfDisplayAttributeInfo` / `IEnumTfDisplayAttributeInfo` を使用します。入力中の点線・変換済みの細線・選択文節の太線、GUID、日本語説明とアプリの色を維持します。COM参照は `Release`、説明のBSTRは `SysFreeString` で解放します。通常の文字列用 `meltype_free` と混用しないでください。`rust/native/tests/tsf_com_smoke.py` はSDK互換のvtableを実際に呼び、Rust DLLに実装があることも照合します。CIは64bitと32bitのPythonプロセスで、TSFシェルのCOMプロバイダーからの呼出まで確認します。キー処理・編集セッション・候補ウィンドウ・言語バー・登録などのTSF接続にはまだC++が残っています。
+WindowsのRustビルドは、元の `DisplayAttributes.cpp` をコンパイルせず、Rustの `ITfDisplayAttributeInfo` / `IEnumTfDisplayAttributeInfo` を使用します。入力中の点線・変換済みの細線・選択文節の太線、GUID、日本語説明とアプリの色を維持します。COM参照は `Release`、説明のBSTRは `SysFreeString` で解放します。通常の文字列用 `meltype_free` と混用しないでください。`rust/native/tests/tsf_com_smoke.py` はSDK互換のvtableを実際に呼び、Rust DLLに実装があることも照合します。CIは64bitと32bitのPythonプロセスで、TSFシェルのCOMプロバイダーからの表示属性取得まで確認します。
+
+`LangBar.cpp` もRustビルドから除外し、入力モードボタン・`ITfSource` の通知購読・「あ／A」の描画・ツールチップ・クリックをRustで処理します。元と同じGUID・日本語表示・タスクバーの明暗に合わせた透明アイコンを使います。残るC++入力サービスにはモード取得と切替のコールバックだけを接続し、終了時に切り離します。コールバックは生成したTSFスレッドでだけ実行し、通知先が通知の途中で購読を解除する操作にも対応します。COM試験では両インターフェースの同一性、モード切替、再入する通知、終了後の切離し、アイコンの非空画素・透明度・リソース解放を確認します。現在の環境で描画した2種類のアイコンは元C++版と全画素が一致しています。キー処理・編集セッション・候補ウィンドウ・登録などのTSF接続にはまだC++が残っており、実際のタスクバー・各アプリ上での動作は未検証です。
 
 ## 追加済みの共通機能
 
