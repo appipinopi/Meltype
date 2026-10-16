@@ -103,7 +103,9 @@ private:
     // 応答を入力欄に反映する (編集セッションの中で呼ぶ)
     void Apply(TfEditCookie ec, ITfContext* context, const JsonValue& reply);
     // range の前の count 文字が expect (前に確定した文字) なら、range をそこまで広げる。違えば false
+#ifndef MELTYPE_RUST_CORE
     bool ExtendOverPrevious(TfEditCookie ec, ITfRange* range, LONG count, const JsonValue& expect);
+#endif
     // range を text で置き換えて確定する (アプリによっては変換中の文字としてでないと入らないので、いったん変換中にする)
     bool WriteCommit(TfEditCookie ec, ITfContext* context, ITfRange* range, const std::wstring& text);
     void ApplyComposition(TfEditCookie ec, ITfContext* context, const JsonValue& view);

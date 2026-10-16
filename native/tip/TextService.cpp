@@ -1139,13 +1139,23 @@ void TextService::SurroundingText(TfEditCookie ec, ITfContext* context, std::wst
 
 void TextService::Apply(TfEditCookie ec, ITfContext* context, const JsonValue& reply) {
 #ifdef MELTYPE_RUST_CORE
-    auto rejectEdits = [&]() {
+    struct Owner { TextService* service; ITfContext* context; TfEditCookie cookie; } owner = {this,context,ec};
+    auto current = [](void* value) -> void* { return static_cast<Owner*>(value)->service->composition_; };
+    auto write = [](void* value,void* range,const unsigned short* text,unsigned int length) -> int {
+        auto* owner = static_cast<Owner*>(value);
+        try {
+            return owner->service->WriteCommit(owner->cookie,owner->context,static_cast<ITfRange*>(range),
+                std::wstring(reinterpret_cast<const wchar_t*>(text),length)) ? 1 : 0;
+        } catch (...) { return 0; }
+    };
+    if (!RustApplyCommits(ec,context,reply,&owner,current,write)) {
         JsonValue ignored;
         Request("{\"op\":\"reset\",\"sid\":\"" + sid_ + "\",\"direct\":" + (!open_ ? "true" : "false") + "}", ignored);
         keyFailed_ = true;
         consumed_ = false;
-    };
-#endif
+        return;
+    }
+#else
     // 1 つの応答の中の確定は、前の確定の後ろに続けて入れる (クリックで確定したときは、キャレットがもうクリックした所にあるので、
     // キャレットの位置に入れると、クリックした所に入ったり、選んでいた文字を上書きしたりする)
     Microsoft::WRL::ComPtr<ITfRange> next;
@@ -1165,30 +1175,20 @@ void TextService::Apply(TfEditCookie ec, ITfContext* context, const JsonValue& r
             if (SUCCEEDED(context->GetSelection(ec, TF_DEFAULT_SELECTION, 1, &selection, &fetched)) && fetched > 0) range.Attach(selection.range);
         }
         if (!range) {
-#ifdef MELTYPE_RUST_CORE
-            if (deleteBefore > 0) { rejectEdits(); return; }
-#endif
             continue;
         }
         // 確定し直し: 前に確定した文字を消して入れ直す。前の文字が確定したときのままでなければ (アプリが書き換えた・前の文字を読めない)、
         // 関係ない文字を消したり、古い文字に重ねて入れたりしないように、確定し直さない (変換中の文字は、次の確定でそのまま確定する)
         if (deleteBefore > 0 && !ExtendOverPrevious(ec, range.Get(), deleteBefore, edit[L"expect"])) {
-#ifdef MELTYPE_RUST_CORE
-            rejectEdits();
-            return;
-#else
             continue;
-#endif
         }
         if (!WriteCommit(ec, context, range.Get(), text)) {
-#ifdef MELTYPE_RUST_CORE
-            if (deleteBefore > 0) { rejectEdits(); return; }
-#endif
             continue;
         }
         next.Reset();
         if (SUCCEEDED(range->Clone(&next))) next->Collapse(ec, TF_ANCHOR_END);
     }
+#endif
 
     const JsonValue& view = reply[L"view"];
     lastConverting_ = !view.IsNull() && view[L"converting"].Bool();
@@ -1210,11 +1210,8 @@ void TextService::Apply(TfEditCookie ec, ITfContext* context, const JsonValue& r
     }
 }
 
+#ifndef MELTYPE_RUST_CORE
 bool TextService::ExtendOverPrevious(TfEditCookie ec, ITfRange* range, LONG count, const JsonValue& expect) {
-#ifdef MELTYPE_RUST_CORE
-    if (expect.type != JsonValue::Type::String) return false;
-    return RustExtendPrevious(ec, range, count, expect.Str());
-#else
     Microsoft::WRL::ComPtr<ITfRange> previous;
     if (FAILED(range->Clone(&previous))) return false;
     previous->Collapse(ec, TF_ANCHOR_START);
@@ -1234,8 +1231,8 @@ bool TextService::ExtendOverPrevious(TfEditCookie ec, ITfRange* range, LONG coun
         return false;
     }
     return SUCCEEDED(range->ShiftStart(ec, -count, &moved, nullptr));
-#endif
 }
+#endif
 
 bool TextService::WriteCommit(TfEditCookie ec, ITfContext* context, ITfRange* range, const std::wstring& text) {
     if (composition_ == nullptr) {

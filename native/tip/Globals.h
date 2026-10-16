@@ -49,13 +49,14 @@ HRESULT RustGetClassObject(REFCLSID clsid, REFIID iid, void** out);
 HRESULT RustRegisterServer();
 HRESULT RustUnregisterServer();
 void RustSurroundingText(TfEditCookie, ITfContext*, std::wstring&, std::wstring&);
-bool RustExtendPrevious(TfEditCookie, ITfRange*, LONG, const std::wstring&);
 bool RustWriteRange(TfEditCookie, ITfContext*, ITfRange*, const std::wstring&, bool);
 struct JsonValue;
 ITfComposition* RustStartComposition(TfEditCookie, ITfContext*, ITfCompositionSink*, ITfRange*);
 bool RustUpdateComposition(TfEditCookie, ITfContext*, ITfComposition*, const JsonValue&, TfGuidAtom, TfGuidAtom, TfGuidAtom);
 void RustEndComposition(TfEditCookie, ITfContext*, ITfComposition*);
 void RustSetAttribute(TfEditCookie, ITfContext*, ITfRange*, TfGuidAtom);
+bool RustApplyCommits(TfEditCookie,ITfContext*,const JsonValue&,void*,
+    void* (__cdecl *)(void*),int (__cdecl *)(void*,void*,const unsigned short*,unsigned int));
 #endif
 
 // 文字コードの変換

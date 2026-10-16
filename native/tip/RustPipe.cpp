@@ -32,12 +32,12 @@ struct RustApi {
     HRESULT (__cdecl *unregisterServer)() = nullptr;
     HRESULT (__cdecl *editSession)(void*,unsigned int,unsigned int,void*,HRESULT (__cdecl *)(void*,unsigned int),void (__cdecl *)(void*)) = nullptr;
     int (__cdecl *surrounding)(void*,unsigned int,void*,void (__cdecl *)(void*,const unsigned short*,unsigned int,const unsigned short*,unsigned int)) = nullptr;
-    int (__cdecl *extendPrevious)(void*,unsigned int,int,const unsigned short*,unsigned int) = nullptr;
     int (__cdecl *writeRange)(void*,void*,unsigned int,const unsigned short*,unsigned int,int) = nullptr;
     void* (__cdecl *startComposition)(void*,void*,void*,unsigned int) = nullptr;
     int (__cdecl *updateComposition)(void*,void*,unsigned int,const char*,unsigned int,unsigned int,unsigned int) = nullptr;
     int (__cdecl *endComposition)(void*,void*,unsigned int) = nullptr;
     void (__cdecl *setAttribute)(void*,void*,unsigned int,unsigned int) = nullptr;
+    int (__cdecl *applyCommits)(void*,unsigned int,const char*,void*,void* (__cdecl *)(void*),int (__cdecl *)(void*,void*,const unsigned short*,unsigned int)) = nullptr;
     RustApi() {
         wchar_t path[32768];
         const DWORD size = GetModuleFileNameW(g_module, path, ARRAYSIZE(path));
@@ -67,12 +67,12 @@ struct RustApi {
         unregisterServer = reinterpret_cast<decltype(unregisterServer)>(GetProcAddress(module, "meltype_tsf_unregister_server"));
         editSession = reinterpret_cast<decltype(editSession)>(GetProcAddress(module, "meltype_tsf_request_edit_session"));
         surrounding = reinterpret_cast<decltype(surrounding)>(GetProcAddress(module, "meltype_tsf_read_surrounding"));
-        extendPrevious = reinterpret_cast<decltype(extendPrevious)>(GetProcAddress(module, "meltype_tsf_extend_previous"));
         writeRange = reinterpret_cast<decltype(writeRange)>(GetProcAddress(module, "meltype_tsf_write_range"));
         startComposition = reinterpret_cast<decltype(startComposition)>(GetProcAddress(module, "meltype_tsf_start_composition"));
         updateComposition = reinterpret_cast<decltype(updateComposition)>(GetProcAddress(module, "meltype_tsf_update_composition"));
         endComposition = reinterpret_cast<decltype(endComposition)>(GetProcAddress(module, "meltype_tsf_end_composition"));
         setAttribute = reinterpret_cast<decltype(setAttribute)>(GetProcAddress(module, "meltype_tsf_set_attribute"));
+        applyCommits = reinterpret_cast<decltype(applyCommits)>(GetProcAddress(module, "meltype_tsf_apply_commits"));
     }
     bool ready() const { return create && destroy && request && freeText; }
     // The module stays loaded for the process lifetime. Do not unload Rust
@@ -139,9 +139,6 @@ void RustSurroundingText(TfEditCookie cookie,ITfContext* context,std::wstring& b
     SurroundingReceiver receiver = {&before,&after};
     if (api().surrounding) api().surrounding(context,cookie,&receiver,ReceiveSurrounding);
 }
-bool RustExtendPrevious(TfEditCookie cookie,ITfRange* range,LONG count,const std::wstring& expected) {
-    return api().extendPrevious && api().extendPrevious(range,cookie,count,reinterpret_cast<const unsigned short*>(expected.data()),static_cast<unsigned int>(expected.size())) != 0;
-}
 bool RustWriteRange(TfEditCookie cookie,ITfContext* context,ITfRange* range,const std::wstring& text,bool keepCaret) {
     return api().writeRange && api().writeRange(context,range,cookie,reinterpret_cast<const unsigned short*>(text.data()),static_cast<unsigned int>(text.size()),keepCaret ? 1 : 0) != 0;
 }
@@ -164,6 +161,19 @@ void RustEndComposition(TfEditCookie cookie,ITfContext* context,ITfComposition* 
 }
 void RustSetAttribute(TfEditCookie cookie,ITfContext* context,ITfRange* range,TfGuidAtom atom) {
     if (api().setAttribute) api().setAttribute(context,range,cookie,atom);
+}
+bool RustApplyCommits(TfEditCookie cookie,ITfContext* context,const JsonValue& reply,void* owner,
+    void* (__cdecl *current)(void*),int (__cdecl *write)(void*,void*,const unsigned short*,unsigned int)) {
+    if (!api().applyCommits) return false;
+    std::string json = "[";
+    const auto& edits = reply[L"commits"].array;
+    for (size_t i = 0; i < edits.size(); ++i) {
+        if (i) json += ',';
+        const auto& edit = edits[i];
+        json += "{\"text\":" + JsonString(edit[L"text"].Str()) + ",\"deleteBefore\":" + std::to_string(edit[L"deleteBefore"].Int()) +
+            ",\"expect\":" + (edit[L"expect"].type == JsonValue::Type::String ? JsonString(edit[L"expect"].Str()) : "null") + "}";
+    }
+    return api().applyCommits(context,cookie,(json+"]").c_str(),owner,current,write) != 0;
 }
 bool PipeClient::Transact(const std::string& request, std::string& response, DWORD, bool) {
     if (!api().ready()) return false;

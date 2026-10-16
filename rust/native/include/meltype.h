@@ -94,6 +94,11 @@ int32_t meltype_tsf_update_composition(void *context, void *composition, uint32_
     const char *view, uint32_t input_atom, uint32_t converted_atom, uint32_t target_atom);
 int32_t meltype_tsf_end_composition(void *context, void *composition, uint32_t cookie);
 void meltype_tsf_set_attribute(void *context, void *range, uint32_t cookie, uint32_t atom);
+/* Synchronous batch; owner/callbacks must remain valid until return. Current
+   returns a borrowed composition. Write borrows the range and UTF-16 text.
+   Return 0 rejects the remaining batch; caller must reset the core session. */
+int32_t meltype_tsf_apply_commits(void *context, uint32_t cookie, const char *commits,
+    void *owner, void *(*current)(void *), int32_t (*write)(void *, void *, const uint16_t *, uint32_t));
 #endif
 #ifdef __cplusplus
 }
