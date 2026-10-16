@@ -69,6 +69,10 @@ void RustAbandonedAdd(void*,ITfContext*,ITfComposition*,IUnknown*,TfClientId);
 bool RustAbandonedForget(void*,ITfComposition*);
 HRESULT RustAbandonedEnd(void*,IUnknown*,TfClientId);
 void RustClearCompositionAttribute(TfEditCookie,ITfComposition*);
+unsigned int RustInputScope(TfEditCookie,ITfContext*);
+int RustReadOpen(ITfThreadMgr*);
+void RustWriteOpen(ITfThreadMgr*,TfClientId,bool);
+bool RustContextDisabled(ITfContext*);
 #endif
 
 // 文字コードの変換

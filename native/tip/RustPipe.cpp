@@ -51,6 +51,10 @@ struct RustApi {
     int (__cdecl *abandonedForget)(void*,void*) = nullptr;
     HRESULT (__cdecl *abandonedEnd)(void*,void*,unsigned int) = nullptr;
     void (__cdecl *clearCompositionAttribute)(void*,unsigned int) = nullptr;
+    unsigned int (__cdecl *inputScope)(void*,unsigned int) = nullptr;
+    int (__cdecl *readOpen)(void*) = nullptr;
+    int (__cdecl *writeOpen)(void*,unsigned int,int) = nullptr;
+    int (__cdecl *contextDisabled)(void*) = nullptr;
     RustApi() {
         wchar_t path[32768];
         const DWORD size = GetModuleFileNameW(g_module, path, ARRAYSIZE(path));
@@ -99,6 +103,10 @@ struct RustApi {
         abandonedForget = reinterpret_cast<decltype(abandonedForget)>(GetProcAddress(module, "meltype_tsf_abandoned_forget"));
         abandonedEnd = reinterpret_cast<decltype(abandonedEnd)>(GetProcAddress(module, "meltype_tsf_abandoned_end"));
         clearCompositionAttribute = reinterpret_cast<decltype(clearCompositionAttribute)>(GetProcAddress(module, "meltype_tsf_clear_composition_attribute"));
+        inputScope = reinterpret_cast<decltype(inputScope)>(GetProcAddress(module, "meltype_tsf_input_scope"));
+        readOpen = reinterpret_cast<decltype(readOpen)>(GetProcAddress(module, "meltype_tsf_read_open"));
+        writeOpen = reinterpret_cast<decltype(writeOpen)>(GetProcAddress(module, "meltype_tsf_write_open"));
+        contextDisabled = reinterpret_cast<decltype(contextDisabled)>(GetProcAddress(module, "meltype_tsf_context_disabled"));
     }
     bool ready() const { return create && destroy && request && freeText; }
     // The module stays loaded for the process lifetime. Do not unload Rust
@@ -227,6 +235,10 @@ HRESULT RustAbandonedEnd(void* state,IUnknown* owner,TfClientId client) { return
 void RustClearCompositionAttribute(TfEditCookie cookie,ITfComposition* composition) {
     if (api().clearCompositionAttribute) api().clearCompositionAttribute(composition,cookie);
 }
+unsigned int RustInputScope(TfEditCookie cookie,ITfContext* context) { return api().inputScope ? api().inputScope(context,cookie) : 5; }
+int RustReadOpen(ITfThreadMgr* manager) { return api().readOpen ? api().readOpen(manager) : -2; }
+void RustWriteOpen(ITfThreadMgr* manager,TfClientId client,bool open) { if (api().writeOpen) api().writeOpen(manager,client,open ? 1 : 0); }
+bool RustContextDisabled(ITfContext* context) { return !api().contextDisabled || api().contextDisabled(context) != 0; }
 bool PipeClient::Transact(const std::string& request, std::string& response, DWORD, bool) {
     if (!api().ready()) return false;
     if (!rustConnection_) rustConnection_ = api().create();

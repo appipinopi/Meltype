@@ -127,6 +127,16 @@ int32_t meltype_tsf_abandoned_add(void *queue, void *context, void *composition,
 int32_t meltype_tsf_abandoned_forget(void *queue, void *composition);
 int32_t meltype_tsf_abandoned_end(void *queue, void *owner, uint32_t client);
 void meltype_tsf_clear_composition_attribute(void *composition, uint32_t cookie);
+/* Read metadata only: secret=1, private/no-learning=2, unreadable=4;
+   property sources (Windows=1, app=2)<<8, unreadable step (QI=1,list=2,
+   VARIANT=3)<<16. Missing metadata is unspecified; unreadable values are secret.
+   Borrowed context/thread-manager pointers, valid cookie, creating TSF thread. */
+uint32_t meltype_tsf_input_scope(void *context, uint32_t cookie);
+int32_t meltype_tsf_context_disabled(void *context);
+/* Read: 0/1, -1 on unavailable value, -2 for unsupported manager.
+   Write: 1 on success, 0 on failure. */
+int32_t meltype_tsf_read_open(void *thread_manager);
+int32_t meltype_tsf_write_open(void *thread_manager, uint32_t client, int32_t open);
 #endif
 #ifdef __cplusplus
 }

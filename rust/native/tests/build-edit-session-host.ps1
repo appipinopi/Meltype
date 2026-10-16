@@ -16,7 +16,7 @@ foreach ($arch in 'x64','x86') {
     Copy-Item -LiteralPath $native -Destination (Join-Path $out 'meltype_native.dll')
     $objects = @('Dll','TextService','RustPipe','Json') | ForEach-Object { '"' + (Join-Path $root "native/tip/obj/rust-$arch/$_.obj") + '"' }
     $vcarch = if ($arch -eq 'x64') { 'x64' } else { 'x64_x86' }
-    foreach ($test in 'edit_session_host','commit_batch_host','candidate_view_host') {
+    foreach ($test in 'edit_session_host','commit_batch_host','candidate_view_host','fields_host') {
         $source = Join-Path $PSScriptRoot "$test.cpp"
         $cmd = "`"$vcvars`" $vcarch >nul && cl /nologo /utf-8 /std:c++17 /EHsc /DUNICODE /D_UNICODE /DMELTYPE_RUST_CORE `"$source`" /Fo`"$out/test.obj`" /Fe`"$out/test.exe`" $($objects -join ' ') /link ole32.lib oleaut32.lib uuid.lib user32.lib gdi32.lib advapi32.lib d2d1.lib dwrite.lib dwmapi.lib"
         cmd /c $cmd

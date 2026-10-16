@@ -8,6 +8,7 @@ mod commits;
 mod composition;
 mod edit_session;
 mod factory;
+mod fields;
 mod langbar;
 mod ranges;
 mod recovery;

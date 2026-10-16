@@ -44,6 +44,7 @@ private:
 };
 #endif
 
+#ifndef MELTYPE_RUST_CORE
 // 入力欄の種類 (InputScope) のプロパティ。{1713DD5A-68E7-4A5B-9AF6-592A595C778D}
 constexpr GUID kPropInputScope = {0x1713dd5a, 0x68e7, 0x4a5b, {0x9a, 0xf6, 0x59, 0x2a, 0x59, 0x5c, 0x77, 0x8d}};
 
@@ -56,6 +57,7 @@ bool IsSecretScope(InputScope scope) {
             return false;
     }
 }
+#endif
 
 // 送り直したキーに付ける印 (SendInput の dwExtraInfo)。'MLTP' (Meltype.exe のキーボードフックが送る印 'MELT' とは別にする)
 constexpr ULONG_PTR kReinjectMarker = 0x4D4C5450;
@@ -284,11 +286,15 @@ STDMETHODIMP TextService::ActivateEx(ITfThreadMgr* threadMgr, TfClientId clientI
     if (!disabled_ && SUCCEEDED(threadMgr_->QueryInterface(IID_ITfCompartmentMgr, reinterpret_cast<void**>(&compartments)))) {
         ITfCompartment* openClose = nullptr;
         if (SUCCEEDED(compartments->GetCompartment(GUID_COMPARTMENT_KEYBOARD_OPENCLOSE, &openClose))) {
+#ifdef MELTYPE_RUST_CORE
+            RustWriteOpen(threadMgr_,clientId_,true);
+#else
             VARIANT value;
             VariantInit(&value);
             value.vt = VT_I4;
             value.lVal = 1;
             openClose->SetValue(clientId_, &value);
+#endif
             ITfSource* compartmentSource = nullptr;
             if (SUCCEEDED(openClose->QueryInterface(IID_ITfSource, reinterpret_cast<void**>(&compartmentSource)))) {
                 compartmentSource->AdviseSink(IID_ITfCompartmentEventSink, static_cast<ITfCompartmentEventSink*>(this), &compartmentCookie_);
@@ -449,6 +455,20 @@ void TextService::AdviseTextEditSink(ITfDocumentMgr* documentMgr) {
 }
 
 bool TextService::IsSecretField(TfEditCookie ec, ITfContext* context) {
+#ifdef MELTYPE_RUST_CORE
+    const unsigned int fields = RustInputScope(ec,context);
+    privateField_ = (fields & 2) != 0;
+    const unsigned int sources = (fields >> 8) & 3;
+    const wchar_t* source = sources == 3 ? L"Windows とアプリ" : sources == 1 ? L"Windows" : sources == 2 ? L"アプリ" : L"無い";
+    if (scopeSource_ != source) TipLog(L"入力欄の種類を読むところ: %s", source);
+    scopeSource_ = source;
+    if ((fields & 4) != 0) {
+        const unsigned int reason = fields >> 16;
+        const wchar_t* step = reason == 1 ? L"ITfInputScope" : reason == 2 ? L"GetInputScopes" : reason == 3 ? L"VARIANT" : L"Rust API";
+        TipLog(L"入力欄の種類を読めないので、パスワード欄として扱います (%s)",step);
+    }
+    return (fields & 1) != 0;
+#else
     // 入力欄の種類 (InputScope) がパスワード・暗証番号か。
     // (入力欄が開いたときに非同期の編集セッションで読むと、それが終わるまでキーが届かなくなるアプリがあるので、キーの編集セッションの中で読む)
     // 種類は 2 か所にある: Windows が持つもの (SetInputScope などで決めたもの) と、アプリが自分で知らせるもの (自前で TSF に対応したアプリ。
@@ -507,6 +527,7 @@ bool TextService::IsSecretField(TfEditCookie ec, ITfContext* context) {
     selection.range->Release();
     if (failed != nullptr) return unreadable(failed);
     return secret;
+#endif
 }
 
 int TextService::ReadSecretField(ITfContext* context) {
@@ -584,6 +605,11 @@ STDMETHODIMP TextService::OnEndEdit(ITfContext* context, TfEditCookie ec, ITfEdi
 
 STDMETHODIMP TextService::OnChange(REFGUID guid) {
     if (!IsEqualGUID(guid, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE) || threadMgr_ == nullptr) return S_OK;
+#ifdef MELTYPE_RUST_CORE
+    const int value = RustReadOpen(threadMgr_);
+    if (value == -2) return S_OK;
+    if (value >= 0) { open_ = value != 0; directEnglishWord_ = false; }
+#else
     ITfCompartmentMgr* compartments = nullptr;
     if (FAILED(threadMgr_->QueryInterface(IID_ITfCompartmentMgr, reinterpret_cast<void**>(&compartments)))) return S_OK;
     ITfCompartment* openClose = nullptr;
@@ -598,6 +624,7 @@ STDMETHODIMP TextService::OnChange(REFGUID guid) {
         openClose->Release();
     }
     compartments->Release();
+#endif
     TipLog(L"入力モード: %s", open_ ? L"日本語" : L"英数");
     if (!open_ && composition_ != nullptr) CommitAsync(false);
     UpdateLangBar();
@@ -606,6 +633,9 @@ STDMETHODIMP TextService::OnChange(REFGUID guid) {
 
 void TextService::SetOpen(bool open) {
     if (threadMgr_ == nullptr) return;
+#ifdef MELTYPE_RUST_CORE
+    RustWriteOpen(threadMgr_,clientId_,open);
+#else
     ITfCompartmentMgr* compartments = nullptr;
     if (FAILED(threadMgr_->QueryInterface(IID_ITfCompartmentMgr, reinterpret_cast<void**>(&compartments)))) return;
     ITfCompartment* openClose = nullptr;
@@ -618,6 +648,7 @@ void TextService::SetOpen(bool open) {
         openClose->Release();
     }
     compartments->Release();
+#endif
 }
 
 void TextService::UpdateLangBar() {
@@ -627,6 +658,9 @@ void TextService::UpdateLangBar() {
 // ---- キー ----
 
 bool TextService::ContextDisabled(ITfContext* context) {
+#ifdef MELTYPE_RUST_CORE
+    return RustContextDisabled(context);
+#else
     // IME を使わない入力欄 (パスワード欄は ReadSecretField で見る)
     if (context == nullptr) return true;
     ITfCompartmentMgr* compartments = nullptr;
@@ -644,6 +678,7 @@ bool TextService::ContextDisabled(ITfContext* context) {
     }
     compartments->Release();
     return disabled;
+#endif
 }
 
 bool TextService::ServerReady() {
