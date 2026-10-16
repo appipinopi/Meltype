@@ -62,6 +62,13 @@ bool RustResumeMatches(void*,ITfContext*);
 ITfComposition* RustTryResume(void*,TfEditCookie,ITfContext*,ITfCompositionSink*);
 void RustResumeAttribute(TfEditCookie,ITfContext*,ITfComposition*,TfGuidAtom);
 void RustDestroyResume(void*);
+void* RustAbandonedCreate();
+void RustAbandonedReset(void*);
+void RustAbandonedDestroy(void*);
+void RustAbandonedAdd(void*,ITfContext*,ITfComposition*,IUnknown*,TfClientId);
+bool RustAbandonedForget(void*,ITfComposition*);
+HRESULT RustAbandonedEnd(void*,IUnknown*,TfClientId);
+void RustClearCompositionAttribute(TfEditCookie,ITfComposition*);
 #endif
 
 // 文字コードの変換

@@ -73,6 +73,11 @@ int wmain() {
     assert(execute() == TF_S_ASYNC);
     context.pending->Release(); context.pending = nullptr;
     assert(calls == 2 && drops == 4 && g_locks == 0 && pinAtDrop == 1);
-    puts("Actual TSF shell edit adapter: Rust COM dispatch, sync/refused/async/cancel paths, captured lambda lifetime and DLL pins passed");
+    void* abandoned = RustAbandonedCreate();
+    assert(abandoned != nullptr);
+    RustAbandonedReset(abandoned);
+    assert(!RustAbandonedForget(abandoned,nullptr));
+    RustAbandonedDestroy(abandoned);
+    puts("Actual TSF shell edit adapter: Rust COM dispatch, sync/refused/async/cancel paths, captured lambda lifetime, DLL pins and old-input API loading passed");
     return 0;
 }

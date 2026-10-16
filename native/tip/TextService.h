@@ -181,11 +181,15 @@ private:
     int staleCommitTries_ = 0;     // 前の入力欄に残った変換中の文字を確定しようとした回数 (打鍵ごとに 1 回)
     UINT staleVk_ = 0;             // OnTestKeyDown で数えたキーと時刻 (続く OnKeyDown で数え直さない)
     ULONGLONG staleTime_ = 0;
+#ifdef MELTYPE_RUST_CORE
+    void* abandoned_ = nullptr;  // Rust owns retained and queued old compositions.
+#else
     struct Abandoned {
         Microsoft::WRL::ComPtr<ITfComposition> composition;
         Microsoft::WRL::ComPtr<ITfContext> context;
     };
     std::vector<Abandoned> abandoned_;  // 手放した前の入力欄の変換中の文字 (あとで下線を消して終える)
+#endif
     // 手放した変換中の文字の一覧から外す。一覧にあれば true
     bool ForgetAbandoned(ITfComposition* composition);
     // 終わるときに、手放した変換中の文字をその場で終える

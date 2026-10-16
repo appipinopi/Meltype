@@ -109,6 +109,18 @@ void *meltype_tsf_try_resume(void *snapshot, void *context, void *sink, uint32_t
    This call retains context/composition across host callbacks. */
 void meltype_tsf_resume_attribute(void *context, void *composition, uint32_t cookie, uint32_t input_atom);
 void meltype_tsf_destroy_resume(void *snapshot);
+/* Thread-affine old-composition queue, max eight retained entries. add borrows
+   interfaces and schedules a Rust edit session that pins owner through IUnknown.
+   end deactivates/drains and requests synchronous cleanup; queued sessions can
+   still finish after refusal. reset starts a new activation; destroy is final.
+   All queued sessions must execute/release on their creating TSF thread. */
+void *meltype_tsf_abandoned_create(void);
+void meltype_tsf_abandoned_reset(void *queue);
+void meltype_tsf_abandoned_destroy(void *queue);
+int32_t meltype_tsf_abandoned_add(void *queue, void *context, void *composition, void *owner, uint32_t client);
+int32_t meltype_tsf_abandoned_forget(void *queue, void *composition);
+int32_t meltype_tsf_abandoned_end(void *queue, void *owner, uint32_t client);
+void meltype_tsf_clear_composition_attribute(void *composition, uint32_t cookie);
 #endif
 #ifdef __cplusplus
 }

@@ -43,6 +43,13 @@ struct RustApi {
     void* (__cdecl *tryResume)(void*,void*,void*,unsigned int) = nullptr;
     void (__cdecl *resumeAttribute)(void*,void*,unsigned int,unsigned int) = nullptr;
     void (__cdecl *destroyResume)(void*) = nullptr;
+    void* (__cdecl *abandonedCreate)() = nullptr;
+    void (__cdecl *abandonedReset)(void*) = nullptr;
+    void (__cdecl *abandonedDestroy)(void*) = nullptr;
+    HRESULT (__cdecl *abandonedAdd)(void*,void*,void*,void*,unsigned int) = nullptr;
+    int (__cdecl *abandonedForget)(void*,void*) = nullptr;
+    HRESULT (__cdecl *abandonedEnd)(void*,void*,unsigned int) = nullptr;
+    void (__cdecl *clearCompositionAttribute)(void*,unsigned int) = nullptr;
     RustApi() {
         wchar_t path[32768];
         const DWORD size = GetModuleFileNameW(g_module, path, ARRAYSIZE(path));
@@ -83,6 +90,13 @@ struct RustApi {
         tryResume = reinterpret_cast<decltype(tryResume)>(GetProcAddress(module, "meltype_tsf_try_resume"));
         resumeAttribute = reinterpret_cast<decltype(resumeAttribute)>(GetProcAddress(module, "meltype_tsf_resume_attribute"));
         destroyResume = reinterpret_cast<decltype(destroyResume)>(GetProcAddress(module, "meltype_tsf_destroy_resume"));
+        abandonedCreate = reinterpret_cast<decltype(abandonedCreate)>(GetProcAddress(module, "meltype_tsf_abandoned_create"));
+        abandonedReset = reinterpret_cast<decltype(abandonedReset)>(GetProcAddress(module, "meltype_tsf_abandoned_reset"));
+        abandonedDestroy = reinterpret_cast<decltype(abandonedDestroy)>(GetProcAddress(module, "meltype_tsf_abandoned_destroy"));
+        abandonedAdd = reinterpret_cast<decltype(abandonedAdd)>(GetProcAddress(module, "meltype_tsf_abandoned_add"));
+        abandonedForget = reinterpret_cast<decltype(abandonedForget)>(GetProcAddress(module, "meltype_tsf_abandoned_forget"));
+        abandonedEnd = reinterpret_cast<decltype(abandonedEnd)>(GetProcAddress(module, "meltype_tsf_abandoned_end"));
+        clearCompositionAttribute = reinterpret_cast<decltype(clearCompositionAttribute)>(GetProcAddress(module, "meltype_tsf_clear_composition_attribute"));
     }
     bool ready() const { return create && destroy && request && freeText; }
     // The module stays loaded for the process lifetime. Do not unload Rust
@@ -197,6 +211,20 @@ void RustResumeAttribute(TfEditCookie cookie,ITfContext* context,ITfComposition*
     if (api().resumeAttribute) api().resumeAttribute(context,composition,cookie,atom);
 }
 void RustDestroyResume(void* state) { if (api().destroyResume) api().destroyResume(state); }
+void* RustAbandonedCreate() {
+    return api().abandonedCreate && api().abandonedReset && api().abandonedDestroy && api().abandonedAdd &&
+        api().abandonedForget && api().abandonedEnd && api().clearCompositionAttribute ? api().abandonedCreate() : nullptr;
+}
+void RustAbandonedReset(void* state) { if (api().abandonedReset) api().abandonedReset(state); }
+void RustAbandonedDestroy(void* state) { if (api().abandonedDestroy) api().abandonedDestroy(state); }
+void RustAbandonedAdd(void* state,ITfContext* context,ITfComposition* composition,IUnknown* owner,TfClientId client) {
+    if (api().abandonedAdd) api().abandonedAdd(state,context,composition,owner,client);
+}
+bool RustAbandonedForget(void* state,ITfComposition* composition) { return api().abandonedForget && api().abandonedForget(state,composition) != 0; }
+HRESULT RustAbandonedEnd(void* state,IUnknown* owner,TfClientId client) { return api().abandonedEnd ? api().abandonedEnd(state,owner,client) : E_NOINTERFACE; }
+void RustClearCompositionAttribute(TfEditCookie cookie,ITfComposition* composition) {
+    if (api().clearCompositionAttribute) api().clearCompositionAttribute(composition,cookie);
+}
 bool PipeClient::Transact(const std::string& request, std::string& response, DWORD, bool) {
     if (!api().ready()) return false;
     if (!rustConnection_) rustConnection_ = api().create();

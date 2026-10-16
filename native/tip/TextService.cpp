@@ -126,6 +126,9 @@ bool SameObject(IUnknown* a, IUnknown* b) {
 
 // 変換中の文字の下線を消す (その変換中の文字がある入力欄で)
 void ClearAttributeOf(TfEditCookie ec, ITfComposition* composition) {
+#ifdef MELTYPE_RUST_CORE
+    RustClearCompositionAttribute(ec,composition);
+#else
     if (composition == nullptr) return;
     Microsoft::WRL::ComPtr<ITfRange> range;
     Microsoft::WRL::ComPtr<ITfContext> context;
@@ -134,6 +137,7 @@ void ClearAttributeOf(TfEditCookie ec, ITfComposition* composition) {
         SUCCEEDED(context->GetProperty(GUID_PROP_ATTRIBUTE, &property))) {
         property->Clear(ec, range.Get());
     }
+#endif
 }
 
 bool IsOwnProcess() {
@@ -168,7 +172,13 @@ HRESULT RunEditSession(ITfContext* context, TfClientId clientId, DWORD flags, st
 
 TextService::TextService() { DllAddRef(); }
 
-TextService::~TextService() { ClearResume(); DllRelease(); }
+TextService::~TextService() {
+    ClearResume();
+#ifdef MELTYPE_RUST_CORE
+    if (abandoned_) RustAbandonedDestroy(abandoned_);
+#endif
+    DllRelease();
+}
 
 STDMETHODIMP TextService::QueryInterface(REFIID riid, void** ppv) {
     if (ppv == nullptr) return E_INVALIDARG;
@@ -225,7 +235,12 @@ STDMETHODIMP TextService::ActivateEx(ITfThreadMgr* threadMgr, TfClientId clientI
     lastConverting_ = false;
     reinjectGuardVk_ = 0;
     reinjectGuardCount_ = 0;
+#ifdef MELTYPE_RUST_CORE
+    if (!abandoned_) abandoned_ = RustAbandonedCreate();
+    RustAbandonedReset(abandoned_);
+#else
     abandoned_.clear();
+#endif
     staleCommitTries_ = 0;
     staleVk_ = 0;
     for (Reinjected& pending : reinjected_) pending = {};
@@ -330,7 +345,9 @@ STDMETHODIMP TextService::Deactivate() {
     // 手放した変換中の文字は、終われるならここで終える (下線を残さない)。終えられなかったものは、手放したときに頼んだ
     // 非同期の編集セッションに任せて、ここでは持たない (入力欄を持ち続けて、この IME が解放されなくなるのを防ぐ)
     EndAbandonedNow();
+#ifndef MELTYPE_RUST_CORE
     abandoned_.clear();
+#endif
     pipe_.Close();
     candidates_.reset();
     UnadviseTextEditSink();
@@ -1559,6 +1576,10 @@ void TextService::AbandonComposition() {
     compositionContext_ = nullptr;
     // 前の入力欄が編集を受け付けるようになったら、下線を消して終える (それまでにアプリの側が終えたら OnCompositionTerminated で消す)
     if (oldContext && old) {
+#ifdef MELTYPE_RUST_CORE
+        if (!abandoned_) abandoned_ = RustAbandonedCreate();
+        RustAbandonedAdd(abandoned_,oldContext.Get(),old.Get(),static_cast<ITfTextInputProcessorEx*>(this),clientId_);
+#else
         // いくつも溜まらないように (古いものは、アプリが終えたときに下線だけ消える)
         if (abandoned_.size() >= 8) abandoned_.erase(abandoned_.begin());
         abandoned_.push_back({old, oldContext});
@@ -1571,6 +1592,7 @@ void TextService::AbandonComposition() {
             }
             return S_OK;
         });
+#endif
     }
     staleCommitTries_ = 0;
     staleVk_ = 0;
@@ -1582,6 +1604,9 @@ void TextService::AbandonComposition() {
 }
 
 bool TextService::ForgetAbandoned(ITfComposition* composition) {
+#ifdef MELTYPE_RUST_CORE
+    return RustAbandonedForget(abandoned_,composition);
+#else
     for (auto it = abandoned_.begin(); it != abandoned_.end(); ++it) {
         if (SameObject(composition, it->composition.Get())) {
             abandoned_.erase(it);
@@ -1589,9 +1614,15 @@ bool TextService::ForgetAbandoned(ITfComposition* composition) {
         }
     }
     return false;
+#endif
 }
 
 void TextService::EndAbandonedNow() {
+#ifdef MELTYPE_RUST_CORE
+    if (!abandoned_) return;
+    HRESULT hr = RustAbandonedEnd(abandoned_,static_cast<ITfTextInputProcessorEx*>(this),clientId_);
+    if (FAILED(hr)) TipLog(L"手放した変換中の文字を終えられませんでした: 0x%08X", hr);
+#else
     std::vector<Abandoned> pending;
     pending.swap(abandoned_);
     for (Abandoned& item : pending) {
@@ -1603,6 +1634,7 @@ void TextService::EndAbandonedNow() {
         });
         if (FAILED(hr)) TipLog(L"手放した変換中の文字を終えられませんでした: 0x%08X", hr);
     }
+#endif
 }
 
 bool TextService::CommitNow(bool keepAppCaret) {
