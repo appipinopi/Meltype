@@ -1104,6 +1104,9 @@ bool TextService::Request(const std::string& json, JsonValue& reply, DWORD timeo
 }
 
 void TextService::SurroundingText(TfEditCookie ec, ITfContext* context, std::wstring& before, std::wstring& after) {
+#ifdef MELTYPE_RUST_CORE
+    RustSurroundingText(ec, context, before, after);
+#else
     TF_SELECTION selection = {};
     ULONG fetched = 0;
     if (FAILED(context->GetSelection(ec, TF_DEFAULT_SELECTION, 1, &selection, &fetched)) || fetched == 0) return;
@@ -1129,6 +1132,7 @@ void TextService::SurroundingText(TfEditCookie ec, ITfContext* context, std::wst
         range->Release();
     }
     selection.range->Release();
+#endif
 }
 
 // ---- 入力欄への反映 ----
@@ -1207,6 +1211,10 @@ void TextService::Apply(TfEditCookie ec, ITfContext* context, const JsonValue& r
 }
 
 bool TextService::ExtendOverPrevious(TfEditCookie ec, ITfRange* range, LONG count, const JsonValue& expect) {
+#ifdef MELTYPE_RUST_CORE
+    if (expect.type != JsonValue::Type::String) return false;
+    return RustExtendPrevious(ec, range, count, expect.Str());
+#else
     Microsoft::WRL::ComPtr<ITfRange> previous;
     if (FAILED(range->Clone(&previous))) return false;
     previous->Collapse(ec, TF_ANCHOR_START);
@@ -1226,6 +1234,7 @@ bool TextService::ExtendOverPrevious(TfEditCookie ec, ITfRange* range, LONG coun
         return false;
     }
     return SUCCEEDED(range->ShiftStart(ec, -count, &moved, nullptr));
+#endif
 }
 
 bool TextService::WriteCommit(TfEditCookie ec, ITfContext* context, ITfRange* range, const std::wstring& text) {
@@ -1239,6 +1248,9 @@ bool TextService::WriteCommit(TfEditCookie ec, ITfContext* context, ITfRange* ra
             contextComposition->Release();
         }
     }
+#ifdef MELTYPE_RUST_CORE
+    bool written = RustWriteRange(ec, context, range, text, keepAppCaret_);
+#else
     ITfProperty* attribute = nullptr;
     if (SUCCEEDED(context->GetProperty(GUID_PROP_ATTRIBUTE, &attribute))) {
         attribute->Clear(ec, range);
@@ -1257,6 +1269,7 @@ bool TextService::WriteCommit(TfEditCookie ec, ITfContext* context, ITfRange* ra
             context->SetSelection(ec, 1, &caret);
         }
     }
+#endif
     EndComposition(ec);
     return written;
 }

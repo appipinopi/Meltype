@@ -31,6 +31,9 @@ struct RustApi {
     HRESULT (__cdecl *registerServer)(const wchar_t*,unsigned int) = nullptr;
     HRESULT (__cdecl *unregisterServer)() = nullptr;
     HRESULT (__cdecl *editSession)(void*,unsigned int,unsigned int,void*,HRESULT (__cdecl *)(void*,unsigned int),void (__cdecl *)(void*)) = nullptr;
+    int (__cdecl *surrounding)(void*,unsigned int,void*,void (__cdecl *)(void*,const unsigned short*,unsigned int,const unsigned short*,unsigned int)) = nullptr;
+    int (__cdecl *extendPrevious)(void*,unsigned int,int,const unsigned short*,unsigned int) = nullptr;
+    int (__cdecl *writeRange)(void*,void*,unsigned int,const unsigned short*,unsigned int,int) = nullptr;
     RustApi() {
         wchar_t path[32768];
         const DWORD size = GetModuleFileNameW(g_module, path, ARRAYSIZE(path));
@@ -59,6 +62,9 @@ struct RustApi {
         registerServer = reinterpret_cast<decltype(registerServer)>(GetProcAddress(module, "meltype_tsf_register_server"));
         unregisterServer = reinterpret_cast<decltype(unregisterServer)>(GetProcAddress(module, "meltype_tsf_unregister_server"));
         editSession = reinterpret_cast<decltype(editSession)>(GetProcAddress(module, "meltype_tsf_request_edit_session"));
+        surrounding = reinterpret_cast<decltype(surrounding)>(GetProcAddress(module, "meltype_tsf_read_surrounding"));
+        extendPrevious = reinterpret_cast<decltype(extendPrevious)>(GetProcAddress(module, "meltype_tsf_extend_previous"));
+        writeRange = reinterpret_cast<decltype(writeRange)>(GetProcAddress(module, "meltype_tsf_write_range"));
     }
     bool ready() const { return create && destroy && request && freeText; }
     // The module stays loaded for the process lifetime. Do not unload Rust
@@ -112,6 +118,24 @@ HRESULT RunEditSession(ITfContext* context, TfClientId client, DWORD flags, std:
     if (!owned) return E_OUTOFMEMORY;
     // Rust consumes owned on success, immediate failure and queued execution.
     return api().editSession(context,client,flags,owned,EditAction::Invoke,EditAction::Destroy);
+}
+namespace {
+struct SurroundingReceiver { std::wstring* before; std::wstring* after; };
+void __cdecl ReceiveSurrounding(void* value,const unsigned short* before,unsigned int beforeLength,const unsigned short* after,unsigned int afterLength) {
+    auto* receiver = static_cast<SurroundingReceiver*>(value);
+    receiver->before->assign(reinterpret_cast<const wchar_t*>(before),beforeLength);
+    receiver->after->assign(reinterpret_cast<const wchar_t*>(after),afterLength);
+}
+}
+void RustSurroundingText(TfEditCookie cookie,ITfContext* context,std::wstring& before,std::wstring& after) {
+    SurroundingReceiver receiver = {&before,&after};
+    if (api().surrounding) api().surrounding(context,cookie,&receiver,ReceiveSurrounding);
+}
+bool RustExtendPrevious(TfEditCookie cookie,ITfRange* range,LONG count,const std::wstring& expected) {
+    return api().extendPrevious && api().extendPrevious(range,cookie,count,reinterpret_cast<const unsigned short*>(expected.data()),static_cast<unsigned int>(expected.size())) != 0;
+}
+bool RustWriteRange(TfEditCookie cookie,ITfContext* context,ITfRange* range,const std::wstring& text,bool keepCaret) {
+    return api().writeRange && api().writeRange(context,range,cookie,reinterpret_cast<const unsigned short*>(text.data()),static_cast<unsigned int>(text.size()),keepCaret ? 1 : 0) != 0;
 }
 bool PipeClient::Transact(const std::string& request, std::string& response, DWORD, bool) {
     if (!api().ready()) return false;

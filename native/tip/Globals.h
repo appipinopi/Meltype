@@ -48,6 +48,9 @@ inline void DllRelease() { InterlockedDecrement(&g_locks); }
 HRESULT RustGetClassObject(REFCLSID clsid, REFIID iid, void** out);
 HRESULT RustRegisterServer();
 HRESULT RustUnregisterServer();
+void RustSurroundingText(TfEditCookie, ITfContext*, std::wstring&, std::wstring&);
+bool RustExtendPrevious(TfEditCookie, ITfRange*, LONG, const std::wstring&);
+bool RustWriteRange(TfEditCookie, ITfContext*, ITfRange*, const std::wstring&, bool);
 #endif
 
 // 文字コードの変換

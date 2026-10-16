@@ -6,6 +6,7 @@ mod candidates;
 mod edit_session;
 mod factory;
 mod langbar;
+mod ranges;
 mod registration;
 use std::{
     ffi::c_void,

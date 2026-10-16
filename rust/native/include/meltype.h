@@ -75,6 +75,16 @@ int32_t meltype_tsf_unregister_server(void);
    destroy, including async requests. Use on the creating TSF thread. */
 int32_t meltype_tsf_request_edit_session(void *context, uint32_t client, uint32_t flags,
     void *action_context, int32_t (*action)(void *, uint32_t), void (*destroy)(void *));
+/* Borrowed TSF COM pointers and edit cookie. UTF-16 callback buffers are borrowed
+   only during the callback. Surrounding limits: 4000 before / 20 after. */
+int32_t meltype_tsf_read_surrounding(void *context, uint32_t cookie, void *receiver,
+    void (*callback)(void *, const uint16_t *, uint32_t, const uint16_t *, uint32_t));
+/* Returns 0 unless the range is collapsed and the exact UTF-16 prefix matches.
+   Discard the range on failure; never write/delete after a failed check. */
+int32_t meltype_tsf_extend_previous(void *range, uint32_t cookie, int32_t count,
+    const uint16_t *expected, uint32_t length);
+int32_t meltype_tsf_write_range(void *context, void *range, uint32_t cookie,
+    const uint16_t *text, uint32_t length, int32_t keep_caret);
 #endif
 #ifdef __cplusplus
 }
