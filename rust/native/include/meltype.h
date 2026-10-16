@@ -24,6 +24,9 @@ char *meltype_commit(void *);
 /* Undo requires a fresh caret snapshot and set_can_delete(1).
  * Hosts MUST compare edit.expect before applying deletion; count is UTF-16. */
 char *meltype_undo_commit(void *, const char *before);
+/* Verify result.selectionExpect against the current selection before applying
+ * view. reading may be NULL; dictionary/history inference can fail safely. */
+char *meltype_reconvert_selection(void *, const char *text, const char *reading);
 char *meltype_reset(void *);
 char *meltype_select_candidate(void *, int32_t index);
 char *meltype_select_prediction(void *, int32_t index);

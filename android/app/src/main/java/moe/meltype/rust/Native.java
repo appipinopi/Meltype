@@ -9,6 +9,7 @@ final class Native {
     static native void destroy(long handle);
     static native String key(long handle, int vk, int scalar, int modifiers);
     static native String keyContext(long handle, int vk, int scalar, int modifiers, String before, String after);
+    static native String reconvert(long handle, String text);
     static native String undo(long handle, String before);
     static native String commit(long handle);
     static native String reset(long handle);

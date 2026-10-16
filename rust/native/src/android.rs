@@ -133,6 +133,24 @@ pub extern "system" fn Java_moe_meltype_rust_Native_undo(
     java_result(&mut env, result)
 }
 #[no_mangle]
+pub extern "system" fn Java_moe_meltype_rust_Native_reconvert(
+    mut env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    text: JString,
+) -> jstring {
+    let Ok(text) = env.get_string(&text) else {
+        return std::ptr::null_mut();
+    };
+    let Ok(text) = CString::new(String::from(text)) else {
+        return std::ptr::null_mut();
+    };
+    let result = unsafe {
+        meltype_reconvert_selection(handle as *mut c_void, text.as_ptr(), std::ptr::null())
+    };
+    java_result(&mut env, result)
+}
+#[no_mangle]
 pub extern "system" fn Java_moe_meltype_rust_Native_commit(
     mut env: JNIEnv,
     _class: JClass,

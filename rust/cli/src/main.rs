@@ -22,6 +22,13 @@ enum Request {
         modifiers: i32,
     },
     Commit,
+    ReconvertSelection {
+        text: String,
+        reading: Option<String>,
+    },
+    UndoCommit {
+        before: String,
+    },
     Reset,
     Select {
         index: usize,
@@ -71,6 +78,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     Request::SelectPrediction { index } => session.select_prediction(index),
                     Request::Key { vk, ch, modifiers } => session.key(vk, ch, modifiers),
                     Request::Commit => session.commit(),
+                    Request::ReconvertSelection { text, reading } => {
+                        session.reconvert_selection(&text, reading.as_deref())
+                    }
+                    Request::UndoCommit { before } => {
+                        session.can_delete = true;
+                        session.set_context(Some(&before), None);
+                        session.undo_commit()
+                    }
                     Request::Reset => {
                         session.reset();
                         session.result(true)

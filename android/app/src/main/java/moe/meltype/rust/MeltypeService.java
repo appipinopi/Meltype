@@ -75,6 +75,7 @@ public final class MeltypeService extends InputMethodService {
         add(actions, "⌫", () -> softwareKey(8,0));
         add(actions, "変換/空白", () -> softwareKey(32,32));
         add(actions, "確定/↵", () -> softwareKey(13,0));
+        add(actions, "取消", () -> softwareKey(27,0));
         add(actions, "🌐", () -> {
             if (Build.VERSION.SDK_INT >= 28) switchToNextInputMethod(false);
             else ((InputMethodManager)getSystemService(INPUT_METHOD_SERVICE)).showInputMethodPicker();
@@ -86,6 +87,14 @@ public final class MeltypeService extends InputMethodService {
         add(tools, "縮める", () -> apply(key(0x25,0,1)));
         add(tools, "伸ばす", () -> apply(key(0x27,0,1)));
         add(tools, "戻す", () -> { if (!privateEditor) apply(Native.undo(session,beforeCursor())); });
+        add(tools, "再変換", () -> {
+            InputConnection connection = getCurrentInputConnection();
+            if (connection == null || privateEditor || composing) return;
+            CharSequence selected = connection.getSelectedText(0);
+            if (selected != null && !selected.toString().isEmpty()) {
+                if (!apply(Native.reconvert(session,selected.toString())) && preview != null) preview.setText("読みが見つかりません");
+            }
+        });
         add(tools, "設定", () -> { apply(Native.commit(session)); startActivity(new Intent(this,SettingsActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); });
         root.addView(tools); return root;
     }
@@ -153,6 +162,12 @@ public final class MeltypeService extends InputMethodService {
         InputConnection connection = getCurrentInputConnection(); if (connection == null) return false;
         try {
             JSONObject result = new JSONObject(json);
+            if (result.has("selectionExpect")) {
+                CharSequence selected = connection.getSelectedText(0);
+                if (selected == null || !result.getString("selectionExpect").contentEquals(selected)) {
+                    Native.reset(session); return false;
+                }
+            }
             connection.beginBatchEdit();
             try {
                 JSONArray commits = result.getJSONArray("commits");

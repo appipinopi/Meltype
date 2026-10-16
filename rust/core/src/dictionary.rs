@@ -108,6 +108,21 @@ impl Dictionary {
         values
     }
 
+    /// Deterministic reverse lookup for selection reconversion. Ambiguous
+    /// readings prefer the shortest reading, then lexical order.
+    pub fn reading_for(&self, text: &str) -> Option<String> {
+        self.candidates
+            .iter()
+            .filter(|(_, words)| words.iter().any(|word| word == text))
+            .map(|(reading, _)| reading)
+            .min_by(|a, b| {
+                a.chars()
+                    .count()
+                    .cmp(&b.chars().count())
+                    .then_with(|| a.cmp(b))
+            })
+            .cloned()
+    }
     /// Dictionary fallback, used when no system kana-kanji converter is attached.
     /// Longest readings win; this is intentionally not a replacement for Mozc.
     pub fn convert(&self, reading: &str) -> String {

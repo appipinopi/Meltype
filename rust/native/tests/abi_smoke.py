@@ -44,6 +44,8 @@ def main(library):
     api.meltype_free.argtypes = [c.c_void_p]
     api.meltype_handle_key.argtypes = [c.c_void_p, c.c_int, c.c_int, c.c_int, c.c_char_p, c.c_char_p]
     api.meltype_handle_key.restype = c.c_void_p
+    api.meltype_reconvert_selection.argtypes = [c.c_void_p,c.c_char_p,c.c_char_p]
+    api.meltype_reconvert_selection.restype = c.c_void_p
     api.meltype_commit.argtypes = [c.c_void_p]
     api.meltype_commit.restype = c.c_void_p
     api.meltype_set_can_delete.argtypes = [c.c_void_p, c.c_int]
@@ -81,11 +83,16 @@ def main(library):
             value = result(api.meltype_undo_commit(handle, "橋か".encode()))
             assert value["commits"] == [{"deleteBefore": 1, "text": "", "expect": "か"}]
             assert value["view"]["text"] == "か"
+            result(api.meltype_commit(handle))
+            value = result(api.meltype_reconvert_selection(handle,"橋".encode(),None))
+            assert value["selectionExpect"] == "橋"
+            assert value["view"]["text"] == "橋"
+            assert key(27)["commits"][0]["text"] == "橋"
             api.meltype_set_private(handle, 1)
             assert not key(scalar=ord("a"))["consumed"]
         finally:
             api.meltype_destroy(handle)
-    print("Native ABI: callbacks, live conversion, multi-edit, guarded undo and privacy passed")
+    print("Native ABI: callbacks, live conversion, multi-edit, guarded undo, selection reconversion and privacy passed")
 
 
 if __name__ == "__main__":

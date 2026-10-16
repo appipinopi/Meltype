@@ -42,6 +42,8 @@ pub struct SessionResult {
     pub consumed: bool,
     pub commits: Vec<TextEdit>,
     pub view: Option<View>,
+    #[serde(rename = "selectionExpect", skip_serializing_if = "Option::is_none")]
+    pub selection_expect: Option<String>,
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -109,6 +111,7 @@ pub struct Session {
     process: String,
     pub can_delete: bool,
     last_commit: Option<(String, String)>,
+    reconversion_origin: Option<String>,
 }
 
 impl Default for Session {
@@ -140,6 +143,7 @@ impl Default for Session {
             process: String::new(),
             can_delete: false,
             last_commit: None,
+            reconversion_origin: None,
         }
     }
 }
@@ -357,6 +361,7 @@ impl Session {
     pub fn result(&self, consumed: bool) -> SessionResult {
         SessionResult {
             consumed,
+            selection_expect: None,
             commits: vec![],
             view: if self.raw.is_empty() {
                 None
@@ -409,6 +414,7 @@ impl Session {
     }
     pub fn reset(&mut self) {
         self.last_commit = None;
+        self.reconversion_origin = None;
         self.raw.clear();
         self.candidates.clear();
         self.clauses.clear();
@@ -490,7 +496,66 @@ impl Session {
                 }]
             },
             view: None,
+            selection_expect: None,
         }
+    }
+    /// Start reconversion without deleting text. Hosts must verify the selected
+    /// text against selection_expect before replacing it with the preedit.
+    pub fn reconvert_selection(
+        &mut self,
+        text: &str,
+        supplied_reading: Option<&str>,
+    ) -> SessionResult {
+        if !self.raw.is_empty()
+            || self.private
+            || self.direct
+            || !self.settings.boolean("Enabled")
+            || text.is_empty()
+            || text.chars().count() > 1024
+        {
+            return self.result(false);
+        }
+        let reading = supplied_reading
+            .filter(|s| !s.is_empty())
+            .map(str::to_owned)
+            .or_else(|| {
+                self.state
+                    .phrases
+                    .iter()
+                    .filter(|p| p.text == text)
+                    .max_by_key(|p| (p.used, p.count))
+                    .map(|p| p.reading.clone())
+            })
+            .or_else(|| {
+                self.preferences
+                    .user_dictionary
+                    .iter()
+                    .find(|(_, words)| words.iter().any(|w| w == text))
+                    .map(|(r, _)| r.clone())
+            })
+            .or_else(|| {
+                self.preferences
+                    .selected
+                    .iter()
+                    .find(|(_, word)| word.as_str() == text)
+                    .map(|(r, _)| r.clone())
+            })
+            .or_else(|| Dictionary::bundled().reading_for(text))
+            .unwrap_or_else(|| romaji::hiragana(&crate::user_dictionary::hiragana(text), true));
+        let reading = crate::user_dictionary::hiragana(&reading);
+        if reading.chars().count() > 1024 || reading.chars().any(|c| !crate::linguistics::kana(c)) {
+            return self.result(false);
+        }
+        self.raw = reading.clone();
+        self.kana_text = reading;
+        self.begin_conversion(vec![text.to_owned()]);
+        if let Some(index) = self.candidates.iter().position(|c| c == text) {
+            self.selected = index;
+        }
+        self.reconversion_origin = Some(text.to_owned());
+        let mut result = self.result(true);
+        result.selection_expect = Some(text.to_owned());
+        result
     }
     /// Restore the last committed input as a composition. The host must recheck
     /// `expect` immediately before deleting; `delete_before` counts UTF-16 units.
@@ -734,6 +799,19 @@ impl Session {
         match vk {
             0x10..=0x12 | 0xa0..=0xa5 | 0x5b..=0x5c => self.result(false),
             0x1b => {
+                if let Some(original) = self.reconversion_origin.take() {
+                    self.reset();
+                    return SessionResult {
+                        consumed: true,
+                        commits: vec![TextEdit {
+                            delete_before: 0,
+                            text: original,
+                            expect: None,
+                        }],
+                        view: None,
+                        selection_expect: None,
+                    };
+                }
                 if self.raw.is_empty() {
                     return self.result(false);
                 }

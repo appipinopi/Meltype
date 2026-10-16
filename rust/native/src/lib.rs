@@ -326,6 +326,22 @@ pub extern "C" fn meltype_commit(handle: *mut c_void) -> *mut c_char {
     run(handle, Session::commit)
 }
 /// # Safety
+/// Strings must be valid NUL-terminated UTF-8; reading may be null to infer it.
+/// The host must verify selection_expect before replacing the selected text.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_reconvert_selection(
+    handle: *mut c_void,
+    text: *const c_char,
+    reading: *const c_char,
+) -> *mut c_char {
+    let Some(text) = read(text) else {
+        return std::ptr::null_mut();
+    };
+    run(handle, |s| {
+        s.reconvert_selection(&text, read(reading).as_deref())
+    })
+}
+/// # Safety
 /// before must be a valid NUL-terminated UTF-8 snapshot of text before the caret.
 #[no_mangle]
 pub unsafe extern "C" fn meltype_undo_commit(

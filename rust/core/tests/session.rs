@@ -203,3 +203,25 @@ fn code_line_toggle_survives_enter_and_resets_on_caret_move() {
     type_text(&mut s, "nihongo");
     assert_eq!(s.commit().commits[0].text, "にほんご");
 }
+
+#[test]
+fn selection_reconversion_infers_reading_commits_and_cancels_without_learning() {
+    let mut s = Session::default();
+    let result = s.reconvert_selection("橋", None);
+    assert_eq!(result.selection_expect.as_deref(), Some("橋"));
+    let view = result.view.unwrap();
+    assert_eq!(view.text, "橋");
+    let index = view.candidates.iter().position(|c| c == "箸").unwrap();
+    assert_eq!(s.select(index).commits[0].text, "箸");
+    s.reconvert_selection("橋", Some("はし"));
+    let state = s.state.phrases.len();
+    let cancel = s.key(0x1b, 0, 0);
+    assert_eq!(cancel.commits[0].text, "橋");
+    assert!(cancel.view.is_none());
+    assert_eq!(s.state.phrases.len(), state);
+    assert!(!s.reconvert_selection("未登録の漢字列", None).consumed);
+    assert!(!s.reconvert_selection("橋", Some("not a reading")).consumed);
+    s.private = true;
+    assert!(!s.reconvert_selection("橋", Some("はし")).consumed);
+    assert!(s.raw().is_empty());
+}
