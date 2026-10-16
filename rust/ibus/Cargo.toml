@@ -1,0 +1,11 @@
+[package]
+name = "meltype-ibus"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+meltype-core.workspace = true
+meltype-native = { path = "../native" }
+serde_json.workspace = true

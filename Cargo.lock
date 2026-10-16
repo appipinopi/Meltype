@@ -1841,6 +1841,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "meltype-ibus"
+version = "0.1.0"
+dependencies = [
+ "meltype-core",
+ "meltype-native",
+ "serde_json",
+]
+
+[[package]]
 name = "meltype-native"
 version = "0.1.0"
 dependencies = [

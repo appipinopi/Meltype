@@ -48,6 +48,8 @@ def main(library):
     api.meltype_reconvert_selection.restype = c.c_void_p
     api.meltype_commit.argtypes = [c.c_void_p]
     api.meltype_commit.restype = c.c_void_p
+    api.meltype_commit_preedit.argtypes = [c.c_void_p]
+    api.meltype_commit_preedit.restype = c.c_void_p
     api.meltype_control.argtypes = [c.c_void_p, c.c_char_p]
     api.meltype_control.restype = c.c_void_p
     api.meltype_tip_create.restype = c.c_void_p
@@ -180,6 +182,17 @@ def main(library):
                 value = result(api.meltype_handle_key(handle, 0, ord(letter), 0, b"@src/app.ts ", b""))
             assert value["view"]["text"] == "きょう", "host-only whitespace must end sigil passthrough"
             result(api.meltype_commit(handle))
+        finally:
+            api.meltype_destroy(handle)
+        handle = api.meltype_create()
+        try:
+            for letter in "nihon":
+                value = key(scalar=ord(letter))
+            displayed = value["view"]["text"]
+            value = result(api.meltype_commit_preedit(handle))
+            assert value["commits"] == [{"deleteBefore": 0, "text": displayed}]
+            assert value["view"] is None
+            assert result(api.meltype_commit_preedit(handle))["commits"] == []
         finally:
             api.meltype_destroy(handle)
     print("Native ABI: callbacks, live conversion, multi-edit, guarded undo/correction, selection reconversion, detection levels, manual Tab, sigil passthrough and privacy passed")

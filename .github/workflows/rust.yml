@@ -20,6 +20,11 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
+      - name: Linux IBus development and isolated-test runtime
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libibus-1.0-dev ibus gir1.2-ibus-1.0 python3-gi dbus-x11 xvfb
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo test --workspace --locked
@@ -32,6 +37,12 @@ jobs:
           cmake -S linux/fcitx5 -B linux/build/fcitx5-rust
           cmake --build linux/build/fcitx5-rust --parallel 2
       - run: cargo build --workspace --release --locked
+      - name: Rust IBus engine through a private daemon and input context
+        if: runner.os == 'Linux'
+        run: |
+          xvfb-run -a dbus-run-session -- /usr/bin/python3 rust/ibus/tests/integration.py target/release/meltype-ibus
+          MELTYPE_IBUS_TEST_INSTALLED=1 xvfb-run -a dbus-run-session -- /usr/bin/python3 rust/ibus/tests/integration.py target/release/meltype-ibus
+          /usr/bin/python3 rust/ibus/tests/installation.py target/release/meltype-ibus
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -39,6 +50,14 @@ jobs:
         run: python rust/native/tests/abi_smoke.py
       - name: Settings UI labels match upstream
         run: python tools/extract-rust-settings-ui.py --check
+      - name: Package standalone Rust IBus engine
+        if: runner.os == 'Linux'
+        run: bash rust/build-linux.sh
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'Linux'
+        with:
+          name: rust-IBus-Linux
+          path: linux/build/Meltype-Rust-linux/
       - if: runner.os == 'Windows'
         shell: pwsh
         run: ./rust/build-windows.ps1 -WithTip -NativeOnly

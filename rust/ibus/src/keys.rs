@@ -1,0 +1,66 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Yukishiro, appipinopi
+#![cfg_attr(not(target_os = "linux"), allow(dead_code))]
+pub fn translate(keyval: u32, scalar: u32) -> Option<(i32, i32)> {
+    let vk = match keyval {
+        0xff0d | 0xff8d => 13,
+        0xff09 | 0xfe20 => 9,
+        0x20 => 32,
+        0xff08 => 8,
+        0xffff => 0x2e,
+        0xff1b => 27,
+        0xff51 => 0x25,
+        0xff52 => 0x26,
+        0xff53 => 0x27,
+        0xff54 => 0x28,
+        0xff50 => 0x24,
+        0xff57 => 0x23,
+        0xff55 => 0x21,
+        0xff56 => 0x22,
+        0xffc3..=0xffc7 => 0x75 + (keyval - 0xffc3) as i32,
+        _ => 0,
+    };
+    if vk != 0 {
+        return Some((vk, if vk == 32 { 32 } else { 0 }));
+    }
+    let c = char::from_u32(scalar).filter(|c| !c.is_control())?;
+    let vk = if c.is_ascii_alphabetic() {
+        c.to_ascii_uppercase() as i32
+    } else if c.is_ascii_digit() {
+        c as i32
+    } else {
+        match c {
+            ',' => 0xbc,
+            '.' => 0xbe,
+            '-' => 0xbd,
+            '/' => 0xbf,
+            '[' => 0xdb,
+            ']' => 0xdd,
+            _ => 7,
+        }
+    };
+    Some((vk, scalar as i32))
+}
+pub fn modifiers(state: u32) -> i32 {
+    i32::from(state & 1 != 0)
+        | (i32::from(state & 4 != 0) << 1)
+        | (i32::from(state & 8 != 0) << 2)
+        | (i32::from(state & ((1 << 6) | (1 << 26)) != 0) << 3)
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn maps_ibus_shortcuts_unicode_and_punctuation_without_unicode_case_expansion() {
+        assert_eq!(translate(0xffc3, 0), Some((0x75, 0)));
+        assert_eq!(translate(0xff8d, 0), Some((13, 0)));
+        assert_eq!(translate('a' as u32, 'a' as u32), Some((65, 97)));
+        for c in ['İ', '😀', 'は'] {
+            assert_eq!(translate(0, c as u32), Some((7, c as i32)));
+        }
+        assert_eq!(translate(0, 0xd800), None);
+        assert_eq!(translate(0, 0), None);
+        assert_eq!(modifiers(1 | 4 | 8 | (1 << 26)), 15);
+        assert_eq!(modifiers((1 << 1) | (1 << 4)), 0); // Caps/Num lock
+    }
+}

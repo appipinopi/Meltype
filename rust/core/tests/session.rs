@@ -250,3 +250,22 @@ fn composition_control_shortcuts_and_shift_space_match_native_key_roles() {
     assert_eq!(s.key(32, 32, 1).commits[0].text, "　");
     assert!(!s.key(32, 32, 0).consumed);
 }
+#[test]
+fn host_committed_preedit_learns_displayed_text_without_finalizing_or_deleting() {
+    let mut s = Session::default();
+    s.can_delete = true;
+    type_text(&mut s, "nihon");
+    assert_eq!(s.display(false), "にほn");
+    let result = s.commit_preedit();
+    assert_eq!(result.commits[0].text, "にほn");
+    assert_eq!(result.commits[0].delete_before, 0);
+    assert!(result.commits[0].expect.is_none());
+    assert!(s.raw().is_empty());
+    assert!(s.can_delete);
+    assert!(s
+        .state
+        .phrases
+        .iter()
+        .any(|p| p.reading == "にほん" && p.text == "にほn"));
+    assert!(s.commit_preedit().commits.is_empty());
+}

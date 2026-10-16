@@ -730,6 +730,17 @@ impl Session {
         self.case_cycle = 0;
         self.kana_text.clear();
     }
+    /// A host such as IBus has already committed its displayed preedit on
+    /// focus loss. Record that exact text, without finalizing pending letters,
+    /// accepting an uncommitted prediction, or changing older document text.
+    pub fn commit_preedit(&mut self) -> SessionResult {
+        self.explicit = Some(self.display(false));
+        self.selected_prediction = -1;
+        let can_delete = std::mem::replace(&mut self.can_delete, false);
+        let result = self.commit();
+        self.can_delete = can_delete;
+        result
+    }
     pub fn commit(&mut self) -> SessionResult {
         let mut text = self.display(true);
         if self.selected_prediction >= 0 {

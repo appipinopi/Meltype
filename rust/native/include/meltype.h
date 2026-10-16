@@ -21,6 +21,9 @@ char *meltype_control(void *, const char *request_json);
 void meltype_destroy(void *);
 char *meltype_handle_key(void *, int32_t vk, int32_t scalar, int32_t modifiers, const char *before, const char *after);
 char *meltype_commit(void *);
+/* Record the displayed preedit after a host has committed it on focus loss.
+ * The host must not apply the returned text again. No backward edit is made. */
+char *meltype_commit_preedit(void *);
 /* Undo requires a fresh caret snapshot and set_can_delete(1).
  * Hosts MUST compare edit.expect before applying deletion; count is UTF-16. */
 char *meltype_undo_commit(void *, const char *before);

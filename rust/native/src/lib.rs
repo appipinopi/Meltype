@@ -325,6 +325,10 @@ pub unsafe extern "C" fn meltype_handle_key(
 pub extern "C" fn meltype_commit(handle: *mut c_void) -> *mut c_char {
     run(handle, Session::commit)
 }
+#[no_mangle]
+pub extern "C" fn meltype_commit_preedit(handle: *mut c_void) -> *mut c_char {
+    run(handle, Session::commit_preedit)
+}
 /// # Safety
 /// Strings must be valid NUL-terminated UTF-8; reading may be null to infer it.
 /// The host must verify selection_expect before replacing the selected text.

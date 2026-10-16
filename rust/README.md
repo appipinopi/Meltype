@@ -13,7 +13,7 @@ cargo run -p meltype-cli -- --convert kyouhagoogledekensaku
 cargo build --workspace --release --locked
 ```
 
-Rust 1.88以上。WindowsはMSVC C++ビルドツール、LinuxはCリンカー、macOSはXcode command line toolsが必要です。Cargo.lockを共有しています。
+Rust 1.88以上。WindowsはMSVC C++ビルドツール、LinuxはCリンカーと `libibus-1.0-dev`、macOSはXcode command line toolsが必要です。Cargo.lockを共有しています。
 
 | crate | 内容 |
 |---|---|
@@ -21,19 +21,30 @@ Rust 1.88以上。WindowsはMSVC C++ビルドツール、LinuxはCリンカー�
 | meltype-native | C ABI、既存フロントエンド用JSON、TSF用のプロセス内接続、Android JNI |
 | meltype-settings | Rust製の設定・辞書・定型文・学習削除・バックアップ・入力テスト画面 |
 | meltype-cli | 全デスクトップ共通の変換コマンド、JSON Linesセッション操作 |
+| meltype-ibus | Linux IBusのRust製エンジン実行ファイル。libibus/GLibへ直接接続し、Python/C++の接続コードを使用しない |
 
 CLIは引数なしでstdinからJSONを1行ずつ受け取ります。`{"op":"key","vk":0,"ch":107}`、`{"op":"key","vk":32,"ch":32}`、`{"op":"commit"}`、`{"op":"select","index":0}`、`{"op":"reset"}`、`{"op":"direct","enabled":true}`。再変換は `{"op":"reconvert_selection","text":"橋","reading":"はし"}`（readingは省略可）、確定Undoは `{"op":"undo_commit","before":"キャレット直前の文字列"}`。結果は `consumed/commits/view` のJSONです。削除時は `expect`、再変換開始時は `selectionExpect` をホスト側で必ず照合してください。vkは既存実装と同じWindows仮想キー、chはUnicodeスカラー、modifiersはShift=1/Ctrl=2/Alt=4/Command=8です。
 
 ## OSとの接続
 
+Linux IBusのRust版は `bash rust/build-linux.sh` で `linux/build/Meltype-Rust-linux/` に組み立てます。ビルドには `libibus-1.0-dev` が必要で、実行時はシステムのIBus/GLibを利用します。Rust側のエンジンとOS接続は同じ実行ファイルに含まれ、Python、GI、別のRust DLLは実行時に不要です。既存のPython版は上流実装の参照用として残っています。fcitx5は引き続き既存C++アダプターです。
+
+生成フォルダーで `sudo bash install.sh --system` を明示的に実行すると、`/usr/libexec/meltype-rust/ibus` にプログラムを置き、IBusが通常読み込む `/usr/share/ibus/component/meltype-rust.xml` を登録します。既存の上流版の登録やRustの設定・学習データは置き換えません。IBusの再起動や入力ソースの選択は行わず、サインインし直した後に「Meltype Rust」を選びます。`sudo bash /usr/libexec/meltype-rust/ibus/install.sh --system --uninstall` は専用マーカーと登録名を確認して配布ファイルを削除し、設定・学習と未知のファイルは保持します。`--prefix` は別の絶対パスへの配置用です。登録・削除は一時フォルダーだけで検証しています。
+
+管理者権限を使わない `bash install.sh` はユーザーのデータフォルダーへ配置します。ただしIBusはこの登録先を通常は自動で読みません。この方式ではIBus起動前に `IBUS_COMPONENT_PATH` へ表示されたフォルダーとシステムの登録フォルダーを設定する必要があります。削除は `bash install.sh --uninstall` です。
+
+`meltype-ibus --version` は版を表示し、`--print-component` は実行ファイルの現在位置に対応するIBusのXMLを出力します。`--ibus` は登録されたIBusから起動される入口で、引数なしは検証用の動的コンポーネント登録です。どちらも通常のユーザー設定へ入力ソースを追加しません。Mozcヘルパーは `mozc/meltype_mozc_helper` または `MELTYPE_MOZC_HELPER` で指定します。ヘルパーを同梱できないビルドは内蔵補助辞書に限られ、元版の変換語彙とは同等ではありません。
+
+`xvfb-run -a dbus-run-session -- /usr/bin/python3 rust/ibus/tests/integration.py target/release/meltype-ibus` は別のIBusデーモンと合成入力欄でRust実行ファイルを検証します。`MELTYPE_IBUS_TEST_INSTALLED=1` を付けると、一時フォルダーへの実インストール後にXMLからIBusが自動起動する経路で同じ8ケースを検証します。Python/GIはこのテスト用クライアントだけで使用します。フォーカスを外した場合はIBusが表示中の未確定文字を確定するため、Rustは同じ文字を再挿入せず、その表示を学習します。Enterによる確定では従来どおり末尾の `n` もかなに確定します。通常のデスクトップアプリ・Wayland/X11・サインインし直した後の動作は未検証です。
+
 | OS | ビルド | 残っているOS固有コード・制限 |
 |---|---|---|
 | Windows x64/x86 | `./rust/build-windows.ps1 -WithTip` | C++ TSFシェル + Rust DLL。C#サーバー不要。出力は `native/tip/bin/rust-x64` と `rust-x86`。自動インストールしません。元と同じCOM登録IDなので、既存インストールと共存させる配布には未対応です。 |
 | macOS | `bash rust/build-desktop.sh` | Swift InputMethodKitシェルとazooKey変換エンジンを再利用。出力 `mac/build/Meltype.app`。インストールしません。 |
-| Linux | Mozcヘルパーを準備後 `bash rust/build-desktop.sh` | Python IBus / C++ fcitx5シェル、C++ Mozcヘルパーを再利用。出力 `linux/build/Meltype-linux`。 |
+| Linux | `bash rust/build-desktop.sh` | Rust IBus実行ファイル。出力 `linux/build/Meltype-Rust-linux`。漢字変換には別途C++ Mozcヘルパーが必要です。fcitx5は既存C++アダプターを別途ビルドします。 |
 | Android | [android/README.md](../android/README.md) | Java InputMethodServiceとJNI。補助辞書による変換。 |
 
-デスクトップの既存ビルド手順はそのままで、上記のRust用ビルドだけがRustエンジンを選びます。C APIは `native/include/meltype.h` を参照。戻り値はmalloc由来で `meltype_free` で解放し、同一セッションの呼び出しを直列化してください。Macの変換コールバックはmalloc由来の文字列を返します。LinuxのMozcヘルパーには上流と同じC/US/RSプロトコルで接続し、応答のタイムアウトとサイズ制限を設けています。
+デスクトップの既存ビルド手順はそのままで、上記のRust用ビルドだけがRustエンジンを選びます。C APIは `rust/native/include/meltype.h` を参照。戻り値はmalloc由来で `meltype_free` で解放し、同一セッションの呼び出しを直列化してください。Macの変換コールバックはmalloc由来の文字列を返します。LinuxのMozcヘルパーには上流と同じC/US/RSプロトコルで接続し、応答のタイムアウトとサイズ制限を設けています。
 
 ## 追加済みの共通機能
 
@@ -92,7 +103,7 @@ C ABIの `meltype_control`、Android JNIも同じ管理APIを使います。Andr
 - 元の文脈スコア・高度な日英判定の完全な互換、確定後の訂正、外部変換器による境界調整後の再変換、デスクトップの選択範囲再変換への接続、未登録語の読み取得、日英混在・かな入力を含むライブ変換の完全互換
 - JISかな・Both入力とローマ字ミスタイプ訂正の全回帰ケースへの適合、Undoの全デスクトップ操作への接続、プロファイルの全設定を各OSへ反映する処理
 - トレイの全メニュー・モード表示・入力停止・各OSの起動設定と実機検証・更新機構・配布用インストーラー
-- C++/Swift/Python/JavaによるOS連携と外部変換エンジンをRustに置き換える作業
+- 残っているC++/Swift/JavaによるOS連携と外部変換エンジンをRustに置き換える作業（IBusのPython接続はRust版を追加済み）
 - 各OSでの実際の入力、フォーカス移動、パスワード欄、IME切替、候補表示、インストール・削除の実機検証
 
 `cargo run -p meltype-core --example quality -- quality-report.json --check` は、元の品質テストから抽出した216件を変更せずに比較します。期待文字列を照合して削除できるホストでは **216/216一致**、削除できないホストでは **215/216一致** です。後者では `site PR` の確定後の空白訂正を行いません。比較ツールも削除前の期待文字列とUTF-16長を検査します。`--check` は両方の基準からの退行を検出します。これは抽出した品質ケースの一致であり、全機能互換を認定するチェックではありません。抽出元は `src/Meltype.Core.Tests/QualityTests.cs` です。
