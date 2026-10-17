@@ -262,6 +262,7 @@ STDMETHODIMP TextService::ActivateEx(ITfThreadMgr* threadMgr, TfClientId clientI
         {&threadSubscription_,&keySubscription_,&modeSubscription_},{&atomInput_,&atomConverted_,&atomTarget_},
         {static_cast<ITfThreadMgrEventSink*>(this),static_cast<ITfKeyEventSink*>(this),static_cast<ITfCompartmentEventSink*>(this)},
         [](void* p,unsigned int client,int disabled,int own,const char* sid) {auto* s=static_cast<TextService*>(p);try {
+            ++s->modeEpoch_;
             s->clientId_=client;s->deactivated_=false;s->serverActive_=false;s->directDetection_=false;s->directEnglishWord_=false;
             s->lastHello_=0;s->caretMoved_=false;s->ownEdit_=false;s->secretChecked_=false;s->lastConverting_=false;
             s->passReason_=nullptr;s->keyFailed_=false;s->consumed_=true;s->ownProcess_=own!=0;s->disabled_=disabled!=0;s->sid_=sid;
@@ -795,12 +796,20 @@ STDMETHODIMP TextService::OnEndEdit(ITfContext* context, TfEditCookie ec, ITfEdi
 // ---- 日本語 / 英数 ----
 
 STDMETHODIMP TextService::OnChange(REFGUID guid) {
-    if (!IsEqualGUID(guid, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE) || threadMgr_ == nullptr) return S_OK;
 #ifdef MELTYPE_RUST_CORE
-    const int value = RustReadOpen(threadMgr_);
-    if (value == -2) return S_OK;
-    if (value >= 0) { open_ = value != 0; directEnglishWord_ = false; }
+    RustOpenChangeCallbacks callbacks={
+        this,static_cast<ITfTextInputProcessorEx*>(this),&modeEpoch_,&shutdownPhase_,
+        [](void* p,void** manager)->unsigned int {auto* s=static_cast<TextService*>(p);*manager=s->threadMgr_;return (s->open_?1u:0u)|(s->composition_?2u:0u)|(s->deactivated_?4u:0u);},
+        [](void* p,unsigned int op,int value) {auto* s=static_cast<TextService*>(p);try {switch (op) {
+            case 0:s->open_=value!=0;s->directEnglishWord_=false;break;
+            case 1:s->CommitAsync(false);break;
+            case 2:s->UpdateLangBar();break;
+            case 3:TipLog(L"入力モード: %s",s->open_?L"日本語":L"英数");break;
+        }}catch (...) {}},
+    };
+    return RustOpenChanged(guid,callbacks);
 #else
+    if (!IsEqualGUID(guid, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE) || threadMgr_ == nullptr) return S_OK;
     ITfCompartmentMgr* compartments = nullptr;
     if (FAILED(threadMgr_->QueryInterface(IID_ITfCompartmentMgr, reinterpret_cast<void**>(&compartments)))) return S_OK;
     ITfCompartment* openClose = nullptr;
@@ -815,11 +824,11 @@ STDMETHODIMP TextService::OnChange(REFGUID guid) {
         openClose->Release();
     }
     compartments->Release();
-#endif
     TipLog(L"入力モード: %s", open_ ? L"日本語" : L"英数");
     if (!open_ && composition_ != nullptr) CommitAsync(false);
     UpdateLangBar();
     return S_OK;
+#endif
 }
 
 void TextService::SetOpen(bool open) {

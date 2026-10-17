@@ -247,6 +247,7 @@ int wmain() {
     assert(service->Deactivate()==S_OK && thread.refs==1 && g_locks==1);
     assert(service->Activate(threadInterface,17)==S_OK);
     assert(service->IsOpen() && thread.refs==2);
+    assert(service->OnChange(GUID_COMPARTMENT_KEYBOARD_OPENCLOSE)==S_OK && service->IsOpen() && thread.refs==2);
     assert(service->Deactivate()==S_OK && thread.refs==1 && g_locks==1);
     assert(thread.focusQueries==2);
     service->Release();assert(g_locks==0);assert(SetKeyboardState(saved));

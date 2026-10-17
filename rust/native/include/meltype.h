@@ -473,6 +473,20 @@ typedef struct MeltypeTsfStartupCallbacks {
    Nested activation/shutdown supersedes old work; late tokens are unsubscribed.
    Does not register a COM server or input profile. Returns HRESULT. */
 int32_t meltype_tsf_startup(void *manager, uint32_t client, uint32_t flags, const MeltypeTsfStartupCallbacks *callbacks);
+typedef struct MeltypeTsfOpenChangeCallbacks {
+    void *owner,*lifetime;
+    uint64_t *epoch;
+    uint32_t *phase;
+    uint32_t (*current)(void *,void **manager);
+    void (*update)(void *,uint32_t operation,int32_t value);
+} MeltypeTsfOpenChangeCallbacks;
+/* TSF thread, borrowed GUID/owner; writable mode epoch/phase and callback code /
+   storage survive while lifetime is held. Callbacks never throw. current returns
+   borrowed manager plus flags open=1,composing=2,ended=4. update 0 publishes
+   open(value)/clears direct word,1 async commit without caret preservation,
+   2 refresh bar,3 log mode. Nested notices supersede old work; phase!=0 skips.
+   Activation must advance the mode epoch. Returns HRESULT. */
+int32_t meltype_tsf_open_changed(const void *guid,const MeltypeTsfOpenChangeCallbacks *callbacks);
 #endif
 #ifdef __cplusplus
 }

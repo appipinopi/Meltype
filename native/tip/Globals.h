@@ -233,6 +233,12 @@ HRESULT RustStartup(ITfThreadMgr*,TfClientId,DWORD,const RustStartupCallbacks&);
 using RustJsonEmit=int (__cdecl *)(void*,unsigned int,double,const unsigned short*,unsigned int);
 bool RustJsonVisit(const std::string&,void*,RustJsonEmit);
 std::string RustJsonQuote(const std::wstring&);
+struct RustOpenChangeCallbacks {
+    void* owner;IUnknown* lifetime;unsigned long long* epoch;unsigned int* phase;
+    unsigned int (__cdecl *current)(void*,void**);
+    void (__cdecl *update)(void*,unsigned int,int);
+};
+HRESULT RustOpenChanged(REFGUID,const RustOpenChangeCallbacks&);
 #endif
 
 // 文字コードの変換

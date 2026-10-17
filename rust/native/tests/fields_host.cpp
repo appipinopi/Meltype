@@ -121,6 +121,23 @@ int wmain() {
     RustUnsubscribe(subscription);
     assert(sink.refs==1 && manager.source.refs==1 && manager.source.removals==1 && !manager.source.sink);
     assert(manager.refs==1 && manager.open.refs==1 && manager.disabled.refs==1 && manager.empty.refs==1);
+    auto* service=new TextService();
+    assert(service->OnChange(GUID_COMPARTMENT_KEYBOARD_OPENCLOSE)==S_OK);
+    struct ModeState {TextService* service;void* manager;bool open=true;int commits=0,refreshes=0,logs=0;unsigned long long epoch=0;unsigned int phase=0;} state{service,thread};
+    RustOpenChangeCallbacks callbacks={
+        &state,static_cast<ITfTextInputProcessorEx*>(service),&state.epoch,&state.phase,
+        [](void* p,void** manager)->unsigned int {auto* s=static_cast<ModeState*>(p);*manager=s->manager;return (s->open?1u:0u)|2u;},
+        [](void* p,unsigned int op,int value) {auto* s=static_cast<ModeState*>(p);switch (op) {
+            case 0:s->open=value!=0;break;
+            case 1:assert(!s->open && s->logs==1 && !s->refreshes);++s->commits;break;
+            case 2:assert(s->commits==1);++s->refreshes;s->service->Release();s->service=nullptr;assert(g_locks==1);break;
+            case 3:assert(!s->open && !s->commits);++s->logs;break;
+        }},
+    };
+    assert(RustOpenChanged(GUID_NULL,callbacks)==S_OK && state.logs==0);
+    assert(RustOpenChanged(GUID_COMPARTMENT_KEYBOARD_OPENCLOSE,callbacks)==S_OK);
+    assert(!state.open && state.commits==1 && state.refreshes==1 && state.logs==1 && !state.service);
+    assert(manager.refs==1 && manager.open.refs==1);
     assert(g_locks==0);
-    puts("Actual TSF field adapters: input-scope/mode APIs, reentrant mode notification, disabled/empty context, Rust subscription/teardown, sink references and COM cleanup passed");
+    puts("Actual TSF field adapters: scopes/modes, subscriptions, open-notice publication/commit/refresh order, public null-manager notice and owner release passed");
 }

@@ -187,6 +187,7 @@ private:
 #ifdef MELTYPE_RUST_CORE
     void* keyState_ = nullptr;
     unsigned long long focusEpoch_ = 0;
+    unsigned long long modeEpoch_ = 0;
     unsigned int shutdownPhase_ = 0;
     RustFocusCallbacks FocusCallbacks();
 #else

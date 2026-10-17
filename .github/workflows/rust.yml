@@ -117,6 +117,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python rust/native/tests/tsf_startup_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_open_change_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           ./rust/native/tests/build-transport-fixture.ps1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python rust/native/tests/tip_transport_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll target/x86_64-pc-windows-msvc/release/meltype-tip-worker.exe dist/tip-transport-fixture/fixture-x64.exe
@@ -200,6 +202,8 @@ jobs:
           python rust/native/tests/tsf_shutdown_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python rust/native/tests/tsf_startup_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_open_change_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python rust/native/tests/tip_transport_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll target/i686-pc-windows-msvc/release/meltype-tip-worker.exe dist/tip-transport-fixture/fixture-x86.exe
       - name: Rust key acceptance and helper parity in a 32-bit process
