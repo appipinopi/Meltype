@@ -298,11 +298,8 @@ STDMETHODIMP TextService::Activate(ITfThreadMgr* threadMgr, TfClientId clientId)
 
 STDMETHODIMP TextService::ActivateEx(ITfThreadMgr* threadMgr, TfClientId clientId, DWORD flags) {
 #ifdef MELTYPE_RUST_CORE
-    void* sinks[]={ServiceInterface<ITfThreadMgrEventSink>(),ServiceInterface<ITfKeyEventSink>(),ServiceInterface<ITfCompartmentEventSink>(),ServiceInterface<ITfTextEditSink>()};
-    return RustServiceActivate(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),threadMgr,clientId,flags,sinks,this,
-        [](void* p,int index,int prediction) {try {static_cast<TextService*>(p)->SelectCandidate(index,prediction!=0);}catch (...) {}},
-        [](void* p)->int {return static_cast<TextService*>(p)->IsOpen()?1:0;},
-        [](void* p) {try {static_cast<TextService*>(p)->ToggleInputMode(nullptr);}catch (...) {}});
+    void* sinks[]={ServiceInterface<ITfThreadMgrEventSink>(),ServiceInterface<ITfKeyEventSink>(),ServiceInterface<ITfCompartmentEventSink>(),ServiceInterface<ITfTextEditSink>(),ServiceInterface<ITfCompositionSink>()};
+    return RustServiceActivateNative(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),threadMgr,clientId,flags,sinks);
 #else
     threadMgr_ = threadMgr;
     threadMgr_->AddRef();

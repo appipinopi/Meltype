@@ -8,6 +8,7 @@ pub(super) mod presentation;
 use graphics::*;
 use serde::Deserialize;
 use std::{
+    any::Any,
     cell::RefCell,
     collections::HashMap,
     ffi::{c_char, c_void, CStr},
@@ -50,6 +51,7 @@ struct View {
     typed: String,
 }
 struct State {
+    _adapter: Option<Rc<dyn Any>>,
     id: usize,
     callback: Option<Select>,
     context: *mut c_void,
@@ -355,11 +357,17 @@ unsafe extern "system" fn window_proc(window: HWND, message: u32, w: WPARAM, l: 
             WM_LBUTTONUP => {
                 let selection = with(id, |s| {
                     let hit = s.hit(((l.0 >> 16) as i16) as f32 / s.scale);
-                    (hit >= 0).then_some((s.callback, s.context, hit, i32::from(s.view.prediction)))
+                    (hit >= 0).then_some((
+                        s.callback,
+                        s.context,
+                        hit,
+                        i32::from(s.view.prediction),
+                        s._adapter.clone(),
+                    ))
                 })
                 .flatten();
                 // No RefCell borrow is held while the host can hide/destroy us.
-                if let Some((Some(callback), context, index, prediction)) = selection {
+                if let Some((Some(callback), context, index, prediction, _pin)) = selection {
                     callback(context, index, prediction);
                 }
                 return LRESULT(0);
@@ -424,6 +432,13 @@ pub extern "C" fn meltype_tsf_candidate_create(
     context: *mut c_void,
     callback: Option<Select>,
 ) -> *mut c_void {
+    create(context, callback, None)
+}
+pub(super) fn create(
+    context: *mut c_void,
+    callback: Option<Select>,
+    adapter: Option<Rc<dyn Any>>,
+) -> *mut c_void {
     guard(|| unsafe {
         let Ok(graphics) = Graphics::new() else {
             return ptr::null_mut();
@@ -433,6 +448,7 @@ pub extern "C" fn meltype_tsf_candidate_create(
         }
         let id = NEXT.fetch_add(1, Ordering::Relaxed);
         let state = State {
+            _adapter: adapter,
             id,
             callback,
             context,

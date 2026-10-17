@@ -327,3 +327,39 @@ pub unsafe extern "C" fn meltype_tsf_service_select_candidate(
         Some(o),
     )
 }
+#[allow(clippy::too_many_arguments)]
+pub(super) unsafe fn select_native(
+    state: *mut ServiceState,
+    lifetime: *mut c_void,
+    sink: *mut c_void,
+    worker: *const c_char,
+    index: i32,
+    prediction: i32,
+    adapter: *mut c_void,
+    notice: Option<KeyNotice>,
+) -> HRESULT {
+    if state.is_null() || lifetime.is_null() || worker.is_null() {
+        return E_INVALIDARG;
+    }
+    let o = Rc::new(Owner {
+        state,
+        lifetime,
+        sink,
+        worker: CStr::from_ptr(worker).to_owned(),
+        adapter,
+        apply: None,
+        notice: None,
+        key_notice: None,
+        mode_notice: notice,
+    });
+    let callbacks = callbacks(&o);
+    let metadata = metadata(state);
+    commit_request::select_candidate(
+        (*state).client,
+        index,
+        prediction,
+        metadata.as_ptr(),
+        &callbacks,
+        Some(o),
+    )
+}

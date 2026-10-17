@@ -121,8 +121,8 @@ bool RustServiceExchange(RustServiceState*,IUnknown*,const std::string&,DWORD,bo
 HRESULT RustServiceFocusNative(RustServiceState*,IUnknown*,ITfCompositionSink*,ITfTextEditSink*,ITfDocumentMgr*,int);
 bool RustServiceEditedNative(RustServiceState*,IUnknown*,ITfCompositionSink*,ITfContext*,ITfEditRecord*,TfEditCookie);
 HRESULT RustServiceOpenedNative(RustServiceState*,IUnknown*,ITfCompositionSink*,REFGUID);
+HRESULT RustServiceActivateNative(RustServiceState*,IUnknown*,ITfThreadMgr*,TfClientId,DWORD,void* const*);
 HRESULT RustServiceShutdown(RustServiceState*,IUnknown*,ITfCompositionSink*);
-HRESULT RustServiceActivate(RustServiceState*,IUnknown*,ITfThreadMgr*,TfClientId,DWORD,void* const*,void*,void (__cdecl *)(void*,int,int),int (__cdecl *)(void*),void (__cdecl *)(void*));
 int RustServiceApplyComposition(RustServiceState*,IUnknown*,ITfCompositionSink*,TfEditCookie,ITfContext*,const JsonValue&);
 int RustServiceWriteCommit(RustServiceState*,IUnknown*,ITfCompositionSink*,TfEditCookie,ITfContext*,ITfRange*,const std::wstring&);
 int RustServiceEndComposition(RustServiceState*,IUnknown*,TfEditCookie);

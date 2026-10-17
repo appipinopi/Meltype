@@ -3,9 +3,11 @@
 //! Rust implementation of the TSF input-mode button, its source interface,
 //! update subscription and taskbar-theme-aware icon.
 use std::{
+    any::Any,
     ffi::c_void,
     mem::MaybeUninit,
     ptr,
+    rc::Rc,
     sync::{
         atomic::{fence, AtomicU32, Ordering},
         Mutex,
@@ -27,8 +29,9 @@ use windows::{
 
 type ReadMode = unsafe extern "C" fn(*mut c_void) -> i32;
 type Toggle = unsafe extern "C" fn(*mut c_void);
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 struct Client {
+    _adapter: Option<Rc<dyn Any>>,
     context: *mut c_void,
     read: ReadMode,
     toggle: Toggle,
@@ -108,7 +111,11 @@ fn client(bar: &Bar) -> Option<Client> {
     if bar.owner != thread::current().id() {
         return None;
     }
-    bar.state.lock().unwrap_or_else(|e| e.into_inner()).client
+    bar.state
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .client
+        .clone()
 }
 unsafe fn is_open(this: *mut c_void) -> bool {
     client(bar(this)).is_none_or(|c| (c.read)(c.context) != 0)
@@ -299,7 +306,16 @@ pub extern "C" fn meltype_tsf_create_langbar(
     read: Option<ReadMode>,
     toggle: Option<Toggle>,
 ) -> *mut c_void {
+    create(context, read, toggle, None)
+}
+pub(super) fn create(
+    context: *mut c_void,
+    read: Option<ReadMode>,
+    toggle: Option<Toggle>,
+    adapter: Option<Rc<dyn Any>>,
+) -> *mut c_void {
     let client = read.zip(toggle).map(|(read, toggle)| Client {
+        _adapter: adapter,
         context,
         read,
         toggle,

@@ -143,6 +143,7 @@ class StateTests(unittest.TestCase):
         cls.api.meltype_tsf_service_focus_native.argtypes=[P,P,P,P,c.c_char_p,P,c.c_int,P,CORE_NOTICE];cls.api.meltype_tsf_service_focus_native.restype=HR
         cls.api.meltype_tsf_service_edited_native.argtypes=[P,P,P,c.c_char_p,P,P,U32,P,CORE_NOTICE];cls.api.meltype_tsf_service_edited_native.restype=c.c_int
         cls.api.meltype_tsf_service_opened_native.argtypes=[P,P,P,c.c_char_p,P,P,CORE_NOTICE];cls.api.meltype_tsf_service_opened_native.restype=HR
+        cls.api.meltype_tsf_service_activate_native.argtypes=[P,P,c.c_char_p,P,U32,U32,P,P,CORE_NOTICE,CORE_NOTICE,CATEGORY];cls.api.meltype_tsf_service_activate_native.restype=HR
         cls.api.meltype_tsf_service_key_secret.argtypes=[P,P,P,U32,c.c_int,P,CORE_NOTICE];cls.api.meltype_tsf_service_key_secret.restype=c.c_int
         cls.api.meltype_tsf_service_would_eat.argtypes=[P,P,P,c.c_char_p,P,U32,c.c_uint64,c.c_int,P,KEY_COMMIT,CORE_NOTICE,c.POINTER(c.c_uint16)];cls.api.meltype_tsf_service_would_eat.restype=c.c_int
         cls.api.meltype_tsf_service_key_event.argtypes=[P,P,P,c.c_char_p,U32,P,U32,c.c_uint64,P,KEY_COMMIT,KEY_HANDLE,CORE_NOTICE];cls.api.meltype_tsf_service_key_event.restype=c.c_int
@@ -2432,6 +2433,55 @@ class StateTests(unittest.TestCase):
         self.assertEqual(self.api.meltype_tsf_service_focus_native(address,life,sink,None,None,None,0,None,CORE_NOTICE()),HR(0x80070057).value)
         self.assertEqual(self.api.meltype_tsf_service_opened_native(address,life,sink,None,c.byref(OPEN),None,CORE_NOTICE()),HR(0x80070057).value)
         self.assertEqual(self.api.meltype_tsf_service_edited_native(address,life,sink,None,life,None,7,None,CORE_NOTICE()),0)
+        self.assertEqual(c.string_at(address,c.sizeof(State)),before);host.verify(self)
+    def activate_owned_ui(self,state,host,flags=0,worker=None,notice=None,ui_notice=None,lifetime=None):
+        sinks=(P*5)(*[c.addressof(host.sink)]*5)
+        @self.checked(CATEGORY)
+        def category(owner):self.assertEqual(owner,123);host.count('category_refs',1);return c.addressof(host.category)
+        notice=notice or CORE_NOTICE();ui_notice=ui_notice or CORE_NOTICE();self.callbacks.extend([category,notice,ui_notice])
+        return self.api.meltype_tsf_service_activate_native(c.addressof(state),lifetime or c.byref(host.context),worker or self.worker,c.byref(host.context),17,flags,sinks,123,notice,ui_notice,category)
+    def test_owned_ui_activation_bar_reads_native_state_after_return(self):
+        state=self.create();host=StartupHost()
+        try:
+            self.assertEqual(self.activate_owned_ui(state,host),0);bar=state.langbar;self.assertTrue(bar)
+            self.assertEqual(self.bar_text(bar),'あ');state.code_app=True;state.code_english=True;self.assertEqual(self.bar_text(bar),'A')
+            state.code_english=False;self.assertEqual(self.bar_text(bar),'あ')
+        finally:self.finish_activation(state,host)
+    def test_owned_ui_activation_bar_toggle_calls_native_mode_after_return(self):
+        state=self.create();host=StartupHost();host.null_focus=True
+        try:
+            self.assertEqual(self.activate_owned_ui(state,host),0);before=len(host.writes_mode);self.click_bar(state.langbar)
+            self.assertEqual(host.writes_mode[before:],[(bytes(OPEN),17,0)])
+        finally:self.finish_activation(state,host)
+    def test_owned_ui_activation_secure_mode_and_reactivation_replace_adapters(self):
+        state=self.create();host=StartupHost()
+        try:
+            self.assertEqual(self.activate_owned_ui(state,host,flags=2),0);self.assertFalse(state.langbar);self.assertTrue(state.candidates);self.assertFalse(state.transport)
+            self.finish_activation(state,host)
+            self.assertEqual(self.activate_owned_ui(state,host),0);self.assertTrue(state.langbar);self.assertEqual(self.bar_text(state.langbar),'あ')
+        finally:self.finish_activation(state,host)
+    def test_owned_ui_retained_bar_is_detached_after_state_destruction(self):
+        state=self.create();host=StartupHost();address=c.addressof(state)
+        self.assertEqual(self.activate_owned_ui(state,host),0);bar=state.langbar;invoke(bar,1,U32,[])
+        try:
+            self.finish_activation(state,host);self.owned.remove(address);self.api.meltype_tsf_service_state_destroy(address)
+            self.click_bar(bar);self.assertEqual(self.bar_text(bar),'あ');self.assertEqual(self.live(),self.before)
+        finally:release(bar)
+    def test_owned_ui_activation_native_candidate_click_sends_selection(self):
+        state=self.create();host=StartupHost();document=DeferredHost();document.mode='sync'
+        def action(worker):
+            path=c.create_string_buffer(worker);self.assertEqual(self.activate_owned_ui(state,host,worker=path),0);path.value=b'destroyed'
+            self.shutdown_composition(state,document);self.assertEqual(self.show_candidates(state),1);self.click_candidate(self.candidate_windows()[0]);return 1
+        try:
+            result,request=self.fixture_recovery(state,'{"active":true}',action)
+            self.assertEqual(result,1);self.assertEqual(request['op'],'select');self.assertEqual(request['index'],1);self.assertTrue(request['prediction']);self.assertFalse(state.composition)
+        finally:self.clear_owned_pair(state);document.verify(self);self.finish_activation(state,host)
+    def test_owned_ui_activation_invalid_arguments_preserve_state(self):
+        state=self.create();host=StartupHost();address=c.addressof(state);before=c.string_at(address,c.sizeof(State));sinks=(P*5)(*[c.addressof(host.sink)]*5)
+        for data,life,worker in [(None,c.byref(host.context),self.worker),(address,None,self.worker),(address,c.byref(host.context),None)]:
+            self.assertEqual(self.api.meltype_tsf_service_activate_native(data,life,worker,c.byref(host.context),17,0,sinks,None,CORE_NOTICE(),CORE_NOTICE(),CATEGORY()),HR(0x80070057).value)
+        sinks[4]=None
+        self.assertEqual(self.api.meltype_tsf_service_activate_native(address,c.byref(host.context),self.worker,c.byref(host.context),17,0,sinks,None,CORE_NOTICE(),CORE_NOTICE(),CATEGORY()),HR(0x80070057).value)
         self.assertEqual(c.string_at(address,c.sizeof(State)),before);host.verify(self)
 if __name__=='__main__':unittest.main(argv=[sys.argv[0]],verbosity=2,failfast=True)
 

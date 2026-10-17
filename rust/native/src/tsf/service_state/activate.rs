@@ -3,6 +3,7 @@
 //! Activation using native service slots and owned UI resources.
 use super::*;
 use crate::tsf::startup;
+use std::rc::Rc;
 type Select = unsafe extern "C" fn(*mut c_void, i32, i32);
 type Read = unsafe extern "C" fn(*mut c_void) -> i32;
 type Toggle = unsafe extern "C" fn(*mut c_void);
@@ -19,6 +20,8 @@ struct Owner {
     toggle: Toggle,
     notice: Option<Notice>,
     category: Option<Category>,
+    ui: Option<Rc<Ui>>,
+    init: *mut c_void,
 }
 unsafe extern "C" fn initialize(
     data: *mut c_void,
@@ -30,18 +33,18 @@ unsafe extern "C" fn initialize(
     let owner = &*data.cast::<Owner>();
     meltype_tsf_service_initialize(owner.state, client, disabled, own, sid);
     if let Some(notice) = owner.notice {
-        notice(owner.context, 0, disabled);
+        notice(owner.init, 0, disabled);
     }
 }
 unsafe extern "C" fn core_notice(data: *mut c_void, op: u32, value: i32) {
     let owner = &*data.cast::<Owner>();
     if let Some(notice) = owner.notice {
-        notice(owner.context, op + 1, value);
+        notice(owner.init, op + 1, value);
     }
 }
 unsafe extern "C" fn category(data: *mut c_void) -> *mut c_void {
     let owner = &*data.cast::<Owner>();
-    owner.category.unwrap()(owner.context)
+    owner.category.unwrap()(owner.init)
 }
 unsafe extern "C" fn action(
     data: *mut c_void,
@@ -54,14 +57,20 @@ unsafe extern "C" fn action(
     match op {
         0 => (*state).open = value != 0,
         1 => {
-            meltype_tsf_service_create_candidates(state, owner.context, Some(owner.select));
+            create_candidates(
+                state,
+                owner.context,
+                Some(owner.select),
+                owner.ui.clone().map(|ui| ui as Rc<dyn std::any::Any>),
+            );
         }
         2 => {
-            return meltype_tsf_service_create_langbar(
+            return create_langbar(
                 state,
                 owner.context,
                 Some(owner.read),
                 Some(owner.toggle),
+                owner.ui.clone().map(|ui| ui as Rc<dyn std::any::Any>),
             )
         }
         3 => {
@@ -106,6 +115,29 @@ pub unsafe extern "C" fn meltype_tsf_service_activate(
     notice: Option<Notice>,
     factory: Option<Category>,
 ) -> HRESULT {
+    run(
+        state, lifetime, worker, manager, client, flags, sinks, context, select, read, toggle,
+        notice, factory, None, context,
+    )
+}
+#[allow(clippy::too_many_arguments)]
+unsafe fn run(
+    state: *mut ServiceState,
+    lifetime: *mut c_void,
+    worker: *const c_char,
+    manager: *mut c_void,
+    client: u32,
+    flags: u32,
+    sinks: *const *mut c_void,
+    context: *mut c_void,
+    select: Option<Select>,
+    read: Option<Read>,
+    toggle: Option<Toggle>,
+    notice: Option<Notice>,
+    factory: Option<Category>,
+    ui: Option<Rc<Ui>>,
+    init: *mut c_void,
+) -> HRESULT {
     let (Some(select), Some(read), Some(toggle)) = (select, read, toggle) else {
         return E_INVALIDARG;
     };
@@ -132,6 +164,8 @@ pub unsafe extern "C" fn meltype_tsf_service_activate(
         toggle,
         notice,
         category: factory,
+        ui,
+        init,
     };
     let callbacks = startup::Callbacks {
         owner: ptr::addr_of_mut!(owner).cast(),
@@ -158,4 +192,124 @@ pub unsafe extern "C" fn meltype_tsf_service_activate(
         category: factory.map(|_| category as unsafe extern "C" fn(*mut c_void) -> *mut c_void),
     };
     startup::meltype_tsf_startup(manager, client, flags, &callbacks)
+}
+
+struct Ui {
+    state: *mut ServiceState,
+    lifetime: *mut c_void,
+    sink: *mut c_void,
+    worker: CString,
+    adapter: *mut c_void,
+    notice: Option<Notice>,
+}
+unsafe extern "C" fn ui_read(data: *mut c_void) -> i32 {
+    let ui = &*data.cast::<Ui>();
+    let s = ui.state;
+    i32::from((*s).open && !((*s).code_app && (*s).code_english))
+}
+unsafe extern "C" fn ui_select(data: *mut c_void, index: i32, prediction: i32) {
+    let ui = &*data.cast::<Ui>();
+    let _ = super::commit::select_native(
+        ui.state,
+        ui.lifetime,
+        ui.sink,
+        ui.worker.as_ptr(),
+        index,
+        prediction,
+        ui.adapter,
+        ui.notice,
+    );
+}
+unsafe extern "C" fn ui_toggle(data: *mut c_void) {
+    let ui = &*data.cast::<Ui>();
+    super::mode_action::meltype_tsf_service_mode_action(
+        ui.state,
+        ui.lifetime,
+        ui.worker.as_ptr(),
+        ptr::null_mut(),
+        0,
+        0,
+        0,
+        ui.adapter,
+        ui.notice,
+    );
+}
+struct Init {
+    adapter: *mut c_void,
+    notice: Option<Notice>,
+    factory: Option<Category>,
+}
+unsafe extern "C" fn init_notice(data: *mut c_void, op: u32, value: i32) {
+    let init = &*data.cast::<Init>();
+    if let Some(notice) = init.notice {
+        notice(init.adapter, op, value);
+    }
+}
+unsafe extern "C" fn init_category(data: *mut c_void) -> *mut c_void {
+    let init = &*data.cast::<Init>();
+    init.factory.unwrap()(init.adapter)
+}
+// Startup UI callbacks require the persistent UI address, whereas activation
+// notices/factory are synchronous and may use their own caller adapter.
+unsafe extern "C" fn native_select(data: *mut c_void, index: i32, prediction: i32) {
+    ui_select(data, index, prediction)
+}
+/// # Safety
+/// Same live service/root/manager/sink contract as service_activate. Persistent
+/// UI adapters copy worker and callbacks, retain no root (avoiding a cycle), and
+/// detach before state destruction. Each UI call runs while the native UI object
+/// retains its adapter. Root and notice code remain live through UI teardown.
+/// Activation notice0=initialized,1=hello,2=invalid; UI notices use mode-action
+/// codes. Category is optional controlled-host factory; null uses real COM.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_tsf_service_activate_native(
+    state: *mut ServiceState,
+    lifetime: *mut c_void,
+    worker: *const c_char,
+    manager: *mut c_void,
+    client: u32,
+    flags: u32,
+    sinks: *const *mut c_void,
+    adapter: *mut c_void,
+    notice: Option<Notice>,
+    ui_notice: Option<Notice>,
+    factory: Option<Category>,
+) -> HRESULT {
+    if state.is_null() || lifetime.is_null() || worker.is_null() || sinks.is_null() {
+        return E_INVALIDARG;
+    }
+    if (*sinks.add(4)).is_null() {
+        return E_INVALIDARG;
+    }
+    let ui = Rc::new(Ui {
+        state,
+        lifetime,
+        sink: *sinks.add(4),
+        worker: CStr::from_ptr(worker).to_owned(),
+        adapter,
+        notice: ui_notice,
+    });
+    let mut init = Init {
+        adapter,
+        notice,
+        factory,
+    };
+    let data = Rc::as_ptr(&ui).cast_mut().cast();
+    run(
+        state,
+        lifetime,
+        worker,
+        manager,
+        client,
+        flags,
+        sinks,
+        data,
+        Some(native_select),
+        Some(ui_read),
+        Some(ui_toggle),
+        Some(init_notice),
+        factory.map(|_| init_category as Category),
+        Some(ui),
+        ptr::addr_of_mut!(init).cast(),
+    )
 }

@@ -82,7 +82,7 @@ struct RustApi {
     int (__cdecl *serviceEditedNative)(RustServiceState*,void*,void*,const char*,void*,void*,unsigned int,void*,void (__cdecl *)(void*,unsigned int,int)) = nullptr;
     HRESULT (__cdecl *serviceOpenedNative)(RustServiceState*,void*,void*,const char*,const GUID*,void*,void (__cdecl *)(void*,unsigned int,int)) = nullptr;
     HRESULT (__cdecl *serviceShutdown)(RustServiceState*,void*,void*,const char*,void*,void (__cdecl *)(void*,unsigned int,int)) = nullptr;
-    HRESULT (__cdecl *serviceActivate)(RustServiceState*,void*,const char*,void*,unsigned int,unsigned int,void* const*,void*,void (__cdecl *)(void*,int,int),int (__cdecl *)(void*),void (__cdecl *)(void*),void (__cdecl *)(void*,unsigned int,int),void* (__cdecl *)(void*)) = nullptr;
+    HRESULT (__cdecl *serviceActivateNative)(RustServiceState*,void*,const char*,void*,unsigned int,unsigned int,void* const*,void*,void (__cdecl *)(void*,unsigned int,int),void (__cdecl *)(void*,unsigned int,int),void* (__cdecl *)(void*)) = nullptr;
     int (__cdecl *serviceApplyComposition)(RustServiceState*,void*,void*,void*,unsigned int,const char*) = nullptr;
     int (__cdecl *serviceWriteCommit)(RustServiceState*,void*,void*,void*,void*,unsigned int,const unsigned short*,unsigned int) = nullptr;
     int (__cdecl *serviceEndComposition)(RustServiceState*,void*,unsigned int) = nullptr;
@@ -186,7 +186,7 @@ struct RustApi {
         serviceEditedNative = reinterpret_cast<decltype(serviceEditedNative)>(GetProcAddress(module,"meltype_tsf_service_edited_native"));
         serviceOpenedNative = reinterpret_cast<decltype(serviceOpenedNative)>(GetProcAddress(module,"meltype_tsf_service_opened_native"));
         serviceShutdown = reinterpret_cast<decltype(serviceShutdown)>(GetProcAddress(module, "meltype_tsf_service_shutdown"));
-        serviceActivate = reinterpret_cast<decltype(serviceActivate)>(GetProcAddress(module, "meltype_tsf_service_activate"));
+        serviceActivateNative = reinterpret_cast<decltype(serviceActivateNative)>(GetProcAddress(module,"meltype_tsf_service_activate_native"));
         serviceApplyComposition = reinterpret_cast<decltype(serviceApplyComposition)>(GetProcAddress(module,"meltype_tsf_service_apply_composition"));
         serviceWriteCommit = reinterpret_cast<decltype(serviceWriteCommit)>(GetProcAddress(module,"meltype_tsf_service_write_commit"));
         serviceEndComposition = reinterpret_cast<decltype(serviceEndComposition)>(GetProcAddress(module,"meltype_tsf_service_end_composition"));
@@ -314,7 +314,7 @@ bool RustJsonVisit(const std::string& text,void* owner,RustJsonEmit emit) {
 }
 bool RustCoreReady(const RustCoreStateCallbacks& callbacks) {return api().coreReady && api().coreReady(&callbacks)!=0;}
 RustServiceState* RustCreateServiceState() {
-    if (!api().serviceCreate || !api().serviceDestroy || !api().serviceLayout || !api().serviceCore || !api().serviceApplyReply ||  !api().serviceCommit || !api().serviceSelectCandidate || !api().serviceDispatchKey || !api().serviceInputScope || !api().serviceModeAction || !api().serviceAbandon || !api().serviceTerminated || !api().serviceResume || !api().serviceApplyComposition || !api().serviceWriteCommit || !api().serviceEndComposition || !api().serviceActivate || !api().serviceShutdown || !api().serviceOpenedNative || !api().serviceEditedNative || !api().serviceFocusNative || !api().serviceExchange || !api().serviceMode || !api().serviceWriteOpen || !api().serviceApplyMode || !api().serviceEditSink || !api().serviceInitialize || !api().serviceClearResume || !api().serviceSetSid || !api().serviceSid || !api().serviceClose || !api().serviceCreateBar || !api().serviceUpdateBar || !api().serviceRemoveBar || !api().serviceCreateCandidates || !api().serviceShowCandidates || !api().serviceHideCandidates || !api().serviceDropCandidates) return nullptr;
+    if (!api().serviceCreate || !api().serviceDestroy || !api().serviceLayout || !api().serviceCore || !api().serviceApplyReply ||  !api().serviceCommit || !api().serviceSelectCandidate || !api().serviceDispatchKey || !api().serviceInputScope || !api().serviceModeAction || !api().serviceAbandon || !api().serviceTerminated || !api().serviceResume || !api().serviceApplyComposition || !api().serviceWriteCommit || !api().serviceEndComposition || !api().serviceActivateNative || !api().serviceShutdown || !api().serviceOpenedNative || !api().serviceEditedNative || !api().serviceFocusNative || !api().serviceExchange || !api().serviceMode || !api().serviceWriteOpen || !api().serviceApplyMode || !api().serviceEditSink || !api().serviceInitialize || !api().serviceClearResume || !api().serviceSetSid || !api().serviceSid || !api().serviceClose || !api().serviceCreateBar || !api().serviceUpdateBar || !api().serviceRemoveBar || !api().serviceCreateCandidates || !api().serviceShowCandidates || !api().serviceHideCandidates || !api().serviceDropCandidates) return nullptr;
     const unsigned int expected[]={5,static_cast<unsigned int>(sizeof(RustServiceState)),static_cast<unsigned int>(alignof(RustServiceState)),
         static_cast<unsigned int>(offsetof(RustServiceState,refs)),
         static_cast<unsigned int>(offsetof(RustServiceState,manager)),
@@ -395,13 +395,7 @@ HRESULT RustServiceShutdown(RustServiceState* state,IUnknown* lifetime,ITfCompos
             else if (op==1) TipLog(L"応答を読めません");
         }catch (...) {}}):E_FAIL;
 }
-HRESULT RustServiceActivate(RustServiceState* state,IUnknown* lifetime,ITfThreadMgr* manager,TfClientId client,DWORD flags,void* const* sinks,void* context,void (__cdecl *select)(void*,int,int),int (__cdecl *read)(void*),void (__cdecl *toggle)(void*)) {
-    return api().serviceActivate?api().serviceActivate(state,lifetime,api().worker.c_str(),manager,client,flags,sinks,context,select,read,toggle,
-        [](void*,unsigned int op,int value) {
-            if (op==0) TipLog(L"Activate (%s)%s",RustProcessName().c_str(),value?L" 無効: セキュリティ保護された画面":L"");
-            else ServiceCoreNotice(nullptr,op-1,value);
-        },nullptr):E_NOINTERFACE;
-}
+
 int RustServiceApplyComposition(RustServiceState* state,IUnknown* lifetime,ITfCompositionSink* sink,TfEditCookie cookie,ITfContext* context,const JsonValue& view) {
     const auto json=ViewJson(view);
     return api().serviceApplyComposition?api().serviceApplyComposition(state,lifetime,sink,context,cookie,json.c_str()):-1;
@@ -456,6 +450,13 @@ bool RustServiceEditedNative(RustServiceState* s,IUnknown* life,ITfCompositionSi
 }
 HRESULT RustServiceOpenedNative(RustServiceState* s,IUnknown* life,ITfCompositionSink* sink,REFGUID guid) {
     return api().serviceOpenedNative?api().serviceOpenedNative(s,life,sink,api().worker.c_str(),&guid,nullptr,ServiceNotificationNotice):E_NOINTERFACE;
+}
+HRESULT RustServiceActivateNative(RustServiceState* state,IUnknown* life,ITfThreadMgr* manager,TfClientId client,DWORD flags,void* const* sinks) {
+    return api().serviceActivateNative?api().serviceActivateNative(state,life,api().worker.c_str(),manager,client,flags,sinks,nullptr,
+        [](void*,unsigned int op,int value){try {
+            if (op==0) TipLog(L"Activate (%s)%s",RustProcessName().c_str(),value?L" 無効: セキュリティ保護された画面":L"");
+            else ServiceCoreNotice(nullptr,op-1,value);
+        }catch (...) {}},ServiceModeNotice,nullptr):E_NOINTERFACE;
 }
 static void __cdecl ServiceKeyNotice(void*,unsigned int op,int value) {
     try {switch (op) {

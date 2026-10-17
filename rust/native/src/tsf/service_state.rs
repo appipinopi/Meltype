@@ -354,11 +354,19 @@ pub unsafe extern "C" fn meltype_tsf_service_create_candidates(
     owner: *mut c_void,
     select: Option<unsafe extern "C" fn(*mut c_void, i32, i32)>,
 ) -> *mut c_void {
+    create_candidates(state, owner, select, None)
+}
+unsafe fn create_candidates(
+    state: *mut ServiceState,
+    owner: *mut c_void,
+    select: Option<unsafe extern "C" fn(*mut c_void, i32, i32)>,
+    adapter: Option<std::rc::Rc<dyn std::any::Any>>,
+) -> *mut c_void {
     if state.is_null() || (*state).shutdown_phase != 0 {
         return ptr::null_mut();
     }
     let epoch = (*state).focus_epoch;
-    let created = candidates::meltype_tsf_candidate_create(owner, select);
+    let created = candidates::create(owner, select, adapter);
     if (*state).shutdown_phase != 0 || (*state).focus_epoch != epoch {
         candidates::meltype_tsf_candidate_destroy(created);
         return ptr::null_mut();
@@ -435,11 +443,20 @@ pub unsafe extern "C" fn meltype_tsf_service_create_langbar(
     read: Option<unsafe extern "C" fn(*mut c_void) -> i32>,
     toggle: Option<unsafe extern "C" fn(*mut c_void)>,
 ) -> *mut c_void {
+    create_langbar(state, owner, read, toggle, None)
+}
+unsafe fn create_langbar(
+    state: *mut ServiceState,
+    owner: *mut c_void,
+    read: Option<unsafe extern "C" fn(*mut c_void) -> i32>,
+    toggle: Option<unsafe extern "C" fn(*mut c_void)>,
+    adapter: Option<std::rc::Rc<dyn std::any::Any>>,
+) -> *mut c_void {
     if state.is_null() || (*state).shutdown_phase != 0 {
         return ptr::null_mut();
     }
     let epoch = (*state).focus_epoch;
-    let created = langbar::meltype_tsf_create_langbar(owner, read, toggle);
+    let created = langbar::create(owner, read, toggle, adapter);
     let previous = ptr::addr_of_mut!((*state).langbar).replace(created);
     retire_bar(previous);
     if (*state).shutdown_phase == 0 && (*state).focus_epoch == epoch && (*state).langbar == created
