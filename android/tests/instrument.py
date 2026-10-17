@@ -51,7 +51,7 @@ def main() -> None:
         if artifact.returncode == 0:
             (args.output / name).write_bytes(artifact.stdout)
     result.check_returncode()
-    verify_report(report, 4)
+    verify_report(report, 5)
     if not (args.output / "input-view.png").read_bytes().startswith(b"\x89PNG\r\n\x1a\n"):
         raise RuntimeError("Android preview PNG is missing or invalid")
     if not (args.output / "device.txt").is_file():

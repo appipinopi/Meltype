@@ -155,16 +155,13 @@ fn context_snapshot(
     object: &JObject,
     private: bool,
     pending: JString,
+    scope: Option<(jlong, Option<u64>)>,
 ) -> (String, String, bool) {
     // Private fields never invoke any surrounding-text method.
     if private || object.is_null() {
         return (String::new(), String::new(), false);
     }
-    let mut editor = Connection {
-        env,
-        object,
-        scope: None,
-    };
+    let mut editor = Connection { env, object, scope };
     let result = (|| -> Result<_> {
         let can_delete = editor.before(0)?.is_some();
         let after = editor
@@ -197,11 +194,20 @@ pub extern "system" fn Java_moe_meltype_rust_Native_editorKey(
     private: jboolean,
     pending: JString,
 ) -> jstring {
+    let epoch = service_state::epoch(handle);
     if hardware != 0 && crate::android_input::modifier_key(key) {
         return java_result(&mut env, std::ptr::null_mut());
     }
-    let (before, after, can_delete) =
-        context_snapshot(&mut env, &connection, private != 0, pending);
+    let (before, after, can_delete) = context_snapshot(
+        &mut env,
+        &connection,
+        private != 0,
+        pending,
+        Some((handle, epoch)),
+    );
+    if service_state::epoch(handle) != epoch {
+        return java_result(&mut env, std::ptr::null_mut());
+    }
     meltype_set_can_delete(handle as *mut c_void, i32::from(can_delete));
     let (vk, modifiers) = if hardware != 0 {
         (
@@ -234,10 +240,15 @@ pub extern "system" fn Java_moe_meltype_rust_Native_editorUndo(
     private: jboolean,
     pending: JString,
 ) -> jstring {
+    let epoch = service_state::epoch(handle);
     if private != 0 || connection.is_null() {
         return java_result(&mut env, std::ptr::null_mut());
     }
-    let (before, _, can_delete) = context_snapshot(&mut env, &connection, false, pending);
+    let (before, _, can_delete) =
+        context_snapshot(&mut env, &connection, false, pending, Some((handle, epoch)));
+    if service_state::epoch(handle) != epoch {
+        return java_result(&mut env, std::ptr::null_mut());
+    }
     meltype_set_can_delete(handle as *mut c_void, i32::from(can_delete));
     let result = CString::new(before)
         .ok()
@@ -484,6 +495,7 @@ pub extern "system" fn Java_moe_meltype_rust_Native_editorReconvert(
     private: jboolean,
     composing: jboolean,
 ) -> jstring {
+    let epoch = service_state::epoch(handle);
     if private != 0 || composing != 0 || connection.is_null() {
         return std::ptr::null_mut();
     }
@@ -494,6 +506,9 @@ pub extern "system" fn Java_moe_meltype_rust_Native_editorReconvert(
     };
     let selected = editor.selected();
     editor.clear_exception();
+    if service_state::epoch(handle) != epoch {
+        return std::ptr::null_mut();
+    }
     let selected = selected
         .ok()
         .flatten()

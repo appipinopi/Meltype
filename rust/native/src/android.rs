@@ -6,6 +6,7 @@ use jni::{
     sys::{jboolean, jint, jlong, jstring},
     JNIEnv,
 };
+mod actions;
 mod editor_jni;
 mod input_view;
 mod service_state;

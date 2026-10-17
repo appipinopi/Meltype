@@ -36,4 +36,5 @@ final class Native {
     static native String toggleInputMode(long handle, Object connection);
     static native Object createInputView(Object service);
     static native boolean renderInputView(Object service, String reply);
+    static native void keyboardAction(long handle, Object service, Object connection, int action, int value, int imeOptions);
 }

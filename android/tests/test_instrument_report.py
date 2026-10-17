@@ -6,9 +6,10 @@ from instrument import verify_report
 
 
 class ReportTests(unittest.TestCase):
-    def test_four_completed_tests(self):
-        verify_report("INSTRUMENTATION_STATUS_CODE: 1\nINSTRUMENTATION_STATUS_CODE: 0\n" * 4
-                      + "OK (4 tests)\nINSTRUMENTATION_CODE: -1\n", 4)
+    def test_required_completed_tests(self):
+        for count in (4,5):
+            verify_report("INSTRUMENTATION_STATUS_CODE: 1\nINSTRUMENTATION_STATUS_CODE: 0\n" * count
+                          + f"OK ({count} tests)\nINSTRUMENTATION_CODE: -1\n", count)
 
     def test_empty_success_is_not_a_test_run(self):
         with self.assertRaises(RuntimeError):

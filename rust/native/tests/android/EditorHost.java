@@ -12,10 +12,10 @@ public final class EditorHost {
         String before="",selected="",pending="",after="";
         boolean reject,throwsCommit,throwsRead,unsupported;
         boolean throwsFinish;
-        Runnable onFinish,onCommit;
+        Runnable onFinish,onCommit,onRead,onSelected;
         final List<String> calls=new ArrayList<>();
-        public CharSequence getSelectedText(int flags) {calls.add("selected");return selected;}
-        public CharSequence getTextBeforeCursor(int count,int flags) {calls.add("before:"+count);if(throwsRead)throw new IllegalStateException("test read failure");if(unsupported)return null;return before.substring(Math.max(0,before.length()-count));}
+        public CharSequence getSelectedText(int flags) {calls.add("selected");if(onSelected!=null){Runnable callback=onSelected;onSelected=null;callback.run();}return selected;}
+        public CharSequence getTextBeforeCursor(int count,int flags) {calls.add("before:"+count);if(onRead!=null){Runnable callback=onRead;onRead=null;callback.run();}if(throwsRead)throw new IllegalStateException("test read failure");if(unsupported)return null;return before.substring(Math.max(0,before.length()-count));}
         public CharSequence getTextAfterCursor(int count,int flags){calls.add("after:"+count);return after.substring(0,Math.min(count,after.length()));}
         public boolean beginBatchEdit(){calls.add("begin");return false;}
         public boolean endBatchEdit(){calls.add("end");return false;}

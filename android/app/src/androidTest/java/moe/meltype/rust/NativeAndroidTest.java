@@ -3,6 +3,7 @@
 package moe.meltype.rust;
 
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.text.Editable;
@@ -45,18 +46,26 @@ public final class NativeAndroidTest {
         private TextView preview;
         private LinearLayout candidates;
         private final List<String> clicks=new ArrayList<>();
+        private long session;
+        private Editor editor;
+        private int options;
+        private final List<Intent> intents=new ArrayList<>();
         public Widgets(){super(context(),android.R.style.Theme_Material_Light_NoActionBar);}
-        private View.OnClickListener keyboardCallback(int action,int value){return view->clicks.add(action+":"+value);}
+        private View.OnClickListener keyboardCallback(int action,int value){return view->{
+            clicks.add(action+":"+value);
+            if(session!=0)Native.keyboardAction(session,this,editor,action,value,options);
+        };}
+        @Override public void startActivity(Intent intent){intents.add(intent);}
     }
     public static final class Editor extends BaseInputConnection {
         private final Editable text=Editable.Factory.getInstance().newEditable("");
         int reads,batches;
         final List<KeyEvent> events=new ArrayList<>();
         final List<Integer> actions=new ArrayList<>();
-        Runnable onCommit;
+        Runnable onCommit,onRead;
         Editor(){super(new View(context()),true);Selection.setSelection(text,0);}
         @Override public Editable getEditable(){return text;}
-        @Override public CharSequence getTextBeforeCursor(int count,int flags){reads++;return super.getTextBeforeCursor(count,flags);}
+        @Override public CharSequence getTextBeforeCursor(int count,int flags){reads++;if(onRead!=null){Runnable callback=onRead;onRead=null;callback.run();}return super.getTextBeforeCursor(count,flags);}
         @Override public CharSequence getTextAfterCursor(int count,int flags){reads++;return super.getTextAfterCursor(count,flags);}
         @Override public boolean beginBatchEdit(){batches++;return super.beginBatchEdit();}
         @Override public boolean endBatchEdit(){batches--;return super.endBatchEdit();}
@@ -123,7 +132,7 @@ public final class NativeAndroidTest {
         root.measure(View.MeasureSpec.makeMeasureSpec(1080,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(0,View.MeasureSpec.UNSPECIFIED));
         root.layout(0,0,1080,root.getMeasuredHeight());assertTrue(root.getHeight()>0);
         Bitmap image=Bitmap.createBitmap(root.getWidth(),root.getHeight(),Bitmap.Config.ARGB_8888);
-        root.draw(new Canvas(image));
+        Canvas canvas=new Canvas(image);canvas.drawColor(android.graphics.Color.WHITE);root.draw(canvas);
         int[] pixels=new int[image.getWidth()*image.getHeight()];image.getPixels(pixels,0,image.getWidth(),0,0,image.getWidth(),image.getHeight());
         int painted=0;for(int pixel:pixels)if((pixel>>>24)!=0)painted++;assertTrue("framework preview contains visible pixels",painted>1000);
         File artifacts=new File(context().getFilesDir(),"instrumentation-artifacts");assertTrue(artifacts.isDirectory()||artifacts.mkdirs());
@@ -172,6 +181,44 @@ public final class NativeAndroidTest {
             assertEquals(current.text.toString(),Native.composingText(session));assertTrue((Native.editorFlags(session)&4)!=0);
             assertTrue(new JSONObject(result).getBoolean("consumed"));
             Native.finishInput(session,current,true,Native.composingText(session));assertEquals("にほんご",current.text.toString());
+        }
+    });}
+    private static void press(LinearLayout root,String label) {
+        for(int row=2;row<9;row++) {
+            LinearLayout keys=(LinearLayout)root.getChildAt(row);
+            for(int i=0;i<keys.getChildCount();i++) {
+                Button button=(Button)keys.getChildAt(i);
+                if(button.getText().toString().equals(label)){assertTrue(button.performClick());return;}
+            }
+        }
+        fail("missing keyboard button: "+label);
+    }
+    private static void keys(LinearLayout root,String letters){for(char letter:letters.toCharArray())press(root,String.valueOf(letter));}
+    private static void candidate(Widgets service,String label) {
+        for(int i=0;i<service.candidates.getChildCount();i++) {
+            Button button=(Button)service.candidates.getChildAt(i);
+            if(button.getText().toString().equals(label)){assertTrue(button.performClick());return;}
+        }
+        fail("missing candidate: "+label);
+    }
+    @Test public void realButtonDispatchUsesRustActionsAndFrameworkEditor() throws Throwable {ui(()->{
+        try(Profile profile=new Profile()) {
+            Widgets service=new Widgets();service.session=profile.session;service.editor=new Editor();service.options=6;
+            LinearLayout root=(LinearLayout)Native.createInputView(service);assertNotNull(root);
+            keys(root,"konnichiha");press(root,"確定/↵");assertEquals("こんにちは",service.editor.text.toString());
+            assertTrue(service.editor.actions.isEmpty());press(root,"確定/↵");assertEquals(java.util.Collections.singletonList(6),service.editor.actions);
+            press(root,"あ/A");press(root,"⇧");press(root,"a");press(root,"a");assertEquals("こんにちはAa",service.editor.text.toString());
+            press(root,"あ/A");Native.startInput(profile.session,1,0);service.editor=new Editor();
+            keys(root,"hashi");press(root,"変換/空白");candidate(service,"箸");assertEquals("箸",service.editor.text.toString());
+            Native.control(profile.session,"{\"op\":\"settings_set\",\"name\":\"PredictiveCandidates\",\"value\":true}");
+            Native.control(profile.session,"{\"op\":\"dictionary_set\",\"reading\":\"めるたいぷ\",\"word\":\"Meltype\"}");
+            Native.startInput(profile.session,1,0);service.editor=new Editor();keys(root,"meru");candidate(service,"Meltype");assertEquals("Meltype",service.editor.text.toString());
+            Native.startInput(profile.session,1,0);service.editor=new Editor();keys(root,"nihongo");press(root,"設定");
+            assertEquals("にほんご",service.editor.text.toString());assertEquals(1,service.intents.size());
+            assertEquals(SettingsActivity.class.getName(),service.intents.get(0).getComponent().getClassName());
+            assertTrue((service.intents.get(0).getFlags()&Intent.FLAG_ACTIVITY_NEW_TASK)!=0);
+            Native.startInput(profile.session,1,0);service.editor=new Editor();service.editor.onRead=()->Native.startInput(profile.session,0x81,0);
+            press(root,"a");assertEquals("",service.editor.text.toString());assertEquals(3,Native.editorFlags(profile.session));assertEquals(1,service.editor.reads);
         }
     });}
 }

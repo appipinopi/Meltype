@@ -118,6 +118,9 @@ pub extern "system" fn Java_moe_meltype_rust_Native_editorFlags(
     _class: JClass,
     handle: jlong,
 ) -> jint {
+    flags(handle)
+}
+pub(super) fn flags(handle: jlong) -> i32 {
     states()
         .lock()
         .unwrap_or_else(|e| e.into_inner())
