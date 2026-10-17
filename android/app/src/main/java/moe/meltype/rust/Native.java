@@ -27,4 +27,11 @@ final class Native {
     static native boolean selectionChanged(long handle, Object connection, boolean composing, int start, int end, int composingEnd);
     static native String finishInput(long handle, Object connection, boolean composing, String composingText);
     static native String editorReconvert(long handle, Object connection, boolean privateInput, boolean composing);
+    static native int editorFlags(long handle);
+    static native String composingText(long handle);
+    static native String editorView(long handle);
+    static native void toggleShift(long handle);
+    static native int takeShiftedScalar(long handle, int scalar);
+    static native void toggleDirect(long handle);
+    static native String toggleInputMode(long handle, Object connection);
 }

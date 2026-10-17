@@ -7,6 +7,7 @@ use jni::{
     JNIEnv,
 };
 mod editor_jni;
+mod service_state;
 #[no_mangle]
 pub extern "system" fn Java_moe_meltype_rust_Native_startInput(
     _env: JNIEnv,
@@ -23,6 +24,7 @@ pub extern "system" fn Java_moe_meltype_rust_Native_startInput(
     let flags = crate::android_input::field_flags(input_type, ime_options);
     meltype_set_private(handle, (flags >> 1) & 1);
     meltype_set_direct(handle, flags & 1);
+    service_state::start(handle as jlong, flags);
     flags
 }
 #[no_mangle]
@@ -77,7 +79,9 @@ pub extern "system" fn Java_moe_meltype_rust_Native_create(
     let Ok(directory) = CString::new(String::from(directory)) else {
         return 0;
     };
-    unsafe { meltype_create_at(directory.as_ptr()) as jlong }
+    let handle = unsafe { meltype_create_at(directory.as_ptr()) as jlong };
+    service_state::create(handle);
+    handle
 }
 #[no_mangle]
 pub extern "system" fn Java_moe_meltype_rust_Native_control(
@@ -113,6 +117,7 @@ pub extern "system" fn Java_moe_meltype_rust_Native_destroy(
     _class: JClass,
     handle: jlong,
 ) {
+    service_state::destroy(handle);
     meltype_destroy(handle as *mut c_void);
 }
 #[no_mangle]
@@ -225,6 +230,7 @@ pub extern "system" fn Java_moe_meltype_rust_Native_reset(
     _class: JClass,
     handle: jlong,
 ) -> jstring {
+    service_state::clear(handle);
     java_result(&mut env, meltype_reset(handle as *mut c_void))
 }
 #[no_mangle]
@@ -246,6 +252,7 @@ pub extern "system" fn Java_moe_meltype_rust_Native_direct(
     handle: jlong,
     enabled: jboolean,
 ) {
+    service_state::direct(handle, enabled != 0);
     meltype_set_direct(handle as *mut c_void, enabled as i32);
 }
 #[no_mangle]
@@ -255,5 +262,6 @@ pub extern "system" fn Java_moe_meltype_rust_Native_privateInput(
     handle: jlong,
     enabled: jboolean,
 ) {
+    service_state::private(handle, enabled != 0);
     meltype_set_private(handle as *mut c_void, enabled as i32);
 }

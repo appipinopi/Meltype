@@ -27,9 +27,21 @@ fn reset_session(handle: jlong) {
 struct Connection<'a, 'b, 'c> {
     env: &'a mut JNIEnv<'b>,
     object: &'a JObject<'c>,
+    scope: Option<(jlong, Option<u64>)>,
 }
 impl Connection<'_, '_, '_> {
+    fn current(&self) -> Result<()> {
+        if self
+            .scope
+            .is_some_and(|(handle, epoch)| service_state::epoch(handle) != epoch)
+        {
+            Err(EditorError)
+        } else {
+            Ok(())
+        }
+    }
     fn surrounding(&mut self, method: &str, count: i32) -> Result<Option<Vec<u16>>> {
+        self.current()?;
         let text = self
             .env
             .call_method(
@@ -66,6 +78,7 @@ impl Connection<'_, '_, '_> {
         result
     }
     fn boolean(&mut self, name: &str, signature: &str, args: &[JValue<'_, '_>]) -> Result<bool> {
+        self.current()?;
         self.env
             .call_method(self.object, name, signature, args)
             .and_then(|v| v.z())
@@ -89,6 +102,7 @@ impl Connection<'_, '_, '_> {
 }
 impl Editor for Connection<'_, '_, '_> {
     fn selected(&mut self) -> Result<Option<Vec<u16>>> {
+        self.current()?;
         let text = self
             .env
             .call_method(
@@ -111,7 +125,10 @@ impl Editor for Connection<'_, '_, '_> {
     fn end(&mut self) -> Result<()> {
         // An editor exception must not prevent balancing the batch.
         self.clear_exception();
+        // Balance this old editor's batch even after the field generation changed.
+        let scope = self.scope.take();
         let result = self.boolean("endBatchEdit", "()Z", &[]).map(|_| ());
+        self.scope = scope;
         self.clear_exception();
         result
     }
@@ -143,7 +160,11 @@ fn context_snapshot(
     if private || object.is_null() {
         return (String::new(), String::new(), false);
     }
-    let mut editor = Connection { env, object };
+    let mut editor = Connection {
+        env,
+        object,
+        scope: None,
+    };
     let result = (|| -> Result<_> {
         let can_delete = editor.before(0)?.is_some();
         let after = editor
@@ -240,6 +261,7 @@ pub extern "system" fn Java_moe_meltype_rust_Native_softwareFallback(
     let mut editor = Connection {
         env: &mut env,
         object: &connection,
+        scope: None,
     };
     let result = (|| -> Result<bool> {
         if scalar > 0 {
@@ -300,6 +322,7 @@ pub extern "system" fn Java_moe_meltype_rust_Native_applyEditor(
     json: JString,
     pending: JString,
 ) -> jstring {
+    let epoch = service_state::epoch(handle);
     let outcome = std::panic::catch_unwind(AssertUnwindSafe(|| {
         if connection.is_null() {
             return android_editor::Outcome::failure(false);
@@ -310,6 +333,7 @@ pub extern "system" fn Java_moe_meltype_rust_Native_applyEditor(
         let mut editor = Connection {
             env: &mut env,
             object: &connection,
+            scope: Some((handle, epoch)),
         };
         let pending = match editor.units(pending.into()) {
             Ok(Some(value)) => value,
@@ -323,9 +347,10 @@ pub extern "system" fn Java_moe_meltype_rust_Native_applyEditor(
         outcome
     }))
     .unwrap_or_else(|_| android_editor::Outcome::failure(false));
-    if outcome.reset {
+    if outcome.reset && service_state::epoch(handle) == epoch {
         reset_session(handle);
     }
+    let outcome = service_state::publish(handle, epoch, &outcome);
     outcome_string(&mut env, &outcome)
 }
 fn outcome_string(env: &mut JNIEnv, outcome: &android_editor::Outcome) -> jstring {
@@ -338,6 +363,40 @@ fn outcome_string(env: &mut JNIEnv, outcome: &android_editor::Outcome) -> jstrin
     env.new_string(text)
         .map(|v| v.into_raw())
         .unwrap_or(std::ptr::null_mut())
+}
+#[no_mangle]
+pub extern "system" fn Java_moe_meltype_rust_Native_toggleInputMode(
+    mut env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    connection: JObject,
+) -> jstring {
+    let epoch = service_state::epoch(handle);
+    let pending: Vec<_> = service_state::pending(handle).encode_utf16().collect();
+    let reply = unsafe { take(meltype_commit(handle as *mut c_void)) };
+    let outcome = if connection.is_null() {
+        android_editor::Outcome::failure(false)
+    } else {
+        let mut editor = Connection {
+            env: &mut env,
+            object: &connection,
+            scope: Some((handle, epoch)),
+        };
+        let outcome = reply.map_or_else(
+            || android_editor::Outcome::failure(false),
+            |reply| android_editor::apply(&mut editor, &reply, &pending),
+        );
+        editor.clear_exception();
+        outcome
+    };
+    if service_state::epoch(handle) == epoch {
+        if outcome.reset {
+            reset_session(handle);
+        }
+        service_state::toggle_direct(handle);
+    }
+    let outcome = service_state::publish(handle, epoch, &outcome);
+    outcome_string(&mut env, &outcome)
 }
 #[no_mangle]
 pub extern "system" fn Java_moe_meltype_rust_Native_selectionChanged(
@@ -356,11 +415,13 @@ pub extern "system" fn Java_moe_meltype_rust_Native_selectionChanged(
     let Some(_ending) = Ending::enter(handle) else {
         return 0;
     };
+    service_state::clear(handle);
     reset_session(handle);
     if !connection.is_null() {
         let mut editor = Connection {
             env: &mut env,
             object: &connection,
+            scope: None,
         };
         let _ = editor.finish();
         editor.clear_exception();
@@ -376,6 +437,7 @@ pub extern "system" fn Java_moe_meltype_rust_Native_finishInput(
     composing: jboolean,
     pending: JString,
 ) -> jstring {
+    let epoch = service_state::epoch(handle);
     let Some(_ending) = Ending::enter(handle) else {
         return outcome_string(&mut env, &android_editor::Outcome::failure(false));
     };
@@ -390,6 +452,7 @@ pub extern "system" fn Java_moe_meltype_rust_Native_finishInput(
         let mut editor = Connection {
             env: &mut env,
             object: &connection,
+            scope: Some((handle, epoch)),
         };
         let result = match (reply, editor.units(pending.into())) {
             (Some(reply), Ok(Some(pending))) => {
@@ -401,12 +464,15 @@ pub extern "system" fn Java_moe_meltype_rust_Native_finishInput(
         result
     }))
     .unwrap_or_else(|_| android_editor::Outcome::failure(false));
-    reset_session(handle);
+    if service_state::epoch(handle) == epoch {
+        reset_session(handle);
+    }
     // Ending input invalidates the old view even if a host rejects a write.
     let mut outcome = outcome;
     outcome.composing = false;
     outcome.composing_text.clear();
     outcome.view = None;
+    let outcome = service_state::publish(handle, epoch, &outcome);
     outcome_string(&mut env, &outcome)
 }
 #[no_mangle]
@@ -424,6 +490,7 @@ pub extern "system" fn Java_moe_meltype_rust_Native_editorReconvert(
     let mut editor = Connection {
         env: &mut env,
         object: &connection,
+        scope: None,
     };
     let selected = editor.selected();
     editor.clear_exception();

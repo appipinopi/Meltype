@@ -17,8 +17,9 @@ with tempfile.TemporaryDirectory(prefix="meltype-jni-host-") as output:
         str(root / "rust/native/tests/android/ContextHost.java"),
         str(root / "rust/native/tests/android/KeyEvent.java"),
         str(root / "rust/native/tests/android/LifecycleHost.java"),
+        str(root / "rust/native/tests/android/StateHost.java"),
     ], check=True)
-    for host in sys.argv[2:] or ["LifecycleHost", "ContextHost", "InputHost", "EditorHost"]:
+    for host in sys.argv[2:] or ["StateHost", "LifecycleHost", "ContextHost", "InputHost", "EditorHost"]:
         subprocess.run([
             "java", "-Xcheck:jni", f"-Djava.library.path={library}", "-cp", output,
             f"moe.meltype.rust.{host}",

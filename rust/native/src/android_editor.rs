@@ -42,7 +42,7 @@ struct View {
     #[serde(default, rename = "predictions")]
     _predictions: Option<Vec<String>>,
 }
-#[derive(Serialize, Debug)]
+#[derive(Clone, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct Outcome {
     pub consumed: bool,

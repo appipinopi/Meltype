@@ -21,11 +21,6 @@ import org.json.JSONObject;
 /** Android lifecycle and editor bridge; conversion and state live in Rust. */
 public final class MeltypeService extends InputMethodService {
     private long session;
-    private boolean direct;
-    private boolean shifted;
-    private boolean composing;
-    private boolean privateEditor;
-    private String composingText = "";
     private LinearLayout candidates;
     private TextView preview;
 
@@ -33,15 +28,12 @@ public final class MeltypeService extends InputMethodService {
     @Override public void onDestroy() { Native.destroy(session); session = 0; super.onDestroy(); }
     @Override public void onStartInput(EditorInfo info, boolean restarting) {
         super.onStartInput(info, restarting);
-        int fieldFlags = Native.startInput(session, info.inputType, info.imeOptions);
-        composing = false; shifted = false; composingText = "";
-        direct = (fieldFlags & 1) != 0;
-        privateEditor = (fieldFlags & 2) != 0;
+        Native.startInput(session, info.inputType, info.imeOptions);
         if (preview != null) preview.setText("");
         if (candidates != null) candidates.removeAllViews();
     }
     @Override public void onFinishInput() {
-        render(Native.finishInput(session,getCurrentInputConnection(),composing,composingText));
+        render(Native.finishInput(session,getCurrentInputConnection(),composing(),Native.composingText(session)));
         super.onFinishInput();
     }
     @Override public boolean onEvaluateFullscreenMode() { return false; }
@@ -53,14 +45,13 @@ public final class MeltypeService extends InputMethodService {
         for (String letters : new String[]{"qwertyuiop", "asdfghjkl", "zxcvbnm", "1234567890", "-.,!?@/"}) {
             LinearLayout row = new LinearLayout(this);
             for (char letter : letters.toCharArray()) add(row, String.valueOf(letter), () -> {
-                int scalar = shifted ? Character.toUpperCase(letter) : letter;
-                softwareKey(0, scalar); shifted = false;
+                softwareKey(0, Native.takeShiftedScalar(session,letter));
             });
             root.addView(row);
         }
         LinearLayout actions = new LinearLayout(this);
-        add(actions, "⇧", () -> { shifted = !shifted; });
-        add(actions, "あ/A", () -> { apply(Native.commit(session)); direct = !direct; Native.direct(session, direct); });
+        add(actions, "⇧", () -> { Native.toggleShift(session); });
+        add(actions, "あ/A", () -> render(Native.toggleInputMode(session,getCurrentInputConnection())));
         add(actions, "⌫", () -> softwareKey(8,0));
         add(actions, "変換/空白", () -> softwareKey(32,32));
         add(actions, "確定/↵", () -> softwareKey(13,0));
@@ -75,14 +66,14 @@ public final class MeltypeService extends InputMethodService {
         add(tools, "→", () -> softwareKey(0x27,0));
         add(tools, "縮める", () -> apply(key(0x25,0,1)));
         add(tools, "伸ばす", () -> apply(key(0x27,0,1)));
-        add(tools, "戻す", () -> { if (!privateEditor) apply(Native.editorUndo(session,getCurrentInputConnection(),privateEditor,composing ? composingText : "")); });
+        add(tools, "戻す", () -> { if (!privateEditor()) apply(Native.editorUndo(session,getCurrentInputConnection(),privateEditor(),Native.composingText(session))); });
         add(tools, "再変換", () -> {
-            String reply = Native.editorReconvert(session,getCurrentInputConnection(),privateEditor,composing);
+            String reply = Native.editorReconvert(session,getCurrentInputConnection(),privateEditor(),composing());
             if (reply != null && !apply(reply) && preview != null)
                 preview.setText("読みが見つかりません");
         });
         add(tools, "設定", () -> { apply(Native.commit(session)); startActivity(new Intent(this,SettingsActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); });
-        root.addView(tools); return root;
+        root.addView(tools); render(Native.editorView(session)); return root;
     }
     private void add(LinearLayout row, String label, Runnable action) {
         Button button = new Button(this); button.setText(label); button.setMinWidth(0); button.setMinimumWidth(0); button.setPadding(1,1,1,1);
@@ -98,32 +89,30 @@ public final class MeltypeService extends InputMethodService {
     @Override public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (Native.isModifierKey(keyCode)) return super.onKeyDown(keyCode,event);
         String reply = Native.editorKey(session,getCurrentInputConnection(),keyCode,event.getUnicodeChar(),
-                event.getMetaState(),true,privateEditor,composing ? composingText : "");
+                event.getMetaState(),true,privateEditor(),Native.composingText(session));
         return apply(reply) || super.onKeyDown(keyCode,event);
     }
     private String key(int vk, int scalar, int modifiers) {
         return Native.editorKey(session,getCurrentInputConnection(),vk,scalar,modifiers,false,
-                privateEditor,composing ? composingText : "");
+                privateEditor(),Native.composingText(session));
     }
     @Override public void onUpdateSelection(int oldStart,int oldEnd,int newStart,int newEnd,int candidatesStart,int candidatesEnd) {
         super.onUpdateSelection(oldStart,oldEnd,newStart,newEnd,candidatesStart,candidatesEnd);
-        if (Native.selectionChanged(session,getCurrentInputConnection(),composing,newStart,newEnd,candidatesEnd)) {
-            composing = false; composingText = "";
-            if (preview != null) preview.setText("");
-            if (candidates != null) candidates.removeAllViews();
+        if (Native.selectionChanged(session,getCurrentInputConnection(),composing(),newStart,newEnd,candidatesEnd)) {
+            render(Native.editorView(session));
         }
     }
+    private boolean composing() { return (Native.editorFlags(session) & 4) != 0; }
+    private boolean privateEditor() { return (Native.editorFlags(session) & 2) != 0; }
     private boolean apply(String json) {
         InputConnection connection = getCurrentInputConnection(); if (connection == null) return false;
-        return render(Native.applyEditor(session, connection, json, composing ? composingText : ""));
+        return render(Native.applyEditor(session, connection, json, Native.composingText(session)));
     }
     private boolean render(String json) {
         try {
             JSONObject result = new JSONObject(json);
-            composing = result.getBoolean("composing");
-            composingText = result.getString("composingText");
             JSONObject view = result.optJSONObject("view");
-            if (preview != null) preview.setText(composingText);
+            if (preview != null) preview.setText(result.getString("composingText"));
             if (candidates != null) {
                 candidates.removeAllViews();
                 if (view != null) {
