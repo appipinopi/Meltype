@@ -7,6 +7,57 @@ use jni::{
     JNIEnv,
 };
 mod editor_jni;
+#[no_mangle]
+pub extern "system" fn Java_moe_meltype_rust_Native_startInput(
+    _env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    input_type: jint,
+    ime_options: jint,
+) -> jint {
+    let handle = handle as *mut c_void;
+    unsafe {
+        meltype_free(meltype_reset(handle).cast());
+    }
+    meltype_set_can_delete(handle, 0);
+    let flags = crate::android_input::field_flags(input_type, ime_options);
+    meltype_set_private(handle, (flags >> 1) & 1);
+    meltype_set_direct(handle, flags & 1);
+    flags
+}
+#[no_mangle]
+pub extern "system" fn Java_moe_meltype_rust_Native_isModifierKey(
+    _env: JNIEnv,
+    _class: JClass,
+    key: jint,
+) -> jboolean {
+    u8::from(crate::android_input::modifier_key(key))
+}
+#[no_mangle]
+pub extern "system" fn Java_moe_meltype_rust_Native_androidKey<'a>(
+    mut env: JNIEnv<'a>,
+    class: JClass<'a>,
+    handle: jlong,
+    key: jint,
+    scalar: jint,
+    meta: jint,
+    before: JString<'a>,
+    after: JString<'a>,
+) -> jstring {
+    if crate::android_input::modifier_key(key) {
+        return java_result(&mut env, std::ptr::null_mut());
+    }
+    Java_moe_meltype_rust_Native_keyContext(
+        env,
+        class,
+        handle,
+        crate::android_input::virtual_key(key),
+        scalar,
+        crate::android_input::modifiers(meta),
+        before,
+        after,
+    )
+}
 fn java_result(env: &mut JNIEnv, result: *mut c_char) -> jstring {
     let text = unsafe { take(result) }
         .unwrap_or_else(|| "{\"consumed\":false,\"commits\":[],\"view\":null}".into());

@@ -455,6 +455,8 @@ pub unsafe extern "C" fn meltype_free(pointer: *mut c_void) {
 mod android;
 #[cfg(any(target_os = "android", feature = "android-jni-test"))]
 mod android_editor;
+#[cfg(any(target_os = "android", feature = "android-jni-test"))]
+mod android_input;
 
 #[cfg(test)]
 mod tests {

@@ -13,6 +13,11 @@ with tempfile.TemporaryDirectory(prefix="meltype-jni-host-") as output:
         "javac", "-encoding", "UTF-8", "--release", "17", "-d", output,
         str(root / "android/app/src/main/java/moe/meltype/rust/Native.java"),
         str(root / "rust/native/tests/android/EditorHost.java"),
+        str(root / "rust/native/tests/android/InputHost.java"),
+    ], check=True)
+    subprocess.run([
+        "java", "-Xcheck:jni", f"-Djava.library.path={library}", "-cp", output,
+        "moe.meltype.rust.InputHost",
     ], check=True)
     subprocess.run([
         "java", "-Xcheck:jni", f"-Djava.library.path={library}", "-cp", output,

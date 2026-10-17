@@ -5,7 +5,6 @@ package moe.meltype.rust;
 import android.content.Intent;
 import android.inputmethodservice.InputMethodService;
 import android.os.Build;
-import android.text.InputType;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
@@ -34,20 +33,10 @@ public final class MeltypeService extends InputMethodService {
     @Override public void onDestroy() { Native.destroy(session); session = 0; super.onDestroy(); }
     @Override public void onStartInput(EditorInfo info, boolean restarting) {
         super.onStartInput(info, restarting);
-        Native.reset(session); composing = false; shifted = false;
-        Native.canDelete(session, false);
-        int kind = info.inputType & InputType.TYPE_MASK_CLASS;
-        int variation = info.inputType & InputType.TYPE_MASK_VARIATION;
-        boolean password = kind == InputType.TYPE_CLASS_TEXT && (
-            variation == InputType.TYPE_TEXT_VARIATION_PASSWORD || variation == InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD ||
-            variation == InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD) ||
-            kind == InputType.TYPE_CLASS_NUMBER && variation == InputType.TYPE_NUMBER_VARIATION_PASSWORD;
-        boolean privateInput = password || (info.imeOptions & EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING) != 0;
-        privateEditor = privateInput;
-        composingText = "";
-        Native.privateInput(session, privateInput);
-        direct = password || kind == InputType.TYPE_CLASS_NUMBER || kind == InputType.TYPE_CLASS_PHONE || kind == InputType.TYPE_CLASS_DATETIME;
-        Native.direct(session, direct);
+        int fieldFlags = Native.startInput(session, info.inputType, info.imeOptions);
+        composing = false; shifted = false; composingText = "";
+        direct = (fieldFlags & 1) != 0;
+        privateEditor = (fieldFlags & 2) != 0;
         if (preview != null) preview.setText("");
         if (candidates != null) candidates.removeAllViews();
     }
@@ -122,25 +111,13 @@ public final class MeltypeService extends InputMethodService {
         }
     }
     @Override public boolean onKeyDown(int keyCode, KeyEvent event) {
-        int vk = switch (keyCode) {
-            case KeyEvent.KEYCODE_DEL -> 8; case KeyEvent.KEYCODE_ENTER -> 13;
-            case KeyEvent.KEYCODE_SPACE -> 32; case KeyEvent.KEYCODE_ESCAPE -> 27;
-            case KeyEvent.KEYCODE_DPAD_UP -> 38; case KeyEvent.KEYCODE_DPAD_DOWN -> 40;
-            case KeyEvent.KEYCODE_DPAD_LEFT -> 37; case KeyEvent.KEYCODE_DPAD_RIGHT -> 39;
-            case KeyEvent.KEYCODE_TAB -> 9;
-            case KeyEvent.KEYCODE_F6 -> 0x75; case KeyEvent.KEYCODE_F7 -> 0x76;
-            case KeyEvent.KEYCODE_F8 -> 0x77; case KeyEvent.KEYCODE_F9 -> 0x78; case KeyEvent.KEYCODE_F10 -> 0x79;
-            case KeyEvent.KEYCODE_MINUS -> 0xbd; case KeyEvent.KEYCODE_EQUALS -> 0xbb;
-            case KeyEvent.KEYCODE_LEFT_BRACKET -> 0xdb; case KeyEvent.KEYCODE_RIGHT_BRACKET -> 0xdd;
-            case KeyEvent.KEYCODE_BACKSLASH -> 0xdc; case KeyEvent.KEYCODE_SEMICOLON -> 0xba;
-            case KeyEvent.KEYCODE_APOSTROPHE -> 0xde; case KeyEvent.KEYCODE_GRAVE -> 0xc0;
-            case KeyEvent.KEYCODE_COMMA -> 0xbc; case KeyEvent.KEYCODE_PERIOD -> 0xbe; case KeyEvent.KEYCODE_SLASH -> 0xbf;
-            default -> keyCode >= KeyEvent.KEYCODE_A && keyCode <= KeyEvent.KEYCODE_Z ? 0x41 + keyCode - KeyEvent.KEYCODE_A :
-                    keyCode >= KeyEvent.KEYCODE_0 && keyCode <= KeyEvent.KEYCODE_9 ? 0x30 + keyCode - KeyEvent.KEYCODE_0 : 0;
-        };
-        if (KeyEvent.isModifierKey(keyCode)) return super.onKeyDown(keyCode,event);
-        int mods = (event.isShiftPressed()?1:0) | (event.isCtrlPressed()?2:0) | (event.isAltPressed()?4:0) | (event.isMetaPressed()?8:0);
-        return apply(key(vk,event.getUnicodeChar(),mods)) || super.onKeyDown(keyCode,event);
+        if (Native.isModifierKey(keyCode)) return super.onKeyDown(keyCode,event);
+        InputConnection connection = getCurrentInputConnection();
+        Native.canDelete(session, connection != null && !privateEditor && connection.getTextBeforeCursor(0,0) != null);
+        CharSequence after = connection == null || privateEditor ? "" : connection.getTextAfterCursor(4000,0);
+        String reply = Native.androidKey(session, keyCode, event.getUnicodeChar(), event.getMetaState(),
+                beforeCursor(), after == null ? "" : after.toString());
+        return apply(reply) || super.onKeyDown(keyCode,event);
     }
     private String beforeCursor() {
         InputConnection connection = getCurrentInputConnection();

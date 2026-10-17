@@ -18,4 +18,7 @@ final class Native {
     static native void privateInput(long handle, boolean enabled);
     static native void canDelete(long handle, boolean enabled);
     static native String applyEditor(long handle, Object connection, String reply, String composingText);
+    static native int startInput(long handle, int inputType, int imeOptions);
+    static native boolean isModifierKey(int keyCode);
+    static native String androidKey(long handle, int keyCode, int scalar, int metaState, String before, String after);
 }

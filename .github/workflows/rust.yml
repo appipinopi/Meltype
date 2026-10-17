@@ -276,6 +276,7 @@ jobs:
       - name: Rust Android editor through a checked JVM JNI host
         run: |
           cargo clippy -p meltype-native --all-targets --features android-jni-test --locked -- -D warnings
+          cargo test -p meltype-native --lib --features android-jni-test --locked
           cargo build -p meltype-native --features android-jni-test --locked
           python3 rust/native/tests/android_editor_smoke.py target/debug
       - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018'
