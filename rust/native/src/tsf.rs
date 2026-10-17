@@ -10,6 +10,7 @@ mod commit_request;
 mod commits;
 mod composition;
 mod composition_owner;
+mod core_link;
 mod edit_events;
 mod edit_session;
 mod factory;

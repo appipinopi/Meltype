@@ -239,6 +239,24 @@ struct RustOpenChangeCallbacks {
     void (__cdecl *update)(void*,unsigned int,int);
 };
 HRESULT RustOpenChanged(REFGUID,const RustOpenChangeCallbacks&);
+struct RustCoreStateCallbacks {
+    void* owner;IUnknown* lifetime;const unsigned long long* epoch;
+    unsigned int (__cdecl *read)(void*,unsigned long long*);
+    void (__cdecl *update)(void*,unsigned int,unsigned long long);
+    void (__cdecl *hello)(void*);
+    int (__cdecl *request)(void*,const char*,unsigned int*);
+    unsigned long long (__cdecl *clock)(void*);
+};
+struct RustCoreRequestCallbacks {
+    void* owner;IUnknown* lifetime;const unsigned long long* epoch;
+    unsigned int (__cdecl *read)(void*);
+    int (__cdecl *transact)(void*,const unsigned char*,unsigned int,unsigned int,int,const unsigned char**,unsigned int*);
+    int (__cdecl *parse)(void*,const unsigned char*,unsigned int);
+    void (__cdecl *notice)(void*);
+};
+bool RustCoreReady(const RustCoreStateCallbacks&);
+void RustCoreHello(const std::wstring&,const RustCoreStateCallbacks&);
+bool RustCoreRequest(const std::string&,DWORD,bool,const RustCoreRequestCallbacks&);
 #endif
 
 // 文字コードの変換

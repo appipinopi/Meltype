@@ -190,6 +190,7 @@ private:
     unsigned long long modeEpoch_ = 0;
     unsigned int shutdownPhase_ = 0;
     RustFocusCallbacks FocusCallbacks();
+    RustCoreStateCallbacks CoreCallbacks();
 #else
     bool eatenDown_[256] = {};
     struct Reinjected {

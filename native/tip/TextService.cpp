@@ -882,12 +882,19 @@ bool TextService::ContextDisabled(ITfContext* context) {
 }
 
 bool TextService::ServerReady() {
+#ifdef MELTYPE_RUST_CORE
+    return RustCoreReady(CoreCallbacks());
+#else
     if (disabled_) return false;
     if (!serverActive_ && GetTickCount64() - lastHello_ > 2000) Hello();
     return serverActive_;
+#endif
 }
 
 void TextService::Hello() {
+#ifdef MELTYPE_RUST_CORE
+    RustCoreHello(ProcessName(),CoreCallbacks());
+#else
     lastHello_ = GetTickCount64();
     JsonValue reply;
     serverActive_ = Request("{\"op\":\"hello\",\"process\":" + JsonString(ProcessName()) + "}", reply) && reply[L"active"].Bool();
@@ -896,7 +903,28 @@ void TextService::Hello() {
     // コードエディター・ターミナルのアプリなら、キャレットが動くたびに入力モードの表示を合わせる (QueryMode)
     codeApp_ = serverActive_ && reply[L"code"].Bool();
     TipLog(L"Meltype.exe: %s", serverActive_ ? L"つながりました" : L"使えません (動いていない・モードが Meltype IME でない)");
+#endif
 }
+
+#ifdef MELTYPE_RUST_CORE
+RustCoreStateCallbacks TextService::CoreCallbacks() {
+    return {
+        this,static_cast<ITfTextInputProcessorEx*>(this),&focusEpoch_,
+        [](void* p,unsigned long long* last)->unsigned int {auto* s=static_cast<TextService*>(p);*last=s->lastHello_;return (s->disabled_?1u:0u)|(s->serverActive_?2u:0u)|(s->deactivated_?4u:0u);},
+        [](void* p,unsigned int op,unsigned long long value) {auto* s=static_cast<TextService*>(p);try {switch (op) {
+            case 0:s->lastHello_=value;break;
+            case 1:s->serverActive_=(value&1)!=0;s->directDetection_=(value&2)!=0;s->codeApp_=(value&4)!=0;s->directEnglishWord_=false;break;
+            case 2:TipLog(L"Meltype.exe: %s",value?L"つながりました":L"使えません (動いていない・モードが Meltype IME でない)");break;
+        }}catch (...) {}},
+        [](void* p) {try {static_cast<TextService*>(p)->Hello();}catch (...) {}},
+        [](void* p,const char* json,unsigned int* flags)->int {try {JsonValue reply;
+            if (!static_cast<TextService*>(p)->Request(json,reply)) return 0;
+            *flags=(reply[L"active"].Bool()?1u:0u)|(reply[L"directDetection"].Bool()?2u:0u)|(reply[L"code"].Bool()?4u:0u);return 1;
+        }catch (...) {return 0;}},
+        nullptr,
+    };
+}
+#endif
 
 void TextService::ForgetSecretField() {
 #ifdef MELTYPE_RUST_CORE
@@ -1557,6 +1585,25 @@ void TextService::Reinject(UINT vk) {
 }
 
 bool TextService::Request(const std::string& json, JsonValue& reply, DWORD timeoutMs, bool optional) {
+#ifdef MELTYPE_RUST_CORE
+    struct RequestOwner {TextService* service;JsonValue* reply;std::string response;} owner{this,&reply};
+    RustCoreRequestCallbacks callbacks={
+        &owner,static_cast<ITfTextInputProcessorEx*>(this),&focusEpoch_,
+        [](void* p)->unsigned int {auto* s=static_cast<RequestOwner*>(p)->service;return (s->deactivated_?4u:0u)|(s->ownProcess_?8u:0u);},
+        [](void* p,const unsigned char* data,unsigned int length,unsigned int timeout,int optional,const unsigned char** response,unsigned int* count)->int {
+            auto* o=static_cast<RequestOwner*>(p);try {
+                std::string request=length?std::string(reinterpret_cast<const char*>(data),length):std::string{};
+                if (!o->service->pipe_.Transact(request,o->response,timeout,optional!=0) || o->response.size()>UINT_MAX) return 0;
+                *response=reinterpret_cast<const unsigned char*>(o->response.data());*count=static_cast<unsigned int>(o->response.size());return 1;
+            }catch (...) {return 0;}
+        },
+        [](void* p,const unsigned char* data,unsigned int length)->int {try {
+            auto* o=static_cast<RequestOwner*>(p);return ParseJson(length?std::string(reinterpret_cast<const char*>(data),length):std::string{},*o->reply)?1:0;
+        }catch (...) {return 0;}},
+        [](void*) {try {TipLog(L"応答を読めません");}catch (...) {}},
+    };
+    return RustCoreRequest(json,timeoutMs,optional,callbacks);
+#else
     if (deactivated_) return false;
     std::string response;
     // Meltype.exe 自身の中: どのスレッドからの要求かを付ける (画面のスレッドからなら、Meltype.exe はそのスレッドを待たずに処理する。
@@ -1572,6 +1619,7 @@ bool TextService::Request(const std::string& json, JsonValue& reply, DWORD timeo
         return false;
     }
     return true;
+#endif
 }
 
 void TextService::SurroundingText(TfEditCookie ec, ITfContext* context, std::wstring& before, std::wstring& after) {

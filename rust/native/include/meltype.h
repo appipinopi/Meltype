@@ -487,6 +487,39 @@ typedef struct MeltypeTsfOpenChangeCallbacks {
    2 refresh bar,3 log mode. Nested notices supersede old work; phase!=0 skips.
    Activation must advance the mode epoch. Returns HRESULT. */
 int32_t meltype_tsf_open_changed(const void *guid,const MeltypeTsfOpenChangeCallbacks *callbacks);
+typedef struct MeltypeTsfCoreStateCallbacks {
+    void *owner,*lifetime;
+    const uint64_t *epoch;
+    uint32_t (*read)(void *,uint64_t *last_hello);
+    void (*update)(void *,uint32_t operation,uint64_t value);
+    void (*hello)(void *);
+    int32_t (*request)(void *,const char *,uint32_t *flags);
+    uint64_t (*clock)(void *);
+} MeltypeTsfCoreStateCallbacks;
+/* TSF thread; epoch/code/storage valid while lifetime is retained. Callbacks
+   never throw. read flags disabled=1,active=2,ended=4 plus last hello time.
+   Optional clock substitutes Windows uptime. hello performs the refresh.
+   Ready refreshes inactive state after strictly more than 2000ms.
+   Hello process is readable UTF16 (null only for empty). request returns success
+   plus active=1,detection=2,code=4. update 0 stores timestamp,1 publishes normalized
+   flags/clears direct word,2 logs active(value). Stale epochs do not publish. */
+int32_t meltype_tsf_core_ready(const MeltypeTsfCoreStateCallbacks *callbacks);
+int32_t meltype_tsf_core_hello(const uint16_t *process,uint32_t length,const MeltypeTsfCoreStateCallbacks *callbacks);
+typedef struct MeltypeTsfCoreRequestCallbacks {
+    void *owner,*lifetime;
+    const uint64_t *epoch;
+    uint32_t (*read)(void *);
+    int32_t (*transact)(void *,const uint8_t *,uint32_t,uint32_t timeout,int32_t optional,const uint8_t **reply,uint32_t *length);
+    int32_t (*parse)(void *,const uint8_t *,uint32_t);
+    void (*notice)(void *);
+} MeltypeTsfCoreRequestCallbacks;
+/* Same thread/lifetime/no-throw contract. Input readable for length bytes, null
+   only for zero length. read flags ended=4,own process=8. transact forwards
+   timeout/optional; returned reply bytes stay borrowed through parse. parse copies
+   the reply into caller's value and returns success. notice logs parse failure.
+   Own-process requests retain the original thread-id byte insertion rule.
+   Stale/ended replies are skipped. No borrowed stack survives this call. */
+int32_t meltype_tsf_core_request(const uint8_t *input,uint32_t length,uint32_t timeout,int32_t optional,const MeltypeTsfCoreRequestCallbacks *callbacks);
 #endif
 #ifdef __cplusplus
 }

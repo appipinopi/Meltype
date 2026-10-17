@@ -98,6 +98,9 @@ struct RustApi {
     int (__cdecl *jsonVisit)(const unsigned char*,unsigned int,void*,RustJsonEmit) = nullptr;
     char* (__cdecl *jsonQuote)(const unsigned short*,unsigned int) = nullptr;
     HRESULT (__cdecl *openChanged)(const GUID*,const RustOpenChangeCallbacks*) = nullptr;
+    int (__cdecl *coreReady)(const RustCoreStateCallbacks*) = nullptr;
+    int (__cdecl *coreHello)(const unsigned short*,unsigned int,const RustCoreStateCallbacks*) = nullptr;
+    int (__cdecl *coreRequest)(const unsigned char*,unsigned int,unsigned int,int,const RustCoreRequestCallbacks*) = nullptr;
     RustApi() {
         wchar_t path[32768];
         const DWORD size = GetModuleFileNameW(g_module, path, ARRAYSIZE(path));
@@ -193,6 +196,9 @@ struct RustApi {
         jsonVisit = reinterpret_cast<decltype(jsonVisit)>(GetProcAddress(module, "meltype_json_visit"));
         jsonQuote = reinterpret_cast<decltype(jsonQuote)>(GetProcAddress(module, "meltype_json_quote"));
         openChanged = reinterpret_cast<decltype(openChanged)>(GetProcAddress(module, "meltype_tsf_open_changed"));
+        coreReady = reinterpret_cast<decltype(coreReady)>(GetProcAddress(module, "meltype_tsf_core_ready"));
+        coreHello = reinterpret_cast<decltype(coreHello)>(GetProcAddress(module, "meltype_tsf_core_hello"));
+        coreRequest = reinterpret_cast<decltype(coreRequest)>(GetProcAddress(module, "meltype_tsf_core_request"));
     }
     bool ready() const { return create && destroy && request && freeText; }
     // The module stays loaded for the process lifetime. Do not unload Rust
@@ -317,6 +323,13 @@ bool RustJsonVisit(const std::string& text,void* owner,RustJsonEmit emit) {
 HRESULT RustOpenChanged(REFGUID guid,const RustOpenChangeCallbacks& callbacks) {
     return api().openChanged?api().openChanged(&guid,&callbacks):E_NOINTERFACE;
 }
+bool RustCoreReady(const RustCoreStateCallbacks& callbacks) {return api().coreReady && api().coreReady(&callbacks)!=0;}
+void RustCoreHello(const std::wstring& process,const RustCoreStateCallbacks& callbacks) {
+    if (api().coreHello && process.size()<=UINT_MAX) api().coreHello(reinterpret_cast<const unsigned short*>(process.data()),static_cast<unsigned int>(process.size()),&callbacks);
+}
+bool RustCoreRequest(const std::string& request,DWORD timeout,bool optional,const RustCoreRequestCallbacks& callbacks) {
+    return request.size()<=UINT_MAX && api().coreRequest && api().coreRequest(reinterpret_cast<const unsigned char*>(request.data()),static_cast<unsigned int>(request.size()),timeout,optional?1:0,&callbacks)!=0;
+}
 std::string RustJsonQuote(const std::wstring& text) {
     if (text.size()>UINT_MAX || !api().jsonQuote || !api().freeText) return {};
     char* quoted=api().jsonQuote(reinterpret_cast<const unsigned short*>(text.data()),static_cast<unsigned int>(text.size()));
@@ -396,7 +409,7 @@ bool RustWouldEat(ITfContext* context,UINT key,LPARAM message,bool test,const Ru
     ch=0;
     return api().wouldEat && api().wouldEat(context,key,static_cast<ULONG_PTR>(message),test?1:0,&callbacks,&ch)!=0;
 }
-void* RustKeyStateCreate() {return api().keyStateCreate && api().keyStateReset && api().keyStateDestroy && api().keyCacheClear && api().isReinjected && api().keySecret && api().reinject && api().keyForeground && api().keyStaleRead && api().keyStaleWrite && api().keyStaleClear && api().keyPassed && api().keyEvent && api().toggleMode && api().codeLine && api().queryMode && api().applyMode && api().handleKey && api().commit && api().selectCandidate && api().applyReply && api().applyOwnedComposition && api().writeOwnedCommit && api().endOwnedComposition && api().compositionTerminated && api().resumeOrCommit && api().abandonComposition && api().documentFocus && api().foregroundFocus && api().shutdown && api().startup && api().jsonVisit && api().jsonQuote && api().openChanged ? api().keyStateCreate() : nullptr;}
+void* RustKeyStateCreate() {return api().keyStateCreate && api().keyStateReset && api().keyStateDestroy && api().keyCacheClear && api().isReinjected && api().keySecret && api().reinject && api().keyForeground && api().keyStaleRead && api().keyStaleWrite && api().keyStaleClear && api().keyPassed && api().keyEvent && api().toggleMode && api().codeLine && api().queryMode && api().applyMode && api().handleKey && api().commit && api().selectCandidate && api().applyReply && api().applyOwnedComposition && api().writeOwnedCommit && api().endOwnedComposition && api().compositionTerminated && api().resumeOrCommit && api().abandonComposition && api().documentFocus && api().foregroundFocus && api().shutdown && api().startup && api().jsonVisit && api().jsonQuote && api().openChanged && api().coreReady && api().coreHello && api().coreRequest ? api().keyStateCreate() : nullptr;}
 void RustKeyStateReset(void* state) {if (api().keyStateReset) api().keyStateReset(state);}
 void RustKeyStateDestroy(void* state) {if (api().keyStateDestroy) api().keyStateDestroy(state);}
 void RustKeyCacheClear(void* state) {if (api().keyCacheClear) api().keyCacheClear(state);}
