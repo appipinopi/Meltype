@@ -208,6 +208,43 @@ pub extern "C" fn meltype_destroy(handle: *mut c_void) {
 }
 
 unsafe fn external_conversion(reading: &str, before: *const c_char) -> (Vec<Clause>, Vec<String>) {
+    let spans = meltype_core::protection::scan(reading);
+    let callbacks = CALLBACKS
+        .lock()
+        .map(|c| c.clauses.is_some() || c.candidates.is_some())
+        .unwrap_or(false);
+    let backend = MOZC.lock().map(|m| m.is_some()).unwrap_or(false);
+    if spans.is_empty() || !callbacks && !backend {
+        return external_conversion_unprotected(reading, before);
+    }
+    let mut segments = Vec::new();
+    let mut offset = 0;
+    for (start, end, protected) in spans
+        .iter()
+        .map(|span| (span.start, span.end, true))
+        .chain(std::iter::once((reading.len(), reading.len(), false)))
+    {
+        if offset < start {
+            let gap = &reading[offset..start];
+            let (clauses, candidates) = external_conversion_unprotected(gap, before);
+            if clauses.is_empty() {
+                segments.push(Clause::new(gap.to_owned(), candidates));
+            } else {
+                segments.extend(clauses);
+            }
+        }
+        if protected {
+            let text = reading[start..end].to_owned();
+            segments.push(Clause::new(text.clone(), vec![text]));
+        }
+        offset = end;
+    }
+    (segments, Vec::new())
+}
+unsafe fn external_conversion_unprotected(
+    reading: &str,
+    before: *const c_char,
+) -> (Vec<Clause>, Vec<String>) {
     let mut external = Vec::new();
     let mut segments = Vec::new();
     if let Ok(mut mozc) = MOZC.lock() {

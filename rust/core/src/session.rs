@@ -338,7 +338,7 @@ impl Session {
         } else if let Some(fix) = self.romaji_fix() {
             fix.kana
         } else {
-            romaji::hiragana(&self.raw, true)
+            crate::protection::transform(&self.raw, |part| romaji::hiragana(part, true))
         }
     }
     fn refresh_kana(&mut self) {

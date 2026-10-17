@@ -63,7 +63,6 @@ with tempfile.TemporaryDirectory(prefix="meltype-macos-protected-converter-") as
         assert not callbacks,"protected tail sent to external converter"
         assert actual["view"] is None and [edit["text"] for edit in actual["commits"]]==["きょうは「@kuraido "],actual
     finally:api.meltype_destroy(handle)
-api.meltype_init(None,None,None)
 print("macOS protected-tail converter bypass passed")
 
 with tempfile.TemporaryDirectory(prefix="meltype-macos-converter-fallback-") as directory:
@@ -71,8 +70,12 @@ with tempfile.TemporaryDirectory(prefix="meltype-macos-converter-fallback-") as 
     handle=api.meltype_macos_create_at(directory.encode())
     try:
         for ch in "kyouha「@kuraido」ashita":result(api.meltype_macos_handle_key(handle,ord(ch.upper()) if ch.isascii() and ch.isalpha() else 7,ord(ch),0,None,None))
+        callbacks.clear()
         result(api.meltype_macos_handle_key(handle,32,32,0,None,None))
+        assert callbacks and all(b"@" not in reading for reading in callbacks), callbacks
         actual=result(api.meltype_macos_handle_key(handle,13,0,0,None,None))
         assert [edit["text"] for edit in actual["commits"]]==["きょうは「@kuraido」あした"],actual
     finally:api.meltype_destroy(handle)
 print("macOS missing-converter complete-reading fallback passed")
+
+api.meltype_init(None,None,None)
