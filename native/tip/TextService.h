@@ -103,7 +103,13 @@ public:
 
     // 入力モード (日本語 = 開いている / 英数 = 閉じている)。タスクバーのボタンから使う。
     // コードエディターのコードの行では、IME は開いたまま、次に打つキーが英数のままアプリに通るので「A」と出す
-    bool IsOpen() const { return open_ && !codeEnglish_; }
+    bool IsOpen() const {
+#ifdef MELTYPE_RUST_CORE
+        return (RustServiceMode(state_.value)&5)==1;
+#else
+        return open_ && !codeEnglish_;
+#endif
+    }
     void SetOpen(bool open);
     // 半角/全角・タスクバーのボタン: 表示している 日本語 ⇔ 英数 を切り替える (context が null ならフォーカスのある入力欄)
     void ToggleInputMode(ITfContext* context);

@@ -17,7 +17,10 @@ from tsf_subscriptions_smoke import SubscriptionHost
 from tsf_candidate_smoke import windows, user
 from tsf_candidate_view_smoke import GeometryHost
 from tsf_abandoned_smoke import DeferredHost
+from tsf_fields_smoke import CompartmentHost,OPEN
+from tsf_service_com_smoke import DISPATCH,DESTROY
 SELECT=c.CFUNCTYPE(None,c.c_void_p,c.c_int,c.c_int)
+NOTICE=c.CFUNCTYPE(None,c.c_void_p,c.c_int)
 READ=c.CFUNCTYPE(c.c_int,c.c_void_p)
 TOGGLE=c.CFUNCTYPE(None,c.c_void_p)
 class Point(c.Structure):
@@ -93,6 +96,11 @@ class StateTests(unittest.TestCase):
         cls.api.meltype_tsf_service_initialize.argtypes=[P,U32,c.c_int,c.c_int,c.c_char_p];cls.api.meltype_tsf_service_initialize.restype=c.c_int
         cls.api.meltype_tsf_service_clear_resume.argtypes=[P];cls.api.meltype_tsf_service_clear_resume.restype=None
         cls.api.meltype_tsf_service_edit_sink.argtypes=[P,P,P,P];cls.api.meltype_tsf_service_edit_sink.restype=HR
+        cls.api.meltype_tsf_service_mode.argtypes=[P];cls.api.meltype_tsf_service_mode.restype=U32
+        cls.api.meltype_tsf_service_write_open.argtypes=[P,c.c_int];cls.api.meltype_tsf_service_write_open.restype=c.c_int
+        cls.api.meltype_tsf_service_apply_mode.argtypes=[P,U32,P,P,NOTICE];cls.api.meltype_tsf_service_apply_mode.restype=c.c_int
+        cls.api.meltype_tsf_service_com_create.argtypes=[P,DISPATCH,DESTROY];cls.api.meltype_tsf_service_com_create.restype=P
+
         cls.api.meltype_tsf_key_state_create.restype=P
         cls.api.meltype_tsf_key_stale_write.argtypes=[P,U32,U32,c.c_uint64]
         cls.api.meltype_tsf_key_stale_read.argtypes=[P,c.POINTER(Stale)]
@@ -529,5 +537,80 @@ class StateTests(unittest.TestCase):
                 self.assertEqual(state.edit_subscription,old)
         finally:self.edit_sink(state,host,False)
         host.verify(self)
+    def test_mode_all_state_reply_combinations_preserve_unrelated_fields(self):
+        state=self.create();host=SubscriptionHost();address=c.addressof(state);notices=[]
+        @NOTICE
+        def notice(owner,english):
+            self.assertEqual(owner,123);self.assertEqual(state.code_english,bool(english))
+            notices.append(english)
+        for before in range(16):
+            for reply in range(32):
+                state.open=bool(before&1);state.code_app=bool(before&2);state.code_english=bool(before&4);state.server_active=bool(before&8)
+                self.assertEqual(self.api.meltype_tsf_service_mode(address),before)
+                notices.clear();code=reply&3==3;english=code and bool(reply&4)
+                self.assertEqual(self.api.meltype_tsf_service_apply_mode(address,reply,c.byref(host.context),123,notice),1)
+                expected=(before&9)|(2 if code else 0)|(4 if english else 0)
+                self.assertEqual(self.api.meltype_tsf_service_mode(address),expected)
+                self.assertEqual(notices,[int(english)] if bool(before&4)!=english else [])
+        host.verify(self)
+    def test_mode_state_is_published_before_notice_and_bar_update(self):
+        state=self.create();host=SubscriptionHost();address=c.addressof(state);events=[]
+        bar,_=self.create_bar(state)
+        refs,updates=self.advise_bar(bar,on_update=lambda:events.append(('ui',state.code_app,state.code_english)))
+        @NOTICE
+        def notice(_,english):events.append(('notice',state.code_app,state.code_english))
+        self.assertEqual(self.api.meltype_tsf_service_apply_mode(address,7,c.byref(host.context),None,notice),1)
+        self.assertEqual(events,[('notice',True,True),('ui',True,True)])
+        self.assertEqual(updates,[7]);events.clear()
+        self.assertEqual(self.api.meltype_tsf_service_apply_mode(address,7,c.byref(host.context),None,notice),1)
+        self.assertEqual(events,[])
+        self.assertEqual(self.api.meltype_tsf_service_apply_mode(address,0,c.byref(host.context),None,NOTICE()),1)
+        self.assertEqual(events,[('ui',False,False)])
+        self.api.meltype_tsf_service_remove_langbar(address,None);self.assertEqual(refs,[1]);host.verify(self)
+    def test_mode_dispatch_pin_keeps_service_alive_through_notice_and_ui(self):
+        state=self.create();address=c.addressof(state);destroyed=[];root=[None];events=[]
+        @DISPATCH
+        def dispatch(_owner,_call):return 0
+        @DESTROY
+        def destroy(_owner):
+            self.owned.remove(address);self.api.meltype_tsf_service_state_destroy(address);destroyed.append(True)
+        root[0]=self.api.meltype_tsf_service_com_create(None,dispatch,destroy);self.assertTrue(root[0])
+        bar,_=self.create_bar(state)
+        refs,updates=self.advise_bar(bar,on_update=lambda:events.append(('ui',self.live())))
+        @NOTICE
+        def notice(_,english):
+            old=root[0];root[0]=None;self.assertEqual(release(old),1)
+            self.assertEqual(destroyed,[]);events.append(('notice',self.live()))
+        try:self.assertEqual(self.api.meltype_tsf_service_apply_mode(address,7,root[0],None,notice),1)
+        finally:
+            if root[0]:release(root[0])
+        self.assertEqual(events,[('notice',self.before+1),('ui',self.before+1)])
+        self.assertEqual(destroyed,[True]);self.assertEqual(refs,[1]);self.assertEqual(updates,[7])
+    def test_mode_reentrant_notice_preserves_nested_update(self):
+        state=self.create();host=SubscriptionHost();address=c.addressof(state);events=[]
+        @NOTICE
+        def notice(_,english):
+            events.append(english)
+            if english:self.api.meltype_tsf_service_apply_mode(address,1,c.byref(host.context),None,notice)
+        self.assertEqual(self.api.meltype_tsf_service_apply_mode(address,7,c.byref(host.context),None,notice),1)
+        self.assertEqual(events,[1,0]);self.assertFalse(state.code_app);self.assertFalse(state.code_english);host.verify(self)
+    def test_write_open_uses_service_client_and_survives_state_destruction(self):
+        state=self.create();address=c.addressof(state);host=CompartmentHost();state.manager=c.addressof(host.context);state.client=17
+        self.assertEqual(self.api.meltype_tsf_service_write_open(address,0),1)
+        self.assertEqual(host.writes_mode,[(bytes(OPEN),17,0)])
+        def destroy():
+            self.owned.remove(address);self.api.meltype_tsf_service_state_destroy(address)
+        host.on_write=destroy
+        self.assertEqual(self.api.meltype_tsf_service_write_open(address,99),1)
+        self.assertEqual(host.writes_mode[-1],(bytes(OPEN),17,1));host.verify(self)
+    def test_mode_null_inputs_do_not_mutate_state_or_notify(self):
+        state=self.create();address=c.addressof(state);before=c.string_at(address,c.sizeof(State));events=[]
+        notice=NOTICE(lambda *_:events.append(1))
+        self.assertEqual(self.api.meltype_tsf_service_apply_mode(address,7,None,None,notice),0)
+        self.assertEqual(self.api.meltype_tsf_service_apply_mode(None,7,None,None,notice),0)
+        self.assertEqual(c.string_at(address,c.sizeof(State)),before);self.assertEqual(events,[])
+        self.assertEqual(self.api.meltype_tsf_service_mode(None),0)
+        self.assertEqual(self.api.meltype_tsf_service_write_open(None,1),0)
+        self.assertEqual(self.api.meltype_tsf_service_write_open(address,1),0)
 if __name__=='__main__':unittest.main(argv=[sys.argv[0]],verbosity=2,failfast=True)
 

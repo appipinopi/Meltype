@@ -332,11 +332,11 @@ pub unsafe extern "C" fn meltype_tsf_query_mode(
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct ApplyCallbacks {
-    owner: *mut c_void,
-    lifetime: *mut c_void,
-    read: unsafe extern "C" fn(*mut c_void) -> u32,
-    write: unsafe extern "C" fn(*mut c_void, u32),
-    notify: unsafe extern "C" fn(*mut c_void, i32),
+    pub(super) owner: *mut c_void,
+    pub(super) lifetime: *mut c_void,
+    pub(super) read: unsafe extern "C" fn(*mut c_void) -> u32,
+    pub(super) write: unsafe extern "C" fn(*mut c_void, u32),
+    pub(super) notify: unsafe extern "C" fn(*mut c_void, i32),
 }
 /// Normalize the core mode response, publish both fields before notifying UI.
 /// # Safety

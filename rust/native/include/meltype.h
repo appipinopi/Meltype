@@ -550,6 +550,12 @@ void meltype_tsf_service_clear_resume(void *state);
 /* TSF-thread edit subscription replacement. Lifetime pins the service/state;
    document and edit sink are borrowed SDK interfaces. Null document detaches.
    Reentrant replacement/end invalidates and cleans up a late subscription. */
+/* Mode flags open=1,code app=2,code English=4,server active=8; TSF thread.
+   Write-open captures manager/client before COM. Apply-mode pins lifetime and
+   publishes normalized code flags before optional synchronous notice and UI. */
+uint32_t meltype_tsf_service_mode(const void *state);
+int32_t meltype_tsf_service_write_open(void *state,int32_t open);
+int32_t meltype_tsf_service_apply_mode(void *state,uint32_t reply,void *lifetime,void *context,void (*notice)(void *,int32_t));
 int32_t meltype_tsf_service_edit_sink(void *state,void *document,void *lifetime,void *sink);
 int32_t meltype_tsf_service_set_sid(void *state,const char *sid);
 const char *meltype_tsf_service_sid(const void *state);

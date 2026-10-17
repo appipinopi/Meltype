@@ -3,7 +3,7 @@
 //! Rust-owned TSF state storage. Temporary C++ aliases use a checked C layout.
 //! Raw COM/subscription slots retain their TSF lifecycle ownership policy.
 //! Key/resume/abandoned state, SID, transport and UI tokens are freed by Drop.
-use super::{abandoned, candidates, fields, key_state, langbar, recovery, subscriptions};
+use super::{abandoned, candidates, fields, key_state, langbar, mode, recovery, subscriptions};
 use std::{
     alloc::{alloc, Layout},
     ffi::{c_char, c_void, CStr, CString},
@@ -143,6 +143,85 @@ impl Drop for ServiceState {
             close_transport(self);
         }
     }
+}
+/// Current mode bits: open=1, code app=2, code English=4, server active=8.
+/// # Safety
+/// State is null or live on its TSF thread; no callbacks occur.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_tsf_service_mode(state: *const ServiceState) -> u32 {
+    if state.is_null() {
+        return 0;
+    }
+    u32::from((*state).open)
+        | (u32::from((*state).code_app) << 1)
+        | (u32::from((*state).code_english) << 2)
+        | (u32::from((*state).server_active) << 3)
+}
+/// # Safety
+/// State is null or live on its TSF thread at entry. Manager/client are captured
+/// before compartment COM callbacks; no subsequent state access occurs.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_tsf_service_write_open(
+    state: *mut ServiceState,
+    open: i32,
+) -> i32 {
+    if state.is_null() {
+        return 0;
+    }
+    let manager = (*state).manager;
+    let client = (*state).client;
+    fields::meltype_tsf_write_open(manager, client, open)
+}
+struct ModeOwner {
+    state: *mut ServiceState,
+    context: *mut c_void,
+    notice: Option<unsafe extern "C" fn(*mut c_void, i32)>,
+}
+unsafe extern "C" fn mode_read(owner: *mut c_void) -> u32 {
+    meltype_tsf_service_mode((*owner.cast::<ModeOwner>()).state)
+}
+unsafe extern "C" fn mode_write(owner: *mut c_void, flags: u32) {
+    let state = (*owner.cast::<ModeOwner>()).state;
+    (*state).code_app = flags & 2 != 0;
+    (*state).code_english = flags & 4 != 0;
+}
+unsafe extern "C" fn mode_notify(owner: *mut c_void, english: i32) {
+    let owner = &*owner.cast::<ModeOwner>();
+    if let Some(notice) = owner.notice {
+        notice(owner.context, english);
+    }
+    // apply_mode holds the service lifetime even if notice releases the caller.
+    meltype_tsf_service_update_langbar(owner.state);
+}
+/// Normalize reply bits active=1,code=2,English=4 and publish before UI updates.
+/// Only a change in normalized code English sends a notice and refreshes the bar.
+/// # Safety
+/// Live state/context on their TSF thread, pinned by borrowed lifetime IUnknown.
+/// Optional notice is synchronous, cannot unwind or retain its stack arguments.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_tsf_service_apply_mode(
+    state: *mut ServiceState,
+    reply: u32,
+    lifetime: *mut c_void,
+    context: *mut c_void,
+    notice: Option<unsafe extern "C" fn(*mut c_void, i32)>,
+) -> i32 {
+    if state.is_null() || lifetime.is_null() {
+        return 0;
+    }
+    let mut owner = ModeOwner {
+        state,
+        context,
+        notice,
+    };
+    let callbacks = mode::ApplyCallbacks {
+        owner: ptr::addr_of_mut!(owner).cast(),
+        lifetime,
+        read: mode_read,
+        write: mode_write,
+        notify: mode_notify,
+    };
+    mode::meltype_tsf_apply_mode(reply, &callbacks)
 }
 unsafe fn release_interface(raw: *mut c_void) {
     if !raw.is_null() {

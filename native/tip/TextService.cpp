@@ -855,10 +855,10 @@ STDMETHODIMP TextService::OnChange(REFGUID guid) {
 }
 
 void TextService::SetOpen(bool open) {
-    if (threadMgr_ == nullptr) return;
 #ifdef MELTYPE_RUST_CORE
-    RustWriteOpen(threadMgr_,clientId_,open);
+    RustServiceWriteOpen(state_.value,open);
 #else
+    if (threadMgr_ == nullptr) return;
     ITfCompartmentMgr* compartments = nullptr;
     if (FAILED(threadMgr_->QueryInterface(IID_ITfCompartmentMgr, reinterpret_cast<void**>(&compartments)))) return;
     ITfCompartment* openClose = nullptr;
@@ -1428,7 +1428,7 @@ void TextService::ToggleInputMode(ITfContext* context) {
 RustModeCallbacks TextService::ModeCallbacks() {
     return {
         this,ServiceInterface<ITfTextInputProcessorEx>(),
-        [](void* p)->unsigned int {auto* s=static_cast<TextService*>(p);return (s->open_?1u:0u)|(s->codeApp_?2u:0u)|(s->codeEnglish_?4u:0u)|(s->serverActive_?8u:0u);},
+        [](void* p)->unsigned int {return RustServiceMode(static_cast<TextService*>(p)->state_.value);},
         [](void* p)->int {try {return static_cast<TextService*>(p)->ServerReady()?1:0;}catch (...) {return 0;}},
         [](void* p,unsigned int ec,void* c)->int {try {return static_cast<TextService*>(p)->IsSecretField(ec,static_cast<ITfContext*>(c))?1:0;}catch (...) {return 1;}},
         [](void* p,int open) {try {static_cast<TextService*>(p)->SetOpen(open!=0);}catch (...) {}},
@@ -1534,13 +1534,9 @@ std::string TextService::PendingPassed() {
 
 void TextService::ApplyMode(const JsonValue& reply) {
 #ifdef MELTYPE_RUST_CORE
-    RustModeApplyCallbacks callbacks={
-        this,ServiceInterface<ITfTextInputProcessorEx>(),
-        [](void* p)->unsigned int {auto* s=static_cast<TextService*>(p);return (s->codeApp_?2u:0u)|(s->codeEnglish_?4u:0u);},
-        [](void* p,unsigned int flags) {auto* s=static_cast<TextService*>(p);s->codeApp_=(flags&2)!=0;s->codeEnglish_=(flags&4)!=0;},
-        [](void* p,int english) {auto* s=static_cast<TextService*>(p);TipLog(L"入力モードの表示: %s",english?L"英数 (コードの行)":L"日本語");s->UpdateLangBar();},
-    };
-    RustApplyMode((reply[L"active"].Bool()?1u:0u)|(reply[L"code"].Bool()?2u:0u)|(reply[L"english"].Bool()?4u:0u),callbacks);
+    RustServiceApplyMode(state_.value,(reply[L"active"].Bool()?1u:0u)|(reply[L"code"].Bool()?2u:0u)|(reply[L"english"].Bool()?4u:0u),
+        ServiceInterface<ITfTextInputProcessorEx>(),nullptr,
+        [](void*,int english) {TipLog(L"入力モードの表示: %s",english?L"英数 (コードの行)":L"日本語");});
 #else
     bool active = reply[L"active"].Bool();
     codeApp_ = active && reply[L"code"].Bool();
