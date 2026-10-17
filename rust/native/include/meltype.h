@@ -232,6 +232,23 @@ typedef struct MeltypeTsfKeyEntry {
    Down callbacks/lifetime/context are borrowed on their TSF thread and must
    survive until return; never throw. Up events need no callbacks/context. */
 int32_t meltype_tsf_key_event(void *state, uint32_t kind, void *context, uint32_t key, uint64_t message, const MeltypeTsfKeyEntry *entry);
+typedef struct MeltypeTsfModeCallbacks {
+    void *owner,*lifetime;
+    uint32_t (*read)(void *); /* open=1, code application=2, code English=4 */
+    int32_t (*ready)(void *);
+    int32_t (*secret)(void *, uint32_t cookie, void *context);
+    void (*set_open)(void *, int32_t open);
+    int32_t (*request)(void *, const char *json); /* apply reply, return active && consumed */
+    void (*notice)(void *, int32_t japanese);
+} MeltypeTsfModeCallbacks;
+/* Borrowed TSF interfaces, valid UTF-8 metadata {sid:string,process:string} and
+   non-null callback functions on their TSF thread. All callbacks must not throw.
+   Pins owner/context across focus, read-session and core callbacks. Toggle
+   resolves focus only for a null context. Code-line null context always fails.
+   A refused synchronous read uses the core's tracked line; password fields
+   never read surrounding text or send toggle requests. */
+int32_t meltype_tsf_toggle_mode(void *context, void *thread_manager, void *key_state, uint32_t client, const char *metadata, const MeltypeTsfModeCallbacks *callbacks);
+int32_t meltype_tsf_code_line(void *context, void *key_state, uint32_t client, const char *metadata, const MeltypeTsfModeCallbacks *callbacks, int32_t japanese);
 #endif
 #ifdef __cplusplus
 }

@@ -1187,6 +1187,10 @@ void TextService::HandleKey(ITfContext* context, UINT vk, wchar_t ch) {
 }
 
 void TextService::ToggleInputMode(ITfContext* context) {
+#ifdef MELTYPE_RUST_CORE
+    const std::string metadata="{\"sid\":\""+sid_+"\",\"process\":"+JsonString(ProcessName())+"}";
+    RustToggleMode(context,threadMgr_,keyState_,clientId_,metadata,ModeCallbacks());
+#else
     Microsoft::WRL::ComPtr<ITfContext> focused;
     if (context == nullptr && threadMgr_ != nullptr) {
         Microsoft::WRL::ComPtr<ITfDocumentMgr> documentMgr;
@@ -1202,9 +1206,35 @@ void TextService::ToggleInputMode(ITfContext* context) {
     // 英数 → 日本語。コードの行なら、その行だけ日本語にする (改行・別の行に移ると英数に戻る)
     if (!open_) SetOpen(true);
     if (codeApp_ && codeEnglish_) SetCodeLine(context, true);
+#endif
 }
 
+#ifdef MELTYPE_RUST_CORE
+RustModeCallbacks TextService::ModeCallbacks() {
+    return {
+        this,static_cast<ITfTextInputProcessorEx*>(this),
+        [](void* p)->unsigned int {auto* s=static_cast<TextService*>(p);return (s->open_?1u:0u)|(s->codeApp_?2u:0u)|(s->codeEnglish_?4u:0u);},
+        [](void* p)->int {try {return static_cast<TextService*>(p)->ServerReady()?1:0;}catch (...) {return 0;}},
+        [](void* p,unsigned int ec,void* c)->int {try {return static_cast<TextService*>(p)->IsSecretField(ec,static_cast<ITfContext*>(c))?1:0;}catch (...) {return 1;}},
+        [](void* p,int open) {try {static_cast<TextService*>(p)->SetOpen(open!=0);}catch (...) {}},
+        [](void* p,const char* text)->int {
+            try {
+                auto* s=static_cast<TextService*>(p);JsonValue reply;
+                if (!s->Request(text,reply)) return 0;
+                s->ApplyMode(reply);
+                return reply[L"active"].Bool() && reply[L"consumed"].Bool()?1:0;
+            }catch (...) {return 0;}
+        },
+        [](void*,int japanese) {TipLog(L"コードの行: %s",japanese?L"日本語にしました":L"英数に戻しました");},
+    };
+}
+#endif
+
 bool TextService::SetCodeLine(ITfContext* context, bool japanese) {
+#ifdef MELTYPE_RUST_CORE
+    const std::string metadata="{\"sid\":\""+sid_+"\",\"process\":"+JsonString(ProcessName())+"}";
+    return RustCodeLine(context,keyState_,clientId_,metadata,ModeCallbacks(),japanese);
+#else
     if (context == nullptr || ContextDisabled(context) || !ServerReady()) return false;
     std::string request = "{\"op\":\"toggle\",\"sid\":\"" + sid_ + "\",\"process\":" + JsonString(ProcessName()) +
                           ",\"japanese\":" + (japanese ? "true" : "false") + PendingPassed();
@@ -1226,6 +1256,7 @@ bool TextService::SetCodeLine(ITfContext* context, bool japanese) {
     bool done = reply[L"active"].Bool() && reply[L"consumed"].Bool();
     if (done) TipLog(L"コードの行: %s", japanese ? L"日本語にしました" : L"英数に戻しました");
     return done;
+#endif
 }
 
 void TextService::QueryMode(TfEditCookie ec, ITfContext* context, bool selectionChanged) {

@@ -136,6 +136,7 @@ private:
 #ifdef MELTYPE_RUST_CORE
     int ReadSecretForKey(ITfContext*,UINT,bool);
     HRESULT DispatchKey(unsigned int,ITfContext*,UINT,LPARAM,BOOL*);
+    RustModeCallbacks ModeCallbacks();
 #endif
     void ResetStaleCommit();
     std::string CommitRequest(bool moved) const;

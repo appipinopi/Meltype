@@ -256,7 +256,7 @@ pub unsafe extern "C" fn meltype_tsf_would_eat(
                 }
                 update(c.owner, 2, 0, 0);
             }
-            if !(0x21..=0x7e).contains(&ch) && !(vk == 0x20 && modifiers() & SHIFT != 0) {
+            if !((0x21..=0x7e).contains(&ch) || vk == 0x20 && modifiers() & SHIFT != 0) {
                 return false;
             }
             if ready(c.owner) == 0 {

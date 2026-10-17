@@ -130,6 +130,17 @@ void RustKeyStaleWrite(void*,unsigned int,unsigned int,unsigned long long);
 void RustKeyStaleClear(void*);
 bool RustKeyPassedRead(void*,bool,bool,RustKeyPassed&);
 bool RustKeyEvent(void*,unsigned int,ITfContext*,UINT,LPARAM,const RustKeyEntry&);
+struct RustModeCallbacks {
+    void* owner;IUnknown* lifetime;
+    unsigned int (__cdecl *read)(void*);
+    int (__cdecl *ready)(void*);
+    int (__cdecl *secret)(void*,unsigned int,void*);
+    void (__cdecl *setOpen)(void*,int);
+    int (__cdecl *request)(void*,const char*);
+    void (__cdecl *notice)(void*,int);
+};
+bool RustToggleMode(ITfContext*,ITfThreadMgr*,void*,TfClientId,const std::string&,const RustModeCallbacks&);
+bool RustCodeLine(ITfContext*,void*,TfClientId,const std::string&,const RustModeCallbacks&,bool);
 #endif
 
 // 文字コードの変換

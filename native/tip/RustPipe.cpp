@@ -76,6 +76,8 @@ struct RustApi {
     void (__cdecl *keyStaleClear)(void*) = nullptr;
     int (__cdecl *keyPassed)(void*,int,int,RustKeyPassed*) = nullptr;
     int (__cdecl *keyEvent)(void*,unsigned int,void*,unsigned int,unsigned long long,const RustKeyEntry*) = nullptr;
+    int (__cdecl *toggleMode)(void*,void*,void*,unsigned int,const char*,const RustModeCallbacks*) = nullptr;
+    int (__cdecl *codeLine)(void*,void*,unsigned int,const char*,const RustModeCallbacks*,int) = nullptr;
     RustApi() {
         wchar_t path[32768];
         const DWORD size = GetModuleFileNameW(g_module, path, ARRAYSIZE(path));
@@ -149,6 +151,8 @@ struct RustApi {
         keyStaleClear = reinterpret_cast<decltype(keyStaleClear)>(GetProcAddress(module, "meltype_tsf_key_stale_clear"));
         keyPassed = reinterpret_cast<decltype(keyPassed)>(GetProcAddress(module, "meltype_tsf_key_passed"));
         keyEvent = reinterpret_cast<decltype(keyEvent)>(GetProcAddress(module, "meltype_tsf_key_event"));
+        toggleMode = reinterpret_cast<decltype(toggleMode)>(GetProcAddress(module, "meltype_tsf_toggle_mode"));
+        codeLine = reinterpret_cast<decltype(codeLine)>(GetProcAddress(module, "meltype_tsf_code_line"));
     }
     bool ready() const { return create && destroy && request && freeText; }
     // The module stays loaded for the process lifetime. Do not unload Rust
@@ -298,7 +302,7 @@ bool RustWouldEat(ITfContext* context,UINT key,LPARAM message,bool test,const Ru
     ch=0;
     return api().wouldEat && api().wouldEat(context,key,static_cast<ULONG_PTR>(message),test?1:0,&callbacks,&ch)!=0;
 }
-void* RustKeyStateCreate() {return api().keyStateCreate && api().keyStateReset && api().keyStateDestroy && api().keyCacheClear && api().isReinjected && api().keySecret && api().reinject && api().keyForeground && api().keyStaleRead && api().keyStaleWrite && api().keyStaleClear && api().keyPassed && api().keyEvent ? api().keyStateCreate() : nullptr;}
+void* RustKeyStateCreate() {return api().keyStateCreate && api().keyStateReset && api().keyStateDestroy && api().keyCacheClear && api().isReinjected && api().keySecret && api().reinject && api().keyForeground && api().keyStaleRead && api().keyStaleWrite && api().keyStaleClear && api().keyPassed && api().keyEvent && api().toggleMode && api().codeLine ? api().keyStateCreate() : nullptr;}
 void RustKeyStateReset(void* state) {if (api().keyStateReset) api().keyStateReset(state);}
 void RustKeyStateDestroy(void* state) {if (api().keyStateDestroy) api().keyStateDestroy(state);}
 void RustKeyCacheClear(void* state) {if (api().keyCacheClear) api().keyCacheClear(state);}
@@ -321,6 +325,12 @@ void RustKeyStaleClear(void* state) {if (api().keyStaleClear) api().keyStaleClea
 bool RustKeyPassedRead(void* state,bool mode,bool changed,RustKeyPassed& out) {out={};return api().keyPassed && api().keyPassed(state,mode?1:0,changed?1:0,&out)!=0;}
 bool RustKeyEvent(void* state,unsigned int kind,ITfContext* context,UINT key,LPARAM message,const RustKeyEntry& entry) {
     return api().keyEvent && api().keyEvent(state,kind,context,key,static_cast<ULONG_PTR>(message),&entry)!=0;
+}
+bool RustToggleMode(ITfContext* context,ITfThreadMgr* manager,void* state,TfClientId client,const std::string& metadata,const RustModeCallbacks& callbacks) {
+    return api().toggleMode && api().toggleMode(context,manager,state,client,metadata.c_str(),&callbacks)!=0;
+}
+bool RustCodeLine(ITfContext* context,void* state,TfClientId client,const std::string& metadata,const RustModeCallbacks& callbacks,bool japanese) {
+    return api().codeLine && api().codeLine(context,state,client,metadata.c_str(),&callbacks,japanese?1:0)!=0;
 }
 bool PipeClient::Transact(const std::string& request, std::string& response, DWORD, bool) {
     if (!api().ready()) return false;

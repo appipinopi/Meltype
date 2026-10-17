@@ -116,8 +116,8 @@ pub struct Stale {
 #[derive(Clone, Copy, Default)]
 #[repr(C)]
 pub struct Passed {
-    key: i32,
-    control: i32,
+    pub(super) key: i32,
+    pub(super) control: i32,
 }
 struct Book {
     down: [bool; 256],

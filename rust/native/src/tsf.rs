@@ -13,6 +13,7 @@ mod fields;
 mod key_state;
 mod keys;
 mod langbar;
+mod mode;
 mod ranges;
 mod recovery;
 mod registration;
