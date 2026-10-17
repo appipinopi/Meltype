@@ -13,7 +13,6 @@ use windows::{
         Foundation::*,
         System::{
             Com::*,
-            LibraryLoader::GetModuleFileNameW,
             SystemInformation::GetTickCount64,
             Threading::{GetCurrentProcessId, GetCurrentThreadId},
         },
@@ -40,14 +39,6 @@ pub struct Callbacks {
 }
 unsafe fn current(c: &Callbacks, epoch: u64) -> bool {
     c.epoch.read() == epoch && c.phase.read() == 0
-}
-unsafe fn own_process() -> bool {
-    let mut path = [0u16; 260];
-    let n = GetModuleFileNameW(None, &mut path) as usize;
-    let path = String::from_utf16_lossy(&path[..n.min(path.len())]);
-    path.rsplit(['\\', '/'])
-        .next()
-        .is_some_and(|name| name.eq_ignore_ascii_case("Meltype.exe"))
 }
 /// # Safety
 /// TSF thread; borrowed live manager/owner/sinks; distinct writable owned COM /
@@ -134,7 +125,7 @@ pub unsafe extern "C" fn meltype_tsf_startup(
             c.owner,
             client,
             i32::from(disabled),
-            i32::from(own_process()),
+            i32::from(super::process::own_process()),
             sid.as_ptr(),
         );
         if !current(&c, epoch) {

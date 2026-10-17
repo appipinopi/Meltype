@@ -106,6 +106,7 @@ struct RustApi {
     void (__cdecl *serviceDestroy)(RustServiceState*) = nullptr;
     unsigned int (__cdecl *serviceLayout)(unsigned int*,unsigned int) = nullptr;
     unsigned int (__cdecl *serviceLive)() = nullptr;
+    unsigned int (__cdecl *processName)(unsigned short*,unsigned int) = nullptr;
     RustApi() {
         wchar_t path[32768];
         const DWORD size = GetModuleFileNameW(g_module, path, ARRAYSIZE(path));
@@ -207,6 +208,7 @@ struct RustApi {
         serviceCreate = reinterpret_cast<decltype(serviceCreate)>(GetProcAddress(module, "meltype_tsf_service_state_create"));
         serviceDestroy = reinterpret_cast<decltype(serviceDestroy)>(GetProcAddress(module, "meltype_tsf_service_state_destroy"));
         serviceLayout = reinterpret_cast<decltype(serviceLayout)>(GetProcAddress(module, "meltype_tsf_service_state_layout"));
+        processName = reinterpret_cast<decltype(processName)>(GetProcAddress(module, "meltype_tsf_process_name"));
         serviceLive = reinterpret_cast<decltype(serviceLive)>(GetProcAddress(module, "meltype_tsf_service_state_live_count"));
     }
     bool ready() const { return create && destroy && request && freeText; }
@@ -396,6 +398,14 @@ RustServiceStateStorage::~RustServiceStateStorage() {
     DllRelease();
 }
 
+std::wstring RustProcessName() {
+    if (!api().processName) return {};
+    const unsigned int capacity=api().processName(nullptr,0);
+    if (!capacity || capacity>32768) return {};
+    std::wstring result(capacity,L'\0');
+    if (api().processName(reinterpret_cast<unsigned short*>(result.data()),capacity)!=capacity) return {};
+    result.resize(capacity-1);return result;
+}
 void RustCoreHello(const std::wstring& process,const RustCoreStateCallbacks& callbacks) {
     if (api().coreHello && process.size()<=UINT_MAX) api().coreHello(reinterpret_cast<const unsigned short*>(process.data()),static_cast<unsigned int>(process.size()),&callbacks);
 }
@@ -481,7 +491,7 @@ bool RustWouldEat(ITfContext* context,UINT key,LPARAM message,bool test,const Ru
     ch=0;
     return api().wouldEat && api().wouldEat(context,key,static_cast<ULONG_PTR>(message),test?1:0,&callbacks,&ch)!=0;
 }
-void* RustKeyStateCreate() {return api().keyStateCreate && api().keyStateReset && api().keyStateDestroy && api().keyCacheClear && api().isReinjected && api().keySecret && api().reinject && api().keyForeground && api().keyStaleRead && api().keyStaleWrite && api().keyStaleClear && api().keyPassed && api().keyEvent && api().toggleMode && api().codeLine && api().queryMode && api().applyMode && api().handleKey && api().commit && api().selectCandidate && api().applyReply && api().applyOwnedComposition && api().writeOwnedCommit && api().endOwnedComposition && api().compositionTerminated && api().resumeOrCommit && api().abandonComposition && api().documentFocus && api().foregroundFocus && api().shutdown && api().startup && api().jsonVisit && api().jsonQuote && api().openChanged && api().coreReady && api().coreHello && api().coreRequest ? api().keyStateCreate() : nullptr;}
+void* RustKeyStateCreate() {return api().keyStateCreate && api().keyStateReset && api().keyStateDestroy && api().keyCacheClear && api().isReinjected && api().keySecret && api().reinject && api().keyForeground && api().keyStaleRead && api().keyStaleWrite && api().keyStaleClear && api().keyPassed && api().keyEvent && api().toggleMode && api().codeLine && api().queryMode && api().applyMode && api().handleKey && api().commit && api().selectCandidate && api().applyReply && api().applyOwnedComposition && api().writeOwnedCommit && api().endOwnedComposition && api().compositionTerminated && api().resumeOrCommit && api().abandonComposition && api().documentFocus && api().foregroundFocus && api().shutdown && api().startup && api().jsonVisit && api().jsonQuote && api().openChanged && api().coreReady && api().coreHello && api().coreRequest && api().processName ? api().keyStateCreate() : nullptr;}
 void RustKeyStateReset(void* state) {if (api().keyStateReset) api().keyStateReset(state);}
 void RustKeyStateDestroy(void* state) {if (api().keyStateDestroy) api().keyStateDestroy(state);}
 void RustKeyCacheClear(void* state) {if (api().keyCacheClear) api().keyCacheClear(state);}

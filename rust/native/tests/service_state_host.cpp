@@ -6,6 +6,12 @@
 #include <cstdio>
 using namespace meltype;
 int wmain() {
+    wchar_t executable[32768]={};
+    assert(GetModuleFileNameW(nullptr,executable,ARRAYSIZE(executable))>0);
+    const wchar_t* base=wcsrchr(executable,L'\\');base=base?base+1:executable;
+    std::wstring expected(base);
+    if (expected.size()>4 && _wcsicmp(expected.c_str()+expected.size()-4,L".exe")==0) expected.resize(expected.size()-4);
+    assert(RustProcessName()==expected);
     assert(RustServiceStateLiveCount()==0 && g_locks==0);
     {
         RustServiceStateStorage storage;

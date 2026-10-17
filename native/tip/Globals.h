@@ -255,6 +255,7 @@ struct RustCoreRequestCallbacks {
     void (__cdecl *notice)(void*);
 };
 bool RustCoreReady(const RustCoreStateCallbacks&);
+std::wstring RustProcessName();
 void RustCoreHello(const std::wstring&,const RustCoreStateCallbacks&);
 bool RustCoreRequest(const std::string&,DWORD,bool,const RustCoreRequestCallbacks&);
 struct RustServiceState;

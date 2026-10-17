@@ -196,3 +196,5 @@ Windows TSFの基本状態40項目（モード・接続・時刻・世代・参�
 ## ライセンス
 
 元コード・ローマ字表の著作権表記とGPL-3.0-or-laterを維持します。辞書の出典と個別ライセンスは元の各辞書ヘッダー、LICENSE、THIRD-PARTY-NOTICES.mdを参照してください。
+
+Windows Rust preview builds now obtain the host executable name in Rust, shared with startup self-process detection. UTF-16 is preserved, including unpaired code units; the module-path buffer grows to the Windows limit rather than truncating at MAX_PATH. The C++ shell only receives the resulting name. COM entry points and SID/transport/UI ownership still remain in C++.

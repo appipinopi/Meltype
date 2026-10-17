@@ -22,6 +22,7 @@ mod keys;
 mod langbar;
 mod mode;
 mod open_change;
+mod process;
 mod ranges;
 mod recovery;
 mod recovery_control;

@@ -530,6 +530,9 @@ void meltype_tsf_service_state_destroy(void *);
    capacity: version,size,alignment, then private header field offsets. */
 uint32_t meltype_tsf_service_state_layout(uint32_t *output,uint32_t capacity);
 uint32_t meltype_tsf_service_state_live_count(void);
+/* UTF-16 host executable basename, .exe removed; required capacity includes NUL.
+   Null/short output is untouched; zero means acquisition failure. */
+uint32_t meltype_tsf_process_name(uint16_t *out, uint32_t capacity);
 #endif
 #ifdef __cplusplus
 }

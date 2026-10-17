@@ -139,11 +139,14 @@ wchar_t CharOf(UINT vk, LPARAM lParam) {
 #endif
 }
 
+#ifndef MELTYPE_RUST_CORE
 std::string RandomId() {
     char buffer[40];
     sprintf_s(buffer, "%lu-%lu-%llu", GetCurrentProcessId(), GetCurrentThreadId(), GetTickCount64());
     return buffer;
 }
+
+#endif
 
 // 同じ COM のオブジェクトか (インターフェースのポインターは、取り出し方で違うことがあるので IUnknown で比べる)
 bool SameObject(IUnknown* a, IUnknown* b) {
@@ -170,6 +173,7 @@ void ClearAttributeOf(TfEditCookie ec, ITfComposition* composition) {
 #endif
 }
 
+#ifndef MELTYPE_RUST_CORE
 bool IsOwnProcess() {
     wchar_t path[MAX_PATH] = {};
     GetModuleFileNameW(nullptr, path, MAX_PATH);
@@ -178,13 +182,19 @@ bool IsOwnProcess() {
     return _wcsicmp(name, L"Meltype.exe") == 0;
 }
 
+#endif
+
 std::wstring ProcessName() {
+#ifdef MELTYPE_RUST_CORE
+    return RustProcessName();
+#else
     wchar_t path[MAX_PATH] = {};
     GetModuleFileNameW(nullptr, path, MAX_PATH);
     const wchar_t* name = wcsrchr(path, L'\\');
     std::wstring result = name ? name + 1 : path;
     if (result.size() > 4 && _wcsicmp(result.c_str() + result.size() - 4, L".exe") == 0) result.resize(result.size() - 4);
     return result;
+#endif
 }
 
 }  // namespace
