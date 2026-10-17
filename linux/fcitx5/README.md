@@ -5,7 +5,7 @@ including `meltype_json_visit_utf8`, `meltype_fcitx_key` and
 `meltype_fcitx_modifiers` and `meltype_fcitx_mode`. JSON bytes, escapes and numbers are parsed
 in Rust. The C++ event adapter receives copied UTF-8 values for the existing
 fcitx5 widgets; it does not parse JSON. Keycode/modifier translation and Japanese mode/role decisions also run in Rust. The SDK supplies Unicode
-key-symbol conversion and raw modifier bits. Input-context ownership, mode policy,
+key-symbol conversion and raw modifier bits. The framework input-context wrapper,
 editor application and widget integration still contain C++ and remain migration
 work. This is not a standalone Rust fcitx5 addon yet.
 
@@ -49,11 +49,23 @@ symbols and 512 modifier combinations through the real Rust ABI. It preserves
 the former fcitx policy (including ignoring lock bits and Super2), independently
 of the IBus frontend’s mapping. Japanese mode/role decisions run before ordinary key translation. Rust returns
 a plan for the role key and target mode; the adapter keeps the existing commit,
-editor application and mode-update order. State and framework operations still
-contain C++. See the [SDK modifier definitions](https://github.com/fcitx/fcitx5/blob/master/src/lib/fcitx-utils/keysym.h)
+editor application and mode-update order. The framework operations still contain C++; direct/preedit state is owned by
+the Rust session registry. See the [SDK modifier definitions](https://github.com/fcitx/fcitx5/blob/master/src/lib/fcitx-utils/keysym.h)
 and [raw flag accessor](https://github.com/fcitx/fcitx5/blob/master/src/lib/fcitx-utils/flags.h).
 
 The key test also compares both Japanese/direct mode states for every symbol
 (262,152 mode/role cases). A focused Rust fcitx ABI workflow builds both adapter
 variants and runs the JSON/key/mode comparisons alongside the full-platform
 workflow. Neither comparison registers an input method nor operates a daemon.
+
+Rust/default contexts now use meltype_fcitx_create/destroy and native
+direct/preedit state, including cleanup through generic meltype_destroy. The C++
+input-context property retains only a Rust handle; legacy NativeAOT state is
+kept behind its explicit compatibility build. The state ABI test uses private
+profiles, real core mode transitions, stale/double destruction and 100 fresh
+contexts. It does not create a daemon or activate an input method.
+
+The [aeddba2 SDK run](https://github.com/appipinopi/Meltype/actions/runs/39036802956)
+passed both adapter builds, 217 JSON projections, 131,076 SDK key symbols, 262,152
+mode/role states and 512 modifier cases on fcitx5 5.1.7. The new state-ownership
+revision still requires its own SDK results.

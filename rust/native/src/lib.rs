@@ -197,6 +197,7 @@ pub unsafe extern "C" fn meltype_control(
 }
 #[no_mangle]
 pub extern "C" fn meltype_destroy(handle: *mut c_void) {
+    fcitx::forget(handle);
     if let Ok(mut all) = sessions().lock() {
         all.remove(&(handle as usize));
     }

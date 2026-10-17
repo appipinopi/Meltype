@@ -56,6 +56,8 @@ struct Native {
     uint64_t (*mapKey)(uint32_t,uint32_t) = nullptr;
     int (*mapModifiers)(uint32_t) = nullptr;
     uint32_t (*modePlan)(uint32_t,int) = nullptr;
+    int (*frontendState)(void *) = nullptr;
+    void (*setPreedit)(void *,int) = nullptr;
 #endif
     int (*initMozc)(const char *, const char *) = nullptr;
     void *(*create)() = nullptr;
@@ -94,7 +96,12 @@ struct Native {
         mapKey = reinterpret_cast<decltype(mapKey)>(sym("meltype_fcitx_key"));
         mapModifiers = reinterpret_cast<decltype(mapModifiers)>(sym("meltype_fcitx_modifiers"));
         modePlan = reinterpret_cast<decltype(modePlan)>(sym("meltype_fcitx_mode"));
-        if (!visitJson || !mapKey || !mapModifiers || !modePlan) {
+        create = reinterpret_cast<decltype(create)>(sym("meltype_fcitx_create"));
+        destroy = reinterpret_cast<decltype(destroy)>(sym("meltype_fcitx_destroy"));
+        setDirect = reinterpret_cast<decltype(setDirect)>(sym("meltype_fcitx_set_direct"));
+        frontendState = reinterpret_cast<decltype(frontendState)>(sym("meltype_fcitx_state"));
+        setPreedit = reinterpret_cast<decltype(setPreedit)>(sym("meltype_fcitx_set_preedit"));
+        if (!visitJson || !mapKey || !mapModifiers || !modePlan || !frontendState || !setPreedit) {
             FCITX_ERROR() << "Meltype: Rust fcitx JSON/key ABI is missing";
             return false;
         }
@@ -165,13 +172,40 @@ public:
         if (session_ && native_.destroy) native_.destroy(session_);
     }
     void *session() const { return session_; }
-    bool direct = false;
-    // 変換ボックス (preedit) を出しているか。出している間は、周りの文字 (preedit を含む) を本体に渡さない
-    bool preeditVisible = false;
+    bool direct() const {
+#ifdef MELTYPE_RUST_CORE
+        const int flags=native_.frontendState(session_); return flags>=0 && (flags&1)!=0;
+#else
+        return direct_;
+#endif
+    }
+    void setDirect(bool value) {
+#ifndef MELTYPE_RUST_CORE
+        direct_=value;
+#endif
+        native_.setDirect(session_,value?1:0);
+    }
+    bool preeditVisible() const {
+#ifdef MELTYPE_RUST_CORE
+        const int flags=native_.frontendState(session_); return flags>=0 && (flags&2)!=0;
+#else
+        return preeditVisible_;
+#endif
+    }
+    void setPreeditVisible(bool value) {
+#ifdef MELTYPE_RUST_CORE
+        native_.setPreedit(session_,value?1:0);
+#else
+        preeditVisible_=value;
+#endif
+    }
 
 private:
     const Native &native_;
     void *session_ = nullptr;
+#ifndef MELTYPE_RUST_CORE
+    bool direct_=false,preeditVisible_=false;
+#endif
 };
 
 class MeltypeCandidate : public fcitx::CandidateWord {
@@ -202,9 +236,9 @@ public:
         const auto key = event.key();
         const auto sym = key.sym();
 #ifdef MELTYPE_RUST_CORE
-        const auto modePlan = native_.modePlan(sym,state->direct?1:0);
+        const auto modePlan = native_.modePlan(sym,state->direct()?1:0);
 #else
-        const auto modePlan = meltype_fcitx::modePlan(sym,state->direct);
+        const auto modePlan = meltype_fcitx::modePlan(sym,state->direct());
 #endif
         // 入力中の 変換・無変換・ひらがな/カタカナ: 設定で役割を分けていれば、本体が変換ボックスで処理する (#199)
         const int roleKey = static_cast<int>((modePlan>>8)&0xffu);
@@ -222,8 +256,7 @@ public:
         if (modePlan & 1u) {
             const bool toDirect = (modePlan & 2u) != 0;
             apply(ic, native_.take(native_.commit(state->session())));
-            state->direct = toDirect;
-            native_.setDirect(state->session(), toDirect ? 1 : 0);
+            state->setDirect(toDirect);
             // 切り替えたモードをカーソル位置に出す (Mozc と同じ入力パネルの枠)
             ic->inputPanel().setAuxUp(fcitx::Text(toDirect ? "A" : "あ"));
             ic->updateUserInterface(fcitx::UserInterfaceComponent::InputPanel);
@@ -249,7 +282,7 @@ public:
         if (states.test(fcitx::KeyState::Super)) modifiers |= 8;
 #endif
         std::string before, after;
-        bool surrounding = !state->preeditVisible && readSurrounding(ic, before, after);
+        bool surrounding = !state->preeditVisible() && readSurrounding(ic, before, after);
         auto text = native_.take(native_.handleKey(state->session(), vk, static_cast<int>(character), modifiers,
                                                    surrounding ? before.c_str() : nullptr, surrounding ? after.c_str() : nullptr));
         if (text.empty()) return;
@@ -331,7 +364,7 @@ private:
                     ic->deleteSurroundingText(-static_cast<int>(count), count);
                 } else {
                     ic->inputPanel().reset();
-                    ic->propertyFor(&factory_)->preeditVisible = false;
+                    ic->propertyFor(&factory_)->setPreeditVisible(false);
                 }
                 auto committed = edit.str("text");
                 if (!committed.empty()) ic->commitString(committed);
@@ -363,7 +396,7 @@ private:
         preedit.setCursor(static_cast<int>(preedit.toString().size()));
         if (ic->capabilityFlags().test(fcitx::CapabilityFlag::Preedit)) panel.setClientPreedit(preedit);
         else panel.setPreedit(preedit);
-        ic->propertyFor(&factory_)->preeditVisible = !text.empty();
+        ic->propertyFor(&factory_)->setPreeditVisible(!text.empty());
         // 案内 (Space で変換 など) と もしかして は補助テキストに出す
         auto hint = view.str("hint");
         if (auto suggestion = view.str("suggestion"); !suggestion.empty()) hint = suggestion + "　" + hint;
@@ -387,7 +420,7 @@ private:
         ic->inputPanel().reset();
         ic->updatePreedit();
         ic->updateUserInterface(fcitx::UserInterfaceComponent::InputPanel);
-        ic->propertyFor(&factory_)->preeditVisible = false;
+        ic->propertyFor(&factory_)->setPreeditVisible(false);
     }
 };
 

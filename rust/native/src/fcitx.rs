@@ -2,6 +2,79 @@
 // Copyright (C) 2026 Yukishiro, appipinopi
 //! fcitx5 key policy, preserving the former adapter's mapping independently of
 //! the SDK. The framework still supplies keySymToUnicode at the ABI boundary.
+use super::*;
+#[derive(Default)]
+struct Frontend {
+    direct: bool,
+    preedit: bool,
+}
+fn frontends() -> &'static Mutex<HashMap<usize, Frontend>> {
+    static STATES: OnceLock<Mutex<HashMap<usize, Frontend>>> = OnceLock::new();
+    STATES.get_or_init(|| Mutex::new(HashMap::new()))
+}
+fn attach(handle: *mut c_void) -> *mut c_void {
+    if !handle.is_null() {
+        frontends()
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .insert(handle as usize, Frontend::default());
+    }
+    handle
+}
+pub(crate) fn forget(handle: *mut c_void) {
+    frontends()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .remove(&(handle as usize));
+}
+#[no_mangle]
+pub extern "C" fn meltype_fcitx_create() -> *mut c_void {
+    attach(meltype_create())
+}
+/// # Safety
+/// directory points to a valid NUL-terminated UTF-8 profile path.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_fcitx_create_at(directory: *const c_char) -> *mut c_void {
+    attach(meltype_create_at(directory))
+}
+#[no_mangle]
+pub extern "C" fn meltype_fcitx_destroy(handle: *mut c_void) {
+    meltype_destroy(handle);
+}
+/// Bit 0: direct mode; bit 1: visible preedit; -1: missing/destroyed session.
+#[no_mangle]
+pub extern "C" fn meltype_fcitx_state(handle: *mut c_void) -> i32 {
+    frontends()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .get(&(handle as usize))
+        .map_or(-1, |state| {
+            i32::from(state.direct) | (i32::from(state.preedit) << 1)
+        })
+}
+#[no_mangle]
+pub extern "C" fn meltype_fcitx_set_preedit(handle: *mut c_void, visible: i32) {
+    if let Some(state) = frontends()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .get_mut(&(handle as usize))
+    {
+        state.preedit = visible != 0;
+    }
+}
+#[no_mangle]
+pub extern "C" fn meltype_fcitx_set_direct(handle: *mut c_void, direct: i32) {
+    // Same lock order as destruction: frontend -> core. Neither operation calls
+    // into a host callback while holding these locks.
+    if let Some(state) = frontends()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .get_mut(&(handle as usize))
+    {
+        meltype_set_direct(handle, direct);
+        state.direct = direct != 0;
+    }
+}
 fn translate(symbol: u32, scalar: u32) -> (u32, u32) {
     let special = match symbol {
         0xff0d | 0xff8d => 13,
@@ -159,5 +232,48 @@ mod tests {
                 assert_eq!(meltype_fcitx_mode(ordinary, direct), 0);
             }
         }
+    }
+    #[test]
+    fn frontend_state_is_scoped_and_destroyed_with_core_handles() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = CString::new(directory.path().to_str().unwrap()).unwrap();
+        let first = unsafe { meltype_fcitx_create_at(path.as_ptr()) };
+        let second = unsafe { meltype_fcitx_create_at(path.as_ptr()) };
+        assert!(!first.is_null() && !second.is_null());
+        assert_eq!(meltype_fcitx_state(first), 0);
+        assert_eq!(meltype_fcitx_state(second), 0);
+        meltype_fcitx_set_direct(first, 1);
+        meltype_fcitx_set_preedit(first, 1);
+        assert_eq!(meltype_fcitx_state(first), 3);
+        assert_eq!(meltype_fcitx_state(second), 0);
+        let reply = unsafe {
+            take(meltype_handle_key(
+                first,
+                65,
+                97,
+                0,
+                std::ptr::null(),
+                std::ptr::null(),
+            ))
+        }
+        .unwrap();
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&reply).unwrap()["consumed"],
+            false
+        );
+        meltype_fcitx_set_direct(first, 0);
+        assert_eq!(meltype_fcitx_state(first), 2);
+        meltype_fcitx_set_preedit(first, 0);
+        assert_eq!(meltype_fcitx_state(first), 0);
+        meltype_destroy(first);
+        assert_eq!(meltype_fcitx_state(first), -1);
+        meltype_fcitx_set_direct(first, 1);
+        meltype_fcitx_set_preedit(first, 1);
+        assert_eq!(meltype_fcitx_state(first), -1);
+        assert_eq!(meltype_fcitx_state(second), 0);
+        meltype_fcitx_destroy(second);
+        meltype_fcitx_destroy(second);
+        assert_eq!(meltype_fcitx_state(second), -1);
+        assert_eq!(meltype_fcitx_state(std::ptr::null_mut()), -1);
     }
 }
