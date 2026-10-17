@@ -218,21 +218,8 @@ TextService::TextService() {
 #ifdef MELTYPE_RUST_CORE
     comEntry_=RustCreateServiceCom(this,
         [](void* owner,const RustServiceCall* call)->HRESULT {
-            auto* s=static_cast<TextService*>(owner);try {switch (call->op) {
-                case 0:return s->Activate(static_cast<ITfThreadMgr*>(call->a),static_cast<TfClientId>(call->n1));
-                case 1:return s->ActivateEx(static_cast<ITfThreadMgr*>(call->a),static_cast<TfClientId>(call->n1),static_cast<DWORD>(call->n2));
-                case 2:return s->Deactivate();
-                case 5:return s->OnSetFocus(static_cast<ITfDocumentMgr*>(call->a),static_cast<ITfDocumentMgr*>(call->b));
-                case 8:return s->OnSetFocus(static_cast<BOOL>(call->n1));
-                case 9:return s->OnTestKeyDown(static_cast<ITfContext*>(call->a),call->n1,call->n2,static_cast<BOOL*>(call->b));
-                case 10:return s->OnTestKeyUp(static_cast<ITfContext*>(call->a),call->n1,call->n2,static_cast<BOOL*>(call->b));
-                case 11:return s->OnKeyDown(static_cast<ITfContext*>(call->a),call->n1,call->n2,static_cast<BOOL*>(call->b));
-                case 12:return s->OnKeyUp(static_cast<ITfContext*>(call->a),call->n1,call->n2,static_cast<BOOL*>(call->b));
-                case 14:return s->OnCompositionTerminated(static_cast<TfEditCookie>(call->n1),static_cast<ITfComposition*>(call->a));
-                case 17:return s->OnChange(*static_cast<const GUID*>(call->a));
-                case 18:return s->OnEndEdit(static_cast<ITfContext*>(call->a),static_cast<TfEditCookie>(call->n1),static_cast<ITfEditRecord*>(call->b));
-                default:return E_NOTIMPL;
-            }}catch (const std::bad_alloc&) {return E_OUTOFMEMORY;}catch (...) {return E_FAIL;}
+            auto* s=static_cast<TextService*>(owner);
+            return RustRouteService(s->state_.value,static_cast<IUnknown*>(s->comEntry_),call);
         },[](void* owner) {delete static_cast<TextService*>(owner);});
     if (!comEntry_) throw std::bad_alloc();
     keyState_=RustKeyStateCreate();

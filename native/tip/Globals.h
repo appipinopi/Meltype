@@ -108,6 +108,8 @@ void RustCoreHello(const std::wstring&,const RustCoreStateCallbacks&);
 struct RustServiceCall {
     unsigned int op;void* a;void* b;void* c;size_t n1;intptr_t n2;
 };
+struct RustServiceState;
+HRESULT RustRouteService(RustServiceState*,IUnknown*,const RustServiceCall*);
 void* RustCreateServiceCom(void*,HRESULT (__cdecl *)(void*,const RustServiceCall*),void (__cdecl *)(void*));
 void* RustServiceComInterface(void*,REFIID);
 struct RustServiceState;

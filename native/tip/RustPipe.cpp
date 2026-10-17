@@ -73,6 +73,7 @@ struct RustApi {
     void (__cdecl *serviceDestroy)(RustServiceState*) = nullptr;
     unsigned int (__cdecl *serviceLayout)(unsigned int*,unsigned int) = nullptr;
     unsigned int (__cdecl *serviceLive)() = nullptr;
+    HRESULT (__cdecl *serviceRoute)(RustServiceState*,void*,const char*,const RustServiceCall*,void*,void (__cdecl *)(void*,unsigned int,int),void (__cdecl *)(void*,unsigned int,int),void (__cdecl *)(void*,unsigned int,int),void (__cdecl *)(void*,unsigned int,int)) = nullptr;
     void* (__cdecl *serviceComCreate)(void*,HRESULT (__cdecl *)(void*,const RustServiceCall*),void (__cdecl *)(void*)) = nullptr;
     void* (__cdecl *serviceComInterface)(void*,const GUID*) = nullptr;
     int (__cdecl *serviceInitialize)(RustServiceState*,unsigned int,int,int,const char*) = nullptr;
@@ -215,6 +216,7 @@ struct RustApi {
         serviceShowCandidates = reinterpret_cast<decltype(serviceShowCandidates)>(GetProcAddress(module, "meltype_tsf_service_show_candidates"));
         serviceHideCandidates = reinterpret_cast<decltype(serviceHideCandidates)>(GetProcAddress(module, "meltype_tsf_service_hide_candidates"));
         serviceDropCandidates = reinterpret_cast<decltype(serviceDropCandidates)>(GetProcAddress(module, "meltype_tsf_service_drop_candidates"));
+        serviceRoute = reinterpret_cast<decltype(serviceRoute)>(GetProcAddress(module,"meltype_tsf_service_route"));
         serviceComCreate = reinterpret_cast<decltype(serviceComCreate)>(GetProcAddress(module, "meltype_tsf_service_com_create"));
         serviceComInterface = reinterpret_cast<decltype(serviceComInterface)>(GetProcAddress(module, "meltype_tsf_service_com_interface"));
         serviceLive = reinterpret_cast<decltype(serviceLive)>(GetProcAddress(module, "meltype_tsf_service_state_live_count"));
@@ -314,7 +316,7 @@ bool RustJsonVisit(const std::string& text,void* owner,RustJsonEmit emit) {
 }
 bool RustCoreReady(const RustCoreStateCallbacks& callbacks) {return api().coreReady && api().coreReady(&callbacks)!=0;}
 RustServiceState* RustCreateServiceState() {
-    if (!api().serviceCreate || !api().serviceDestroy || !api().serviceLayout || !api().serviceCore || !api().serviceApplyReply ||  !api().serviceCommit || !api().serviceSelectCandidate || !api().serviceDispatchKey || !api().serviceInputScope || !api().serviceModeAction || !api().serviceAbandon || !api().serviceTerminated || !api().serviceResume || !api().serviceApplyComposition || !api().serviceWriteCommit || !api().serviceEndComposition || !api().serviceActivateNative || !api().serviceShutdown || !api().serviceOpenedNative || !api().serviceEditedNative || !api().serviceFocusNative || !api().serviceExchange || !api().serviceMode || !api().serviceWriteOpen || !api().serviceApplyMode || !api().serviceEditSink || !api().serviceInitialize || !api().serviceClearResume || !api().serviceSetSid || !api().serviceSid || !api().serviceClose || !api().serviceCreateBar || !api().serviceUpdateBar || !api().serviceRemoveBar || !api().serviceCreateCandidates || !api().serviceShowCandidates || !api().serviceHideCandidates || !api().serviceDropCandidates) return nullptr;
+    if (!api().serviceRoute || !api().serviceCreate || !api().serviceDestroy || !api().serviceLayout || !api().serviceCore || !api().serviceApplyReply ||  !api().serviceCommit || !api().serviceSelectCandidate || !api().serviceDispatchKey || !api().serviceInputScope || !api().serviceModeAction || !api().serviceAbandon || !api().serviceTerminated || !api().serviceResume || !api().serviceApplyComposition || !api().serviceWriteCommit || !api().serviceEndComposition || !api().serviceActivateNative || !api().serviceShutdown || !api().serviceOpenedNative || !api().serviceEditedNative || !api().serviceFocusNative || !api().serviceExchange || !api().serviceMode || !api().serviceWriteOpen || !api().serviceApplyMode || !api().serviceEditSink || !api().serviceInitialize || !api().serviceClearResume || !api().serviceSetSid || !api().serviceSid || !api().serviceClose || !api().serviceCreateBar || !api().serviceUpdateBar || !api().serviceRemoveBar || !api().serviceCreateCandidates || !api().serviceShowCandidates || !api().serviceHideCandidates || !api().serviceDropCandidates) return nullptr;
     const unsigned int expected[]={5,static_cast<unsigned int>(sizeof(RustServiceState)),static_cast<unsigned int>(alignof(RustServiceState)),
         static_cast<unsigned int>(offsetof(RustServiceState,refs)),
         static_cast<unsigned int>(offsetof(RustServiceState,manager)),
@@ -473,6 +475,11 @@ static void __cdecl ServiceKeyNotice(void*,unsigned int op,int value) {
     }}catch (...) {}
 }
 
+HRESULT RustRouteService(RustServiceState* state,IUnknown* root,const RustServiceCall* call) {
+    return api().serviceRoute?api().serviceRoute(state,root,api().worker.c_str(),call,nullptr,ServiceNotificationNotice,ServiceKeyNotice,
+        [](void*,unsigned int op,int value){try {if(op==0) TipLog(L"Activate (%s)%s",RustProcessName().c_str(),value?L" 無効: セキュリティ保護された画面":L"");else ServiceCoreNotice(nullptr,op-1,value);}catch(...){}},
+        [](void*,unsigned int op,int value){try {if(op==0) TipLog(L"手放した変換中の文字を終えられませんでした: 0x%08X",static_cast<unsigned int>(value));else if(op==1) TipLog(L"応答を読めません");}catch(...){}}):E_FAIL;
+}
 static void __cdecl ServiceReplyFailure(void*) {try {TipLog(L"応答を読めません");}catch (...) {}}
 HRESULT RustServiceCommit(RustServiceState* state,IUnknown* lifetime,unsigned int mode,ITfContext* context,TfEditCookie cookie,bool keep,void* adapter,RustServiceApply apply) {
     return api().serviceCommit?api().serviceCommit(state,lifetime,api().worker.c_str(),mode,context,cookie,keep?1:0,adapter,apply,ServiceReplyFailure):E_FAIL;

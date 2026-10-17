@@ -20,6 +20,7 @@ mod notifications;
 mod opened;
 mod owned;
 mod recovered;
+mod route;
 use super::{abandoned, candidates, fields, key_state, langbar, mode, recovery, subscriptions};
 use std::{
     alloc::{alloc, Layout},

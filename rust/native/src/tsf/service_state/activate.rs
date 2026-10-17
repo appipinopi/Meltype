@@ -205,7 +205,7 @@ struct Ui {
 unsafe extern "C" fn ui_read(data: *mut c_void) -> i32 {
     let ui = &*data.cast::<Ui>();
     let s = ui.state;
-    i32::from((*s).open && !((*s).code_app && (*s).code_english))
+    i32::from((*s).open && !(*s).code_english)
 }
 unsafe extern "C" fn ui_select(data: *mut c_void, index: i32, prediction: i32) {
     let ui = &*data.cast::<Ui>();

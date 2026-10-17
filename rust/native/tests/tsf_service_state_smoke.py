@@ -18,7 +18,7 @@ from tsf_candidate_smoke import windows, user
 from tsf_candidate_view_smoke import GeometryHost
 from tsf_abandoned_smoke import DeferredHost
 from tsf_fields_smoke import CompartmentHost,OPEN
-from tsf_service_com_smoke import DISPATCH,DESTROY
+from tsf_service_com_smoke import DISPATCH,DESTROY,Call
 from tsf_edit_events_smoke import EventHost,QUERY
 from tsf_open_change_smoke import Host as OpenHost
 from tsf_shutdown_smoke import REQUEST as SHUTDOWN_REQUEST
@@ -144,6 +144,7 @@ class StateTests(unittest.TestCase):
         cls.api.meltype_tsf_service_edited_native.argtypes=[P,P,P,c.c_char_p,P,P,U32,P,CORE_NOTICE];cls.api.meltype_tsf_service_edited_native.restype=c.c_int
         cls.api.meltype_tsf_service_opened_native.argtypes=[P,P,P,c.c_char_p,P,P,CORE_NOTICE];cls.api.meltype_tsf_service_opened_native.restype=HR
         cls.api.meltype_tsf_service_activate_native.argtypes=[P,P,c.c_char_p,P,U32,U32,P,P,CORE_NOTICE,CORE_NOTICE,CATEGORY];cls.api.meltype_tsf_service_activate_native.restype=HR
+        cls.api.meltype_tsf_service_route.argtypes=[P,P,c.c_char_p,P,P,CORE_NOTICE,CORE_NOTICE,CORE_NOTICE,CORE_NOTICE];cls.api.meltype_tsf_service_route.restype=HR
         cls.api.meltype_tsf_service_key_secret.argtypes=[P,P,P,U32,c.c_int,P,CORE_NOTICE];cls.api.meltype_tsf_service_key_secret.restype=c.c_int
         cls.api.meltype_tsf_service_would_eat.argtypes=[P,P,P,c.c_char_p,P,U32,c.c_uint64,c.c_int,P,KEY_COMMIT,CORE_NOTICE,c.POINTER(c.c_uint16)];cls.api.meltype_tsf_service_would_eat.restype=c.c_int
         cls.api.meltype_tsf_service_key_event.argtypes=[P,P,P,c.c_char_p,U32,P,U32,c.c_uint64,P,KEY_COMMIT,KEY_HANDLE,CORE_NOTICE];cls.api.meltype_tsf_service_key_event.restype=c.c_int
@@ -2444,7 +2445,7 @@ class StateTests(unittest.TestCase):
         state=self.create();host=StartupHost()
         try:
             self.assertEqual(self.activate_owned_ui(state,host),0);bar=state.langbar;self.assertTrue(bar)
-            self.assertEqual(self.bar_text(bar),'あ');state.code_app=True;state.code_english=True;self.assertEqual(self.bar_text(bar),'A')
+            self.assertEqual(self.bar_text(bar),'あ');state.code_app=True;state.code_english=True;self.assertEqual(self.bar_text(bar),'A');state.code_app=False;self.assertEqual(self.bar_text(bar),'A')
             state.code_english=False;self.assertEqual(self.bar_text(bar),'あ')
         finally:self.finish_activation(state,host)
     def test_owned_ui_activation_bar_toggle_calls_native_mode_after_return(self):
@@ -2483,5 +2484,44 @@ class StateTests(unittest.TestCase):
         sinks[4]=None
         self.assertEqual(self.api.meltype_tsf_service_activate_native(address,c.byref(host.context),self.worker,c.byref(host.context),17,0,sinks,None,CORE_NOTICE(),CORE_NOTICE(),CATEGORY()),HR(0x80070057).value)
         self.assertEqual(c.string_at(address,c.sizeof(State)),before);host.verify(self)
+    def routed_root(self,state):
+        dispatch=DISPATCH(lambda *_:0);destroy=DESTROY(lambda *_:None);self.callbacks.extend([dispatch,destroy])
+        root=self.api.meltype_tsf_service_com_create(c.addressof(state),dispatch,destroy);self.assertTrue(root);self.addCleanup(release,root);return root
+    def route(self,state,root,call,worker=None,notice=None):
+        return self.api.meltype_tsf_service_route(c.addressof(state),root,worker or self.worker,c.byref(call),123,notice or CORE_NOTICE(),CORE_NOTICE(),CORE_NOTICE(),CORE_NOTICE())
+    def test_route_unknown_and_null_key_output_preserve_state(self):
+        state=self.create();root=self.routed_root(state);before=c.string_at(c.addressof(state),c.sizeof(State))
+        self.assertEqual(self.route(state,root,Call(999)),HR(0x80004001).value)
+        for op in [9,10,11,12]:self.assertEqual(self.route(state,root,Call(op)),HR(0x80070057).value)
+        self.assertEqual(c.string_at(c.addressof(state),c.sizeof(State)),before)
+    def test_route_key_up_clamps_pointer_sized_keys_and_writes_bool(self):
+        state=self.create();self.key_state(state);root=self.routed_root(state);out=HR(7)
+        for op in [10,12]:
+            self.assertEqual(self.route(state,root,Call(op,None,c.addressof(out),None,c.c_size_t(-1).value,-1)),0);self.assertEqual(out.value,0)
+    def test_route_focus_and_edit_notifications_use_native_paths(self):
+        state=self.create();self.key_state(state);root=self.routed_root(state);host=EventHost();state.direct_word=True
+        self.assertEqual(self.route(state,root,Call(8,None,None,None,0,0)),0)
+        state.own_edit=True
+        self.assertEqual(self.route(state,root,Call(18,c.addressof(host.context),c.addressof(host.record),None,7,0)),0)
+        self.assertFalse(state.own_edit);self.assertEqual(host.record_reads,0);host.verify(self)
+    def test_route_shutdown_disabled_and_repeated_call(self):
+        state=self.create();state.disabled=True;root=self.routed_root(state)
+        self.assertEqual(self.route(state,root,Call(2)),0);self.assertEqual(state.shutdown_phase,2);self.assertTrue(state.deactivated)
+        self.assertEqual(self.route(state,root,Call(2)),0);self.assertFalse(state.transport)
+    def test_route_activate_uses_five_native_sink_interfaces(self):
+        state=self.create();root=self.routed_root(state);host=StartupHost()
+        try:
+            # Secure mode needs no real category/IME registration; atom creation
+            # may fail normally. Only the private manager receives subscriptions.
+            self.assertEqual(self.route(state,root,Call(1,c.addressof(host.context),None,None,17,2)),0)
+            self.assertEqual(state.client,17);self.assertTrue(state.disabled);self.assertTrue(state.candidates);self.assertFalse(state.langbar)
+            self.assertEqual(self.route(state,root,Call(2)),0);host.clear_bars();host.verify(self)
+        finally:
+            if state.shutdown_phase!=2:self.route(state,root,Call(2))
+    def test_route_invalid_arguments_preserve_state(self):
+        state=self.create();root=self.routed_root(state);call=Call(999);before=c.string_at(c.addressof(state),c.sizeof(State));addr=c.addressof(state)
+        for data,life,worker,value in [(None,root,self.worker,c.byref(call)),(addr,None,self.worker,c.byref(call)),(addr,root,None,c.byref(call)),(addr,root,self.worker,None)]:
+            self.assertEqual(self.api.meltype_tsf_service_route(data,life,worker,value,None,CORE_NOTICE(),CORE_NOTICE(),CORE_NOTICE(),CORE_NOTICE()),HR(0x80070057).value)
+        self.assertEqual(c.string_at(addr,c.sizeof(State)),before)
 if __name__=='__main__':unittest.main(argv=[sys.argv[0]],verbosity=2,failfast=True)
 

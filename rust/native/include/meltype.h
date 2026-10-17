@@ -607,6 +607,12 @@ int32_t meltype_tsf_service_opened_native(void *state,void *lifetime,void *sink,
    notice0=initialized,1=hello,2=invalid; UI notices use mode-action codes. Category
    is an optional owned ITfCategoryMgr factory for controlled hosts. */
 int32_t meltype_tsf_service_activate_native(void *state,void *lifetime,const char *worker,void *manager,uint32_t client,uint32_t flags,void *const *sinks,void *adapter,void (*notice)(void *,uint32_t,int32_t),void (*ui_notice)(void *,uint32_t,int32_t),void *(*category)(void *));
+/* Route service COM calls. root is a live native service COM interface, state
+   its storage, worker trusted UTF8; all on TSF thread. call follows the public
+   service COM Call layout; root pins state/code through reentry. Notice callbacks
+   follow mode,key,activation,shutdown codes and survive UI/pending work. Unknown
+   op=E_NOTIMPL, invalid/null key output=E_INVALIDARG. */
+int32_t meltype_tsf_service_route(void *state,void *root,const char *worker,const void *call,void *adapter,void (*mode_notice)(void *,uint32_t,int32_t),void (*key_notice)(void *,uint32_t,int32_t),void (*activation_notice)(void *,uint32_t,int32_t),void (*shutdown_notice)(void *,uint32_t,int32_t));
 /* Service mode actions op0=toggle,op1=code line(value Japanese),op2=query(cookie,
    value selection-changed). Notice 0=hello,1=invalid JSON,2=English display,
    3=code-line Japanese,4=scope source,5=scope unreadable reason. Query retains
