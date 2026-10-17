@@ -4,6 +4,7 @@
 //! including system calling conventions on x86, rather than a C++ bridge.
 mod abandoned;
 mod candidates;
+mod commit_request;
 mod commits;
 mod composition;
 mod edit_events;

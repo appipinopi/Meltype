@@ -165,6 +165,13 @@ struct RustKeyEditCallbacks {
     void (__cdecl *log)(void*,unsigned int,int);
 };
 HRESULT RustHandleKey(ITfContext*,TfClientId,void*,UINT,wchar_t,const std::string&,const RustKeyEditCallbacks&);
+struct RustCommitCallbacks {
+    void* owner;IUnknown* lifetime;
+    void* (__cdecl *current)(void*,void**,void**);
+    void (__cdecl *update)(void*,unsigned int,unsigned int,int);
+    void (__cdecl *requestApply)(void*,const char*,unsigned int,void*,void*);
+};
+HRESULT RustCommit(unsigned int,ITfContext*,TfClientId,TfEditCookie,const std::string&,const RustCommitCallbacks&,bool);
 #endif
 
 // 文字コードの変換

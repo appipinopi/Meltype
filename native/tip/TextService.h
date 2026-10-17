@@ -137,6 +137,7 @@ private:
     int ReadSecretForKey(ITfContext*,UINT,bool);
     HRESULT DispatchKey(unsigned int,ITfContext*,UINT,LPARAM,BOOL*);
     RustModeCallbacks ModeCallbacks();
+    RustCommitCallbacks CommitCallbacks();
 #endif
     void ResetStaleCommit();
     std::string CommitRequest(bool moved) const;

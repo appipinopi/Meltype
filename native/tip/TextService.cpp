@@ -1900,6 +1900,9 @@ void TextService::ResumeOrCommit(ITfContext* context) {
 }
 
 void TextService::CommitAsync(bool keepAppCaret) {
+#ifdef MELTYPE_RUST_CORE
+    RustCommit(1,nullptr,clientId_,0,"{\"sid\":\""+sid_+"\"}",CommitCallbacks(),keepAppCaret);
+#else
     if (composition_ == nullptr || compositionContext_ == nullptr) return;
     // 非同期の編集セッションは、実行されずに捨てられることもある。参照は ComPtr に持たせ、セッションと一緒に解放する
     // 動くまでに変換中の文字が変わっていたら (確定し終えた・別の入力欄で新しく始めた) 何もしない
@@ -1910,6 +1913,7 @@ void TextService::CommitAsync(bool keepAppCaret) {
         if (self->composition_ == target.Get()) self->CommitInSession(ec, context.Get(), keepAppCaret);
         return S_OK;
     });
+#endif
 }
 
 void TextService::AbandonComposition() {
@@ -1984,6 +1988,9 @@ void TextService::EndAbandonedNow() {
 }
 
 bool TextService::CommitNow(bool keepAppCaret) {
+#ifdef MELTYPE_RUST_CORE
+    return SUCCEEDED(RustCommit(0,nullptr,clientId_,0,"{\"sid\":\""+sid_+"\"}",CommitCallbacks(),keepAppCaret));
+#else
     // 同期で確定する (キーをアプリに通す前・別の入力欄に移ったときに、変換中の文字を確定しておくため)
     if (composition_ == nullptr || compositionContext_ == nullptr) return true;
     Microsoft::WRL::ComPtr<ITfContext> context = compositionContext_;
@@ -1993,9 +2000,36 @@ bool TextService::CommitNow(bool keepAppCaret) {
     });
     ownEdit_ = false;
     return SUCCEEDED(hr);
+#endif
 }
 
+#ifdef MELTYPE_RUST_CORE
+RustCommitCallbacks TextService::CommitCallbacks() {
+    return {
+        this,static_cast<ITfTextInputProcessorEx*>(this),
+        [](void* p,void** context,void** sink)->void* {auto* s=static_cast<TextService*>(p);*context=s->compositionContext_;*sink=s->editSinkContext_;return s->composition_;},
+        [](void* p,unsigned int op,unsigned int ec,int value) {auto* s=static_cast<TextService*>(p);
+            try {switch (op) {
+                case 0:s->ownEdit_=value!=0;break;
+                case 1:s->keepAppCaret_=value!=0;break;
+                case 2:s->EndComposition(ec);break;
+                case 3:if (s->candidates_) s->candidates_->Hide();break;
+                case 4:s->ownEdit_=false;break;
+            }}catch (...) {}
+        },
+        [](void* p,const char* json,unsigned int ec,void* context,void* target) {auto* s=static_cast<TextService*>(p);
+            try {JsonValue reply;
+                if (s->Request(json,reply) && s->composition_==target && s->compositionContext_==context) s->Apply(ec,static_cast<ITfContext*>(context),reply);
+            }catch (...) {}
+        },
+    };
+}
+#endif
+
 void TextService::CommitInSession(TfEditCookie ec, ITfContext* context, bool keepAppCaret) {
+#ifdef MELTYPE_RUST_CORE
+    RustCommit(2,context,clientId_,ec,"{\"sid\":\""+sid_+"\"}",CommitCallbacks(),keepAppCaret);
+#else
     // 編集できるのは、この編集セッションの入力欄にある変換中の文字だけ
     if (composition_ != nullptr && context == compositionContext_) {
         // 終わりの通知 (OnEndEdit) が来るのは、今見ている入力欄だけ (フォーカスが移った後の前の入力欄では印を付けない。残ると次のクリックを見逃す)
@@ -2008,6 +2042,7 @@ void TextService::CommitInSession(TfEditCookie ec, ITfContext* context, bool kee
         EndComposition(ec);
     }
     if (candidates_) candidates_->Hide();
+#endif
 }
 
 void TextService::SelectCandidate(int index, bool prediction) {

@@ -304,6 +304,21 @@ typedef struct MeltypeTsfKeyEditCallbacks {
    Delayed SYNC session destruction retains lifetime but never calls owner state
    after this function returns; callback storage need only live until return. */
 int32_t meltype_tsf_handle_key(void *context, uint32_t client, void *key_state, uint32_t key, uint16_t character, const char *metadata, const MeltypeTsfKeyEditCallbacks *callbacks);
+typedef struct MeltypeTsfCommitCallbacks {
+    void *owner,*lifetime;
+    void *(*current)(void *, void **composition_context, void **edit_sink_context);
+    void (*update)(void *, uint32_t operation, uint32_t cookie, int32_t value);
+    void (*request_apply)(void *, const char *json, uint32_t cookie, void *context, void *target);
+} MeltypeTsfCommitCallbacks;
+/* mode=0 sync,1 async,2 existing cookie/context. TSF-thread-only borrowed live
+   interfaces and non-null callbacks that never throw. metadata={sid:string}.
+   current returns borrowed interfaces; they are retained across scheduling.
+   update: 0 own edit,1 preserve caret,2 end composition,3 hide candidates,
+   4 clear own edit after sync. request_apply must recheck target/context before
+   applying a core reply. Async owner/code must survive until callback execution
+   or cancellation (lifetime IUnknown is pinned). Incorrectly deferred sync
+   sessions are disabled after return. Stale scheduled targets do nothing. */
+int32_t meltype_tsf_commit(uint32_t mode, void *context, uint32_t client, uint32_t cookie, const char *metadata, const MeltypeTsfCommitCallbacks *callbacks, int32_t preserve_caret);
 #endif
 #ifdef __cplusplus
 }

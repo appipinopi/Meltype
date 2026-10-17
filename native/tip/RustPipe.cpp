@@ -82,6 +82,7 @@ struct RustApi {
     int (__cdecl *queryMode)(void*,unsigned int,void*,const char*,const RustModeQueryCallbacks*,int) = nullptr;
     int (__cdecl *applyMode)(unsigned int,const RustModeApplyCallbacks*) = nullptr;
     HRESULT (__cdecl *handleKey)(void*,unsigned int,void*,unsigned int,wchar_t,const char*,const RustKeyEditCallbacks*) = nullptr;
+    HRESULT (__cdecl *commit)(unsigned int,void*,unsigned int,unsigned int,const char*,const RustCommitCallbacks*,int) = nullptr;
     RustApi() {
         wchar_t path[32768];
         const DWORD size = GetModuleFileNameW(g_module, path, ARRAYSIZE(path));
@@ -161,6 +162,7 @@ struct RustApi {
         queryMode = reinterpret_cast<decltype(queryMode)>(GetProcAddress(module, "meltype_tsf_query_mode"));
         applyMode = reinterpret_cast<decltype(applyMode)>(GetProcAddress(module, "meltype_tsf_apply_mode"));
         handleKey = reinterpret_cast<decltype(handleKey)>(GetProcAddress(module, "meltype_tsf_handle_key"));
+        commit = reinterpret_cast<decltype(commit)>(GetProcAddress(module, "meltype_tsf_commit"));
     }
     bool ready() const { return create && destroy && request && freeText; }
     // The module stays loaded for the process lifetime. Do not unload Rust
@@ -310,7 +312,7 @@ bool RustWouldEat(ITfContext* context,UINT key,LPARAM message,bool test,const Ru
     ch=0;
     return api().wouldEat && api().wouldEat(context,key,static_cast<ULONG_PTR>(message),test?1:0,&callbacks,&ch)!=0;
 }
-void* RustKeyStateCreate() {return api().keyStateCreate && api().keyStateReset && api().keyStateDestroy && api().keyCacheClear && api().isReinjected && api().keySecret && api().reinject && api().keyForeground && api().keyStaleRead && api().keyStaleWrite && api().keyStaleClear && api().keyPassed && api().keyEvent && api().toggleMode && api().codeLine && api().queryMode && api().applyMode && api().handleKey ? api().keyStateCreate() : nullptr;}
+void* RustKeyStateCreate() {return api().keyStateCreate && api().keyStateReset && api().keyStateDestroy && api().keyCacheClear && api().isReinjected && api().keySecret && api().reinject && api().keyForeground && api().keyStaleRead && api().keyStaleWrite && api().keyStaleClear && api().keyPassed && api().keyEvent && api().toggleMode && api().codeLine && api().queryMode && api().applyMode && api().handleKey && api().commit ? api().keyStateCreate() : nullptr;}
 void RustKeyStateReset(void* state) {if (api().keyStateReset) api().keyStateReset(state);}
 void RustKeyStateDestroy(void* state) {if (api().keyStateDestroy) api().keyStateDestroy(state);}
 void RustKeyCacheClear(void* state) {if (api().keyCacheClear) api().keyCacheClear(state);}
@@ -348,6 +350,9 @@ bool RustApplyMode(unsigned int reply,const RustModeApplyCallbacks& callbacks) {
 }
 HRESULT RustHandleKey(ITfContext* context,TfClientId client,void* token,UINT key,wchar_t ch,const std::string& metadata,const RustKeyEditCallbacks& callbacks) {
     return api().handleKey?api().handleKey(context,client,token,key,ch,metadata.c_str(),&callbacks):E_FAIL;
+}
+HRESULT RustCommit(unsigned int mode,ITfContext* context,TfClientId client,TfEditCookie cookie,const std::string& metadata,const RustCommitCallbacks& callbacks,bool keep) {
+    return api().commit?api().commit(mode,context,client,cookie,metadata.c_str(),&callbacks,keep?1:0):E_FAIL;
 }
 bool PipeClient::Transact(const std::string& request, std::string& response, DWORD timeout,bool optional) {
     response.clear();
