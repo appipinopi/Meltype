@@ -2,7 +2,7 @@ name: Rust macOS SDK
 on:
   workflow_dispatch:
   pull_request:
-    paths: ['rust/native/**', 'rust/core/**', 'rust/build-desktop.sh', 'Cargo.*', 'dictionaries/**', 'mac/**', '.github/workflows/macos-rust.yml']
+    paths: ['rust/native/**', 'rust/core/**', 'rust/build-desktop.sh', 'Cargo.*', 'dictionaries/**', 'mac/**', 'tools/test-mac-boundaries.*', 'tools/test-mac-events.*', '.github/workflows/macos-rust.yml']
 permissions:
   contents: read
 concurrency:
