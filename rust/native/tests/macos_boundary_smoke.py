@@ -91,3 +91,42 @@ with tempfile.TemporaryDirectory(prefix="meltype-macos-explicit-") as directory:
             assert actual["view"] is None and [edit["text"] for edit in actual["commits"]]==[expected],actual
         finally:api.meltype_destroy(handle)
 print("macOS mixed-protection Tab and explicit F9 fixtures passed")
+
+# Registered callbacks must be reached by Tab conversion as well as Space.
+import os
+allocator=c.CDLL("ucrtbase") if os.name=="nt" else c.CDLL(None)
+allocator.malloc.argtypes=[c.c_size_t];allocator.malloc.restype=c.c_void_p
+calls=[]
+def owned(value):
+    value=value.encode()+b"\0"
+    pointer=allocator.malloc(len(value))
+    assert pointer
+    c.memmove(pointer,value,len(value))
+    return pointer
+@Clause
+def tab_clauses(reading,context):
+    calls.append(("clauses",reading))
+    return owned("はし\t橋") if reading=="はし".encode() else None
+@Candidates
+def tab_candidates(reading):
+    calls.append(("candidates",reading))
+    return owned("橋\n箸") if reading=="はし".encode() else None
+api.meltype_init(tab_clauses,tab_candidates,None)
+with tempfile.TemporaryDirectory(prefix="meltype-macos-tab-converter-") as directory:
+    Path(directory,"config.json").write_text('{"DetectionLevel":"Manual","PredictiveCandidates":false,"LiveConversion":false,"TabConversion":true}',encoding="utf-8")
+    handle=api.meltype_macos_create_at(directory.encode())
+    try:
+        for ch in "hashi":result(api.meltype_macos_handle_key(handle,ord(ch.upper()),ord(ch),0,None,None))
+        actual=result(api.meltype_macos_handle_key(handle,9,9,0,None,None))
+        assert actual["view"] and actual["view"]["text"]=="橋",actual
+        assert ("clauses","はし".encode()) in calls,calls
+        calls.clear()
+        moved=result(api.meltype_macos_handle_key(handle,9,9,0,None,None))
+        assert moved["view"]["converting"] and not calls,"candidate Tab refetched conversion"
+        moved=result(api.meltype_macos_handle_key(handle,9,9,1,None,None))
+        assert moved["view"]["text"]=="橋" and not calls,"candidate Shift+Tab refetched conversion"
+        actual=result(api.meltype_macos_handle_key(handle,13,0,0,None,None))
+        assert [edit["text"] for edit in actual["commits"]]==["橋"],actual
+    finally:api.meltype_destroy(handle)
+api.meltype_init(None,None,None)
+print("macOS Tab conversion reached registered native callbacks and committed their result")

@@ -157,7 +157,47 @@ pub unsafe extern "C" fn meltype_macos_handle_key(
     if ch > 0xffff {
         return super::run(handle, |s| s.commit_external(false, false));
     }
-    super::meltype_handle_key(handle, vk, ch, modifiers, before, after)
+    let was_converting = super::sessions()
+        .lock()
+        .ok()
+        .and_then(|sessions| sessions.get(&(handle as usize)).map(|s| s.is_converting()))
+        .unwrap_or(false);
+    let result = super::meltype_handle_key(handle, vk, ch, modifiers, before, after);
+    if vk != 9 || modifiers & 15 != 0 || was_converting || result.is_null() {
+        return result;
+    }
+    // Decide after the core handles Tab: predictions, suggestions, snippets and
+    // protected input must keep their existing roles and never invoke conversion.
+    let reading = super::sessions().lock().ok().and_then(|sessions| {
+        sessions
+            .get(&(handle as usize))
+            .filter(|s| s.is_converting())
+            .map(|s| s.reading())
+    });
+    let Some(reading) = reading else {
+        return result;
+    };
+    let (mut clauses, candidates) = super::external_conversion(&reading, before);
+    if clauses.is_empty() && !candidates.is_empty() {
+        clauses.push(meltype_core::session::Clause::new(reading, candidates));
+    }
+    if clauses.is_empty() {
+        return result;
+    }
+    let Some(text) = super::take(result) else {
+        return std::ptr::null_mut();
+    };
+    let Ok(previous) = serde_json::from_str::<meltype_core::SessionResult>(&text) else {
+        return super::allocate(&text);
+    };
+    super::run(handle, |session| {
+        if !session.begin_clauses(clauses) {
+            return previous;
+        }
+        let mut updated = session.result(previous.consumed);
+        updated.commits = previous.commits;
+        updated
+    })
 }
 #[cfg(test)]
 mod tests {

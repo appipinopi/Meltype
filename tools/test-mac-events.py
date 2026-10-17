@@ -89,7 +89,10 @@ swiftSettings: [.define("REAL_CONVERTER")], linkerSettings: [.linkedFramework("I
                             '-framework', 'InputMethodKit', '-framework', 'Carbon', '-o', str(executable)], check=True)
         data = root / 'data'
         data.mkdir()
-        (data / 'config.json').write_text(json.dumps({'SpaceAroundEnglish': True, 'LiveConversion': False, 'SigilWordsDirect': False}))
+        settings = {'SpaceAroundEnglish': True, 'LiveConversion': False, 'SigilWordsDirect': False}
+        if args.real_converter:
+            settings['PredictiveCandidates'] = False
+        (data / 'config.json').write_text(json.dumps(settings), encoding='utf-8')
         env = os.environ.copy()
         env['MELTYPE_DATA_DIR'] = str(data)
         if args.rust_core:

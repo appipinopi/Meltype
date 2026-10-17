@@ -32,3 +32,11 @@ supplementary scalars commit before the original event passes through. Other
 frontends keep their full-scalar input path. Existing Swift/IMK boundary tests
 check this actual production entry point. A portable ABI fixture reproduces the
 eight original Swift external-text cases without registering an input source.
+
+Real-converter mode registers the production callbacks before exercising the
+IMK adapter. It compares Space and Tab commits with the pinned converter's actual
+clause result; prediction candidates are disabled in this fixture so Tab tests
+conversion rather than prediction selection. Other settings remain explicit in
+the private profile. Candidate Tab/Shift+Tab navigation must not refetch the
+backend. macOS external candidates retain the registered converter's order
+rather than being displaced by bundled dictionary/context candidates.

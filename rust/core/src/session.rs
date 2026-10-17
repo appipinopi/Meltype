@@ -1171,12 +1171,14 @@ impl Session {
                     .unwrap_or_default(),
             );
             values.extend(clause.candidates.clone());
-            values.extend(Dictionary::bundled().candidates(&clause.reading));
-            values.extend(Linguistics::bundled().words(&clause.reading));
-            if let Some(context) = Linguistics::bundled()
-                .context(&clause.reading, &format!("{}{}", self.before, self.after))
-            {
-                values.insert(0, context);
+            if !self.external_converter_only {
+                values.extend(Dictionary::bundled().candidates(&clause.reading));
+                values.extend(Linguistics::bundled().words(&clause.reading));
+                if let Some(context) = Linguistics::bundled()
+                    .context(&clause.reading, &format!("{}{}", self.before, self.after))
+                {
+                    values.insert(0, context);
+                }
             }
             if self.settings.boolean("TranslationCandidates") {
                 let translations = Linguistics::bundled().translations(

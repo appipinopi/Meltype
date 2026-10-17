@@ -135,6 +135,15 @@ struct EventTests {
    equal(client.document,expectedConversion)
    equal(client.marked,"")
   }
+  let expectedTabConversion=converter.clauses(for:"てんき",context:nil).map(\.text).joined()
+  precondition(!expectedTabConversion.isEmpty && expectedTabConversion != "てんき", "Tab fixture requires a real kanji result")
+  check("actual converter through Rust/IMK Tab with predictions disabled") { controller,client in
+   type(controller,client,"tenki")
+   _=key(controller,client,"\t",code:UInt16(kVK_Tab))
+   _=key(controller,client,"\r",code:UInt16(kVK_Return))
+   equal(client.document,expectedTabConversion)
+   equal(client.marked,"")
+  }
   let candidates=converter.candidates(for:"きょう")
   precondition(candidates.contains("今日"),"real dictionary conversion missing: \(candidates)")
   let clauses=converter.clauses(for:"きょうはいいてんき",context:nil)
