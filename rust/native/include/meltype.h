@@ -531,7 +531,8 @@ void *meltype_tsf_service_com_interface(void *root,const void *iid);
 /* TSF-thread state allocation with upstream defaults. Opaque except to a shell
    that first checks layout version,size,alignment and every field offset.
    Destroy once, on its TSF thread, after aliases/callbacks/UI have ceased and
-   lifecycle cleanup has released owned COM references and Rust tokens. */
+   lifecycle cleanup has released raw COM references and subscription tokens.
+   Rust-owned key/resume/abandoned/SID/transport/UI state is released by destroy. */
 void *meltype_tsf_service_state_create(void);
 void meltype_tsf_service_state_destroy(void *);
 /* Return required u32 count. Write metadata only for nonnull output with enough
@@ -541,6 +542,11 @@ uint32_t meltype_tsf_service_state_live_count(void);
 /* Same TSF thread, no concurrent use. SID is copied; getter borrows until set/
    destroy. Request returns owned meltype_free text; worker/request are UTF-8.
    Transport closes on explicit close and on state destruction. */
+/* Reactivation defaults, no COM callbacks; preserves other fields/tokens.
+   Null state/SID returns 0 with no change. Clear-resume detaches before release.
+   State destruction also owns cleanup of key/resume/abandoned tokens. */
+int32_t meltype_tsf_service_initialize(void *state,uint32_t client,int32_t disabled,int32_t own,const char *sid);
+void meltype_tsf_service_clear_resume(void *state);
 int32_t meltype_tsf_service_set_sid(void *state,const char *sid);
 const char *meltype_tsf_service_sid(const void *state);
 char *meltype_tsf_service_request(void *state,const char *worker,const char *request,uint32_t timeout,int32_t optional);

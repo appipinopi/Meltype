@@ -240,15 +240,9 @@ TextService::TextService() {
 }
 
 TextService::~TextService() {
-    deactivated_=true;
-#ifdef MELTYPE_RUST_CORE
-    void* keys=keyState_;keyState_=nullptr;RustKeyStateDestroy(keys);
-#endif
-    ClearResume();
-#ifdef MELTYPE_RUST_CORE
-    void* abandoned=abandoned_;abandoned_=nullptr;RustAbandonedDestroy(abandoned);
-#endif
 #ifndef MELTYPE_RUST_CORE
+    deactivated_=true;
+    ClearResume();
     DllRelease();
 #endif
 }
@@ -310,10 +304,7 @@ STDMETHODIMP TextService::ActivateEx(ITfThreadMgr* threadMgr, TfClientId clientI
         {&threadSubscription_,&keySubscription_,&modeSubscription_},{&atomInput_,&atomConverted_,&atomTarget_},
         {ServiceInterface<ITfThreadMgrEventSink>(),ServiceInterface<ITfKeyEventSink>(),ServiceInterface<ITfCompartmentEventSink>()},
         [](void* p,unsigned int client,int disabled,int own,const char* sid) {auto* s=static_cast<TextService*>(p);try {
-            ++s->modeEpoch_;
-            s->clientId_=client;s->deactivated_=false;s->serverActive_=false;s->directDetection_=false;s->directEnglishWord_=false;
-            s->lastHello_=0;s->caretMoved_=false;s->ownEdit_=false;s->secretChecked_=false;s->lastConverting_=false;
-            s->passReason_=nullptr;s->keyFailed_=false;s->consumed_=true;s->ownProcess_=own!=0;s->disabled_=disabled!=0;RustServiceSetSid(s->state_.value,sid);
+            RustServiceInitialize(s->state_.value,client,disabled,own,sid);
             TipLog(L"Activate (%s)%s",ProcessName().c_str(),disabled?L" 無効: セキュリティ保護された画面":L"");
         }catch (...) {}},
         [](void* p,unsigned int op,int value,void* document)->void* {auto* s=static_cast<TextService*>(p);try {switch (op) {
@@ -2037,8 +2028,7 @@ STDMETHODIMP TextService::OnCompositionTerminated(TfEditCookie ec, ITfCompositio
 
 void TextService::ClearResume() {
 #ifdef MELTYPE_RUST_CORE
-    void* state = resume_; resume_ = nullptr;
-    if (state) RustDestroyResume(state);
+    RustServiceClearResume(state_.value);
 #else
     resumeRange_.Reset(); resumeContext_.Reset(); resumeText_.clear();
 #endif

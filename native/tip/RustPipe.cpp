@@ -99,6 +99,8 @@ struct RustApi {
     unsigned int (__cdecl *serviceLive)() = nullptr;
     void* (__cdecl *serviceComCreate)(void*,HRESULT (__cdecl *)(void*,const RustServiceCall*),void (__cdecl *)(void*)) = nullptr;
     void* (__cdecl *serviceComInterface)(void*,const GUID*) = nullptr;
+    int (__cdecl *serviceInitialize)(RustServiceState*,unsigned int,int,int,const char*) = nullptr;
+    void (__cdecl *serviceClearResume)(RustServiceState*) = nullptr;
     int (__cdecl *serviceSetSid)(RustServiceState*,const char*) = nullptr;
     const char* (__cdecl *serviceSid)(const RustServiceState*) = nullptr;
     char* (__cdecl *serviceRequest)(RustServiceState*,const char*,const char*,unsigned int,int) = nullptr;
@@ -204,6 +206,8 @@ struct RustApi {
         serviceDestroy = reinterpret_cast<decltype(serviceDestroy)>(GetProcAddress(module, "meltype_tsf_service_state_destroy"));
         serviceLayout = reinterpret_cast<decltype(serviceLayout)>(GetProcAddress(module, "meltype_tsf_service_state_layout"));
         processName = reinterpret_cast<decltype(processName)>(GetProcAddress(module, "meltype_tsf_process_name"));
+        serviceInitialize = reinterpret_cast<decltype(serviceInitialize)>(GetProcAddress(module, "meltype_tsf_service_initialize"));
+        serviceClearResume = reinterpret_cast<decltype(serviceClearResume)>(GetProcAddress(module, "meltype_tsf_service_clear_resume"));
         serviceSetSid = reinterpret_cast<decltype(serviceSetSid)>(GetProcAddress(module, "meltype_tsf_service_set_sid"));
         serviceSid = reinterpret_cast<decltype(serviceSid)>(GetProcAddress(module, "meltype_tsf_service_sid"));
         serviceRequest = reinterpret_cast<decltype(serviceRequest)>(GetProcAddress(module, "meltype_tsf_service_request"));
@@ -348,7 +352,7 @@ HRESULT RustOpenChanged(REFGUID guid,const RustOpenChangeCallbacks& callbacks) {
 }
 bool RustCoreReady(const RustCoreStateCallbacks& callbacks) {return api().coreReady && api().coreReady(&callbacks)!=0;}
 RustServiceState* RustCreateServiceState() {
-    if (!api().serviceCreate || !api().serviceDestroy || !api().serviceLayout || !api().serviceSetSid || !api().serviceSid || !api().serviceRequest || !api().serviceClose || !api().serviceCreateBar || !api().serviceUpdateBar || !api().serviceRemoveBar || !api().serviceCreateCandidates || !api().serviceShowCandidates || !api().serviceHideCandidates || !api().serviceDropCandidates) return nullptr;
+    if (!api().serviceCreate || !api().serviceDestroy || !api().serviceLayout || !api().serviceInitialize || !api().serviceClearResume || !api().serviceSetSid || !api().serviceSid || !api().serviceRequest || !api().serviceClose || !api().serviceCreateBar || !api().serviceUpdateBar || !api().serviceRemoveBar || !api().serviceCreateCandidates || !api().serviceShowCandidates || !api().serviceHideCandidates || !api().serviceDropCandidates) return nullptr;
     const unsigned int expected[]={4,static_cast<unsigned int>(sizeof(RustServiceState)),static_cast<unsigned int>(alignof(RustServiceState)),
         static_cast<unsigned int>(offsetof(RustServiceState,refs)),
         static_cast<unsigned int>(offsetof(RustServiceState,manager)),
@@ -414,6 +418,10 @@ void* RustCreateServiceCom(void* owner,HRESULT (__cdecl *dispatch)(void*,const R
     return api().serviceComCreate && api().serviceComInterface?api().serviceComCreate(owner,dispatch,destroy):nullptr;
 }
 void* RustServiceComInterface(void* root,REFIID iid) {return api().serviceComInterface?api().serviceComInterface(root,&iid):nullptr;}
+void RustServiceInitialize(RustServiceState* state,unsigned int client,int disabled,int own,const char* sid) {
+    if (api().serviceInitialize) api().serviceInitialize(state,client,disabled,own,sid);
+}
+void RustServiceClearResume(RustServiceState* state) {if (api().serviceClearResume) api().serviceClearResume(state);}
 void RustServiceSetSid(RustServiceState* state,const char* sid) {
     if (api().serviceSetSid) api().serviceSetSid(state,sid);
 }

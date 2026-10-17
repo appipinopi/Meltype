@@ -15,6 +15,7 @@ from tsf_com_smoke import Guid, HR, invoke, release
 from tsf_startup_smoke import StartupHost
 from tsf_candidate_smoke import windows, user
 from tsf_candidate_view_smoke import GeometryHost
+from tsf_abandoned_smoke import DeferredHost
 SELECT=c.CFUNCTYPE(None,c.c_void_p,c.c_int,c.c_int)
 READ=c.CFUNCTYPE(c.c_int,c.c_void_p)
 TOGGLE=c.CFUNCTYPE(None,c.c_void_p)
@@ -22,6 +23,8 @@ class Point(c.Structure):
     _fields_=[('x',HR),('y',HR)]
 P=c.c_void_p
 U32=c.c_uint32
+class Stale(c.Structure):
+    _fields_=[("tries",U32),("key",U32),("time",c.c_uint64)]
 class State(c.Structure):
     _fields_=[
         ('refs',c.c_int32),
@@ -85,6 +88,15 @@ class StateTests(unittest.TestCase):
         cls.api.meltype_tsf_service_sid.argtypes=[P];cls.api.meltype_tsf_service_sid.restype=P
         cls.api.meltype_tsf_service_request.argtypes=[P,c.c_char_p,c.c_char_p,U32,c.c_int];cls.api.meltype_tsf_service_request.restype=P
         cls.api.meltype_tsf_service_close.argtypes=[P];cls.api.meltype_tsf_service_close.restype=None
+        cls.api.meltype_tsf_service_initialize.argtypes=[P,U32,c.c_int,c.c_int,c.c_char_p];cls.api.meltype_tsf_service_initialize.restype=c.c_int
+        cls.api.meltype_tsf_service_clear_resume.argtypes=[P];cls.api.meltype_tsf_service_clear_resume.restype=None
+        cls.api.meltype_tsf_key_state_create.restype=P
+        cls.api.meltype_tsf_key_stale_write.argtypes=[P,U32,U32,c.c_uint64]
+        cls.api.meltype_tsf_key_stale_read.argtypes=[P,c.POINTER(Stale)]
+        cls.api.meltype_tsf_capture_resume.argtypes=[P,P,U32];cls.api.meltype_tsf_capture_resume.restype=P
+        cls.api.meltype_tsf_abandoned_create.restype=P
+        cls.api.meltype_tsf_abandoned_add.argtypes=[P,P,P,P,U32];cls.api.meltype_tsf_abandoned_add.restype=HR
+
         cls.api.meltype_tip_transport_request.argtypes=[P,c.c_char_p,U32,c.c_int];cls.api.meltype_tip_transport_request.restype=P
         cls.api.meltype_free.argtypes=[P]
         cls.api.meltype_tsf_service_create_langbar.argtypes=[P,P,READ,TOGGLE];cls.api.meltype_tsf_service_create_langbar.restype=P
@@ -375,5 +387,70 @@ class StateTests(unittest.TestCase):
         self.assertEqual(self.api.meltype_tsf_service_show_candidates(None,None,None,7,b'{}'),0)
         self.api.meltype_tsf_service_hide_candidates(None);self.api.meltype_tsf_service_drop_candidates(None)
         self.assertFalse(state.candidates)
+    def test_initialize_matches_exact_upstream_reset_and_preserves_other_fields(self):
+        state=self.create();address=c.addressof(state)
+        for name,kind in State._fields_:
+            if kind==c.c_bool:setattr(state,name,True)
+        state.mode_epoch=0xffffffffffffffff;state.last_hello=1234;state.client=99
+        state.focus_epoch=777;state.shutdown_phase=0;state.pass_reason=1234;state.scope_source=5678
+        before={name:getattr(state,name) for name,_ in State._fields_}
+        self.assertEqual(self.api.meltype_tsf_service_initialize(address,17,0,-1,b'new-session'),1)
+        changed={'mode_epoch':0,'client':17,'deactivated':False,'server_active':False,'direct_detection':False,
+                 'direct_word':False,'last_hello':0,'caret_moved':False,'own_edit':False,'secret_checked':False,
+                 'last_converting':False,'pass_reason':None,'key_failed':False,'consumed':True,'own_process':True,'disabled':False}
+        for name,_ in State._fields_:
+            if name=='sid':continue
+            with self.subTest(field=name):self.assertEqual(getattr(state,name),changed.get(name,before[name]))
+        self.assertEqual(c.string_at(self.api.meltype_tsf_service_sid(address)),b'new-session')
+        self.assertEqual(self.api.meltype_tsf_service_initialize(address,21,1,0,b'second'),1)
+        self.assertEqual((state.client,state.mode_epoch,state.disabled,state.own_process),(21,1,True,False))
+    def test_initialize_null_arguments_leave_all_state_unchanged(self):
+        state=self.create();address=c.addressof(state);before=c.string_at(address,c.sizeof(State))
+        self.assertEqual(self.api.meltype_tsf_service_initialize(address,17,1,1,None),0)
+        self.assertEqual(c.string_at(address,c.sizeof(State)),before)
+        self.assertEqual(self.api.meltype_tsf_service_initialize(None,17,1,1,b'test'),0)
+    def capture_resume(self,host):
+        composition=self.api.meltype_tsf_start_composition(c.byref(host.context),c.byref(host.sink),host.original,7)
+        self.assertTrue(composition)
+        try:token=self.api.meltype_tsf_capture_resume(c.byref(host.context),composition,7)
+        finally:release(composition)
+        self.assertTrue(token);return token
+    def test_clear_resume_detaches_and_releases_owned_com_references(self):
+        state=self.create();host=GeometryHost();state.resume=self.capture_resume(host)
+        self.assertGreater(host.context_refs,1)
+        self.api.meltype_tsf_service_clear_resume(c.addressof(state))
+        self.assertFalse(state.resume);host.verify(self)
+        self.api.meltype_tsf_service_clear_resume(c.addressof(state));self.api.meltype_tsf_service_clear_resume(None)
+    def test_clear_resume_release_can_destroy_service_after_slot_detach(self):
+        state=self.create();host=GeometryHost();state.resume=self.capture_resume(host)
+        address=c.addressof(state);original=host.context_ref;events=[]
+        def reference(delta):
+            if delta==-1 and not events:
+                events.append(state.resume);self.assertFalse(state.resume)
+                self.owned.remove(address);self.api.meltype_tsf_service_state_destroy(address)
+            return original(delta)
+        host.context_ref=reference
+        self.api.meltype_tsf_service_clear_resume(address)
+        self.assertEqual(events,[None]);self.assertEqual(self.live(),self.before);host.verify(self)
+    def test_destroy_owns_key_resume_and_abandoned_token_cleanup(self):
+        state=self.create();address=c.addressof(state)
+        keys=self.api.meltype_tsf_key_state_create();self.assertTrue(keys);state.keys=keys
+        self.api.meltype_tsf_key_stale_write(keys,8,65,123456789)
+        stale=Stale();self.api.meltype_tsf_key_stale_read(keys,c.byref(stale));self.assertEqual(stale.tries,8)
+        resume_host=GeometryHost();state.resume=self.capture_resume(resume_host)
+        abandoned_host=DeferredHost()
+        composition=self.api.meltype_tsf_start_composition(c.byref(abandoned_host.context),c.byref(abandoned_host.sink),abandoned_host.original,7)
+        self.assertTrue(composition)
+        try:
+            state.abandoned=self.api.meltype_tsf_abandoned_create();self.assertTrue(state.abandoned)
+            self.assertEqual(self.api.meltype_tsf_abandoned_add(state.abandoned,c.byref(abandoned_host.context),composition,c.byref(abandoned_host.context),17),262912)
+        finally:release(composition)
+        self.assertGreater(resume_host.context_refs,1);self.assertGreater(abandoned_host.context_refs,1)
+        self.owned.remove(address);self.api.meltype_tsf_service_state_destroy(address)
+        self.api.meltype_tsf_key_stale_read(keys,c.byref(stale));self.assertEqual((stale.tries,stale.key,stale.time),(0,0,0))
+        resume_host.verify(self)
+        # A scheduled edit still pins its COM inputs until the host cancels it.
+        self.assertGreater(abandoned_host.context_refs,1)
+        abandoned_host.cancel();abandoned_host.verify(self)
 if __name__=='__main__':unittest.main(argv=[sys.argv[0]],verbosity=2,failfast=True)
 

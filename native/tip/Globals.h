@@ -268,6 +268,8 @@ RustServiceState* RustCreateServiceState();
 void RustDestroyServiceState(RustServiceState*);
 unsigned int RustServiceStateLiveCount();
 void RustServiceSetSid(RustServiceState*,const char*);
+void RustServiceInitialize(RustServiceState*,unsigned int,int,int,const char*);
+void RustServiceClearResume(RustServiceState*);
 std::string RustServiceSid(const RustServiceState*);
 bool RustServiceRequest(RustServiceState*,const std::string&,std::string&,DWORD,bool);
 void RustServiceClose(RustServiceState*);

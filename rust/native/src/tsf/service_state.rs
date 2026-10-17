@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 lnkiai, appipinopi
 //! Rust-owned TSF state storage. Temporary C++ aliases use a checked C layout.
-//! Raw interface/token slots retain their existing TSF-thread ownership policy.
-use super::{candidates, fields, langbar};
+//! Raw COM/subscription slots retain their TSF lifecycle ownership policy.
+//! Key/resume/abandoned state, SID, transport and UI tokens are freed by Drop.
+use super::{abandoned, candidates, fields, key_state, langbar, recovery};
 use std::{
     alloc::{alloc, Layout},
     ffi::{c_char, c_void, CStr, CString},
@@ -117,6 +118,15 @@ impl Drop for ServiceState {
         unsafe {
             self.shutdown_phase = 2;
             self.deactivated = true;
+            key_state::meltype_tsf_key_state_destroy(
+                ptr::addr_of_mut!(self.keys).replace(ptr::null_mut()),
+            );
+            recovery::meltype_tsf_destroy_resume(
+                ptr::addr_of_mut!(self.resume).replace(ptr::null_mut()),
+            );
+            abandoned::meltype_tsf_abandoned_destroy(
+                ptr::addr_of_mut!(self.abandoned).replace(ptr::null_mut()),
+            );
             candidates::meltype_tsf_candidate_destroy(
                 ptr::addr_of_mut!(self.candidates).replace(ptr::null_mut()),
             );
@@ -127,6 +137,53 @@ impl Drop for ServiceState {
             }
             close_transport(self);
         }
+    }
+}
+/// Set upstream reactivation defaults, preserving the fields that upstream does
+/// not reset (including open/code/private/scope/caret policy and existing tokens).
+/// # Safety
+/// Live state on its TSF thread; sid is borrowed NUL-terminated bytes. This call
+/// performs no COM/GUI callbacks and leaves all state untouched for null inputs.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_tsf_service_initialize(
+    state: *mut ServiceState,
+    client: u32,
+    disabled: i32,
+    own: i32,
+    sid: *const c_char,
+) -> i32 {
+    if state.is_null() || sid.is_null() {
+        return 0;
+    }
+    if meltype_tsf_service_set_sid(state, sid) == 0 {
+        return 0;
+    }
+    let s = &mut *state;
+    s.mode_epoch = s.mode_epoch.wrapping_add(1);
+    s.client = client;
+    s.deactivated = false;
+    s.server_active = false;
+    s.direct_detection = false;
+    s.direct_word = false;
+    s.last_hello = 0;
+    s.caret_moved = false;
+    s.own_edit = false;
+    s.secret_checked = false;
+    s.last_converting = false;
+    s.pass_reason = ptr::null();
+    s.key_failed = false;
+    s.consumed = true;
+    s.own_process = own != 0;
+    s.disabled = disabled != 0;
+    1
+}
+/// # Safety
+/// Live state on its TSF thread at entry; no state access follows COM releases.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_tsf_service_clear_resume(state: *mut ServiceState) {
+    if !state.is_null() {
+        let resume = ptr::addr_of_mut!((*state).resume).replace(ptr::null_mut());
+        recovery::meltype_tsf_destroy_resume(resume);
     }
 }
 /// # Safety
@@ -360,8 +417,9 @@ pub extern "C" fn meltype_tsf_service_state_create() -> *mut ServiceState {
 }
 /// # Safety
 /// data is null or a live allocation from service_state_create, freed once on
-/// its TSF thread after all borrowed aliases/callbacks have ceased. Owned COM/
-/// token slots must have been cleaned up by the service lifecycle beforehand.
+/// its TSF thread after all borrowed aliases/callbacks have ceased. Raw COM and
+/// subscription slots must have been cleaned up by the lifecycle beforehand.
+/// Rust-owned key/resume/abandoned, SID, transport and UI state is freed here.
 #[no_mangle]
 pub unsafe extern "C" fn meltype_tsf_service_state_destroy(data: *mut ServiceState) {
     if !data.is_null() {
