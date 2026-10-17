@@ -7,7 +7,7 @@ from pathlib import Path
 import sys
 import tempfile
 api=c.CDLL(str(Path(sys.argv[1]).resolve()))
-api.meltype_create_at.argtypes=[c.c_char_p];api.meltype_create_at.restype=c.c_void_p
+api.meltype_macos_create_at.argtypes=[c.c_char_p];api.meltype_macos_create_at.restype=c.c_void_p
 api.meltype_macos_handle_key.argtypes=[c.c_void_p,c.c_int,c.c_int,c.c_int,c.c_char_p,c.c_char_p];api.meltype_macos_handle_key.restype=c.c_void_p
 api.meltype_commit.argtypes=[c.c_void_p];api.meltype_commit.restype=c.c_void_p
 api.meltype_free.argtypes=[c.c_void_p];api.meltype_destroy.argtypes=[c.c_void_p]
@@ -18,7 +18,7 @@ def result(pointer):
 with tempfile.TemporaryDirectory(prefix="meltype-macos-boundary-") as directory:
     Path(directory,"config.json").write_text('{"SpaceAroundEnglish":true,"SigilWordsDirect":false}',encoding="utf-8")
     for raw,first,mode,expected in [("e",0x301,None,"e"),("ka",0x3099,None,"か"),("ka",0xe0100,None,"か"),("e",0x301,0x75,"え"),("ka",None,None,"か "),("ka",None,None,"か "),("@kuraido",0x301,None,"@kuraido"),("",0x301,None,None)]:
-        handle=api.meltype_create_at(directory.encode())
+        handle=api.meltype_macos_create_at(directory.encode())
         try:
             for ch in raw:result(api.meltype_macos_handle_key(handle,ord(ch.upper()) if ch.isascii() and ch.isalpha() else 7,ord(ch),0,None,b"world"))
             if mode:result(api.meltype_macos_handle_key(handle,mode,0,0,None,None))
@@ -32,7 +32,7 @@ print("8 macOS external-text boundary ABI fixtures passed")
 with tempfile.TemporaryDirectory(prefix="meltype-macos-protected-") as directory:
     Path(directory,"config.json").write_text('{"SigilWordsDirect":false}',encoding="utf-8")
     for vk,character,suffix in [(32,32," "),(9,9,"")]:
-        handle=api.meltype_create_at(directory.encode())
+        handle=api.meltype_macos_create_at(directory.encode())
         try:
             for ch in "@kuraido":result(api.meltype_macos_handle_key(handle,ord(ch.upper()) if ch.isalpha() else 7,ord(ch),0,None,None))
             actual=result(api.meltype_macos_handle_key(handle,vk,character,0,None,None))
@@ -55,7 +55,7 @@ api.meltype_init.argtypes=[c.c_void_p]*3
 api.meltype_init(clauses,candidates,None)
 with tempfile.TemporaryDirectory(prefix="meltype-macos-protected-converter-") as directory:
     Path(directory,"config.json").write_text('{"SigilWordsDirect":false,"LiveConversion":false}',encoding="utf-8")
-    handle=api.meltype_create_at(directory.encode())
+    handle=api.meltype_macos_create_at(directory.encode())
     try:
         for ch in "kyouha「@kuraido":result(api.meltype_macos_handle_key(handle,ord(ch.upper()) if ch.isascii() and ch.isalpha() else 7,ord(ch),0,None,None))
         callbacks.clear()
@@ -65,3 +65,14 @@ with tempfile.TemporaryDirectory(prefix="meltype-macos-protected-converter-") as
     finally:api.meltype_destroy(handle)
 api.meltype_init(None,None,None)
 print("macOS protected-tail converter bypass passed")
+
+with tempfile.TemporaryDirectory(prefix="meltype-macos-converter-fallback-") as directory:
+    Path(directory,"config.json").write_text('{"SigilWordsDirect":false,"LiveConversion":false}',encoding="utf-8")
+    handle=api.meltype_macos_create_at(directory.encode())
+    try:
+        for ch in "kyouha「@kuraido」ashita":result(api.meltype_macos_handle_key(handle,ord(ch.upper()) if ch.isascii() and ch.isalpha() else 7,ord(ch),0,None,None))
+        result(api.meltype_macos_handle_key(handle,32,32,0,None,None))
+        actual=result(api.meltype_macos_handle_key(handle,13,0,0,None,None))
+        assert [edit["text"] for edit in actual["commits"]]==["きょうは「@kuraido」あした"],actual
+    finally:api.meltype_destroy(handle)
+print("macOS missing-converter complete-reading fallback passed")

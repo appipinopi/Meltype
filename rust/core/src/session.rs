@@ -99,6 +99,7 @@ pub struct Session {
     selected_clause: usize,
     explicit: Option<String>,
     pub direct: bool,
+    pub external_converter_only: bool,
     pub direct_detection: bool,
     pub direct_english_word: bool,
     pub code_input: bool,
@@ -140,6 +141,7 @@ impl Default for Session {
             selected_clause: 0,
             explicit: None,
             direct: false,
+            external_converter_only: false,
             direct_detection: false,
             direct_english_word: false,
             code_input: false,
@@ -1051,13 +1053,19 @@ impl Session {
             .cloned()
             .unwrap_or_default();
         candidates.extend(external);
-        candidates.extend(Dictionary::bundled().candidates(&self.display(true)));
-        candidates.extend(Dictionary::bundled().candidates(&reading));
-        candidates.extend(Linguistics::bundled().words(&reading));
-        if let Some(context) =
-            Linguistics::bundled().context(&reading, &format!("{}{}", self.before, self.after))
-        {
-            candidates.insert(0, context);
+        if self.external_converter_only {
+            // The macOS frontend delegates conversion to its registered azooKey
+            // callbacks. With no converter result, preserve the complete reading.
+            candidates.push(reading.clone());
+        } else {
+            candidates.extend(Dictionary::bundled().candidates(&self.display(true)));
+            candidates.extend(Dictionary::bundled().candidates(&reading));
+            candidates.extend(Linguistics::bundled().words(&reading));
+            if let Some(context) =
+                Linguistics::bundled().context(&reading, &format!("{}{}", self.before, self.after))
+            {
+                candidates.insert(0, context);
+            }
         }
         if self.settings.boolean("TranslationCandidates") {
             self.translation_candidates = Linguistics::bundled().translations(

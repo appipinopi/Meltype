@@ -112,6 +112,28 @@ pub unsafe extern "C" fn meltype_macos_expected_equal(
     };
     i32::from(actual.nfd().eq(expected.nfd()))
 }
+fn macos_session(handle: *mut std::ffi::c_void) -> *mut std::ffi::c_void {
+    if let Some(session) = super::sessions()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .get_mut(&(handle as usize))
+    {
+        session.external_converter_only = true;
+    }
+    handle
+}
+#[no_mangle]
+pub extern "C" fn meltype_macos_create() -> *mut std::ffi::c_void {
+    macos_session(super::meltype_create())
+}
+/// # Safety
+/// directory is a valid NUL-terminated UTF-8 profile path.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_macos_create_at(
+    directory: *const std::ffi::c_char,
+) -> *mut std::ffi::c_void {
+    macos_session(super::meltype_create_at(directory))
+}
 /// Legacy macOS scalar boundary; other frontends retain full scalar input.
 /// # Safety
 /// before/after, if non-null, are valid NUL-terminated UTF-8 for this call.

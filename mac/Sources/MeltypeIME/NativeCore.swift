@@ -130,7 +130,11 @@ final class NativeCore {
             return unsafeBitCast(pointer, to: type)
         }
         initFunction = symbol("meltype_init", as: InitFunction.self)
+#if MELTYPE_RUST_CORE
+        createFunction = symbol("meltype_macos_create", as: CreateFunction.self)
+#else
         createFunction = symbol("meltype_create", as: CreateFunction.self)
+#endif
         destroyFunction = symbol("meltype_destroy", as: DestroyFunction.self)
 #if MELTYPE_RUST_CORE
         handleKeyFunction = symbol("meltype_macos_handle_key", as: HandleKeyFunction.self)
