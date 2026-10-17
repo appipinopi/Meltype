@@ -115,6 +115,7 @@ fn backup_round_trip_rejects_escapes_and_invalid_entries_before_writes() {
     assert_eq!(store.load().unwrap().snippets["sig"], "署名");
     let bad=serde_json::to_vec(&json!({"format":"meltype-backup","version":1,"files":{"config.json":"e30=","state.json":"!!!","../escape":"e30="}})).unwrap();
     assert!(store.restore(&bad).is_err());
+    assert!(store.preview_backup(&bad).is_err());
     assert!(!dir.path().join("config.json").exists());
     for name in [
         "../escape",
@@ -126,6 +127,65 @@ fn backup_round_trip_rejects_escapes_and_invalid_entries_before_writes() {
     ] {
         assert!(!meltype_core::storage::restorable_name(name), "{name}");
     }
+}
+#[test]
+fn backup_preview_describes_valid_targets_without_data_or_writes() {
+    use base64::{engine::general_purpose::STANDARD, Engine};
+    let dir = tempfile::tempdir().unwrap();
+    let store = Store::new(dir.path());
+    std::fs::write(dir.path().join("config.json"), b"original settings").unwrap();
+    let mut files = serde_json::Map::new();
+    for (name, text) in [
+        ("config.json", "{}"),
+        ("state.json", "private learned content"),
+        ("snippets.json", "private snippet"),
+        ("userdict.txt", "private dictionary"),
+        ("dictionaries/words.txt", "custom dictionary"),
+    ] {
+        files.insert(name.into(), json!(STANDARD.encode(text)));
+    }
+    files.insert("../outside".into(), json!("ignored unsupported bytes"));
+    let mut backup = json!({"format":"meltype-backup","version":1,"created":"2026-10-17T12:00:00Z","files":files});
+    let preview = store
+        .preview_backup(&serde_json::to_vec(&backup).unwrap())
+        .unwrap();
+    assert_eq!(preview["fileCount"], 5);
+    assert_eq!(preview["ignoredFiles"], 1);
+    assert_eq!(
+        preview["categories"],
+        json!(["設定", "学習データ", "ユーザー辞書", "定型文"])
+    );
+    assert_eq!(preview["created"], "2026-10-17T12:00:00+00:00");
+    assert!(preview["bytes"].as_u64().unwrap() > 0);
+    assert!(preview.get("files").is_none());
+    assert!(!preview.to_string().contains("private"));
+    assert_eq!(
+        std::fs::read(dir.path().join("config.json")).unwrap(),
+        b"original settings"
+    );
+    assert!(!dir.path().join("state.json").exists());
+    assert!(!dir.path().join("config.json.before-restore").exists());
+    let combined = json!({"format":"meltype-backup","version":1,"files":{"state.json":STANDARD.encode("combined user data")}});
+    let combined = store
+        .preview_backup(&serde_json::to_vec(&combined).unwrap())
+        .unwrap();
+    assert_eq!(
+        combined["categories"],
+        json!(["学習データ", "ユーザー辞書", "定型文"])
+    );
+    backup["created"] = json!("invalid date with arbitrary content");
+    assert!(store
+        .preview_backup(&serde_json::to_vec(&backup).unwrap())
+        .unwrap()["created"]
+        .is_null());
+    backup["files"]["state.json"] = json!("!!!");
+    assert!(store
+        .preview_backup(&serde_json::to_vec(&backup).unwrap())
+        .is_err());
+    assert_eq!(
+        std::fs::read(dir.path().join("config.json")).unwrap(),
+        b"original settings"
+    );
 }
 #[test]
 fn legacy_import_and_dictionary_encodings() {

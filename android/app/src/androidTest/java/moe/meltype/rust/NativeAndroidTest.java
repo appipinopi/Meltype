@@ -139,6 +139,7 @@ public final class NativeAndroidTest {
                 assertFalse(new JSONObject(Native.settingsDocument(handle[0],activity,Uri.fromFile(backup),"backup_create")).has("error"));
                 Native.control(handle[0],"{\"op\":\"dictionary_remove\",\"reading\":\"てすとかくにん\"}");
                 JSONObject staged=new JSONObject(Native.settingsDocument(handle[0],activity,Uri.fromFile(backup),"backup_restore"));
+                String message=staged.getJSONObject("confirm").getString("message");assertTrue(message,message.contains("作成日時:")&&message.contains("復元対象:")&&message.contains("上書き"));assertFalse(message.contains("state.json"));
                 assertFalse(new JSONObject(Native.showSettingsConfirmation(handle[0],activity,staged.getJSONObject("confirm").toString())).has("error"));
             });
             idle(instrumentation,automation);captureDialog(automation,"restore-confirmation.png");clickOwnDialogButton(automation,"キャンセル");idle(instrumentation,automation);

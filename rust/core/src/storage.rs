@@ -489,7 +489,75 @@ impl Store {
     pub fn restore(&self, bytes: &[u8]) -> io::Result<usize> {
         let value = Self::inspect_backup(bytes)?;
         let _lock = self.lock()?;
-        let files: Vec<_> = value["files"]
+        let files = self.backup_entries(&value)?;
+        // Validate every entry before the first write; preserve old contents.
+        for (path, bytes) in &files {
+            if path.exists() {
+                let backup = path.with_file_name(format!(
+                    "{}.before-restore",
+                    path.file_name().unwrap().to_string_lossy()
+                ));
+                atomic_write(&backup, &fs::read(path)?)?;
+            }
+            atomic_write(path, bytes)?;
+        }
+        Ok(files.len())
+    }
+    /// Metadata for a restoration decision, without exposing encoded user data.
+    /// Use the same target/path/base64 validation as restore, without writing.
+    pub fn preview_backup(&self, bytes: &[u8]) -> io::Result<Value> {
+        let value = Self::inspect_backup(bytes)?;
+        let files = self.backup_entries(&value)?;
+        let mut categories = Vec::new();
+        let names: Vec<_> = value["files"]
+            .as_object()
+            .unwrap()
+            .keys()
+            .filter(|name| restorable_name(name))
+            .map(String::as_str)
+            .collect();
+        for (category, present) in [
+            ("設定", names.contains(&"config.json")),
+            (
+                "学習データ",
+                names.iter().any(|n| {
+                    matches!(
+                        *n,
+                        "state.json"
+                            | "model.json"
+                            | "conversions.json"
+                            | "translations.json"
+                            | "languages.json"
+                            | "phrases.txt"
+                    )
+                }),
+            ),
+            (
+                "ユーザー辞書",
+                names.contains(&"state.json")
+                    || names
+                        .iter()
+                        .any(|n| *n == "userdict.txt" || n.starts_with("dictionaries/")),
+            ),
+            (
+                "定型文",
+                names.contains(&"state.json") || names.contains(&"snippets.json"),
+            ),
+        ] {
+            if present {
+                categories.push(category);
+            }
+        }
+        let created = value["created"]
+            .as_str()
+            .and_then(|text| chrono::DateTime::parse_from_rfc3339(text).ok())
+            .map(|date| date.to_rfc3339());
+        Ok(json!({"created":created,"fileCount":files.len(),
+            "bytes":files.iter().map(|(_,bytes)|bytes.len() as u64).sum::<u64>(),
+            "categories":categories,"ignoredFiles":value["files"].as_object().unwrap().len()-files.len()}))
+    }
+    fn backup_entries(&self, value: &Value) -> io::Result<Vec<(PathBuf, Vec<u8>)>> {
+        value["files"]
             .as_object()
             .unwrap()
             .iter()
@@ -504,19 +572,7 @@ impl Store {
                     .map_err(io::Error::other)?;
                 Ok((path, bytes))
             })
-            .collect::<io::Result<_>>()?;
-        // Validate every entry before the first write; preserve old contents.
-        for (path, bytes) in &files {
-            if path.exists() {
-                let backup = path.with_file_name(format!(
-                    "{}.before-restore",
-                    path.file_name().unwrap().to_string_lossy()
-                ));
-                atomic_write(&backup, &fs::read(path)?)?;
-            }
-            atomic_write(path, bytes)?;
-        }
-        Ok(files.len())
+            .collect()
     }
 }
 fn parse_time(v: &Value) -> i64 {

@@ -68,7 +68,8 @@ public final class DocumentHost {
             check(input.closed==1,"import closed");check(Native.control(session,"{\"op\":\"dictionary_list\"}").contains("Meltype😀"),"import saved");host.empty();
             output=new Output();host.resolver.output=output;ok(host.transfer(session,"backup_create"));byte[] backup=output.toByteArray();host.empty();
             ok(Native.control(session,"{\"op\":\"dictionary_remove\",\"reading\":\"めるたいぷ\"}"));
-            host.resolver.input=new Input(backup);long first=token(ok(host.transfer(session,"backup_restore")));
+            host.resolver.input=new Input(backup);String inspected=ok(host.transfer(session,"backup_restore"));long first=token(inspected);
+            check(inspected.contains("作成日時:")&&inspected.contains("復元対象:")&&inspected.contains("学習データ")&&!inspected.contains("\\\"files\\\""),"readable restore metadata: "+inspected);
             check(!Native.control(session,"{\"op\":\"dictionary_list\"}").contains("Meltype😀"),"inspection cannot restore");
             ok(Native.settingsRestore(session,first,false));host.empty();
             host.resolver.input=new Input(backup);long second=token(ok(host.transfer(session,"backup_restore")));

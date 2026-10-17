@@ -236,6 +236,7 @@ pub fn execute(store: &Store, r: &Value) -> io::Result<Value> {
             Ok(json!({"saved":true}))
         }
         "backup_inspect" => Store::inspect_backup(&std::fs::read(field(r, "path")?)?),
+        "backup_preview" => store.preview_backup(&std::fs::read(field(r, "path")?)?),
         "backup_restore" => {
             let count = store.restore(&std::fs::read(field(r, "path")?)?)?;
             Ok(json!({"restored":count}))

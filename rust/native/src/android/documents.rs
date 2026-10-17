@@ -405,8 +405,31 @@ fn transfer(
     }
     current(handle, token)?;
     if operation == "backup_restore" {
-        let report = settings::request(handle, json!({"op":"backup_inspect","path":path}))?;
-        let message = serde_json::to_string_pretty(&report).map_err(|e| e.to_string())?;
+        let report = settings::request(handle, json!({"op":"backup_preview","path":path}))?;
+        let created = report["created"].as_str().unwrap_or("不明");
+        let count = report["fileCount"]
+            .as_u64()
+            .ok_or("バックアップの件数が正しくありません")?;
+        let bytes = report["bytes"]
+            .as_u64()
+            .ok_or("バックアップの容量が正しくありません")?;
+        let categories = report["categories"]
+            .as_array()
+            .ok_or("バックアップの種類が正しくありません")?
+            .iter()
+            .filter_map(Value::as_str)
+            .collect::<Vec<_>>()
+            .join("・");
+        let categories = if categories.is_empty() {
+            "なし"
+        } else {
+            &categories
+        };
+        let mut message=format!("作成日時: {created}\n復元する内容: {categories}\n復元対象: {count}ファイル（{bytes}バイト）\n\n対象の設定やデータをバックアップの内容で上書きします。");
+        let ignored = report["ignoredFiles"].as_u64().unwrap_or(0);
+        if ignored > 0 {
+            message.push_str(&format!("\n対象外の{ignored}ファイルは復元しません。"));
+        }
         let mut states = states().lock().unwrap_or_else(|e| e.into_inner());
         let state = states
             .get_mut(&handle)
