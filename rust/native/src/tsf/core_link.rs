@@ -132,11 +132,11 @@ pub unsafe extern "C" fn meltype_tsf_core_hello(
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct RequestCallbacks {
-    owner: *mut c_void,
-    lifetime: *mut c_void,
-    epoch: *const u64,
-    read: unsafe extern "C" fn(*mut c_void) -> u32,
-    transact: unsafe extern "C" fn(
+    pub(super) owner: *mut c_void,
+    pub(super) lifetime: *mut c_void,
+    pub(super) epoch: *const u64,
+    pub(super) read: unsafe extern "C" fn(*mut c_void) -> u32,
+    pub(super) transact: unsafe extern "C" fn(
         *mut c_void,
         *const u8,
         u32,
@@ -145,8 +145,8 @@ pub struct RequestCallbacks {
         *mut *const u8,
         *mut u32,
     ) -> i32,
-    parse: unsafe extern "C" fn(*mut c_void, *const u8, u32) -> i32,
-    notice: unsafe extern "C" fn(*mut c_void),
+    pub(super) parse: unsafe extern "C" fn(*mut c_void, *const u8, u32) -> i32,
+    pub(super) notice: unsafe extern "C" fn(*mut c_void),
 }
 unsafe fn request_current(c: &RequestCallbacks, epoch: u64) -> Option<u32> {
     if c.epoch.read() != epoch {

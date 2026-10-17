@@ -247,17 +247,9 @@ struct RustCoreStateCallbacks {
     int (__cdecl *request)(void*,const char*,unsigned int*);
     unsigned long long (__cdecl *clock)(void*);
 };
-struct RustCoreRequestCallbacks {
-    void* owner;IUnknown* lifetime;const unsigned long long* epoch;
-    unsigned int (__cdecl *read)(void*);
-    int (__cdecl *transact)(void*,const unsigned char*,unsigned int,unsigned int,int,const unsigned char**,unsigned int*);
-    int (__cdecl *parse)(void*,const unsigned char*,unsigned int);
-    void (__cdecl *notice)(void*);
-};
 bool RustCoreReady(const RustCoreStateCallbacks&);
 std::wstring RustProcessName();
 void RustCoreHello(const std::wstring&,const RustCoreStateCallbacks&);
-bool RustCoreRequest(const std::string&,DWORD,bool,const RustCoreRequestCallbacks&);
 struct RustServiceCall {
     unsigned int op;void* a;void* b;void* c;size_t n1;intptr_t n2;
 };
@@ -270,13 +262,13 @@ unsigned int RustServiceStateLiveCount();
 void RustServiceSetSid(RustServiceState*,const char*);
 void RustServiceInitialize(RustServiceState*,unsigned int,int,int,const char*);
 void RustServiceClearResume(RustServiceState*);
+bool RustServiceExchange(RustServiceState*,IUnknown*,const std::string&,DWORD,bool,void*,int (__cdecl *)(void*,const unsigned char*,unsigned int),void (__cdecl *)(void*));
 bool RustServiceCore(RustServiceState*,IUnknown*,bool);
 unsigned int RustServiceMode(const RustServiceState*);
 void RustServiceWriteOpen(RustServiceState*,bool);
 void RustServiceApplyMode(RustServiceState*,unsigned int,IUnknown*,void*,void (__cdecl *)(void*,int));
 HRESULT RustServiceEditSink(RustServiceState*,ITfDocumentMgr*,IUnknown*,ITfTextEditSink*);
 std::string RustServiceSid(const RustServiceState*);
-bool RustServiceRequest(RustServiceState*,const std::string&,std::string&,DWORD,bool);
 void RustServiceClose(RustServiceState*);
 ITfLangBarItem* RustServiceCreateBar(RustServiceState*,void*,int (__cdecl *)(void*),void (__cdecl *)(void*));
 void RustServiceUpdateBar(RustServiceState*);

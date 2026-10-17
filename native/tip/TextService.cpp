@@ -1590,23 +1590,11 @@ void TextService::Reinject(UINT vk) {
 
 bool TextService::Request(const std::string& json, JsonValue& reply, DWORD timeoutMs, bool optional) {
 #ifdef MELTYPE_RUST_CORE
-    struct RequestOwner {TextService* service;JsonValue* reply;std::string response;} owner{this,&reply};
-    RustCoreRequestCallbacks callbacks={
-        &owner,ServiceInterface<ITfTextInputProcessorEx>(),&focusEpoch_,
-        [](void* p)->unsigned int {auto* s=static_cast<RequestOwner*>(p)->service;return (s->deactivated_?4u:0u)|(s->ownProcess_?8u:0u);},
-        [](void* p,const unsigned char* data,unsigned int length,unsigned int timeout,int optional,const unsigned char** response,unsigned int* count)->int {
-            auto* o=static_cast<RequestOwner*>(p);try {
-                std::string request=length?std::string(reinterpret_cast<const char*>(data),length):std::string{};
-                if (!RustServiceRequest(o->service->state_.value,request,o->response,timeout,optional!=0) || o->response.size()>UINT_MAX) return 0;
-                *response=reinterpret_cast<const unsigned char*>(o->response.data());*count=static_cast<unsigned int>(o->response.size());return 1;
-            }catch (...) {return 0;}
-        },
+    return RustServiceExchange(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),json,timeoutMs,optional,&reply,
         [](void* p,const unsigned char* data,unsigned int length)->int {try {
-            auto* o=static_cast<RequestOwner*>(p);return ParseJson(length?std::string(reinterpret_cast<const char*>(data),length):std::string{},*o->reply)?1:0;
+            return ParseJson(length?std::string(reinterpret_cast<const char*>(data),length):std::string{},*static_cast<JsonValue*>(p))?1:0;
         }catch (...) {return 0;}},
-        [](void*) {try {TipLog(L"応答を読めません");}catch (...) {}},
-    };
-    return RustCoreRequest(json,timeoutMs,optional,callbacks);
+        [](void*) {try {TipLog(L"応答を読めません");}catch (...) {}});
 #else
     if (deactivated_) return false;
     std::string response;

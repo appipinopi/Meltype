@@ -21,6 +21,7 @@ from tsf_fields_smoke import CompartmentHost,OPEN
 from tsf_service_com_smoke import DISPATCH,DESTROY
 SELECT=c.CFUNCTYPE(None,c.c_void_p,c.c_int,c.c_int)
 CORE_NOTICE=c.CFUNCTYPE(None,c.c_void_p,c.c_uint32,c.c_int)
+REPLY=c.CFUNCTYPE(c.c_int,c.c_void_p,c.c_void_p,c.c_uint32)
 CORE_CLOCK=c.CFUNCTYPE(c.c_uint64,c.c_void_p)
 NOTICE=c.CFUNCTYPE(None,c.c_void_p,c.c_int)
 READ=c.CFUNCTYPE(c.c_int,c.c_void_p)
@@ -103,6 +104,7 @@ class StateTests(unittest.TestCase):
         cls.api.meltype_tsf_service_apply_mode.argtypes=[P,U32,P,P,NOTICE];cls.api.meltype_tsf_service_apply_mode.restype=c.c_int
         cls.api.meltype_tsf_service_com_create.argtypes=[P,DISPATCH,DESTROY];cls.api.meltype_tsf_service_com_create.restype=P
         cls.api.meltype_tsf_service_core.argtypes=[P,c.c_char_p,P,P,CORE_NOTICE,CORE_CLOCK,c.c_int];cls.api.meltype_tsf_service_core.restype=c.c_int
+        cls.api.meltype_tsf_service_exchange.argtypes=[P,c.c_char_p,P,P,U32,U32,c.c_int,P,REPLY,TOGGLE];cls.api.meltype_tsf_service_exchange.restype=c.c_int
         cls.fixture=str(Path(sys.argv[2]).resolve()).encode() if len(sys.argv)>2 else None
 
 
@@ -692,5 +694,94 @@ class StateTests(unittest.TestCase):
         for data,worker,lifetime in [(None,self.worker,None),(address,None,None),(address,self.worker,None)]:
             self.assertEqual(self.api.meltype_tsf_service_core(data,worker,lifetime,None,CORE_NOTICE(),CORE_CLOCK(),0),0)
         self.assertEqual(c.string_at(address,c.sizeof(State)),before)
+    def exchange(self,state,host,text=b'{"op":"hello"}',reply=None,notice=None,worker=None,timeout=5000,optional=False,lifetime=None):
+        reply=reply or REPLY(lambda *_:1);notice=notice or TOGGLE(lambda *_:None)
+        return self.api.meltype_tsf_service_exchange(c.addressof(state),worker or self.worker,lifetime or c.byref(host.context),text,len(text),timeout,int(optional),123,reply,notice)
+    def test_exchange_native_transport_unicode_and_thread_metadata(self):
+        state=self.create();host=SubscriptionHost();state.own_process=True
+        if not self.fixture:self.skipTest('Pass framed transport fixture')
+        root=Path(self.directory.name);response=root/'exchange-reply.json';request=root/'exchange-request.json'
+        response.write_text('{"view":{"text":"試験😀"}}',encoding='utf-8')
+        changes={'MELTYPE_TEST_HELLO_REPLY_FILE':str(response),'MELTYPE_TEST_HELLO_REQUEST_FILE':str(request)}
+        previous={key:os.environ.get(key) for key in changes};events=[]
+        @REPLY
+        def parsed(owner,data,length):
+            events.append((owner,json.loads(c.string_at(data,length))));return 1
+        try:
+            os.environ.update(changes)
+            self.assertEqual(self.exchange(state,host,b'{"op":"probe","text":"Unicode"}',parsed,worker=self.fixture),1)
+        finally:
+            for key,value in previous.items():
+                if value is None:os.environ.pop(key,None)
+                else:os.environ[key]=value
+        captured=json.loads(request.read_text(encoding='utf-8'))
+        self.assertEqual(captured['tid'],c.WinDLL('kernel32').GetCurrentThreadId())
+        self.assertEqual(captured['text'],'Unicode');self.assertEqual(events,[(123,{'view':{'text':'試験😀'}})])
+        host.verify(self)
+    def test_exchange_parse_failure_notifies_after_reply(self):
+        state=self.create();host=SubscriptionHost();events=[]
+        reply=REPLY(lambda owner,data,length:events.append(('reply',owner)) or 0)
+        notice=TOGGLE(lambda owner:events.append(('notice',owner)))
+        self.assertEqual(self.exchange(state,host,reply=reply,notice=notice),0)
+        self.assertEqual(events,[('reply',123),('notice',123)]);host.verify(self)
+    def test_exchange_reentrant_epoch_change_discards_result_and_notice(self):
+        state=self.create();host=SubscriptionHost();events=[]
+        @REPLY
+        def parsed(owner,data,length):
+            state.focus_epoch+=1;state.server_active=True;return 0
+        self.assertEqual(self.exchange(state,host,reply=parsed,notice=TOGGLE(lambda _:events.append(1))),0)
+        self.assertTrue(state.server_active);self.assertEqual(events,[]);host.verify(self)
+    def test_exchange_reentrant_shutdown_discards_success(self):
+        state=self.create();host=SubscriptionHost()
+        @REPLY
+        def parsed(owner,data,length):state.deactivated=True;return 1
+        self.assertEqual(self.exchange(state,host,reply=parsed),0);host.verify(self)
+    def test_exchange_nested_request_keeps_outer_reply_bytes_alive(self):
+        state=self.create();host=SubscriptionHost();events=[]
+        @REPLY
+        def inner(owner,data,length):
+            events.append(json.loads(c.string_at(data,length))['active']);return 1
+        @REPLY
+        def outer(owner,data,length):
+            before=c.string_at(data,length)
+            self.assertEqual(self.exchange(state,host,b'{"op":"reset","sid":"nested"}',reply=inner),1)
+            self.assertEqual(c.string_at(data,length),before)
+            events.append(json.loads(before)['active']);return 1
+        self.assertEqual(self.exchange(state,host,reply=outer),1)
+        self.assertEqual(events,[False,True]);host.verify(self)
+    def test_exchange_ended_and_invalid_inputs_do_not_start_transport(self):
+        state=self.create();host=SubscriptionHost();events=[];reply=REPLY(lambda *_:events.append(1) or 1)
+        state.deactivated=True;self.assertEqual(self.exchange(state,host,reply=reply),0);state.deactivated=False
+        address=c.addressof(state);unknown=c.byref(host.context)
+        for data,worker,lifetime,raw,count,callback in [(None,self.worker,unknown,b'{}',2,reply),
+            (address,None,unknown,b'{}',2,reply),(address,self.worker,None,b'{}',2,reply),
+            (address,self.worker,unknown,None,1,reply),(address,self.worker,unknown,b'{}',2,REPLY())]:
+            self.assertEqual(self.api.meltype_tsf_service_exchange(data,worker,lifetime,raw,count,5000,0,None,callback,TOGGLE()),0)
+        self.assertEqual(self.exchange(state,host,text=b'{}\0garbage',reply=reply),0)
+        self.assertFalse(state.transport);self.assertEqual(events,[]);host.verify(self)
+    def test_exchange_zero_timeout_skips_reply_and_optional_reconnects(self):
+        state=self.create();host=SubscriptionHost();events=[]
+        reply=REPLY(lambda *_:events.append(1) or 1)
+        self.assertEqual(self.exchange(state,host,reply=reply,timeout=0,optional=True),0)
+        self.assertEqual(events,[])
+        self.assertEqual(self.exchange(state,host,reply=reply,optional=True),1)
+        self.assertEqual(events,[1]);host.verify(self)
+    def test_exchange_native_lifetime_pins_service_during_reply(self):
+        state=self.create();address=c.addressof(state);host=SubscriptionHost();events=[]
+        dispatch=DISPATCH(lambda *_:0)
+        @DESTROY
+        def destroyed(owner):
+            events.append('destroy');self.api.meltype_tsf_service_state_destroy(owner)
+        root=self.api.meltype_tsf_service_com_create(address,dispatch,destroyed)
+        self.assertTrue(root);self.owned.remove(address)
+        @REPLY
+        def parsed(owner,data,length):
+            events.append('reply');release(root)
+            self.assertEqual(self.live(),self.before+1);return 1
+        try:
+            self.assertEqual(self.exchange(state,host,reply=parsed,lifetime=root),1)
+            self.assertEqual(events,['reply','destroy']);self.assertEqual(self.live(),self.before)
+        finally:
+            if 'reply' not in events:release(root)
 if __name__=='__main__':unittest.main(argv=[sys.argv[0]],verbosity=2,failfast=True)
 
