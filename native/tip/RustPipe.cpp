@@ -76,9 +76,6 @@ struct RustApi {
     HRESULT (__cdecl *commit)(unsigned int,void*,unsigned int,unsigned int,const char*,const RustCommitCallbacks*,int) = nullptr;
     HRESULT (__cdecl *selectCandidate)(unsigned int,int,int,const char*,const RustCommitCallbacks*) = nullptr;
     int (__cdecl *applyReply)(void*,unsigned int,const char*,const char*,const RustApplyReplyCallbacks*) = nullptr;
-    int (__cdecl *applyOwnedComposition)(void*,unsigned int,const char*,unsigned int,unsigned int,unsigned int,const RustCompositionSlots*) = nullptr;
-    int (__cdecl *writeOwnedCommit)(void*,void*,unsigned int,const unsigned short*,unsigned int,int,const RustCompositionSlots*) = nullptr;
-    int (__cdecl *endOwnedComposition)(unsigned int,const RustCompositionSlots*) = nullptr;
     HRESULT (__cdecl *compositionTerminated)(unsigned int,void*,const char*,const RustTerminationCallbacks*) = nullptr;
     int (__cdecl *resumeOrCommit)(void*,unsigned int,unsigned int,const char*,const RustRecoveryCallbacks*) = nullptr;
     int (__cdecl *abandonComposition)(unsigned int,const char*,const RustAbandonCallbacks*) = nullptr;
@@ -98,8 +95,11 @@ struct RustApi {
     HRESULT (__cdecl *serviceFocus)(RustServiceState*,const char*,void*,void*,void*,int,void*,int (__cdecl *)(void*,int),void (__cdecl *)(void*),void (__cdecl *)(void*,unsigned int,int)) = nullptr;
     int (__cdecl *serviceEdited)(RustServiceState*,void*,void*,void*,unsigned int,void*,void (__cdecl *)(void*,unsigned int,void*,int),void (__cdecl *)(void*)) = nullptr;
     HRESULT (__cdecl *serviceOpened)(RustServiceState*,void*,const GUID*,void*,void (__cdecl *)(void*),void (__cdecl *)(void*,int)) = nullptr;
-    HRESULT (__cdecl *serviceDeactivate)(RustServiceState*,void*,void*,void (__cdecl *)(void*,const char*,unsigned int,void*,void*),void (__cdecl *)(void*,unsigned int),void (__cdecl *)(void*,int)) = nullptr;
+    HRESULT (__cdecl *serviceStop)(RustServiceState*,void*,void*,void (__cdecl *)(void*,const char*,unsigned int,void*,void*),void (__cdecl *)(void*,int)) = nullptr;
     HRESULT (__cdecl *serviceActivate)(RustServiceState*,void*,const char*,void*,unsigned int,unsigned int,void* const*,void*,void (__cdecl *)(void*,int,int),int (__cdecl *)(void*),void (__cdecl *)(void*),void (__cdecl *)(void*,unsigned int,int),void* (__cdecl *)(void*)) = nullptr;
+    int (__cdecl *serviceApplyComposition)(RustServiceState*,void*,void*,void*,unsigned int,const char*) = nullptr;
+    int (__cdecl *serviceWriteCommit)(RustServiceState*,void*,void*,void*,void*,unsigned int,const unsigned short*,unsigned int) = nullptr;
+    int (__cdecl *serviceEndComposition)(RustServiceState*,void*,unsigned int) = nullptr;
     int (__cdecl *serviceCore)(RustServiceState*,const char*,void*,void*,void (__cdecl *)(void*,unsigned int,int),unsigned long long (__cdecl *)(void*),int) = nullptr;
     unsigned int (__cdecl *serviceMode)(const RustServiceState*) = nullptr;
     int (__cdecl *serviceWriteOpen)(RustServiceState*,int) = nullptr;
@@ -188,9 +188,6 @@ struct RustApi {
         commit = reinterpret_cast<decltype(commit)>(GetProcAddress(module, "meltype_tsf_commit"));
         selectCandidate = reinterpret_cast<decltype(selectCandidate)>(GetProcAddress(module, "meltype_tsf_select_candidate"));
         applyReply = reinterpret_cast<decltype(applyReply)>(GetProcAddress(module, "meltype_tsf_apply_reply"));
-        applyOwnedComposition = reinterpret_cast<decltype(applyOwnedComposition)>(GetProcAddress(module, "meltype_tsf_apply_owned_composition"));
-        writeOwnedCommit = reinterpret_cast<decltype(writeOwnedCommit)>(GetProcAddress(module, "meltype_tsf_write_owned_commit"));
-        endOwnedComposition = reinterpret_cast<decltype(endOwnedComposition)>(GetProcAddress(module, "meltype_tsf_end_owned_composition"));
         compositionTerminated = reinterpret_cast<decltype(compositionTerminated)>(GetProcAddress(module, "meltype_tsf_composition_terminated"));
         resumeOrCommit = reinterpret_cast<decltype(resumeOrCommit)>(GetProcAddress(module, "meltype_tsf_resume_or_commit"));
         abandonComposition = reinterpret_cast<decltype(abandonComposition)>(GetProcAddress(module, "meltype_tsf_abandon_composition"));
@@ -207,8 +204,11 @@ struct RustApi {
         serviceFocus = reinterpret_cast<decltype(serviceFocus)>(GetProcAddress(module, "meltype_tsf_service_focus"));
         serviceEdited = reinterpret_cast<decltype(serviceEdited)>(GetProcAddress(module, "meltype_tsf_service_edited"));
         serviceOpened = reinterpret_cast<decltype(serviceOpened)>(GetProcAddress(module, "meltype_tsf_service_opened"));
-        serviceDeactivate = reinterpret_cast<decltype(serviceDeactivate)>(GetProcAddress(module, "meltype_tsf_service_deactivate"));
+        serviceStop = reinterpret_cast<decltype(serviceStop)>(GetProcAddress(module, "meltype_tsf_service_stop"));
         serviceActivate = reinterpret_cast<decltype(serviceActivate)>(GetProcAddress(module, "meltype_tsf_service_activate"));
+        serviceApplyComposition = reinterpret_cast<decltype(serviceApplyComposition)>(GetProcAddress(module,"meltype_tsf_service_apply_composition"));
+        serviceWriteCommit = reinterpret_cast<decltype(serviceWriteCommit)>(GetProcAddress(module,"meltype_tsf_service_write_commit"));
+        serviceEndComposition = reinterpret_cast<decltype(serviceEndComposition)>(GetProcAddress(module,"meltype_tsf_service_end_composition"));
         serviceCore = reinterpret_cast<decltype(serviceCore)>(GetProcAddress(module, "meltype_tsf_service_core"));
         serviceMode = reinterpret_cast<decltype(serviceMode)>(GetProcAddress(module, "meltype_tsf_service_mode"));
         serviceWriteOpen = reinterpret_cast<decltype(serviceWriteOpen)>(GetProcAddress(module, "meltype_tsf_service_write_open"));
@@ -319,16 +319,6 @@ bool RustUpdateComposition(TfEditCookie cookie,ITfContext* context,ITfCompositio
 void RustEndComposition(TfEditCookie cookie,ITfContext* context,ITfComposition* composition) {
     if (api().endComposition) api().endComposition(context,composition,cookie);
 }
-int RustApplyOwnedComposition(TfEditCookie cookie,ITfContext* context,const JsonValue& view,TfGuidAtom input,TfGuidAtom converted,TfGuidAtom target,const RustCompositionSlots& slots) {
-    const auto json=ViewJson(view);
-    return api().applyOwnedComposition?api().applyOwnedComposition(context,cookie,json.c_str(),input,converted,target,&slots):-1;
-}
-int RustWriteOwnedCommit(TfEditCookie cookie,ITfContext* context,ITfRange* range,const std::wstring& text,bool keep,const RustCompositionSlots& slots) {
-    return api().writeOwnedCommit?api().writeOwnedCommit(context,range,cookie,reinterpret_cast<const unsigned short*>(text.data()),static_cast<unsigned int>(text.size()),keep?1:0,&slots):-1;
-}
-int RustEndOwnedComposition(TfEditCookie cookie,const RustCompositionSlots& slots) {
-    return api().endOwnedComposition?api().endOwnedComposition(cookie,&slots):-1;
-}
 HRESULT RustCompositionTerminated(TfEditCookie cookie,ITfComposition* composition,const std::string& metadata,const RustTerminationCallbacks& callbacks) {
     return api().compositionTerminated?api().compositionTerminated(cookie,composition,metadata.c_str(),&callbacks):E_FAIL;
 }
@@ -343,7 +333,7 @@ bool RustJsonVisit(const std::string& text,void* owner,RustJsonEmit emit) {
 }
 bool RustCoreReady(const RustCoreStateCallbacks& callbacks) {return api().coreReady && api().coreReady(&callbacks)!=0;}
 RustServiceState* RustCreateServiceState() {
-    if (!api().serviceCreate || !api().serviceDestroy || !api().serviceLayout || !api().serviceCore || !api().serviceActivate || !api().serviceDeactivate || !api().serviceOpened || !api().serviceEdited || !api().serviceFocus || !api().serviceExchange || !api().serviceMode || !api().serviceWriteOpen || !api().serviceApplyMode || !api().serviceEditSink || !api().serviceInitialize || !api().serviceClearResume || !api().serviceSetSid || !api().serviceSid || !api().serviceClose || !api().serviceCreateBar || !api().serviceUpdateBar || !api().serviceRemoveBar || !api().serviceCreateCandidates || !api().serviceShowCandidates || !api().serviceHideCandidates || !api().serviceDropCandidates) return nullptr;
+    if (!api().serviceCreate || !api().serviceDestroy || !api().serviceLayout || !api().serviceCore || !api().serviceApplyComposition || !api().serviceWriteCommit || !api().serviceEndComposition || !api().serviceActivate || !api().serviceStop || !api().serviceOpened || !api().serviceEdited || !api().serviceFocus || !api().serviceExchange || !api().serviceMode || !api().serviceWriteOpen || !api().serviceApplyMode || !api().serviceEditSink || !api().serviceInitialize || !api().serviceClearResume || !api().serviceSetSid || !api().serviceSid || !api().serviceClose || !api().serviceCreateBar || !api().serviceUpdateBar || !api().serviceRemoveBar || !api().serviceCreateCandidates || !api().serviceShowCandidates || !api().serviceHideCandidates || !api().serviceDropCandidates) return nullptr;
     const unsigned int expected[]={5,static_cast<unsigned int>(sizeof(RustServiceState)),static_cast<unsigned int>(alignof(RustServiceState)),
         static_cast<unsigned int>(offsetof(RustServiceState,refs)),
         static_cast<unsigned int>(offsetof(RustServiceState,manager)),
@@ -426,8 +416,8 @@ bool RustServiceEdited(RustServiceState* state,IUnknown* lifetime,ITfContext* co
 HRESULT RustServiceOpened(RustServiceState* state,IUnknown* lifetime,REFGUID guid,void* context,void (__cdecl *commit)(void*),void (__cdecl *notice)(void*,int)) {
     return api().serviceOpened?api().serviceOpened(state,lifetime,&guid,context,commit,notice):E_NOINTERFACE;
 }
-HRESULT RustServiceDeactivate(RustServiceState* state,IUnknown* lifetime,void* context,void (__cdecl *request)(void*,const char*,unsigned int,void*,void*),void (__cdecl *end)(void*,unsigned int)) {
-    return api().serviceDeactivate?api().serviceDeactivate(state,lifetime,context,request,end,
+HRESULT RustServiceDeactivate(RustServiceState* state,IUnknown* lifetime,void* context,void (__cdecl *request)(void*,const char*,unsigned int,void*,void*)) {
+    return api().serviceStop?api().serviceStop(state,lifetime,context,request,
         [](void*,int status) {try {TipLog(L"手放した変換中の文字を終えられませんでした: 0x%08X",static_cast<unsigned int>(status));}catch (...) {}}):E_NOINTERFACE;
 }
 HRESULT RustServiceActivate(RustServiceState* state,IUnknown* lifetime,ITfThreadMgr* manager,TfClientId client,DWORD flags,void* const* sinks,void* context,void (__cdecl *select)(void*,int,int),int (__cdecl *read)(void*),void (__cdecl *toggle)(void*)) {
@@ -436,6 +426,16 @@ HRESULT RustServiceActivate(RustServiceState* state,IUnknown* lifetime,ITfThread
             if (op==0) TipLog(L"Activate (%s)%s",RustProcessName().c_str(),value?L" 無効: セキュリティ保護された画面":L"");
             else ServiceCoreNotice(nullptr,op-1,value);
         },nullptr):E_NOINTERFACE;
+}
+int RustServiceApplyComposition(RustServiceState* state,IUnknown* lifetime,ITfCompositionSink* sink,TfEditCookie cookie,ITfContext* context,const JsonValue& view) {
+    const auto json=ViewJson(view);
+    return api().serviceApplyComposition?api().serviceApplyComposition(state,lifetime,sink,context,cookie,json.c_str()):-1;
+}
+int RustServiceWriteCommit(RustServiceState* state,IUnknown* lifetime,ITfCompositionSink* sink,TfEditCookie cookie,ITfContext* context,ITfRange* range,const std::wstring& text) {
+    return text.size()<=UINT_MAX && api().serviceWriteCommit?api().serviceWriteCommit(state,lifetime,sink,context,range,cookie,reinterpret_cast<const unsigned short*>(text.data()),static_cast<unsigned int>(text.size())):-1;
+}
+int RustServiceEndComposition(RustServiceState* state,IUnknown* lifetime,TfEditCookie cookie) {
+    return api().serviceEndComposition?api().serviceEndComposition(state,lifetime,cookie):-1;
 }
 bool RustServiceCore(RustServiceState* state,IUnknown* lifetime,bool hello) {
     return api().serviceCore && api().serviceCore(state,api().worker.c_str(),lifetime,nullptr,ServiceCoreNotice,nullptr,hello?1:0)!=0;
@@ -552,7 +552,7 @@ bool RustWouldEat(ITfContext* context,UINT key,LPARAM message,bool test,const Ru
     ch=0;
     return api().wouldEat && api().wouldEat(context,key,static_cast<ULONG_PTR>(message),test?1:0,&callbacks,&ch)!=0;
 }
-void* RustKeyStateCreate() {return api().keyStateCreate && api().keyStateReset && api().keyStateDestroy && api().keyCacheClear && api().isReinjected && api().keySecret && api().reinject && api().keyForeground && api().keyStaleRead && api().keyStaleWrite && api().keyStaleClear && api().keyPassed && api().keyEvent && api().toggleMode && api().codeLine && api().queryMode && api().applyMode && api().handleKey && api().commit && api().selectCandidate && api().applyReply && api().applyOwnedComposition && api().writeOwnedCommit && api().endOwnedComposition && api().compositionTerminated && api().resumeOrCommit && api().abandonComposition && api().jsonVisit && api().jsonQuote && api().coreReady && api().coreHello && api().processName ? api().keyStateCreate() : nullptr;}
+void* RustKeyStateCreate() {return api().keyStateCreate && api().keyStateReset && api().keyStateDestroy && api().keyCacheClear && api().isReinjected && api().keySecret && api().reinject && api().keyForeground && api().keyStaleRead && api().keyStaleWrite && api().keyStaleClear && api().keyPassed && api().keyEvent && api().toggleMode && api().codeLine && api().queryMode && api().applyMode && api().handleKey && api().commit && api().selectCandidate && api().applyReply && api().compositionTerminated && api().resumeOrCommit && api().abandonComposition && api().jsonVisit && api().jsonQuote && api().coreReady && api().coreHello && api().processName ? api().keyStateCreate() : nullptr;}
 void RustKeyStateReset(void* state) {if (api().keyStateReset) api().keyStateReset(state);}
 void RustKeyStateDestroy(void* state) {if (api().keyStateDestroy) api().keyStateDestroy(state);}
 void RustKeyCacheClear(void* state) {if (api().keyCacheClear) api().keyCacheClear(state);}

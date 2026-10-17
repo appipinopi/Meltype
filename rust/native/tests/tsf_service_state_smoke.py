@@ -22,6 +22,8 @@ from tsf_service_com_smoke import DISPATCH,DESTROY
 from tsf_edit_events_smoke import EventHost,QUERY
 from tsf_open_change_smoke import Host as OpenHost
 from tsf_shutdown_smoke import REQUEST as SHUTDOWN_REQUEST
+from tsf_composition_owner_smoke import OwnerHost
+from tsf_range_smoke import units
 SELECT=c.CFUNCTYPE(None,c.c_void_p,c.c_int,c.c_int)
 CORE_NOTICE=c.CFUNCTYPE(None,c.c_void_p,c.c_uint32,c.c_int)
 END=c.CFUNCTYPE(None,c.c_void_p,c.c_uint32)
@@ -117,6 +119,10 @@ class StateTests(unittest.TestCase):
         cls.api.meltype_tsf_service_deactivate.argtypes=[P,P,P,SHUTDOWN_REQUEST,END,NOTICE];cls.api.meltype_tsf_service_deactivate.restype=HR
         cls.api.meltype_tsf_end_composition.argtypes=[P,P,U32];cls.api.meltype_tsf_end_composition.restype=HR
         cls.api.meltype_tsf_service_activate.argtypes=[P,P,c.c_char_p,P,U32,U32,c.POINTER(P),P,SELECT,READ,TOGGLE,CORE_NOTICE,CATEGORY];cls.api.meltype_tsf_service_activate.restype=HR
+        cls.api.meltype_tsf_service_apply_composition.argtypes=[P,P,P,P,U32,c.c_char_p];cls.api.meltype_tsf_service_apply_composition.restype=c.c_int
+        cls.api.meltype_tsf_service_write_commit.argtypes=[P,P,P,P,P,U32,c.POINTER(c.c_uint16),U32];cls.api.meltype_tsf_service_write_commit.restype=c.c_int
+        cls.api.meltype_tsf_service_end_composition.argtypes=[P,P,U32];cls.api.meltype_tsf_service_end_composition.restype=c.c_int
+        cls.api.meltype_tsf_service_stop.argtypes=[P,P,P,SHUTDOWN_REQUEST,NOTICE];cls.api.meltype_tsf_service_stop.restype=HR
         cls.fixture=str(Path(sys.argv[2]).resolve()).encode() if len(sys.argv)>2 else None
 
 
@@ -1043,8 +1049,9 @@ class StateTests(unittest.TestCase):
             self.assertEqual(self.api.meltype_tsf_service_opened(data,lifetime,guid,None,commit,NOTICE()),HR(0x80070057).value)
         self.assertEqual(c.string_at(address,c.sizeof(State)),before);host.verify(self)
     def deactivate(self,state,host,request=None,end=None,notice=None,lifetime=None):
-        return self.api.meltype_tsf_service_deactivate(c.addressof(state),lifetime or c.byref(host.context),123,
-            request or SHUTDOWN_REQUEST(lambda *_:None),end or END(lambda *_:None),notice or NOTICE(lambda *_:None))
+        lifetime=lifetime or c.byref(host.context);request=request or SHUTDOWN_REQUEST(lambda *_:None);notice=notice or NOTICE(lambda *_:None)
+        if end is not None:return self.api.meltype_tsf_service_deactivate(c.addressof(state),lifetime,123,request,end,notice)
+        return self.api.meltype_tsf_service_stop(c.addressof(state),lifetime,123,request,notice)
     def test_deactivate_native_close_metadata_precedes_stopped_state(self):
         state=self.create();host=SubscriptionHost();state.client=17;events=[]
         sid='終了"😀';self.assertEqual(self.api.meltype_tsf_service_set_sid(c.addressof(state),sid.encode()),1)
@@ -1110,7 +1117,7 @@ class StateTests(unittest.TestCase):
     def test_deactivate_native_late_edit_session_never_uses_stack_adapter(self):
         state=self.create();host=DeferredHost();self.shutdown_composition(state,host);events=[]
         try:
-            self.assertEqual(self.deactivate(state,host,SHUTDOWN_REQUEST(lambda owner,text,*_:events.append(json.loads(text)['op'])),END(lambda *_:events.append('end'))),0)
+            self.assertEqual(self.deactivate(state,host,SHUTDOWN_REQUEST(lambda owner,text,*_:events.append(json.loads(text)['op']))),0)
             self.assertEqual(events,['close']);self.assertTrue(host.pending)
             pending,host.pending=host.pending,[]
             for session in pending:
@@ -1121,7 +1128,7 @@ class StateTests(unittest.TestCase):
     def test_deactivate_native_refused_edit_releases_composition_slots(self):
         state=self.create();host=DeferredHost();host.mode='reject';self.shutdown_composition(state,host);events=[]
         try:
-            self.assertEqual(self.deactivate(state,host,SHUTDOWN_REQUEST(lambda owner,text,*_:events.append(json.loads(text)['op'])),END(lambda *_:events.append('end'))),0)
+            self.assertEqual(self.deactivate(state,host,SHUTDOWN_REQUEST(lambda owner,text,*_:events.append(json.loads(text)['op']))),0)
             self.assertEqual(events,['close']);self.assertFalse(state.composition);self.assertFalse(state.composition_context)
         finally:self.cleanup_shutdown_composition(state,host)
     def test_deactivate_native_abandoned_failure_reports_notice_and_continues(self):
@@ -1257,6 +1264,107 @@ class StateTests(unittest.TestCase):
             (address,c.byref(host.context),self.worker,c.byref(host.context),valid,SELECT(lambda *_:None),READ(),TOGGLE(lambda _:None)),
             (address,c.byref(host.context),self.worker,c.byref(host.context),valid,SELECT(lambda *_:None),READ(lambda _:1),TOGGLE())]:
             self.assertEqual(self.api.meltype_tsf_service_activate(data,lifetime,worker,manager,17,0,sinks,None,select,read,toggle,CORE_NOTICE(),CATEGORY()),HR(0x80070057).value)
+        self.assertEqual(c.string_at(address,c.sizeof(State)),before);host.verify(self)
+    def owned_apply(self,state,host,view=None,lifetime=None):
+        return self.api.meltype_tsf_service_apply_composition(c.addressof(state),lifetime or c.byref(host.context),c.byref(host.sink),c.byref(host.context),7,
+            json.dumps(view or {'text':'かな'},ensure_ascii=False).encode())
+    def owned_commit(self,state,host,text='確定😀'):
+        value=units(text);buffer=(c.c_uint16*len(value))(*value)
+        return self.api.meltype_tsf_service_write_commit(c.addressof(state),c.byref(host.context),c.byref(host.sink),c.byref(host.context),host.original,7,buffer,len(value))
+    def owned_end(self,state,host,lifetime=None):
+        return self.api.meltype_tsf_service_end_composition(c.addressof(state),lifetime or c.byref(host.context),7)
+    def clear_owned_pair(self,state):
+        composition,context=state.composition,state.composition_context
+        state.composition=state.composition_context=None
+        if composition:release(composition)
+        if context:release(context)
+    def stale_state(self,state):
+        if not state.keys:state.keys=self.api.meltype_tsf_key_state_create()
+        self.assertTrue(state.keys);self.api.meltype_tsf_key_stale_write(state.keys,8,65,1234)
+    def stale_tries(self,state):
+        value=Stale();self.api.meltype_tsf_key_stale_read(state.keys,c.byref(value));return value.tries
+    def test_owned_native_start_uses_service_attributes_and_utf16_view(self):
+        state=self.create();host=OwnerHost();host.selection=(0,3)
+        state.atom_input=11;state.atom_converted=22;state.atom_target=33
+        try:
+            self.assertEqual(self.owned_apply(state,host,{'text':'日本😀','converting':True,'clauses':['日','本😀'],'selectedClause':1}),1)
+            self.assertEqual(state.composition,c.addressof(host.composition));self.assertEqual(state.composition_context,c.addressof(host.context))
+            self.assertEqual(host.attributes,[(0,1,22),(1,4,33)]);self.assertEqual(host.document,units('日本😀'))
+            self.assertEqual(self.owned_apply(state,host),1);self.assertEqual(len(host.started),1)
+        finally:self.clear_owned_pair(state);host.verify(self)
+    def test_owned_native_refused_start_preserves_empty_slots(self):
+        state=self.create();host=OwnerHost();host.fail_start=True
+        self.assertEqual(self.owned_apply(state,host),0);self.assertFalse(state.composition);self.assertFalse(state.composition_context);host.verify(self)
+    def test_owned_native_commit_uses_keep_caret_and_clears_stale_after_end(self):
+        for keep in [False,True]:
+            state=self.create();host=OwnerHost();host.selection=(1,1);state.keep_caret=keep;self.stale_state(state)
+            try:
+                self.assertEqual(self.owned_commit(state,host),3)
+                self.assertEqual(host.document,units('確定😀'));self.assertEqual(host.selection,(1,1) if keep else (4,4))
+                self.assertEqual(self.stale_tries(state),0);self.assertFalse(state.composition);self.assertFalse(state.composition_context)
+            finally:self.clear_owned_pair(state);host.verify(self)
+    def test_owned_native_write_failure_and_start_failure_have_distinct_cleanup(self):
+        for failed,result,stale in [('fail_start',1,8),('fail_write',2,0)]:
+            state=self.create();host=OwnerHost();self.stale_state(state);setattr(host,failed,True)
+            try:
+                self.assertEqual(self.owned_commit(state,host),result);self.assertEqual(self.stale_tries(state),stale)
+                self.assertEqual(host.document,units('old') if failed=='fail_write' else units('確定😀'))
+            finally:self.clear_owned_pair(state);host.verify(self)
+    def test_owned_native_end_clears_pair_and_stale_once(self):
+        state=self.create();host=OwnerHost();self.stale_state(state)
+        try:
+            self.assertEqual(self.owned_apply(state,host),1);self.assertEqual(self.owned_end(state,host),1)
+            self.assertEqual(self.stale_tries(state),0);self.assertEqual(self.owned_end(state,host),0);self.assertEqual(host.ended,1)
+        finally:self.clear_owned_pair(state);host.verify(self)
+    def test_owned_native_end_preserves_reentrant_composition_replacement(self):
+        state=self.create();host=OwnerHost();other=OwnerHost()
+        def replaced():
+            target=self.api.meltype_tsf_start_composition(c.byref(other.context),c.byref(other.sink),other.original,7)
+            self.assertTrue(target);self.clear_owned_pair(state)
+            state.composition=target;state.composition_context=c.addressof(other.context);other.context_ref(1)
+        try:
+            self.assertEqual(self.owned_apply(state,host),1);host.on_end=replaced
+            self.assertEqual(self.owned_end(state,host),1)
+            self.assertEqual(state.composition,c.addressof(other.composition));self.assertEqual(state.composition_context,c.addressof(other.context))
+        finally:self.clear_owned_pair(state);host.verify(self);other.verify(self)
+    def test_owned_native_outer_pin_survives_last_release_through_stale_cleanup(self):
+        state=self.create();address=c.addressof(state);host=OwnerHost();events=[];self.stale_state(state)
+        self.assertEqual(self.owned_apply(state,host),1)
+        dispatch=DISPATCH(lambda *_:0)
+        @self.checked(DESTROY)
+        def destroyed(owner):
+            events.append(('destroy',self.stale_tries(state),state.composition,state.composition_context))
+            self.api.meltype_tsf_service_state_destroy(owner)
+        root=self.api.meltype_tsf_service_com_create(address,dispatch,destroyed);self.assertTrue(root);self.owned.remove(address)
+        def ended():events.append('end');release(root);self.assertEqual(self.live(),self.before+1)
+        host.on_end=ended
+        try:
+            self.assertEqual(self.owned_end(state,host,lifetime=root),1)
+            self.assertEqual(events,['end',('destroy',0,None,None)]);host.verify(self)
+        finally:
+            if not events:host.on_end=None;self.clear_owned_pair(state);release(root)
+    def test_owned_native_invalid_arguments_preserve_slots(self):
+        state=self.create();host=OwnerHost();address=c.addressof(state);life=c.byref(host.context);sink=c.byref(host.sink);context=c.byref(host.context)
+        before=c.string_at(address,c.sizeof(State))
+        for data,lifetime in [(None,life),(address,None)]:
+            self.assertEqual(self.api.meltype_tsf_service_apply_composition(data,lifetime,sink,context,7,b'{}'),-1)
+            self.assertEqual(self.api.meltype_tsf_service_write_commit(data,lifetime,sink,context,host.original,7,None,0),-1)
+            self.assertEqual(self.api.meltype_tsf_service_end_composition(data,lifetime,7),-1)
+        self.assertEqual(self.api.meltype_tsf_service_apply_composition(address,life,sink,context,7,None),-1)
+        self.assertEqual(self.api.meltype_tsf_service_write_commit(address,life,sink,context,host.original,7,None,1),-1)
+        self.assertEqual(c.string_at(address,c.sizeof(State)),before);host.verify(self)
+    def test_stop_native_ends_composition_without_operation_adapter(self):
+        state=self.create();host=DeferredHost();host.mode='sync';self.shutdown_composition(state,host);self.stale_state(state);events=[]
+        try:
+            self.assertEqual(self.deactivate(state,host,request=SHUTDOWN_REQUEST(lambda owner,text,*_:events.append(json.loads(text)['op']))),0)
+            self.assertEqual(events,['commit','close']);self.assertEqual(host.ended,1);self.assertEqual(self.stale_tries(state),0)
+            self.assertFalse(state.composition);self.assertFalse(state.composition_context);self.assertEqual(state.shutdown_phase,2)
+        finally:self.cleanup_shutdown_composition(state,host)
+    def test_stop_native_invalid_arguments_preserve_state(self):
+        state=self.create();host=SubscriptionHost();address=c.addressof(state);before=c.string_at(address,c.sizeof(State))
+        for data,lifetime,request in [(None,c.byref(host.context),SHUTDOWN_REQUEST(lambda *_:None)),
+            (address,None,SHUTDOWN_REQUEST(lambda *_:None)),(address,c.byref(host.context),SHUTDOWN_REQUEST())]:
+            self.assertEqual(self.api.meltype_tsf_service_stop(data,lifetime,None,request,NOTICE()),HR(0x80070057).value)
         self.assertEqual(c.string_at(address,c.sizeof(State)),before);host.verify(self)
 if __name__=='__main__':unittest.main(argv=[sys.argv[0]],verbosity=2,failfast=True)
 

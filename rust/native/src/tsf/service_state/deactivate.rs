@@ -11,7 +11,7 @@ struct Owner {
     lifetime: *mut c_void,
     context: *mut c_void,
     request: Request,
-    end: End,
+    end: Option<End>,
     notice: Option<Notice>,
 }
 unsafe extern "C" fn read(data: *mut c_void) -> u32 {
@@ -48,7 +48,12 @@ unsafe extern "C" fn action(data: *mut c_void, op: u32, cookie: u32, manager: *m
         }
         7 => meltype_tsf_service_remove_langbar(state, manager),
         8 => (*state).client = 0,
-        9 => (owner.end)(owner.context, cookie),
+        9 => match owner.end {
+            Some(end) => end(owner.context, cookie),
+            None => {
+                super::owned::meltype_tsf_service_end_composition(state, owner.lifetime, cookie);
+            }
+        },
         _ => {}
     }
 }
@@ -80,6 +85,40 @@ pub unsafe extern "C" fn meltype_tsf_service_deactivate(
     let (Some(request_callback), Some(end)) = (request_callback, end) else {
         return E_INVALIDARG;
     };
+    run(
+        state,
+        lifetime,
+        context,
+        request_callback,
+        Some(end),
+        notice,
+    )
+}
+/// Service shutdown with native composition ending and stale-key cleanup.
+/// # Safety
+/// Same lifetime/slot/callback contract as service_deactivate. Request is the only
+/// remaining operation adapter. Late sessions cannot use its stack context.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_tsf_service_stop(
+    state: *mut ServiceState,
+    lifetime: *mut c_void,
+    context: *mut c_void,
+    request_callback: Option<Request>,
+    notice: Option<Notice>,
+) -> HRESULT {
+    let Some(request_callback) = request_callback else {
+        return E_INVALIDARG;
+    };
+    run(state, lifetime, context, request_callback, None, notice)
+}
+unsafe fn run(
+    state: *mut ServiceState,
+    lifetime: *mut c_void,
+    context: *mut c_void,
+    request_callback: Request,
+    end: Option<End>,
+    notice: Option<Notice>,
+) -> HRESULT {
     if state.is_null() || lifetime.is_null() {
         return E_INVALIDARG;
     }

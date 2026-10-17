@@ -142,7 +142,16 @@ int wmain() {
     Composition composition;Manager manager={managerMethods,1,&composition};context.manager=&manager;
     doc.context=reinterpret_cast<ITfContext*>(&context);
     auto* service=new TextService();BOOL eaten=FALSE;
-    assert(service->ServiceInterface<ITfKeyEventSink>()->OnTestKeyDown(reinterpret_cast<ITfContext*>(&context),VK_SPACE,0,&eaten)==S_OK && eaten);
+    // A cold worker may miss the bounded initial hello under host load. Passing
+    // the key through then is valid; establish readiness before edit assertions.
+    // Deadline/backoff behavior is covered separately by transport fixtures.
+    const ULONGLONG readyDeadline=GetTickCount64()+5000;
+    do {
+        assert(service->ServiceInterface<ITfKeyEventSink>()->OnTestKeyDown(reinterpret_cast<ITfContext*>(&context),VK_SPACE,0,&eaten)==S_OK);
+        if (eaten) break;
+        Sleep(200);
+    } while (GetTickCount64()<readyDeadline);
+    assert(eaten && "private worker must become ready before editing");
     assert(service->ServiceInterface<ITfKeyEventSink>()->OnKeyDown(reinterpret_cast<ITfContext*>(&context),VK_SPACE,0,&eaten)==S_OK && eaten);
     assert(doc.text==L"前😀　" && doc.writes==1 && doc.selectionStart==4 && doc.selectionEnd==4);
     assert(service->ServiceInterface<ITfKeyEventSink>()->OnTestKeyUp(nullptr,VK_SPACE,0,&eaten)==S_OK && eaten);

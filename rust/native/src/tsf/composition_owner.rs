@@ -15,10 +15,10 @@ use windows::{
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct Slots {
-    lifetime: *mut c_void,
-    composition: *mut *mut c_void,
-    context: *mut *mut c_void,
-    sink: *mut c_void,
+    pub(super) lifetime: *mut c_void,
+    pub(super) composition: *mut *mut c_void,
+    pub(super) context: *mut *mut c_void,
+    pub(super) sink: *mut c_void,
 }
 impl Slots {
     unsafe fn ensure(&self, context: &ITfContext, cookie: u32, range: *mut c_void) -> bool {

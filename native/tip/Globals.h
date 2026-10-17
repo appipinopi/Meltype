@@ -170,10 +170,6 @@ struct RustApplyReplyCallbacks {
     void (__cdecl *action)(void*,unsigned int,unsigned int,void*,const char*,int);
 };
 bool RustApplyReply(TfEditCookie,ITfContext*,const JsonValue&,const std::string&,const RustApplyReplyCallbacks&);
-struct RustCompositionSlots {IUnknown* lifetime;void** composition;void** context;ITfCompositionSink* sink;};
-int RustApplyOwnedComposition(TfEditCookie,ITfContext*,const JsonValue&,TfGuidAtom,TfGuidAtom,TfGuidAtom,const RustCompositionSlots&);
-int RustWriteOwnedCommit(TfEditCookie,ITfContext*,ITfRange*,const std::wstring&,bool,const RustCompositionSlots&);
-int RustEndOwnedComposition(TfEditCookie,const RustCompositionSlots&);
 struct RustTerminationCallbacks {
     void* owner;IUnknown* lifetime;void** composition;void** context;void** resume;void* abandoned;
     unsigned int (__cdecl *read)(void*);
@@ -224,8 +220,11 @@ bool RustServiceExchange(RustServiceState*,IUnknown*,const std::string&,DWORD,bo
 HRESULT RustServiceFocus(RustServiceState*,IUnknown*,ITfTextEditSink*,ITfDocumentMgr*,int,void*,int (__cdecl *)(void*,int),void (__cdecl *)(void*));
 bool RustServiceEdited(RustServiceState*,IUnknown*,ITfContext*,ITfEditRecord*,TfEditCookie,void*,void (__cdecl *)(void*,unsigned int,void*,int),void (__cdecl *)(void*));
 HRESULT RustServiceOpened(RustServiceState*,IUnknown*,REFGUID,void*,void (__cdecl *)(void*),void (__cdecl *)(void*,int));
-HRESULT RustServiceDeactivate(RustServiceState*,IUnknown*,void*,void (__cdecl *)(void*,const char*,unsigned int,void*,void*),void (__cdecl *)(void*,unsigned int));
+HRESULT RustServiceDeactivate(RustServiceState*,IUnknown*,void*,void (__cdecl *)(void*,const char*,unsigned int,void*,void*));
 HRESULT RustServiceActivate(RustServiceState*,IUnknown*,ITfThreadMgr*,TfClientId,DWORD,void* const*,void*,void (__cdecl *)(void*,int,int),int (__cdecl *)(void*),void (__cdecl *)(void*));
+int RustServiceApplyComposition(RustServiceState*,IUnknown*,ITfCompositionSink*,TfEditCookie,ITfContext*,const JsonValue&);
+int RustServiceWriteCommit(RustServiceState*,IUnknown*,ITfCompositionSink*,TfEditCookie,ITfContext*,ITfRange*,const std::wstring&);
+int RustServiceEndComposition(RustServiceState*,IUnknown*,TfEditCookie);
 bool RustServiceCore(RustServiceState*,IUnknown*,bool);
 unsigned int RustServiceMode(const RustServiceState*);
 void RustServiceWriteOpen(RustServiceState*,bool);

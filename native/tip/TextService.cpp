@@ -436,8 +436,7 @@ STDMETHODIMP TextService::Deactivate() {
         [](void* p,const char* json,unsigned int ec,void* context,void* target) {auto* s=static_cast<TextService*>(p);try {
             JsonValue reply;
             if (s->Request(json,reply) && context && s->compositionContext_==context && s->composition_==target) s->Apply(ec,static_cast<ITfContext*>(context),reply);
-        }catch (...) {}},
-        [](void* p,unsigned int ec) {try {static_cast<TextService*>(p)->EndComposition(ec);}catch (...) {}});
+        }catch (...) {}});
 #else
     TipLog(L"Deactivate");
     if (composition_ != nullptr && compositionContext_ != nullptr) {
@@ -1700,8 +1699,7 @@ bool TextService::ExtendOverPrevious(TfEditCookie ec, ITfRange* range, LONG coun
 
 bool TextService::WriteCommit(TfEditCookie ec, ITfContext* context, ITfRange* range, const std::wstring& text) {
 #ifdef MELTYPE_RUST_CORE
-    const int result=RustWriteOwnedCommit(ec,context,range,text,keepAppCaret_,CompositionSlots());
-    if (result>=0 && (result&2)) ResetStaleCommit();
+    const int result=RustServiceWriteCommit(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),ServiceInterface<ITfCompositionSink>(),ec,context,range,text);
     return result>=0 && (result&1)!=0;
 #else
     if (composition_ == nullptr) {
@@ -1746,15 +1744,10 @@ bool TextService::WriteCommit(TfEditCookie ec, ITfContext* context, ITfRange* ra
 #endif
 }
 
-#ifdef MELTYPE_RUST_CORE
-RustCompositionSlots TextService::CompositionSlots() {
-    return {ServiceInterface<ITfTextInputProcessorEx>(),reinterpret_cast<void**>(&composition_),reinterpret_cast<void**>(&compositionContext_),ServiceInterface<ITfCompositionSink>()};
-}
-#endif
 
 void TextService::ApplyComposition(TfEditCookie ec, ITfContext* context, const JsonValue& view) {
 #ifdef MELTYPE_RUST_CORE
-    if (RustApplyOwnedComposition(ec,context,view,atomInput_,atomConverted_,atomTarget_,CompositionSlots())==0) TipLog(L"変換中の文字を置けません");
+    if (RustServiceApplyComposition(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),ServiceInterface<ITfCompositionSink>(),ec,context,view)==0) TipLog(L"変換中の文字を置けません");
 #else
     const std::wstring& text = view[L"text"].Str();
     if (composition_ == nullptr) {
@@ -1836,7 +1829,7 @@ void TextService::SetAttribute(TfEditCookie ec, ITfContext* context, ITfRange* r
 
 void TextService::EndComposition(TfEditCookie ec) {
 #ifdef MELTYPE_RUST_CORE
-    if (RustEndOwnedComposition(ec,CompositionSlots())>0) ResetStaleCommit();
+    RustServiceEndComposition(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),ec);
 #else
     if (composition_ == nullptr) return;
     ITfRange* range = nullptr;
