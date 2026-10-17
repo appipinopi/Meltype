@@ -9,6 +9,7 @@
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
+#include <tuple>
 using namespace meltype_fcitx;
 static void check(bool condition, const std::string &message) { if (!condition) throw std::runtime_error(message); }
 static bool same(const Json &a, const Json &b) {
@@ -28,6 +29,41 @@ static bool same(const Json &a, const Json &b) {
         return true;
     }
     return false;
+}
+using ViewEvent=std::tuple<uint32_t,int,std::string>;
+using ViewTrace=std::vector<ViewEvent>;
+using ViewCallback=int (*)(void *,uint32_t,int,const uint8_t *,uint32_t);
+static int collectView(void *context,uint32_t op,int arg,const uint8_t *text,uint32_t length) noexcept {
+    try { static_cast<ViewTrace *>(context)->emplace_back(op,arg,std::string(reinterpret_cast<const char *>(text),length)); return 1; }
+    catch(...) { return 0; }
+}
+// Reference the former show() policy independently from the Rust planner.
+static ViewTrace referenceView(const Json &result) {
+    ViewTrace out;
+    const auto emit=[&](uint32_t op,int arg=0,std::string text={}) {out.emplace_back(op,arg,std::move(text));};
+    auto *view=result.get("view");
+    if(!view || view->kind!=Json::Kind::Object) {emit(8);return out;}
+    emit(0);
+    const auto text=view->str("text");
+    const auto clauses=view->strings("clauses");
+    const bool converting=view->flag("converting");
+    const int selectedClause=view->integer("selectedClause",-1);
+    if(converting&&!clauses.empty()) {
+        for(size_t i=0;i<clauses.size();i++)emit(1,1|(static_cast<int>(i)==selectedClause?2:0),clauses[i]);
+    } else emit(1,1,text);
+    emit(2,!text.empty()?1:0);
+    auto hint=view->str("hint");
+    const auto suggestion=view->str("suggestion");
+    if(!suggestion.empty())hint=suggestion+"　"+hint;
+    if(!hint.empty())emit(3,0,hint);
+    const auto candidates=view->strings("candidates");
+    if(converting&&candidates.size()>1) {
+        emit(4,9);
+        for(size_t i=0;i<candidates.size();i++)emit(5,static_cast<int>(i),candidates[i]);
+        const int selected=view->integer("selectedIndex",0);
+        emit(6,selected>=0&&selected<static_cast<int>(candidates.size())?selected:-1);
+    }
+    emit(7);return out;
 }
 int main(int argc,char **argv) {
     try {
@@ -69,8 +105,34 @@ int main(int argc,char **argv) {
         check(deletion(reinterpret_cast<const uint8_t *>(valid.data()),valid.size(),2,reinterpret_cast<const uint8_t *>(""),0,0)==0,"empty expected text rejected");
         check(context(reinterpret_cast<const uint8_t *>(valid.data()),valid.size(),99,20,unchanged)==0,"invalid cursor rejected");
         std::cout<<"fcitx Rust text: "<<textCases<<" legacy context/deletion cases, UTF-8/UTF-16/character units and invalid input passed\n";
+        auto viewPlan=reinterpret_cast<int (*)(const uint8_t *,uint32_t,void *,ViewCallback)>(dlsym(library,"meltype_fcitx_view_utf8"));
+        check(viewPlan!=nullptr,"view ABI missing");
+        size_t viewCount=0;
+        const auto compareView=[&](const std::string &text) {
+            Json reference; check(JsonReader(text).read(reference),"view reference parse");
+            ViewTrace actual;
+            check(viewPlan(reinterpret_cast<const uint8_t *>(text.data()),text.size(),&actual,collectView)==1,"view traversal");
+            check(actual==referenceView(reference),"view policy/reference mismatch"); viewCount++;
+        };
+        for(const std::string text:{"{}","null",R"({"view":[]})",R"({"view":{}})",R"({"view":{"text":"","clauses":["仮名"],"converting":true,"candidates":["仮名"],"hint":"案内"}})",
+            R"({"view":{"text":false,"clauses":[null],"converting":"true","candidates":[],"suggestion":false}})",
+            R"({"view":{"text":"かな","converting":true,"candidates":["仮名","かな"],"selectedIndex":1.9,"selectedClause":true}})",
+            R"({"view":{"text":"a\u0000😀","clauses":[false,"一","二"],"converting":true,"selectedClause":1,"candidates":["甲",null,"乙"],"suggestion":"もしかして","hint":"案内"}})"})compareView(text);
+        for(int selected=-3;selected<15;selected++) {
+            for(const auto converting:{"true","false","null"}) {
+                for(const auto clauses:{"[]",R"(["仮","名"])",R"([3,null,"かな"])","null"})
+                    compareView(std::string(R"({"view":{"text":"かな","clauses":)")+clauses+",\"converting\":"+converting+",\"selectedClause\":"+std::to_string(selected)+",\"selectedIndex\":"+std::to_string(selected)+R"(,"candidates":["仮名","かな"],"suggestion":"候補","hint":"案内"}})");
+            }
+        }
+        ViewTrace invalidView;
+        const std::string invalidPlan=R"({"view":{},"bad":)";
+        check(viewPlan(reinterpret_cast<const uint8_t *>(invalidPlan.data()),invalidPlan.size(),&invalidView,collectView)==0&&invalidView.empty(),"invalid JSON must not start view callbacks");
+        auto stopView=[](void *context,uint32_t,int,const uint8_t *,uint32_t)->int {++*static_cast<int *>(context);return 0;};
+        int callbacks=0;const std::string emptyView=R"({"view":{}})";
+        check(viewPlan(reinterpret_cast<const uint8_t *>(emptyView.data()),emptyView.size(),&callbacks,stopView)==0&&callbacks==1,"view callback cancellation");
         size_t count=0;
         auto compare=[&](const std::string &text) {
+            compareView(text);
             Json oldValue,newValue;
             check(JsonReader(text).read(oldValue),"legacy fixture parse failed: "+text);
             check(readRustJson(text,newValue,visit),"Rust fixture parse failed: "+text);
@@ -98,6 +160,7 @@ int main(int argc,char **argv) {
         for (char scalar:std::string("nihongo")) {char *reply=key(session,0,scalar,0,nullptr,nullptr);check(reply!=nullptr,"engine key");compare(reply);freeResult(reply);}
         char *reply=commit(session);check(reply!=nullptr,"engine commit");compare(reply);freeResult(reply);destroy(session);
         check(dlclose(library)==0,"library close");
+        std::cout<<"fcitx Rust view: "<<viewCount<<" legacy/core panel plans, Unicode/NUL, clauses, highlight, hint, candidates, invalid input and cancellation passed\n";
         std::cout<<"fcitx Rust JSON: "<<count<<" reference/core projections, UTF-8/NUL/escapes, malformed input, cancellation and duplicate policy passed\n";
     } catch (const std::exception &error) {std::cerr<<error.what()<<'\n';return 1;}
 }

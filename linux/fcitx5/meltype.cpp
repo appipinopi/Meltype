@@ -55,6 +55,8 @@ struct Native {
     void *handle = nullptr;
 #ifdef MELTYPE_RUST_CORE
     meltype_fcitx::JsonVisit visitJson = nullptr;
+    using ViewCallback = int (*)(void *,uint32_t,int,const uint8_t *,uint32_t);
+    int (*viewPlan)(const uint8_t *,uint32_t,void *,ViewCallback) = nullptr;
     uint64_t (*mapKey)(uint32_t,uint32_t) = nullptr;
     int (*mapModifiers)(uint32_t) = nullptr;
     uint32_t (*modePlan)(uint32_t,int) = nullptr;
@@ -97,6 +99,7 @@ struct Native {
         free = reinterpret_cast<decltype(free)>(sym("meltype_free"));
 #ifdef MELTYPE_RUST_CORE
         visitJson = reinterpret_cast<decltype(visitJson)>(sym("meltype_json_visit_utf8"));
+        viewPlan = reinterpret_cast<decltype(viewPlan)>(sym("meltype_fcitx_view_utf8"));
         mapKey = reinterpret_cast<decltype(mapKey)>(sym("meltype_fcitx_key"));
         mapModifiers = reinterpret_cast<decltype(mapModifiers)>(sym("meltype_fcitx_modifiers"));
         modePlan = reinterpret_cast<decltype(modePlan)>(sym("meltype_fcitx_mode"));
@@ -107,7 +110,7 @@ struct Native {
         setPreedit = reinterpret_cast<decltype(setPreedit)>(sym("meltype_fcitx_set_preedit"));
         contextOffsets = reinterpret_cast<decltype(contextOffsets)>(sym("meltype_fcitx_context_offsets"));
         deleteCount = reinterpret_cast<decltype(deleteCount)>(sym("meltype_fcitx_delete_count"));
-        if (!visitJson || !mapKey || !mapModifiers || !modePlan || !frontendState || !setPreedit || !contextOffsets || !deleteCount) {
+        if (!viewPlan || !visitJson || !mapKey || !mapModifiers || !modePlan || !frontendState || !setPreedit || !contextOffsets || !deleteCount) {
             FCITX_ERROR() << "Meltype: Rust fcitx JSON/key ABI is missing";
             return false;
         }
@@ -228,7 +231,7 @@ public:
             auto handled = native_.take(native_.roleKey(state->session(), vk));
             Json result;
             if (!handled.empty() && native_.readJson(handled, result)) {
-                apply(ic, result);
+                apply(ic, result, handled);
                 event.filterAndAccept();
                 return;
             }
@@ -269,7 +272,7 @@ public:
         if (text.empty()) return;
         Json result;
         if (!native_.readJson(text, result)) return;
-        apply(ic, result);
+        apply(ic, result, text);
         if (result.flag("consumed")) event.filterAndAccept();
     }
 
@@ -328,10 +331,10 @@ private:
     void apply(fcitx::InputContext *ic, const std::string &text) {
         if (text.empty()) return;
         Json result;
-        if (native_.readJson(text, result)) apply(ic, result);
+        if (native_.readJson(text, result)) apply(ic, result, text);
     }
 
-    void apply(fcitx::InputContext *ic, const Json &result) {
+    void apply(fcitx::InputContext *ic, const Json &result, [[maybe_unused]] const std::string &raw) {
         if (auto *commits = result.get("commits"); commits && commits->kind == Json::Kind::Array) {
             for (const auto &edit : commits->items) {
                 int remove = edit.integer("deleteBefore");
@@ -370,11 +373,16 @@ private:
                 if (!committed.empty()) ic->commitString(committed);
             }
         }
+#ifdef MELTYPE_RUST_CORE
+        showRust(ic, raw);
+#else
         auto *view = result.get("view");
         if (view && view->kind == Json::Kind::Object) show(ic, *view);
         else hidePreedit(ic);
+#endif
     }
 
+#ifndef MELTYPE_RUST_CORE
     void show(fcitx::InputContext *ic, const Json &view) {
         auto &panel = ic->inputPanel();
         panel.reset();
@@ -416,6 +424,57 @@ private:
         ic->updateUserInterface(fcitx::UserInterfaceComponent::InputPanel);
     }
 
+#else
+    struct ViewSink {
+        MeltypeEngine *engine;
+        fcitx::InputContext *ic;
+        fcitx::Text preedit;
+        std::unique_ptr<fcitx::CommonCandidateList> candidates;
+    };
+    static int viewEvent(void *opaque,uint32_t operation,int argument,const uint8_t *bytes,uint32_t length) noexcept {
+        try {
+            auto &sink=*static_cast<ViewSink *>(opaque);
+            auto *ic=sink.ic;
+            auto &panel=ic->inputPanel();
+            const std::string text(reinterpret_cast<const char *>(bytes),length);
+            switch(operation) {
+            case 0: panel.reset(); break;
+            case 1: {
+                fcitx::TextFormatFlags format;
+                if(argument&1)format|=fcitx::TextFormatFlag::Underline;
+                if(argument&2)format|=fcitx::TextFormatFlag::HighLight;
+                sink.preedit.append(text,format); break;
+            }
+            case 2:
+                sink.preedit.setCursor(static_cast<int>(sink.preedit.toString().size()));
+                if(ic->capabilityFlags().test(fcitx::CapabilityFlag::Preedit))panel.setClientPreedit(sink.preedit);
+                else panel.setPreedit(sink.preedit);
+                ic->propertyFor(&sink.engine->factory_)->setPreeditVisible(argument!=0); break;
+            case 3: panel.setAuxDown(fcitx::Text(text)); break;
+            case 4:
+                sink.candidates=std::make_unique<fcitx::CommonCandidateList>();
+                sink.candidates->setPageSize(argument);
+                sink.candidates->setLabels({"1. ","2. ","3. ","4. ","5. ","6. ","7. ","8. ","9. "});
+                sink.candidates->setCursorPositionAfterPaging(fcitx::CursorPositionAfterPaging::DonotChange); break;
+            case 5: sink.candidates->append<MeltypeCandidate>(sink.engine,text,argument); break;
+            case 6:
+                if(argument>=0)sink.candidates->setGlobalCursorIndex(argument);
+                panel.setCandidateList(std::move(sink.candidates)); break;
+            case 7:
+                ic->updatePreedit();
+                ic->updateUserInterface(fcitx::UserInterfaceComponent::InputPanel); break;
+            case 8: sink.engine->hidePreedit(ic); break;
+            default: return 0;
+            }
+            return 1;
+        } catch(...) { return 0; }
+    }
+    void showRust(fcitx::InputContext *ic,const std::string &raw) {
+        ViewSink sink{this,ic,{},nullptr};
+        if(raw.size()>std::numeric_limits<uint32_t>::max() || !native_.viewPlan(reinterpret_cast<const uint8_t *>(raw.data()),static_cast<uint32_t>(raw.size()),&sink,viewEvent))
+            hidePreedit(ic);
+    }
+#endif
     void hidePreedit(fcitx::InputContext *ic) {
         ic->inputPanel().reset();
         ic->updatePreedit();

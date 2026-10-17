@@ -85,3 +85,17 @@ embedded NUL, window limits and expected-text mismatches: 2,225 comparisons
 passed locally on WSL with the actual Rust library. A range-loop copy warning
 in the test was fixed before that successful run. SDK editor callbacks
 and widgets remain C++ and still need migration.
+
+The default adapter now requests panel operations from Rust through
+`meltype_fcitx_view_utf8`: formatted preedit segments, selected-clause highlight,
+visibility, suggestion/hint composition, candidate-list eligibility/page size,
+items and selected index, followed by publish or hide. The full response is
+validated and the operation list is built before the first callback. UTF-8 text
+is length-delimited, including embedded NUL; returning zero stops callbacks.
+C++ catches SDK exceptions at the callback boundary and hides the panel after a
+failed traversal. SDK object allocation, text submission, labels, notifications
+and input-context/editor bridges still use C++. The legacy build retains the
+former `show()` implementation. The standalone ABI test compares Rust plans to
+that policy, including wrong field types, missing views, candidate boundaries,
+Unicode, cancellation and actual core replies. This establishes policy evidence,
+not rendered pixels or real application input compatibility.

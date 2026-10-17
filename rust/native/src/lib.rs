@@ -5,6 +5,7 @@
 //! freed memory. Returned strings use malloc/free, including Swift callbacks.
 use meltype_core::{session::Clause, Session};
 mod fcitx;
+mod fcitx_view;
 pub mod json_bridge;
 pub mod tip;
 #[cfg(windows)]
