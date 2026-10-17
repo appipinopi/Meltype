@@ -42,6 +42,10 @@ struct EventTests {
   }
   let app=NSApplication.shared
   app.setActivationPolicy(.prohibited)
+  #if REAL_CONVERTER
+  // Exercise the real product callbacks through Rust, not just direct converter calls.
+  NativeCore.shared.initialize()
+  #endif
   guard let server=IMKServer(name:"LocalMeltypeBoundaryTests",bundleIdentifier:Bundle.main.bundleIdentifier) else {fatalError("IMKServer creation failed")}
   var passed=0
   func check(_ name:String,_ body:(MeltypeInputController,EventClient)->Void) {
@@ -122,6 +126,15 @@ struct EventTests {
   }
   #if REAL_CONVERTER
   let converter=MeltypeConverter.shared
+  let expectedConversion=converter.clauses(for:"きょう",context:nil).map(\.text).joined()
+  precondition(!expectedConversion.isEmpty && expectedConversion != "きょう", "real converter did not produce kanji")
+  check("actual converter through Rust/IMK Space and commit") { controller,client in
+   type(controller,client,"kyou")
+   _=key(controller,client," ",code:UInt16(kVK_Space))
+   _=key(controller,client,"\r",code:UInt16(kVK_Return))
+   equal(client.document,expectedConversion)
+   equal(client.marked,"")
+  }
   let candidates=converter.candidates(for:"きょう")
   precondition(candidates.contains("今日"),"real dictionary conversion missing: \(candidates)")
   let clauses=converter.clauses(for:"きょうはいいてんき",context:nil)
