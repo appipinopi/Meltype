@@ -91,16 +91,6 @@ void RustKeyStaleRead(void*,RustKeyStale&);
 void RustKeyStaleWrite(void*,unsigned int,unsigned int,unsigned long long);
 void RustKeyStaleClear(void*);
 bool RustKeyPassedRead(void*,bool,bool,RustKeyPassed&);
-struct RustKeyEditCallbacks {
-    void* owner;IUnknown* lifetime;
-    unsigned int (__cdecl *read)(void*);
-    void (__cdecl *update)(void*,unsigned int,unsigned int);
-    int (__cdecl *edit)(void*,unsigned int,unsigned int,void*);
-    int (__cdecl *request)(void*,const char*,unsigned int*);
-    int (__cdecl *write)(void*,unsigned int,void*,void*,wchar_t);
-    void (__cdecl *log)(void*,unsigned int,int);
-};
-HRESULT RustHandleKey(ITfContext*,TfClientId,void*,UINT,wchar_t,const std::string&,const RustKeyEditCallbacks&);
 struct RustApplyReplyCallbacks {
     void* owner;IUnknown* lifetime;
     void* (__cdecl *current)(void*);
@@ -148,6 +138,7 @@ int RustServiceResume(RustServiceState*,IUnknown*,ITfCompositionSink*,ITfContext
 int RustServiceAbandon(RustServiceState*,IUnknown*);
 bool RustServiceInputScope(RustServiceState*,IUnknown*,TfEditCookie,ITfContext*);
 using RustServiceApply=int (__cdecl *)(void*,unsigned int,void*,const unsigned char*,unsigned int);
+HRESULT RustServiceHandleKey(RustServiceState*,IUnknown*,ITfCompositionSink*,ITfContext*,UINT,wchar_t,void*,RustServiceApply);
 HRESULT RustServiceCommit(RustServiceState*,IUnknown*,unsigned int,ITfContext*,TfEditCookie,bool,void*,RustServiceApply);
 HRESULT RustServiceSelectCandidate(RustServiceState*,IUnknown*,int,bool,void*,RustServiceApply);
 bool RustServiceModeAction(RustServiceState*,IUnknown*,ITfContext*,TfEditCookie,unsigned int,int);

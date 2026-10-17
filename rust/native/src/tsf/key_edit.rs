@@ -42,14 +42,14 @@ const APPLY: u32 = 4;
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct Callbacks {
-    owner: *mut c_void,
-    lifetime: *mut c_void,
-    read: unsafe extern "C" fn(*mut c_void) -> u32,
-    update: unsafe extern "C" fn(*mut c_void, u32, u32),
-    edit: unsafe extern "C" fn(*mut c_void, u32, u32, *mut c_void) -> i32,
-    request: unsafe extern "C" fn(*mut c_void, *const c_char, *mut u32) -> i32,
-    write: unsafe extern "C" fn(*mut c_void, u32, *mut c_void, *mut c_void, u16) -> i32,
-    log: unsafe extern "C" fn(*mut c_void, u32, i32),
+    pub(super) owner: *mut c_void,
+    pub(super) lifetime: *mut c_void,
+    pub(super) read: unsafe extern "C" fn(*mut c_void) -> u32,
+    pub(super) update: unsafe extern "C" fn(*mut c_void, u32, u32),
+    pub(super) edit: unsafe extern "C" fn(*mut c_void, u32, u32, *mut c_void) -> i32,
+    pub(super) request: unsafe extern "C" fn(*mut c_void, *const c_char, *mut u32) -> i32,
+    pub(super) write: unsafe extern "C" fn(*mut c_void, u32, *mut c_void, *mut c_void, u16) -> i32,
+    pub(super) log: unsafe extern "C" fn(*mut c_void, u32, i32),
 }
 #[derive(Clone, Copy, Default)]
 struct Outcome {

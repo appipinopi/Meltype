@@ -229,6 +229,36 @@ pub(crate) fn mode_reply(input: &[u8]) -> Option<u32> {
             }),
     )
 }
+#[cfg(windows)]
+pub(crate) fn key_reply(input: &[u8]) -> Option<(u32, u32)> {
+    let value = parse(input)?;
+    let get = |key: &str| match &value {
+        Value::Object(fields) => fields.get(&key.encode_utf16().collect::<Vec<_>>()),
+        _ => None,
+    };
+    let boolean = |key: &str| get(key) == Some(&Value::Bool(true));
+    let mut flags = [
+        "active",
+        "directDetection",
+        "directEnglishWord",
+        "switchToJapanese",
+        "consumed",
+    ]
+    .iter()
+    .enumerate()
+    .fold(0, |bits, (i, key)| bits | (u32::from(boolean(key)) << i));
+    // JsonValue.array is empty for every non-array type; missing view is null.
+    if !matches!(get("commits"), Some(Value::Array(items)) if !items.is_empty()) {
+        flags |= 32;
+    }
+    if matches!(get("view"), None | Some(Value::Null)) {
+        flags |= 64;
+    }
+    let mode = u32::from(boolean("active"))
+        | (u32::from(boolean("code")) << 1)
+        | (u32::from(boolean("english")) << 2);
+    Some((flags, mode))
+}
 pub type Emit = unsafe extern "C" fn(*mut c_void, u32, f64, *const u16, u32) -> i32;
 unsafe fn emit(value: &Value, owner: *mut c_void, callback: Emit) -> bool {
     let empty = std::ptr::null();
@@ -316,6 +346,43 @@ pub unsafe extern "C" fn meltype_json_quote(text: *const u16, length: u32) -> *m
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(windows)]
+    #[test]
+    fn key_flags_preserve_boolean_types_and_all_combinations() {
+        for bits in 0..128u32 {
+            let reply = serde_json::json!({
+                "active":bits&1!=0,"directDetection":bits&2!=0,
+                "directEnglishWord":bits&4!=0,"switchToJapanese":bits&8!=0,
+                "consumed":bits&16!=0,"commits":if bits&32!=0 {vec![]} else {vec![0]},
+                "view":if bits&64!=0 {serde_json::Value::Null} else {serde_json::json!({})},
+                "code":true,"english":true
+            });
+            assert_eq!(
+                key_reply(reply.to_string().as_bytes()),
+                Some((bits, (bits & 1) | 6))
+            );
+        }
+        assert_eq!(
+            key_reply(
+                br#"{"active":1,"directDetection":"true","consumed":[],"commits":{},"view":false}"#
+            ),
+            Some((32, 0))
+        );
+    }
+    #[cfg(windows)]
+    #[test]
+    fn key_flags_keep_compatible_missing_duplicate_and_surrogate_values() {
+        assert_eq!(key_reply(b"[]"), Some((96, 0)));
+        assert_eq!(
+            key_reply(br#"{"active":true,"active":false,"commits":["\ud800"]}"#),
+            Some((64, 0))
+        );
+        assert_eq!(
+            key_reply(br#"{"view":"\ud800","commits":null}"#),
+            Some((32, 0))
+        );
+        assert_eq!(key_reply(b"{} invalid"), None);
+    }
     #[test]
     fn utf16_escapes_keep_unpaired_units_and_nuls() {
         assert_eq!(

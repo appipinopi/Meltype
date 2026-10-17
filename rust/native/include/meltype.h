@@ -565,6 +565,14 @@ int32_t meltype_tsf_service_key_event(void *state,void *lifetime,void *sink,cons
    invalid replies. Returns HRESULT. No concurrent calls on the service. */
 int32_t meltype_tsf_service_commit(void *state,void *lifetime,const char *worker,uint32_t mode,void *context,uint32_t cookie,int32_t keep,void *adapter,int32_t (*apply)(void *,uint32_t,void *,const uint8_t *,uint32_t),void (*notice)(void *));
 int32_t meltype_tsf_service_select_candidate(void *state,void *lifetime,const char *worker,int32_t index,int32_t prediction,void *adapter,int32_t (*apply)(void *,uint32_t,void *,const uint8_t *,uint32_t),void (*notice)(void *));
+/* Native key editing: borrowed live service/root/context/composition sink on its
+   TSF thread. Root pins state/adapter/code; retained SYNC work is invalidated at
+   return. Apply borrows compatible reply JSON and returns nonzero on success.
+   Optional sender replaces SendInput and borrows INPUT[count]; NULL uses real
+   OS input. Notice0..3=key logs,4=invalid reply,5=English display,6=scope source,
+   7=scope unreadable,8=reinjection guard,9=SendInput error. All callbacks must not
+   unwind or retain arguments. Async commits independently retain real adapters. */
+int32_t meltype_tsf_service_handle_key(void *state,void *lifetime,void *sink,const char *worker,void *context,uint32_t key,uint16_t ch,void *adapter,int32_t (*apply)(void *,uint32_t,void *,const uint8_t *,uint32_t),void (*notice)(void *,uint32_t,int32_t),uint32_t (*sender)(void *,const void *,uint32_t));
 /* Service mode actions op0=toggle,op1=code line(value Japanese),op2=query(cookie,
    value selection-changed). Notice 0=hello,1=invalid JSON,2=English display,
    3=code-line Japanese,4=scope source,5=scope unreadable reason. Query retains

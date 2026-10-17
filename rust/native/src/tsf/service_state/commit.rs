@@ -7,6 +7,7 @@ use std::rc::Rc;
 
 type Apply = unsafe extern "C" fn(*mut c_void, u32, *mut c_void, *const u8, u32) -> i32;
 type Notice = unsafe extern "C" fn(*mut c_void);
+type KeyNotice = unsafe extern "C" fn(*mut c_void, u32, i32);
 struct Owner {
     state: *mut ServiceState,
     lifetime: *mut c_void,
@@ -14,6 +15,7 @@ struct Owner {
     adapter: *mut c_void,
     apply: Apply,
     notice: Option<Notice>,
+    key_notice: Option<KeyNotice>,
 }
 struct Reply<'a> {
     owner: &'a Owner,
@@ -58,6 +60,9 @@ unsafe extern "C" fn failed(data: *mut c_void) {
     let r = &*data.cast::<Reply>();
     if let Some(notice) = r.owner.notice {
         notice(r.owner.adapter);
+    }
+    if let Some(notice) = r.owner.key_notice {
+        notice(r.owner.adapter, 4, 0);
     }
 }
 unsafe extern "C" fn request(
@@ -110,6 +115,7 @@ unsafe fn owner(
         adapter,
         apply,
         notice,
+        key_notice: None,
     }))
 }
 fn callbacks(o: &Rc<Owner>) -> commit_request::Callbacks {
@@ -157,6 +163,37 @@ pub unsafe extern "C" fn meltype_tsf_service_commit(
         metadata.as_ptr(),
         &callbacks,
         keep,
+        Some(o),
+    )
+}
+// Key editing can schedule a commit that outlives its stack adapter. Copy only
+// the real shell adapter and notices into the independently owned commit work.
+#[allow(clippy::too_many_arguments)]
+pub(super) unsafe fn from_key(
+    state: *mut ServiceState,
+    lifetime: *mut c_void,
+    worker: *const c_char,
+    mode: u32,
+    context: *mut c_void,
+    cookie: u32,
+    adapter: *mut c_void,
+    apply: Apply,
+    notice: Option<KeyNotice>,
+) -> HRESULT {
+    let Some(mut o) = owner(state, lifetime, worker, adapter, Some(apply), None) else {
+        return E_INVALIDARG;
+    };
+    Rc::get_mut(&mut o).unwrap().key_notice = notice;
+    let callbacks = callbacks(&o);
+    let metadata = metadata(state);
+    commit_request::commit(
+        mode,
+        context,
+        (*state).client,
+        cookie,
+        metadata.as_ptr(),
+        &callbacks,
+        1,
         Some(o),
     )
 }

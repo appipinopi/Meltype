@@ -25,6 +25,7 @@ from tsf_shutdown_smoke import REQUEST as SHUTDOWN_REQUEST
 from tsf_composition_owner_smoke import OwnerHost
 from tsf_range_smoke import units
 from tsf_mode_smoke import ModeHost
+from tsf_key_state_smoke import SENDER
 SELECT=c.CFUNCTYPE(None,c.c_void_p,c.c_int,c.c_int)
 CORE_NOTICE=c.CFUNCTYPE(None,c.c_void_p,c.c_uint32,c.c_int)
 END=c.CFUNCTYPE(None,c.c_void_p,c.c_uint32)
@@ -135,6 +136,7 @@ class StateTests(unittest.TestCase):
         cls.api.meltype_tsf_service_mode_action.argtypes=[P,P,c.c_char_p,P,U32,U32,c.c_int,P,CORE_NOTICE];cls.api.meltype_tsf_service_mode_action.restype=c.c_int
         cls.api.meltype_tsf_service_commit.argtypes=[P,P,c.c_char_p,U32,P,U32,c.c_int,P,COMMIT_APPLY,TOGGLE];cls.api.meltype_tsf_service_commit.restype=HR
         cls.api.meltype_tsf_service_select_candidate.argtypes=[P,P,c.c_char_p,c.c_int,c.c_int,P,COMMIT_APPLY,TOGGLE];cls.api.meltype_tsf_service_select_candidate.restype=HR
+        cls.api.meltype_tsf_service_handle_key.argtypes=[P,P,P,c.c_char_p,P,U32,c.c_uint16,P,COMMIT_APPLY,CORE_NOTICE,SENDER];cls.api.meltype_tsf_service_handle_key.restype=HR
         cls.api.meltype_tsf_service_key_secret.argtypes=[P,P,P,U32,c.c_int,P,CORE_NOTICE];cls.api.meltype_tsf_service_key_secret.restype=c.c_int
         cls.api.meltype_tsf_service_would_eat.argtypes=[P,P,P,c.c_char_p,P,U32,c.c_uint64,c.c_int,P,KEY_COMMIT,CORE_NOTICE,c.POINTER(c.c_uint16)];cls.api.meltype_tsf_service_would_eat.restype=c.c_int
         cls.api.meltype_tsf_service_key_event.argtypes=[P,P,P,c.c_char_p,U32,P,U32,c.c_uint64,P,KEY_COMMIT,KEY_HANDLE,CORE_NOTICE];cls.api.meltype_tsf_service_key_event.restype=c.c_int
@@ -1972,5 +1974,153 @@ class StateTests(unittest.TestCase):
             self.assertEqual(self.api.meltype_tsf_service_commit(data,life,worker,0,c.byref(host.context),7,1,None,callback,TOGGLE()),HR(0x80070057).value)
             self.assertEqual(self.api.meltype_tsf_service_select_candidate(data,life,worker,0,0,None,callback,TOGGLE()),HR(0x80070057).value)
         self.assertEqual(self.service_commit(state,host,mode=3),HR(0x80070057).value);self.assertEqual(c.string_at(address,c.sizeof(State)),before);host.verify(self)
+    def handle_service_key(self,state,host,key=65,ch=97,worker=None,apply=None,notice=None,sender=None,lifetime=None,context=None):
+        # Always replace SendInput in private tests, including unexpected failures.
+        send=sender or SENDER(lambda *_:2)
+        return self.api.meltype_tsf_service_handle_key(c.addressof(state),lifetime or c.byref(host.context),
+            c.byref(host.sink) if hasattr(host,'sink') else None,worker or self.worker,context or c.byref(host.context),key,ch,123,
+            apply or COMMIT_APPLY(lambda *_:1),notice or CORE_NOTICE(),send)
+    def key_work_state(self):
+        self.keyboard();state=self.create();self.key_state(state);state.client=17;state.secret_checked=True
+        host=DeferredHost();host.mode='sync';return state,host
+    def test_key_work_native_metadata_state_request_and_apply(self):
+        state,host=self.key_work_state();state.caret_moved=True;state.private_field=True;events=[]
+        self.api.meltype_tsf_service_set_sid(c.addressof(state),'key"😀'.encode())
+        @self.checked(COMMIT_APPLY)
+        def apply(owner,cookie,context,bytes,count):
+            events.append((owner,cookie,context,state.own_edit,state.server_active,state.direct_detection,state.direct_word,state.consumed));return 1
+        try:
+            result,request=self.fixture_recovery(state,'{"active":true,"directDetection":true,"directEnglishWord":true,"consumed":true}',
+                lambda worker:self.handle_service_key(state,host,worker=worker,apply=apply))
+            self.assertEqual(result,0);self.assertEqual(request['sid'],'key"😀');self.assertEqual(request['process'].lower(),Path(sys.executable).stem.lower())
+            self.assertEqual({k:request[k] for k in ['op','vk','ch','mods','code','direct','canDelete','moved','private','before','after']},
+                {'op':'key','vk':65,'ch':97,'mods':0,'code':True,'direct':False,'canDelete':True,'moved':True,'private':True,'before':'old','after':''})
+            self.assertEqual(events,[(123,7,c.addressof(host.context),True,True,True,True,True)])
+            self.assertFalse(state.own_edit);self.assertFalse(state.caret_moved);self.assertFalse(state.key_failed)
+        finally:self.cleanup_recovered(state,host)
+    def test_key_work_native_normalizes_dependent_server_flags(self):
+        state,host=self.key_work_state()
+        try:
+            self.fixture_recovery(state,'{"active":false,"directDetection":true,"directEnglishWord":true,"consumed":true}',lambda worker:self.handle_service_key(state,host,worker=worker))
+            self.assertFalse(state.server_active);self.assertFalse(state.direct_detection);self.assertFalse(state.direct_word)
+        finally:self.cleanup_recovered(state,host)
+    def test_key_work_native_composing_request_omits_surrounding_text(self):
+        state,host=self.key_work_state();self.shutdown_composition(state,host)
+        try:
+            _,request=self.fixture_recovery(state,'{"active":true,"consumed":true}',lambda worker:self.handle_service_key(state,host,worker=worker))
+            self.assertTrue(request['composing']);self.assertNotIn('before',request);self.assertNotIn('after',request)
+        finally:self.cleanup_recovered(state,host)
+    def test_key_work_native_bad_reply_inserts_fallback_without_reinjection(self):
+        state,host=self.key_work_state();events=[];sent=[]
+        try:
+            result,_=self.fixture_recovery(state,'invalid',lambda worker:self.handle_service_key(state,host,worker=worker,
+                notice=CORE_NOTICE(lambda owner,op,value:events.append(op)),sender=SENDER(lambda *_:sent.append(1) or 2)))
+            self.assertEqual(result,0);self.assertEqual(host.document,units('olda'));self.assertTrue(state.key_failed);self.assertFalse(state.server_active)
+            self.assertEqual(events,[4,3]);self.assertEqual(sent,[]);self.assertFalse(state.composition);self.assertEqual(host.ended,1)
+        finally:self.cleanup_recovered(state,host)
+    def test_key_work_native_failed_fallback_write_is_reinjected_even_if_composition_ended(self):
+        state,host=self.key_work_state();host.fail_write=True;sent=[]
+        @self.checked(SENDER)
+        def send(owner,inputs,count):
+            self.assertEqual((owner,count),(123,2));sent.append((inputs[0].payload.keyboard.key,inputs[1].payload.keyboard.flags));return count
+        try:
+            self.fixture_recovery(state,'invalid',lambda worker:self.handle_service_key(state,host,worker=worker,sender=send))
+            self.assertEqual(sent,[(65,2)]);self.assertEqual(host.document,units('old'));self.assertEqual(host.ended,1);self.assertFalse(state.composition)
+        finally:self.cleanup_recovered(state,host)
+    def test_key_work_native_unconsumed_english_inserts_direct_character(self):
+        state,host=self.key_work_state();state.open=False;sent=[]
+        try:
+            self.fixture_recovery(state,'{"active":true,"consumed":false}',lambda worker:self.handle_service_key(state,host,worker=worker,sender=SENDER(lambda *_:sent.append(1) or 2)))
+            self.assertEqual(host.document,units('olda'));self.assertEqual(sent,[]);self.assertFalse(state.key_failed);self.assertFalse(state.consumed)
+        finally:self.cleanup_recovered(state,host)
+    def test_key_work_native_switch_opens_after_edit_and_does_not_insert_directly(self):
+        state,host=self.key_work_state();state.open=False;events=[];manager=CompartmentHost();state.manager=c.addressof(manager.context)
+        def opened():events.append(('open',state.own_edit));state.open=True
+        manager.on_write=opened
+        @self.checked(COMMIT_APPLY)
+        def apply(*_):events.append((state.open,state.own_edit));return 1
+        try:
+            self.fixture_recovery(state,'{"active":true,"consumed":true,"switchToJapanese":true}',lambda worker:self.handle_service_key(state,host,worker=worker,apply=apply))
+            self.assertEqual(events,[(False,True),('open',False)]);self.assertTrue(state.open);self.assertFalse(state.own_edit);self.assertEqual(host.document,units('old'))
+            self.assertEqual(manager.writes_mode,[(bytes(OPEN),17,1)])
+        finally:state.manager=None;self.cleanup_recovered(state,host);manager.verify(self)
+    def test_key_work_native_apply_failure_sets_outcome_and_reinjects(self):
+        state,host=self.key_work_state();sent=[]
+        try:
+            self.fixture_recovery(state,'{"active":true,"consumed":true}',lambda worker:self.handle_service_key(state,host,worker=worker,
+                apply=COMMIT_APPLY(lambda *_:0),sender=SENDER(lambda *_:sent.append(1) or 2)))
+            self.assertTrue(state.key_failed);self.assertFalse(state.consumed);self.assertEqual(sent,[1]);self.assertFalse(state.own_edit)
+        finally:self.cleanup_recovered(state,host)
+    def test_key_work_native_compatible_unpaired_reply_reaches_apply(self):
+        state,host=self.key_work_state();events=[]
+        @self.checked(COMMIT_APPLY)
+        def apply(owner,cookie,context,bytes,count):events.append(c.string_at(bytes,count));return 1
+        try:
+            reply='{"active":true,"consumed":true,"extra":"\\uD800"}'
+            self.fixture_recovery(state,reply,lambda worker:self.handle_service_key(state,host,worker=worker,apply=apply))
+            self.assertEqual(events,[reply.encode()]);self.assertFalse(state.key_failed)
+        finally:self.cleanup_recovered(state,host)
+    def test_key_work_native_secret_field_never_requests_or_inserts(self):
+        state,host=self.key_work_state();state.secret_composing=True;sent=[];events=[]
+        try:
+            self.assertEqual(self.handle_service_key(state,host,notice=CORE_NOTICE(lambda owner,op,value:events.append(op)),sender=SENDER(lambda *_:sent.append(1) or 2)),0)
+            self.assertEqual(host.document,units('old'));self.assertFalse(state.transport);self.assertFalse(state.consumed);self.assertEqual(sent,[1]);self.assertEqual(events,[0])
+        finally:self.cleanup_recovered(state,host)
+    def test_key_work_native_incorrectly_deferred_session_cannot_use_stack(self):
+        state,host=self.key_work_state();host.mode='async';sent=[]
+        try:
+            self.assertEqual(self.handle_service_key(state,host,sender=SENDER(lambda *_:sent.append(1) or 2)),HR(0x80004004).value)
+            self.assertEqual(sent,[1]);self.assertTrue(state.key_failed);self.assertFalse(state.own_edit)
+            pending,host.pending=host.pending,[]
+            for session in pending:
+                try:self.assertEqual(invoke(session,3,HR,[U32],7),HR(0x80004004).value)
+                finally:release(session)
+            self.assertFalse(state.transport);self.assertEqual(host.document,units('old'))
+        finally:self.cleanup_recovered(state,host)
+    def test_key_work_native_send_failure_reports_original_error(self):
+        state,host=self.key_work_state();state.secret_composing=True;events=[]
+        @self.checked(SENDER)
+        def send(*_):c.windll.kernel32.SetLastError(5);return 0
+        try:
+            self.handle_service_key(state,host,sender=send,notice=CORE_NOTICE(lambda owner,op,value:events.append((op,value))))
+            self.assertIn((9,5),events)
+        finally:self.cleanup_recovered(state,host)
+    def test_key_work_native_last_caller_release_pins_post_edit_cleanup(self):
+        state,host=self.key_work_state();address=c.addressof(state);events=[];dispatch=DISPATCH(lambda *_:0)
+        @self.checked(DESTROY)
+        def destroyed(owner):events.append(('destroy',state.own_edit,state.key_failed));self.api.meltype_tsf_service_state_destroy(owner)
+        root=self.api.meltype_tsf_service_com_create(address,dispatch,destroyed);self.assertTrue(root);self.owned.remove(address)
+        @self.checked(COMMIT_APPLY)
+        def apply(*_):events.append('apply');release(root);self.assertEqual(self.live(),self.before+1);return 1
+        self.fixture_recovery(state,'{"active":true,"consumed":true}',lambda worker:self.handle_service_key(state,host,worker=worker,apply=apply,lifetime=root))
+        self.assertEqual(events,['apply',('destroy',False,False)]);host.verify(self)
+    def test_key_work_native_failed_edit_async_commit_owns_adapter_after_return(self):
+        state,host=self.key_work_state();host.mode='async';self.shutdown_composition(state,host);address=c.addressof(state);events=[]
+        dispatch=DISPATCH(lambda *_:0)
+        @self.checked(DESTROY)
+        def destroyed(owner):
+            events.append(('destroy',state.composition,state.keep_caret));self.api.meltype_tsf_service_state_destroy(owner)
+        root=self.api.meltype_tsf_service_com_create(address,dispatch,destroyed);self.assertTrue(root);self.owned.remove(address)
+        @self.checked(COMMIT_APPLY)
+        def apply(*_):events.append('apply');return 1
+        @self.checked(CORE_NOTICE)
+        def notice(owner,op,value):
+            self.assertEqual(owner,123);events.append(op);self.assertEqual(self.live(),self.before+1)
+        def action(worker):
+            path=c.create_string_buffer(worker)
+            result=self.handle_service_key(state,host,worker=path,apply=apply,notice=notice,lifetime=root)
+            self.assertEqual(result,HR(0x80004004).value);self.assertEqual(len(host.pending),2)
+            path.value=b'destroyed';release(root)
+            session=host.pending.pop(0)
+            try:self.assertEqual(invoke(session,3,HR,[U32],7),HR(0x80004004).value)
+            finally:release(session)
+            host.flush();return result
+        _,request=self.fixture_recovery(state,'invalid',action)
+        self.assertEqual(request['op'],'commit');self.assertEqual(events,[2,4,('destroy',None,False)]);host.verify(self)
+    def test_key_work_native_invalid_arguments_preserve_state(self):
+        state,host=self.key_work_state();address=c.addressof(state);before=c.string_at(address,c.sizeof(State));apply=COMMIT_APPLY(lambda *_:1);sender=SENDER(lambda *_:2)
+        for data,life,worker,callback in [(None,c.byref(host.context),self.worker,apply),(address,None,self.worker,apply),(address,c.byref(host.context),None,apply),(address,c.byref(host.context),self.worker,COMMIT_APPLY())]:
+            self.assertEqual(self.api.meltype_tsf_service_handle_key(data,life,c.byref(host.sink),worker,c.byref(host.context),65,97,None,callback,CORE_NOTICE(),sender),HR(0x80070057).value)
+        self.assertEqual(self.handle_service_key(state,host,key=256),HR(0x80070057).value);self.assertEqual(c.string_at(address,c.sizeof(State)),before);host.verify(self)
 if __name__=='__main__':unittest.main(argv=[sys.argv[0]],verbosity=2,failfast=True)
 
