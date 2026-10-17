@@ -112,3 +112,14 @@ multiple dependent edits, mismatches, malformed replies and callback failures.
 This fixture does not establish real application input compatibility. SDK calls,
 framework property/candidate objects and remaining key-event orchestration still
 need migration.
+
+Key-event dispatch, role-key fallback, direct-mode commit/update/label ordering,
+candidate selection and focus/reset commit now run in Rust. The C++ SDK bridge
+passes symbols/scalars/modifier state and provides synchronous capability/context
+queries plus editor/widget operations. The default build no longer constructs a
+C++ JSON projection; the former frontend orchestration is legacy-only. Context
+buffers live through dispatch and preserve former c_str NUL truncation. No mutex
+is held across host queries; failed queries and destruction during getters stop
+dispatch. The event ABI test compares independent actual cores with the former
+frontend sequence, building on separate SDK key/mode and old editor comparisons.
+SDK classes/property lifetime, labels and framework callbacks remain C++.

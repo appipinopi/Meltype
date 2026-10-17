@@ -36,6 +36,7 @@ jobs:
           python3 linux/fcitx5/test/json_bridge.py target/release/libmeltype_native.so | tee dist/fcitx-abi/json.txt
           linux/build/fcitx5-rust/testkeymapping "$PWD/target/release/libmeltype_native.so" | tee dist/fcitx-abi/keys.txt
           python3 linux/fcitx5/test/state_abi.py target/release/libmeltype_native.so | tee dist/fcitx-abi/state.txt
+          python3 linux/fcitx5/test/event_abi.py target/release/libmeltype_native.so | tee dist/fcitx-abi/events.txt
           dpkg-query -W -f='${Package} ${Version}\n' libfcitx5core-dev libfcitx5utils-dev > dist/fcitx-abi/sdk.txt
       - uses: actions/upload-artifact@v4
         if: always()

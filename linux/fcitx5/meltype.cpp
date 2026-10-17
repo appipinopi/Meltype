@@ -7,10 +7,7 @@
 // 旧NativeAOT用のJSON互換解析は -DMELTYPE_RUST_CORE=OFF で明示的に選ぶ。
 
 #include <dlfcn.h>
-#include "json_value.hpp"
-#ifdef MELTYPE_RUST_CORE
-#include "rust_json.hpp"
-#else
+#ifndef MELTYPE_RUST_CORE
 #include "compat/json_reader.hpp"
 #include "compat/key_mapping.hpp"
 #include "compat/text.hpp"
@@ -47,19 +44,20 @@
 #endif
 
 namespace {
+#ifndef MELTYPE_RUST_CORE
 using meltype_fcitx::Json;
+#endif
 
 // ---- 本体 (libMeltypeNative.so) ----
 
 struct Native {
     void *handle = nullptr;
 #ifdef MELTYPE_RUST_CORE
-    meltype_fcitx::JsonVisit visitJson = nullptr;
+    struct Surrounding { const uint8_t *before=nullptr;uint32_t beforeLength=0;const uint8_t *after=nullptr;uint32_t afterLength=0; };
+    using Query=int (*)(void *,uint32_t,Surrounding *);
     using ViewCallback = int (*)(void *,uint32_t,int,const uint8_t *,uint32_t);
-    int (*applyPlan)(void *,const uint8_t *,uint32_t,void *,ViewCallback) = nullptr;
-    uint64_t (*mapKey)(uint32_t,uint32_t) = nullptr;
-    int (*mapModifiers)(uint32_t) = nullptr;
-    uint32_t (*modePlan)(uint32_t,int) = nullptr;
+    int (*keyEvent)(void *,uint32_t,uint32_t,uint32_t,int,void *,Query,ViewCallback)=nullptr;
+    int (*action)(void *,uint32_t,int,void *,Query,ViewCallback)=nullptr;
     int (*frontendState)(void *) = nullptr;
     void (*setPreedit)(void *,int) = nullptr;
     int (*contextOffsets)(const uint8_t *,uint32_t,uint32_t,uint32_t,uint32_t *) = nullptr;
@@ -98,11 +96,8 @@ struct Native {
         roleKey = reinterpret_cast<decltype(roleKey)>(sym("meltype_role_key"));
         free = reinterpret_cast<decltype(free)>(sym("meltype_free"));
 #ifdef MELTYPE_RUST_CORE
-        visitJson = reinterpret_cast<decltype(visitJson)>(sym("meltype_json_visit_utf8"));
-        applyPlan = reinterpret_cast<decltype(applyPlan)>(sym("meltype_fcitx_apply_utf8"));
-        mapKey = reinterpret_cast<decltype(mapKey)>(sym("meltype_fcitx_key"));
-        mapModifiers = reinterpret_cast<decltype(mapModifiers)>(sym("meltype_fcitx_modifiers"));
-        modePlan = reinterpret_cast<decltype(modePlan)>(sym("meltype_fcitx_mode"));
+        keyEvent=reinterpret_cast<decltype(keyEvent)>(sym("meltype_fcitx_key_event"));
+        action=reinterpret_cast<decltype(action)>(sym("meltype_fcitx_action"));
         create = reinterpret_cast<decltype(create)>(sym("meltype_fcitx_create"));
         destroy = reinterpret_cast<decltype(destroy)>(sym("meltype_fcitx_destroy"));
         setDirect = reinterpret_cast<decltype(setDirect)>(sym("meltype_fcitx_set_direct"));
@@ -110,8 +105,8 @@ struct Native {
         setPreedit = reinterpret_cast<decltype(setPreedit)>(sym("meltype_fcitx_set_preedit"));
         contextOffsets = reinterpret_cast<decltype(contextOffsets)>(sym("meltype_fcitx_context_offsets"));
         deleteCount = reinterpret_cast<decltype(deleteCount)>(sym("meltype_fcitx_delete_count"));
-        if (!applyPlan || !visitJson || !mapKey || !mapModifiers || !modePlan || !frontendState || !setPreedit || !contextOffsets || !deleteCount) {
-            FCITX_ERROR() << "Meltype: Rust fcitx JSON/key ABI is missing";
+        if (!keyEvent || !action || !frontendState || !setPreedit || !contextOffsets || !deleteCount) {
+            FCITX_ERROR() << "Meltype: Rust fcitx event/context ABI is missing";
             return false;
         }
 #endif
@@ -125,12 +120,9 @@ struct Native {
         return true;
     }
 
+#ifndef MELTYPE_RUST_CORE
     bool readJson(const std::string &text, Json &value) const {
-#ifdef MELTYPE_RUST_CORE
-        return meltype_fcitx::readRustJson(text, value, visitJson);
-#else
         return meltype_fcitx::JsonReader(text).read(value);
-#endif
     }
 
     // 本体が返した JSON を受け取って解放する。NULL なら空 (キーはアプリに渡す)。
@@ -140,6 +132,7 @@ struct Native {
         free(pointer);
         return text;
     }
+#endif
 };
 
 // ---- キー: fcitx5 のキー → Meltype の本体が使う Windows の仮想キーコード (ibus-engine-meltype と同じ) ----
@@ -212,6 +205,14 @@ public:
     }
 
     void keyEvent(const fcitx::InputMethodEntry &, fcitx::KeyEvent &event) override {
+#ifdef MELTYPE_RUST_CORE
+        if(!loaded_ || event.isRelease())return;
+        auto *ic=event.inputContext();
+        ViewSink sink{this,ic,{},nullptr,{},{}};
+        const auto key=event.key();
+        if(native_.keyEvent(ic->propertyFor(&factory_)->session(),key.sym(),fcitx::Key::keySymToUnicode(key.sym()),
+            key.states().toInteger(),event.isRelease()?1:0,&sink,queryContext,viewEvent))event.filterAndAccept();
+#else
         if (!loaded_ || event.isRelease()) return;
         auto *ic = event.inputContext();
         auto *state = ic->propertyFor(&factory_);
@@ -219,11 +220,7 @@ public:
         syncCanDelete(ic, state->session());
         const auto key = event.key();
         const auto sym = key.sym();
-#ifdef MELTYPE_RUST_CORE
-        const auto modePlan = native_.modePlan(sym,state->direct()?1:0);
-#else
         const auto modePlan = meltype_fcitx::modePlan(sym,state->direct());
-#endif
         // 入力中の 変換・無変換・ひらがな/カタカナ: 設定で役割を分けていれば、本体が変換ボックスで処理する (#199)
         const int roleKey = static_cast<int>((modePlan>>8)&0xffu);
         if (native_.roleKey && roleKey != 0) {
@@ -247,24 +244,14 @@ public:
             event.filterAndAccept();
             return;
         }
-#ifdef MELTYPE_RUST_CORE
-        const auto packed = native_.mapKey(sym, fcitx::Key::keySymToUnicode(sym));
-        const int vk = static_cast<int>(packed & 0xffffffffu);
-        const uint32_t character = static_cast<uint32_t>(packed >> 32);
-#else
         auto [vk, character] = meltype_fcitx::virtualKey(sym);
-#endif
         if (vk == 0) return;
         const auto states = key.states();
-#ifdef MELTYPE_RUST_CORE
-        const int modifiers = native_.mapModifiers(states.toInteger());
-#else
         int modifiers = 0;
         if (states.test(fcitx::KeyState::Shift)) modifiers |= 1;
         if (states.test(fcitx::KeyState::Ctrl)) modifiers |= 2;
         if (states.test(fcitx::KeyState::Alt)) modifiers |= 4;
         if (states.test(fcitx::KeyState::Super)) modifiers |= 8;
-#endif
         std::string before, after;
         bool surrounding = !state->preeditVisible() && readSurrounding(ic, before, after);
         auto text = native_.take(native_.handleKey(state->session(), vk, static_cast<int>(character), modifiers,
@@ -274,6 +261,8 @@ public:
         if (!native_.readJson(text, result)) return;
         apply(ic, result, text);
         if (result.flag("consumed")) event.filterAndAccept();
+#endif
+
     }
 
     // 別の入力欄・アプリに移るとき、入力欄が変わったときは、未確定の内容をそのまま確定する。
@@ -281,10 +270,16 @@ public:
     void deactivate(const fcitx::InputMethodEntry &, fcitx::InputContextEvent &event) override { commitPending(event.inputContext()); }
 
     void selectCandidate(fcitx::InputContext *ic, int index) {
+#ifdef MELTYPE_RUST_CORE
+        if(!loaded_)return;
+        ViewSink sink{this,ic,{},nullptr,{},{}};
+        native_.action(ic->propertyFor(&factory_)->session(),1,index,&sink,queryContext,viewEvent);
+#else
         auto *state = ic->propertyFor(&factory_);
         if (!state->session()) return;
         syncCanDelete(ic, state->session());
         apply(ic, native_.take(native_.selectCandidate(state->session(), index)));
+#endif
     }
 
 private:
@@ -294,10 +289,16 @@ private:
     fcitx::FactoryFor<MeltypeState> factory_;
 
     void commitPending(fcitx::InputContext *ic) {
+#ifdef MELTYPE_RUST_CORE
+        if(!loaded_)return;
+        ViewSink sink{this,ic,{},nullptr,{},{}};
+        native_.action(ic->propertyFor(&factory_)->session(),0,0,&sink,queryContext,viewEvent);
+#else
         auto *state = ic->propertyFor(&factory_);
         if (!state->session()) return;
         syncCanDelete(ic, state->session());
         apply(ic, native_.take(native_.commit(state->session())));
+#endif
     }
 
     // 入力欄のキャレットの前後の文字列 (それぞれ 20 文字まで)。入力欄が対応していなければ false。
@@ -320,6 +321,7 @@ private:
         return true;
     }
 
+#ifndef MELTYPE_RUST_CORE
     // 確定し直し (DeleteBefore) は、入力欄が周りの文字の削除に対応しているときだけ本体が行う。
     // 本体を呼ぶ前に毎回伝える (入力欄を移った最初のキーで、前の入力欄の値のまま確定し直さないように)。
     void syncCanDelete(fcitx::InputContext *ic, void *session) {
@@ -335,9 +337,6 @@ private:
     }
 
     void apply(fcitx::InputContext *ic, [[maybe_unused]] const Json &result, [[maybe_unused]] const std::string &raw) {
-#ifdef MELTYPE_RUST_CORE
-        applyRust(ic, raw);
-#else
         if (auto *commits = result.get("commits"); commits && commits->kind == Json::Kind::Array) {
             for (const auto &edit : commits->items) {
                 int remove = edit.integer("deleteBefore");
@@ -367,10 +366,8 @@ private:
         auto *view = result.get("view");
         if (view && view->kind == Json::Kind::Object) show(ic, *view);
         else hidePreedit(ic);
-#endif
     }
 
-#ifndef MELTYPE_RUST_CORE
     void show(fcitx::InputContext *ic, const Json &view) {
         auto &panel = ic->inputPanel();
         panel.reset();
@@ -418,7 +415,20 @@ private:
         fcitx::InputContext *ic;
         fcitx::Text preedit;
         std::unique_ptr<fcitx::CommonCandidateList> candidates;
+        std::string before,after;
     };
+    static int queryContext(void *opaque,uint32_t query,Native::Surrounding *output) noexcept {
+        try {
+            auto &sink=*static_cast<ViewSink *>(opaque);
+            auto *ic=sink.ic;
+            if(query==0)return ic->capabilityFlags().test(fcitx::CapabilityFlag::SurroundingText)&&ic->surroundingText().isValid()?1:0;
+            if(query!=1 || !sink.engine->readSurrounding(ic,sink.before,sink.after))return 0;
+            if(sink.before.size()>std::numeric_limits<uint32_t>::max() || sink.after.size()>std::numeric_limits<uint32_t>::max())return 0;
+            *output={reinterpret_cast<const uint8_t *>(sink.before.data()),static_cast<uint32_t>(sink.before.size()),
+                reinterpret_cast<const uint8_t *>(sink.after.data()),static_cast<uint32_t>(sink.after.size())};
+            return 1;
+        } catch(...) { return -1; }
+    }
     static int viewEvent(void *opaque,uint32_t operation,int argument,const uint8_t *bytes,uint32_t length) noexcept {
         try {
             auto &sink=*static_cast<ViewSink *>(opaque);
@@ -461,6 +471,9 @@ private:
             }
             case 10: ic->deleteSurroundingText(-argument,static_cast<unsigned int>(argument)); break;
             case 11: ic->commitString(text); break;
+            case 14:
+                panel.setAuxUp(fcitx::Text(text));
+                ic->updateUserInterface(fcitx::UserInterfaceComponent::InputPanel); break;
             case 12:
                 panel.reset();
                 ic->propertyFor(&sink.engine->factory_)->setPreeditVisible(false); break;
@@ -469,11 +482,7 @@ private:
             return 1;
         } catch(...) { return -1; }
     }
-    void applyRust(fcitx::InputContext *ic,const std::string &raw) {
-        ViewSink sink{this,ic,{},nullptr};
-        if(raw.size()>std::numeric_limits<uint32_t>::max() || !native_.applyPlan(ic->propertyFor(&factory_)->session(),reinterpret_cast<const uint8_t *>(raw.data()),static_cast<uint32_t>(raw.size()),&sink,viewEvent))
-            hidePreedit(ic);
-    }
+
 #endif
     void hidePreedit(fcitx::InputContext *ic) {
         ic->inputPanel().reset();

@@ -70,7 +70,7 @@ fn plan(result: &Value) -> Vec<Event> {
     events.push(Event(7, 0, String::new()));
     events
 }
-type Callback = unsafe extern "C" fn(*mut c_void, u32, i32, *const u8, u32) -> i32;
+pub(crate) type Callback = unsafe extern "C" fn(*mut c_void, u32, i32, *const u8, u32) -> i32;
 /// Emit reset(0), formatted segment(1: underline=1/highlight=2), preedit(2:
 /// visible), auxiliary(3), list begin(4: page size), item(5: index), list end(6:
 /// selected or -1), publish(7), or hide(8). Text is borrowed for one callback.

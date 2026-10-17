@@ -48,6 +48,7 @@ jobs:
           python3 linux/fcitx5/test/json_bridge.py target/release/libmeltype_native.so
           linux/build/fcitx5-rust/testkeymapping "${{ github.workspace }}/target/release/libmeltype_native.so"
           python3 linux/fcitx5/test/state_abi.py target/release/libmeltype_native.so
+          python3 linux/fcitx5/test/event_abi.py target/release/libmeltype_native.so
       - name: Rust IBus engine through a private daemon and input context
         if: runner.os == 'Linux'
         run: |
