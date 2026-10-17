@@ -150,3 +150,129 @@ unsafe fn run(
     };
     shutdown::meltype_tsf_shutdown(client, metadata.as_ptr(), &callbacks)
 }
+
+type NativeNotice = unsafe extern "C" fn(*mut c_void, u32, i32);
+struct NativeOwner {
+    state: *mut ServiceState,
+    lifetime: *mut c_void,
+    sink: *mut c_void,
+    worker: *const c_char,
+    adapter: *mut c_void,
+    notice: Option<NativeNotice>,
+}
+struct NativeReply<'a> {
+    owner: &'a NativeOwner,
+    context: *mut c_void,
+    target: *mut c_void,
+    cookie: u32,
+}
+unsafe extern "C" fn native_failure(data: *mut c_void) {
+    let o = &*data.cast::<NativeOwner>();
+    if let Some(notice) = o.notice {
+        notice(o.adapter, 1, 0);
+    }
+}
+unsafe extern "C" fn reply_failure(data: *mut c_void) {
+    native_failure((*data.cast::<NativeReply>()).owner as *const NativeOwner as *mut c_void);
+}
+unsafe extern "C" fn native_parsed(data: *mut c_void, bytes: *const u8, length: u32) -> i32 {
+    let r = &*data.cast::<NativeReply>();
+    let o = r.owner;
+    if !crate::json_bridge::valid(std::slice::from_raw_parts(bytes, length as usize)) {
+        return 0;
+    }
+    // Close replies are validated and discarded; shutdown only applies a commit
+    // while its original composition/context pair is still current.
+    if r.context.is_null()
+        || (*o.state).composition_context != r.context
+        || (*o.state).composition != r.target
+    {
+        return 1;
+    }
+    i32::from(
+        super::apply::meltype_tsf_service_apply_reply(
+            o.state,
+            o.lifetime,
+            o.sink,
+            o.worker,
+            r.context,
+            r.cookie,
+            bytes,
+            length,
+            o as *const NativeOwner as *mut c_void,
+            Some(native_failure),
+        ) >= 0,
+    )
+}
+unsafe extern "C" fn native_request(
+    data: *mut c_void,
+    text: *const c_char,
+    cookie: u32,
+    context: *mut c_void,
+    target: *mut c_void,
+) {
+    let o = &*data.cast::<NativeOwner>();
+    let bytes = CStr::from_ptr(text).to_bytes();
+    let Ok(length) = u32::try_from(bytes.len()) else {
+        return;
+    };
+    let mut reply = NativeReply {
+        owner: o,
+        context,
+        target,
+        cookie,
+    };
+    super::exchange::meltype_tsf_service_exchange(
+        o.state,
+        o.worker,
+        o.lifetime,
+        bytes.as_ptr(),
+        length,
+        800,
+        0,
+        ptr::addr_of_mut!(reply).cast(),
+        Some(native_parsed),
+        Some(reply_failure),
+    );
+}
+unsafe extern "C" fn native_cleanup(data: *mut c_void, status: i32) {
+    let o = &*data.cast::<NativeOwner>();
+    if let Some(notice) = o.notice {
+        notice(o.adapter, 0, status);
+    }
+}
+/// Complete service shutdown, including native exchange and reply application.
+/// # Safety
+/// Live service/root/composition sink on its TSF thread. Worker is trusted
+/// absolute UTF-8. Root pins state/notice code through reentrant cleanup. Notice
+/// op0=abandoned cleanup HRESULT,op1=invalid reply, never unwinds. Deferred SYNC
+/// sessions are invalidated and cannot use these stack adapters after return.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_tsf_service_shutdown(
+    state: *mut ServiceState,
+    lifetime: *mut c_void,
+    sink: *mut c_void,
+    worker: *const c_char,
+    adapter: *mut c_void,
+    notice: Option<NativeNotice>,
+) -> HRESULT {
+    if worker.is_null() {
+        return E_INVALIDARG;
+    }
+    let mut owner = NativeOwner {
+        state,
+        lifetime,
+        sink,
+        worker,
+        adapter,
+        notice,
+    };
+    run(
+        state,
+        lifetime,
+        ptr::addr_of_mut!(owner).cast(),
+        native_request,
+        None,
+        Some(native_cleanup),
+    )
+}

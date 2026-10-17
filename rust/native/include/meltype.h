@@ -579,6 +579,12 @@ int32_t meltype_tsf_service_handle_key(void *state,void *lifetime,void *sink,con
    Notice reports invalid reset replies, never unwinds or retains arguments.
    Returns -1 invalid input,0 guarded application failure,1 applied. */
 int32_t meltype_tsf_service_apply_reply(void *state,void *lifetime,void *sink,const char *worker,void *context,uint32_t cookie,const uint8_t *reply,uint32_t length,void *adapter,void (*notice)(void *));
+/* Complete native shutdown: owns request mediation, matching commit application,
+   close-reply validation and all service teardown. Live service/root/sink on its
+   TSF thread; worker trusted absolute UTF-8. Root pins state/code through reentry.
+   Notice op0=abandoned cleanup HRESULT,op1=invalid reply; never unwinds. Pending
+   SYNC sessions are invalidated before stack adapters expire. Returns HRESULT. */
+int32_t meltype_tsf_service_shutdown(void *state,void *lifetime,void *sink,const char *worker,void *adapter,void (*notice)(void *,uint32_t,int32_t));
 /* Service mode actions op0=toggle,op1=code line(value Japanese),op2=query(cookie,
    value selection-changed). Notice 0=hello,1=invalid JSON,2=English display,
    3=code-line Japanese,4=scope source,5=scope unreadable reason. Query retains

@@ -121,7 +121,7 @@ bool RustServiceExchange(RustServiceState*,IUnknown*,const std::string&,DWORD,bo
 HRESULT RustServiceFocus(RustServiceState*,IUnknown*,ITfTextEditSink*,ITfDocumentMgr*,int,void*,int (__cdecl *)(void*,int),void (__cdecl *)(void*));
 bool RustServiceEdited(RustServiceState*,IUnknown*,ITfContext*,ITfEditRecord*,TfEditCookie,void*,void (__cdecl *)(void*,unsigned int,void*,int),void (__cdecl *)(void*));
 HRESULT RustServiceOpened(RustServiceState*,IUnknown*,REFGUID,void*,void (__cdecl *)(void*),void (__cdecl *)(void*,int));
-HRESULT RustServiceDeactivate(RustServiceState*,IUnknown*,void*,void (__cdecl *)(void*,const char*,unsigned int,void*,void*));
+HRESULT RustServiceShutdown(RustServiceState*,IUnknown*,ITfCompositionSink*);
 HRESULT RustServiceActivate(RustServiceState*,IUnknown*,ITfThreadMgr*,TfClientId,DWORD,void* const*,void*,void (__cdecl *)(void*,int,int),int (__cdecl *)(void*),void (__cdecl *)(void*));
 int RustServiceApplyComposition(RustServiceState*,IUnknown*,ITfCompositionSink*,TfEditCookie,ITfContext*,const JsonValue&);
 int RustServiceWriteCommit(RustServiceState*,IUnknown*,ITfCompositionSink*,TfEditCookie,ITfContext*,ITfRange*,const std::wstring&);
@@ -132,7 +132,6 @@ int RustServiceAbandon(RustServiceState*,IUnknown*);
 bool RustServiceInputScope(RustServiceState*,IUnknown*,TfEditCookie,ITfContext*);
 using RustServiceApply=int (__cdecl *)(void*,unsigned int,void*,const unsigned char*,unsigned int);
 int RustServiceApplyReplyBytes(RustServiceState*,IUnknown*,ITfCompositionSink*,TfEditCookie,ITfContext*,const unsigned char*,unsigned int);
-void RustServiceApplyReply(RustServiceState*,IUnknown*,ITfCompositionSink*,TfEditCookie,ITfContext*,const JsonValue&);
 HRESULT RustServiceHandleKey(RustServiceState*,IUnknown*,ITfCompositionSink*,ITfContext*,UINT,wchar_t,void*,RustServiceApply);
 HRESULT RustServiceCommit(RustServiceState*,IUnknown*,unsigned int,ITfContext*,TfEditCookie,bool,void*,RustServiceApply);
 HRESULT RustServiceSelectCandidate(RustServiceState*,IUnknown*,int,bool,void*,RustServiceApply);

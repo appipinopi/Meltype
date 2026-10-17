@@ -432,11 +432,7 @@ STDMETHODIMP TextService::ActivateEx(ITfThreadMgr* threadMgr, TfClientId clientI
 
 STDMETHODIMP TextService::Deactivate() {
 #ifdef MELTYPE_RUST_CORE
-    return RustServiceDeactivate(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),this,
-        [](void* p,const char* json,unsigned int ec,void* context,void* target) {auto* s=static_cast<TextService*>(p);try {
-            JsonValue reply;
-            if (s->Request(json,reply) && context && s->compositionContext_==context && s->composition_==target) s->Apply(ec,static_cast<ITfContext*>(context),reply);
-        }catch (...) {}});
+    return RustServiceShutdown(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),ServiceInterface<ITfCompositionSink>());
 #else
     TipLog(L"Deactivate");
     if (composition_ != nullptr && compositionContext_ != nullptr) {
@@ -1447,10 +1443,8 @@ void TextService::SurroundingText(TfEditCookie ec, ITfContext* context, std::wst
 
 // ---- 入力欄への反映 ----
 
+#ifndef MELTYPE_RUST_CORE
 void TextService::Apply(TfEditCookie ec, ITfContext* context, const JsonValue& reply) {
-#ifdef MELTYPE_RUST_CORE
-    RustServiceApplyReply(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),ServiceInterface<ITfCompositionSink>(),ec,context,reply);
-#else
     // 1 つの応答の中の確定は、前の確定の後ろに続けて入れる (クリックで確定したときは、キャレットがもうクリックした所にあるので、
     // キャレットの位置に入れると、クリックした所に入ったり、選んでいた文字を上書きしたりする)
     Microsoft::WRL::ComPtr<ITfRange> next;
@@ -1502,8 +1496,9 @@ void TextService::Apply(TfEditCookie ec, ITfContext* context, const JsonValue& r
         }
         HideCandidates();
     }
-#endif
 }
+
+#endif
 
 #ifndef MELTYPE_RUST_CORE
 bool TextService::ExtendOverPrevious(TfEditCookie ec, ITfRange* range, LONG count, const JsonValue& expect) {

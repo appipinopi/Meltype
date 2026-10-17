@@ -138,6 +138,7 @@ class StateTests(unittest.TestCase):
         cls.api.meltype_tsf_service_select_candidate.argtypes=[P,P,c.c_char_p,c.c_int,c.c_int,P,COMMIT_APPLY,TOGGLE];cls.api.meltype_tsf_service_select_candidate.restype=HR
         cls.api.meltype_tsf_service_handle_key.argtypes=[P,P,P,c.c_char_p,P,U32,c.c_uint16,P,COMMIT_APPLY,CORE_NOTICE,SENDER];cls.api.meltype_tsf_service_handle_key.restype=HR
         cls.api.meltype_tsf_service_apply_reply.argtypes=[P,P,P,c.c_char_p,P,U32,P,U32,P,TOGGLE];cls.api.meltype_tsf_service_apply_reply.restype=c.c_int
+        cls.api.meltype_tsf_service_shutdown.argtypes=[P,P,P,c.c_char_p,P,CORE_NOTICE];cls.api.meltype_tsf_service_shutdown.restype=HR
         cls.api.meltype_tsf_service_key_secret.argtypes=[P,P,P,U32,c.c_int,P,CORE_NOTICE];cls.api.meltype_tsf_service_key_secret.restype=c.c_int
         cls.api.meltype_tsf_service_would_eat.argtypes=[P,P,P,c.c_char_p,P,U32,c.c_uint64,c.c_int,P,KEY_COMMIT,CORE_NOTICE,c.POINTER(c.c_uint16)];cls.api.meltype_tsf_service_would_eat.restype=c.c_int
         cls.api.meltype_tsf_service_key_event.argtypes=[P,P,P,c.c_char_p,U32,P,U32,c.c_uint64,P,KEY_COMMIT,KEY_HANDLE,CORE_NOTICE];cls.api.meltype_tsf_service_key_event.restype=c.c_int
@@ -698,6 +699,11 @@ class StateTests(unittest.TestCase):
         try:
             os.environ.update(changes)
             self.api.meltype_tsf_service_close(c.addressof(state))
+            # Warm only the private fixture, then require a fresh action record.
+            # Native core policy/deadlines are exercised unchanged below.
+            response=self.api.meltype_tsf_service_request(c.addressof(state),self.fixture,b'{}',5000,0)
+            self.assertTrue(response,'private core fixture readiness');self.api.meltype_free(response)
+            request.unlink()
             result=self.core(state,host,explicit=True,notice=notice,worker=self.fixture)
         finally:
             for name,value in previous.items():
@@ -2214,6 +2220,84 @@ class StateTests(unittest.TestCase):
         state=self.create();host=DeferredHost();address=c.addressof(state);before=c.string_at(address,c.sizeof(State));life=c.byref(host.context);context=c.byref(host.context)
         for data,root,worker,ctx,raw in [(None,life,self.worker,context,b'{}'),(address,None,self.worker,context,b'{}'),(address,life,None,context,b'{}'),(address,life,self.worker,None,b'{}'),(address,life,self.worker,context,None)]:
             self.assertEqual(self.api.meltype_tsf_service_apply_reply(data,root,c.byref(host.sink),worker,ctx,7,raw,2,None,TOGGLE()),-1)
+        self.assertEqual(c.string_at(address,c.sizeof(State)),before);host.verify(self)
+    def native_shutdown(self,state,host,worker=None,notice=None,lifetime=None):
+        return self.api.meltype_tsf_service_shutdown(c.addressof(state),lifetime or c.byref(host.context),
+            c.byref(host.sink) if hasattr(host,'sink') else None,worker or self.worker,123,notice or CORE_NOTICE())
+    def test_shutdown_native_exchange_applies_commit_then_discards_close_reply(self):
+        state=self.create();host=DeferredHost();host.mode='sync';self.shutdown_composition(state,host);self.stale_state(state)
+        self.api.meltype_tsf_service_set_sid(c.addressof(state),'終了"😀'.encode())
+        try:
+            result,request=self.fixture_recovery(state,'{"active":true,"commits":[{"text":"確定😀"}]}',lambda worker:self.native_shutdown(state,host,worker=worker))
+            self.assertEqual(result,0);self.assertEqual(request,{'op':'close','sid':'終了"😀'})
+            self.assertEqual(host.document,units('確定😀'));self.assertEqual(host.ended,1);self.assertFalse(state.composition);self.assertFalse(state.transport)
+            self.assertEqual((state.shutdown_phase,state.deactivated,state.client,self.stale_tries(state)),(2,True,0,0))
+        finally:self.cleanup_recovered(state,host)
+    def test_shutdown_native_close_without_composition_never_inserts_reply(self):
+        state=self.create();host=DeferredHost();state.client=17
+        result,request=self.fixture_recovery(state,'{"commits":[{"text":"duplicate"}]}',lambda worker:self.native_shutdown(state,host,worker=worker))
+        self.assertEqual(result,0);self.assertEqual(request,{'op':'close','sid':''});self.assertEqual(host.document,units('old'));self.assertEqual(host.requests,[]);host.verify(self)
+    def test_shutdown_native_disabled_skips_exchange_and_repeated_call_is_inert(self):
+        state=self.create();host=DeferredHost();state.disabled=True;state.client=17
+        self.assertEqual(self.native_shutdown(state,host),0);self.assertFalse(state.transport);self.assertTrue(state.deactivated);self.assertEqual(state.shutdown_phase,2)
+        before=c.string_at(c.addressof(state),c.sizeof(State));self.assertEqual(self.native_shutdown(state,host),0);self.assertEqual(c.string_at(c.addressof(state),c.sizeof(State)),before);host.verify(self)
+    def test_shutdown_native_bad_commit_and_close_replies_report_and_preserve_text(self):
+        state=self.create();host=DeferredHost();host.mode='sync';self.shutdown_composition(state,host);events=[]
+        notice=CORE_NOTICE(lambda owner,op,value:events.append((owner,op,value)))
+        try:
+            result,request=self.fixture_recovery(state,'invalid',lambda worker:self.native_shutdown(state,host,worker=worker,notice=notice))
+            self.assertEqual(result,0);self.assertEqual(request['op'],'close');self.assertEqual(events,[(123,1,0),(123,1,0)])
+            self.assertEqual(host.document,units('old'));self.assertEqual(host.ended,1);self.assertEqual(state.shutdown_phase,2)
+        finally:self.cleanup_recovered(state,host)
+    def test_shutdown_native_deferred_sync_never_uses_stack_after_return(self):
+        state=self.create();host=DeferredHost();self.shutdown_composition(state,host)
+        try:
+            result,request=self.fixture_recovery(state,'{}',lambda worker:self.native_shutdown(state,host,worker=worker))
+            self.assertEqual(result,0);self.assertEqual(request['op'],'close');self.assertFalse(state.composition);self.assertEqual(state.shutdown_phase,2)
+            self.assertEqual(host.ended,0);self.assertEqual(host.document,units('old'));self.assertEqual(len(host.pending),1)
+            pending,host.pending=host.pending,[]
+            for session in pending:
+                try:self.assertEqual(invoke(session,3,HR,[U32],7),HR(0x80004004).value)
+                finally:release(session)
+        finally:self.cleanup_recovered(state,host)
+    def test_shutdown_native_refused_edit_still_closes_and_releases_slots(self):
+        state=self.create();host=DeferredHost();host.mode='reject';self.shutdown_composition(state,host)
+        try:
+            result,request=self.fixture_recovery(state,'{}',lambda worker:self.native_shutdown(state,host,worker=worker))
+            self.assertEqual(result,0);self.assertEqual(request['op'],'close');self.assertFalse(state.composition);self.assertFalse(state.composition_context)
+            self.assertEqual(host.document,units('old'));self.assertEqual(host.ended,0);self.assertFalse(state.transport)
+        finally:self.cleanup_recovered(state,host)
+    def test_shutdown_native_nested_stop_during_invalid_reply_is_inert(self):
+        state=self.create();host=DeferredHost();host.mode='sync';self.shutdown_composition(state,host);events=[]
+        @self.checked(CORE_NOTICE)
+        def notice(owner,op,value):
+            events.append(op);self.assertEqual(self.native_shutdown(state,host),0);self.assertEqual(state.shutdown_phase,1)
+        try:
+            self.fixture_recovery(state,'invalid',lambda worker:self.native_shutdown(state,host,worker=worker,notice=notice))
+            self.assertEqual(events,[1,1]);self.assertEqual(state.shutdown_phase,2);self.assertEqual(host.ended,1)
+        finally:self.cleanup_recovered(state,host)
+    def test_shutdown_native_last_caller_release_during_commit_pins_all_cleanup(self):
+        state=self.create();host=DeferredHost();host.mode='sync';self.shutdown_composition(state,host);address=c.addressof(state);events=[];dispatch=DISPATCH(lambda *_:0)
+        @self.checked(DESTROY)
+        def destroyed(owner):
+            events.append(('destroy',state.shutdown_phase,state.deactivated,state.client,state.composition,state.transport));self.api.meltype_tsf_service_state_destroy(owner)
+        root=self.api.meltype_tsf_service_com_create(address,dispatch,destroyed);self.assertTrue(root);self.owned.remove(address)
+        def ended():events.append('end');release(root);self.assertEqual(self.live(),self.before+1)
+        host.on_end=ended
+        result,request=self.fixture_recovery(state,'{}',lambda worker:self.native_shutdown(state,host,worker=worker,lifetime=root))
+        self.assertEqual(result,0);self.assertEqual(request['op'],'close');self.assertEqual(events,['end',('destroy',2,True,0,None,None)]);host.verify(self)
+    def test_shutdown_native_superseding_activation_during_commit_stops_old_teardown(self):
+        state=self.create();host=DeferredHost();host.mode='sync';self.shutdown_composition(state,host)
+        def activated():state.focus_epoch+=1;state.shutdown_phase=0;state.client=99
+        host.on_end=activated
+        try:
+            result,request=self.fixture_recovery(state,'{}',lambda worker:self.native_shutdown(state,host,worker=worker))
+            self.assertEqual(result,0);self.assertEqual(request['op'],'commit');self.assertEqual((state.shutdown_phase,state.client,state.deactivated),(0,99,False));self.assertTrue(state.transport)
+        finally:self.cleanup_recovered(state,host)
+    def test_shutdown_native_invalid_arguments_preserve_state(self):
+        state=self.create();host=DeferredHost();address=c.addressof(state);before=c.string_at(address,c.sizeof(State));life=c.byref(host.context)
+        for data,root,worker in [(None,life,self.worker),(address,None,self.worker),(address,life,None)]:
+            self.assertEqual(self.api.meltype_tsf_service_shutdown(data,root,c.byref(host.sink),worker,None,CORE_NOTICE()),HR(0x80070057).value)
         self.assertEqual(c.string_at(address,c.sizeof(State)),before);host.verify(self)
 if __name__=='__main__':unittest.main(argv=[sys.argv[0]],verbosity=2,failfast=True)
 
