@@ -24,4 +24,7 @@ final class Native {
     static native String editorKey(long handle, Object connection, int key, int scalar, int modifiers, boolean hardware, boolean privateInput, String composingText);
     static native String editorUndo(long handle, Object connection, boolean privateInput, String composingText);
     static native boolean softwareFallback(Object connection, int key, int scalar, int imeOptions);
+    static native boolean selectionChanged(long handle, Object connection, boolean composing, int start, int end, int composingEnd);
+    static native String finishInput(long handle, Object connection, boolean composing, String composingText);
+    static native String editorReconvert(long handle, Object connection, boolean privateInput, boolean composing);
 }

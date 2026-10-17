@@ -41,8 +41,7 @@ public final class MeltypeService extends InputMethodService {
         if (candidates != null) candidates.removeAllViews();
     }
     @Override public void onFinishInput() {
-        if (composing) apply(Native.commit(session));
-        Native.reset(session); composing = false;
+        render(Native.finishInput(session,getCurrentInputConnection(),composing,composingText));
         super.onFinishInput();
     }
     @Override public boolean onEvaluateFullscreenMode() { return false; }
@@ -78,12 +77,9 @@ public final class MeltypeService extends InputMethodService {
         add(tools, "伸ばす", () -> apply(key(0x27,0,1)));
         add(tools, "戻す", () -> { if (!privateEditor) apply(Native.editorUndo(session,getCurrentInputConnection(),privateEditor,composing ? composingText : "")); });
         add(tools, "再変換", () -> {
-            InputConnection connection = getCurrentInputConnection();
-            if (connection == null || privateEditor || composing) return;
-            CharSequence selected = connection.getSelectedText(0);
-            if (selected != null && !selected.toString().isEmpty()) {
-                if (!apply(Native.reconvert(session,selected.toString())) && preview != null) preview.setText("読みが見つかりません");
-            }
+            String reply = Native.editorReconvert(session,getCurrentInputConnection(),privateEditor,composing);
+            if (reply != null && !apply(reply) && preview != null)
+                preview.setText("読みが見つかりません");
         });
         add(tools, "設定", () -> { apply(Native.commit(session)); startActivity(new Intent(this,SettingsActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); });
         root.addView(tools); return root;
@@ -111,18 +107,19 @@ public final class MeltypeService extends InputMethodService {
     }
     @Override public void onUpdateSelection(int oldStart,int oldEnd,int newStart,int newEnd,int candidatesStart,int candidatesEnd) {
         super.onUpdateSelection(oldStart,oldEnd,newStart,newEnd,candidatesStart,candidatesEnd);
-        if (composing && (newStart != newEnd || newEnd != candidatesEnd)) {
-            Native.reset(session); composing = false; composingText = "";
-            InputConnection connection = getCurrentInputConnection();
-            if (connection != null) connection.finishComposingText();
+        if (Native.selectionChanged(session,getCurrentInputConnection(),composing,newStart,newEnd,candidatesEnd)) {
+            composing = false; composingText = "";
             if (preview != null) preview.setText("");
             if (candidates != null) candidates.removeAllViews();
         }
     }
     private boolean apply(String json) {
         InputConnection connection = getCurrentInputConnection(); if (connection == null) return false;
+        return render(Native.applyEditor(session, connection, json, composing ? composingText : ""));
+    }
+    private boolean render(String json) {
         try {
-            JSONObject result = new JSONObject(Native.applyEditor(session, connection, json, composing ? composingText : ""));
+            JSONObject result = new JSONObject(json);
             composing = result.getBoolean("composing");
             composingText = result.getString("composingText");
             JSONObject view = result.optJSONObject("view");

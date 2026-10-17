@@ -11,6 +11,8 @@ public final class EditorHost {
     public static final class Editor {
         String before="",selected="",pending="",after="";
         boolean reject,throwsCommit,throwsRead,unsupported;
+        boolean throwsFinish;
+        Runnable onFinish;
         final List<String> calls=new ArrayList<>();
         public CharSequence getSelectedText(int flags) {calls.add("selected");return selected;}
         public CharSequence getTextBeforeCursor(int count,int flags) {calls.add("before:"+count);if(throwsRead)throw new IllegalStateException("test read failure");if(unsupported)return null;return before.substring(Math.max(0,before.length()-count));}
@@ -20,7 +22,7 @@ public final class EditorHost {
         public boolean setComposingText(CharSequence text,int cursor){calls.add("compose:"+text);if(reject)return false; before=before.substring(0,before.length()-pending.length())+text;pending=text.toString();return true;}
         public boolean deleteSurroundingText(int count,int after){calls.add("delete:"+count);if(reject)return false;before=before.substring(0,before.length()-count);return true;}
         public boolean commitText(CharSequence text,int cursor){calls.add("commit:"+text);if(throwsCommit)throw new IllegalStateException("test editor failure");if(reject)return false;before=before.substring(0,before.length()-pending.length())+text;pending="";return true;}
-        public boolean finishComposingText(){calls.add("finish");pending="";return !reject;}
+        public boolean finishComposingText(){calls.add("finish");if(throwsFinish)throw new IllegalStateException("test finish failure");if(onFinish!=null){Runnable callback=onFinish;onFinish=null;callback.run();}pending="";return !reject;}
         public boolean deleteSurroundingTextInCodePoints(int count,int afterCount){calls.add("codepoints:"+count);if(reject)return false;before=before.substring(0,before.offsetByCodePoints(before.length(),-Math.min(count,before.codePointCount(0,before.length()))));return true;}
         public boolean sendKeyEvent(android.view.KeyEvent event){calls.add("event:"+event.action+":"+event.keyCode);return !reject;}
         public boolean performEditorAction(int action){calls.add("action:"+action);return !reject;}

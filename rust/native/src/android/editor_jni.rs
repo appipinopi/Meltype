@@ -3,6 +3,27 @@
 use super::*;
 use crate::android_editor::{self, Editor, EditorError};
 type Result<T> = std::result::Result<T, EditorError>;
+thread_local! {
+    static ENDING: std::cell::RefCell<std::collections::HashSet<jlong>> = std::cell::RefCell::new(std::collections::HashSet::new());
+}
+struct Ending(jlong);
+impl Ending {
+    fn enter(handle: jlong) -> Option<Self> {
+        ENDING
+            .with(|v| v.borrow_mut().insert(handle))
+            .then(|| Self(handle))
+    }
+}
+impl Drop for Ending {
+    fn drop(&mut self) {
+        ENDING.with(|v| v.borrow_mut().remove(&self.0));
+    }
+}
+fn reset_session(handle: jlong) {
+    unsafe {
+        meltype_free(meltype_reset(handle as *mut c_void).cast());
+    }
+}
 struct Connection<'a, 'b, 'c> {
     env: &'a mut JNIEnv<'b>,
     object: &'a JObject<'c>,
@@ -303,12 +324,120 @@ pub extern "system" fn Java_moe_meltype_rust_Native_applyEditor(
     }))
     .unwrap_or_else(|_| android_editor::Outcome::failure(false));
     if outcome.reset {
-        unsafe {
-            meltype_free(meltype_reset(handle as *mut c_void).cast());
-        }
+        reset_session(handle);
+    }
+    outcome_string(&mut env, &outcome)
+}
+fn outcome_string(env: &mut JNIEnv, outcome: &android_editor::Outcome) -> jstring {
+    // Clear a getter failure before allocating the Java result, including a
+    // null JSON argument. No pending editor exception crosses this boundary.
+    if env.exception_check().unwrap_or(false) {
+        let _ = env.exception_clear();
     }
     let text = serde_json::to_string(&outcome).unwrap_or_default();
     env.new_string(text)
         .map(|v| v.into_raw())
         .unwrap_or(std::ptr::null_mut())
+}
+#[no_mangle]
+pub extern "system" fn Java_moe_meltype_rust_Native_selectionChanged(
+    mut env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    connection: JObject,
+    composing: jboolean,
+    start: jint,
+    end: jint,
+    composing_end: jint,
+) -> jboolean {
+    if composing == 0 || start == end && end == composing_end {
+        return 0;
+    }
+    let Some(_ending) = Ending::enter(handle) else {
+        return 0;
+    };
+    reset_session(handle);
+    if !connection.is_null() {
+        let mut editor = Connection {
+            env: &mut env,
+            object: &connection,
+        };
+        let _ = editor.finish();
+        editor.clear_exception();
+    }
+    1
+}
+#[no_mangle]
+pub extern "system" fn Java_moe_meltype_rust_Native_finishInput(
+    mut env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    connection: JObject,
+    composing: jboolean,
+    pending: JString,
+) -> jstring {
+    let Some(_ending) = Ending::enter(handle) else {
+        return outcome_string(&mut env, &android_editor::Outcome::failure(false));
+    };
+    let outcome = std::panic::catch_unwind(AssertUnwindSafe(|| {
+        if composing == 0 {
+            return android_editor::Outcome::failure(false);
+        }
+        let reply = unsafe { take(meltype_commit(handle as *mut c_void)) };
+        if connection.is_null() {
+            return android_editor::Outcome::failure(false);
+        }
+        let mut editor = Connection {
+            env: &mut env,
+            object: &connection,
+        };
+        let result = match (reply, editor.units(pending.into())) {
+            (Some(reply), Ok(Some(pending))) => {
+                android_editor::apply(&mut editor, &reply, &pending)
+            }
+            _ => android_editor::Outcome::failure(false),
+        };
+        editor.clear_exception();
+        result
+    }))
+    .unwrap_or_else(|_| android_editor::Outcome::failure(false));
+    reset_session(handle);
+    // Ending input invalidates the old view even if a host rejects a write.
+    let mut outcome = outcome;
+    outcome.composing = false;
+    outcome.composing_text.clear();
+    outcome.view = None;
+    outcome_string(&mut env, &outcome)
+}
+#[no_mangle]
+pub extern "system" fn Java_moe_meltype_rust_Native_editorReconvert(
+    mut env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    connection: JObject,
+    private: jboolean,
+    composing: jboolean,
+) -> jstring {
+    if private != 0 || composing != 0 || connection.is_null() {
+        return std::ptr::null_mut();
+    }
+    let mut editor = Connection {
+        env: &mut env,
+        object: &connection,
+    };
+    let selected = editor.selected();
+    editor.clear_exception();
+    let selected = selected
+        .ok()
+        .flatten()
+        .filter(|v| !v.is_empty())
+        .and_then(|v| String::from_utf16(&v).ok())
+        .and_then(|v| CString::new(v).ok());
+    let Some(text) = selected else {
+        return std::ptr::null_mut();
+    };
+    let result = unsafe {
+        meltype_reconvert_selection(handle as *mut c_void, text.as_ptr(), std::ptr::null())
+    };
+    java_result(&mut env, result)
 }
