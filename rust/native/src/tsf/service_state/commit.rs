@@ -17,6 +17,7 @@ struct Owner {
     sink: *mut c_void,
     notice: Option<Notice>,
     key_notice: Option<KeyNotice>,
+    mode_notice: Option<KeyNotice>,
 }
 struct Reply<'a> {
     owner: &'a Owner,
@@ -81,6 +82,9 @@ unsafe extern "C" fn failed(data: *mut c_void) {
     if let Some(notice) = r.owner.key_notice {
         notice(r.owner.adapter, 4, 0);
     }
+    if let Some(notice) = r.owner.mode_notice {
+        notice(r.owner.adapter, 1, 0);
+    }
 }
 unsafe extern "C" fn request(
     data: *mut c_void,
@@ -134,6 +138,7 @@ unsafe fn owner(
         sink: ptr::null_mut(),
         notice,
         key_notice: None,
+        mode_notice: None,
     }))
 }
 fn callbacks(o: &Rc<Owner>) -> commit_request::Callbacks {
@@ -241,6 +246,7 @@ pub(super) unsafe fn native(
         apply: None,
         notice: None,
         key_notice: notice,
+        mode_notice: None,
     });
     let callbacks = callbacks(&o);
     let metadata = metadata(state);
@@ -249,6 +255,44 @@ pub(super) unsafe fn native(
         context,
         (*state).client,
         cookie,
+        metadata.as_ptr(),
+        &callbacks,
+        keep,
+        Some(o),
+    )
+}
+#[allow(clippy::too_many_arguments)]
+pub(super) unsafe fn notification(
+    state: *mut ServiceState,
+    lifetime: *mut c_void,
+    sink: *mut c_void,
+    worker: *const c_char,
+    mode: u32,
+    keep: i32,
+    adapter: *mut c_void,
+    notice: Option<KeyNotice>,
+) -> HRESULT {
+    if state.is_null() || lifetime.is_null() || worker.is_null() {
+        return E_INVALIDARG;
+    }
+    let o = Rc::new(Owner {
+        state,
+        lifetime,
+        sink,
+        worker: CStr::from_ptr(worker).to_owned(),
+        adapter,
+        apply: None,
+        notice: None,
+        key_notice: None,
+        mode_notice: notice,
+    });
+    let callbacks = callbacks(&o);
+    let metadata = metadata(state);
+    commit_request::commit(
+        mode,
+        ptr::null_mut(),
+        (*state).client,
+        0,
         metadata.as_ptr(),
         &callbacks,
         keep,

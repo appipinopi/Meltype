@@ -565,9 +565,7 @@ STDMETHODIMP TextService::OnSetFocus(BOOL foreground) {
 
 #ifdef MELTYPE_RUST_CORE
 HRESULT TextService::ServiceFocus(ITfDocumentMgr* document,int event) {
-    return RustServiceFocus(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),ServiceInterface<ITfTextEditSink>(),document,event,this,
-        [](void* p,int mode)->int {auto* s=static_cast<TextService*>(p);try {if (!mode) return s->CommitNow(true)?1:0;s->CommitAsync(true);return 1;}catch (...) {return 0;}},
-        [](void* p) {try {static_cast<TextService*>(p)->ResumeOrCommit(nullptr);}catch (...) {}});
+    return RustServiceFocusNative(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),ServiceInterface<ITfCompositionSink>(),ServiceInterface<ITfTextEditSink>(),document,event);
 }
 #endif
 
@@ -701,12 +699,7 @@ void TextService::UnadviseTextEditSink() {
 
 STDMETHODIMP TextService::OnEndEdit(ITfContext* context, TfEditCookie ec, ITfEditRecord* record) {
 #ifdef MELTYPE_RUST_CORE
-    RustServiceEdited(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),context,record,ec,this,
-        [](void* p,unsigned int cookie,void* context,int changed) {try {static_cast<TextService*>(p)->QueryMode(cookie,static_cast<ITfContext*>(context),changed!=0);}catch (...) {}},
-        [](void* p) {try {
-            TipLog(L"キャレットが変換中の文字の外に出たので確定します");
-            static_cast<TextService*>(p)->CommitAsync(true);
-        }catch (...) {}});
+    RustServiceEditedNative(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),ServiceInterface<ITfCompositionSink>(),context,record,ec);
     return S_OK;
 #else
     if (record == nullptr) return S_OK;
@@ -756,9 +749,7 @@ STDMETHODIMP TextService::OnEndEdit(ITfContext* context, TfEditCookie ec, ITfEdi
 
 STDMETHODIMP TextService::OnChange(REFGUID guid) {
 #ifdef MELTYPE_RUST_CORE
-    return RustServiceOpened(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),guid,this,
-        [](void* p) {try {static_cast<TextService*>(p)->CommitAsync(false);}catch (...) {}},
-        [](void*,int open) {try {TipLog(L"入力モード: %s",open?L"日本語":L"英数");}catch (...) {}});
+    return RustServiceOpenedNative(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),ServiceInterface<ITfCompositionSink>(),guid);
 #else
     if (!IsEqualGUID(guid, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE) || threadMgr_ == nullptr) return S_OK;
     ITfCompartmentMgr* compartments = nullptr;

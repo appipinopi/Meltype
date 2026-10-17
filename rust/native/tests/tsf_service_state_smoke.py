@@ -140,6 +140,9 @@ class StateTests(unittest.TestCase):
         cls.api.meltype_tsf_service_apply_reply.argtypes=[P,P,P,c.c_char_p,P,U32,P,U32,P,TOGGLE];cls.api.meltype_tsf_service_apply_reply.restype=c.c_int
         cls.api.meltype_tsf_service_shutdown.argtypes=[P,P,P,c.c_char_p,P,CORE_NOTICE];cls.api.meltype_tsf_service_shutdown.restype=HR
         cls.api.meltype_tsf_service_dispatch_key.argtypes=[P,P,P,c.c_char_p,U32,P,U32,c.c_uint64,P,CORE_NOTICE,CORE_NOTICE,SENDER];cls.api.meltype_tsf_service_dispatch_key.restype=c.c_int
+        cls.api.meltype_tsf_service_focus_native.argtypes=[P,P,P,P,c.c_char_p,P,c.c_int,P,CORE_NOTICE];cls.api.meltype_tsf_service_focus_native.restype=HR
+        cls.api.meltype_tsf_service_edited_native.argtypes=[P,P,P,c.c_char_p,P,P,U32,P,CORE_NOTICE];cls.api.meltype_tsf_service_edited_native.restype=c.c_int
+        cls.api.meltype_tsf_service_opened_native.argtypes=[P,P,P,c.c_char_p,P,P,CORE_NOTICE];cls.api.meltype_tsf_service_opened_native.restype=HR
         cls.api.meltype_tsf_service_key_secret.argtypes=[P,P,P,U32,c.c_int,P,CORE_NOTICE];cls.api.meltype_tsf_service_key_secret.restype=c.c_int
         cls.api.meltype_tsf_service_would_eat.argtypes=[P,P,P,c.c_char_p,P,U32,c.c_uint64,c.c_int,P,KEY_COMMIT,CORE_NOTICE,c.POINTER(c.c_uint16)];cls.api.meltype_tsf_service_would_eat.restype=c.c_int
         cls.api.meltype_tsf_service_key_event.argtypes=[P,P,P,c.c_char_p,U32,P,U32,c.c_uint64,P,KEY_COMMIT,KEY_HANDLE,CORE_NOTICE];cls.api.meltype_tsf_service_key_event.restype=c.c_int
@@ -2376,5 +2379,59 @@ class StateTests(unittest.TestCase):
         for data,root,worker in [(None,life,self.worker),(address,None,self.worker),(address,life,None)]:
             self.assertEqual(self.api.meltype_tsf_service_dispatch_key(data,root,None,worker,0,c.byref(host.context),65,0,None,CORE_NOTICE(),CORE_NOTICE(),sender),0)
         self.assertEqual(self.dispatch_key(state,host,kind=4),0);self.assertEqual(c.string_at(address,c.sizeof(State)),before);host.verify(self)
+    def notify_focus(self,state,host,event=-1,worker=None,notice=None,lifetime=None):
+        return self.api.meltype_tsf_service_focus_native(c.addressof(state),lifetime or c.byref(host.context),c.byref(host.sink),None,worker or self.worker,None,event,123,notice or CORE_NOTICE())
+    def notify_open(self,state,host,worker=None,notice=None,lifetime=None):
+        return self.api.meltype_tsf_service_opened_native(c.addressof(state),lifetime or c.byref(host.context),c.byref(host.sink),worker or self.worker,c.byref(OPEN),123,notice or CORE_NOTICE())
+    def test_notifications_document_focus_native_commit_preserves_caret(self):
+        state=self.create();host=DeferredHost();host.mode='sync';self.shutdown_composition(state,host);host.selection=(0,0);state.disabled=True
+        try:
+            result,request=self.fixture_recovery(state,'{"commits":[{"text":"日本😀"}]}',lambda worker:self.notify_focus(state,host,worker=worker))
+            self.assertEqual(result,0);self.assertTrue(request['moved']);self.assertEqual(host.document,units('日本😀'));self.assertEqual(host.selection,(0,0));self.assertFalse(state.composition)
+        finally:self.cleanup_recovered(state,host)
+    def test_notifications_open_close_native_commit_moves_caret(self):
+        state=self.create();host=DeferredHost();self.shutdown_composition(state,host);manager=OpenHost();state.manager=c.addressof(manager.context);manager.integers[bytes(OPEN)]=0;events=[];host.selection=(0,0)
+        def action(worker):
+            result=self.notify_open(state,host,worker=worker,notice=CORE_NOTICE(lambda owner,op,value:events.append((owner,op,value))))
+            self.assertEqual(events,[(123,11,0)]);self.assertTrue(host.pending);host.flush();return result
+        try:
+            _,request=self.fixture_recovery(state,'{"commits":[{"text":"確定😀"}]}',action)
+            self.assertNotIn('moved',request);self.assertEqual(host.document,units('確定😀'));self.assertEqual(host.selection,(4,4));self.assertFalse(state.open);self.assertFalse(state.composition)
+        finally:state.manager=None;self.cleanup_recovered(state,host);manager.verify(self)
+    def test_notifications_async_commit_keeps_real_notice_after_open_returns(self):
+        state=self.create();host=DeferredHost();self.shutdown_composition(state,host);manager=OpenHost();state.manager=c.addressof(manager.context);manager.integers[bytes(OPEN)]=0;events=[]
+        @self.checked(CORE_NOTICE)
+        def notice(owner,op,value):self.assertEqual(owner,123);events.append(op)
+        def action(worker):
+            path=c.create_string_buffer(worker);result=self.notify_open(state,host,worker=path,notice=notice);path.value=b'destroyed';host.flush();return result
+        try:
+            self.fixture_recovery(state,'invalid',action);self.assertEqual(events,[11,1]);self.assertEqual(host.document,units('old'));self.assertEqual(host.ended,1)
+        finally:state.manager=None;self.cleanup_recovered(state,host);manager.verify(self)
+    def test_notifications_edited_own_mark_consumed_without_query(self):
+        state=self.create();host=EventHost();state.own_edit=True
+        self.assertEqual(self.api.meltype_tsf_service_edited_native(c.addressof(state),c.byref(host.context),c.byref(host.sink),self.worker,c.byref(host.context),c.byref(host.record),7,None,CORE_NOTICE()),1)
+        self.assertFalse(state.own_edit);self.assertEqual(host.record_reads,0);self.assertFalse(state.transport);host.verify(self)
+    def test_notifications_focus_invalid_reply_last_caller_release_pins_cleanup(self):
+        state=self.create();host=DeferredHost();host.mode='sync';self.shutdown_composition(state,host);state.disabled=True;address=c.addressof(state);events=[];dispatch=DISPATCH(lambda *_:0)
+        @self.checked(DESTROY)
+        def destroyed(owner):events.append(('destroy',state.composition,state.caret_moved));self.api.meltype_tsf_service_state_destroy(owner)
+        root=self.api.meltype_tsf_service_com_create(address,dispatch,destroyed);self.assertTrue(root);self.owned.remove(address)
+        @self.checked(CORE_NOTICE)
+        def notice(owner,op,value):self.assertEqual((owner,op),(123,1));events.append('invalid');release(root);self.assertEqual(self.live(),self.before+1)
+        self.fixture_recovery(state,'invalid',lambda worker:self.notify_focus(state,host,worker=worker,notice=notice,lifetime=root))
+        self.assertEqual(events,['invalid',('destroy',None,True)]);host.verify(self)
+    def test_notifications_edited_native_query_uses_owned_exchange_and_updates_mode(self):
+        state=self.create();state.client=17;state.code_app=True;state.server_active=True;self.key_state(state);host=ModeHost();record=EventHost();events=[]
+        try:
+            result,request=self.fixture_recovery(state,'{"active":true,"code":true,"english":true}',lambda worker:self.api.meltype_tsf_service_edited_native(c.addressof(state),c.byref(host.context),None,worker,c.byref(host.context),c.byref(record.record),7,123,CORE_NOTICE(lambda owner,op,value:events.append((owner,op,value)))))
+            self.assertEqual(result,1);self.assertEqual(request['op'],'mode');self.assertTrue(state.code_app);self.assertTrue(state.code_english);self.assertTrue(state.caret_moved)
+            self.assertIn((123,2,1),events)
+        finally:host.verify(self);record.verify(self)
+    def test_notifications_invalid_worker_preserves_state(self):
+        state=self.create();host=DeferredHost();before=c.string_at(c.addressof(state),c.sizeof(State));life=c.byref(host.context);sink=c.byref(host.sink);address=c.addressof(state)
+        self.assertEqual(self.api.meltype_tsf_service_focus_native(address,life,sink,None,None,None,0,None,CORE_NOTICE()),HR(0x80070057).value)
+        self.assertEqual(self.api.meltype_tsf_service_opened_native(address,life,sink,None,c.byref(OPEN),None,CORE_NOTICE()),HR(0x80070057).value)
+        self.assertEqual(self.api.meltype_tsf_service_edited_native(address,life,sink,None,life,None,7,None,CORE_NOTICE()),0)
+        self.assertEqual(c.string_at(address,c.sizeof(State)),before);host.verify(self)
 if __name__=='__main__':unittest.main(argv=[sys.argv[0]],verbosity=2,failfast=True)
 

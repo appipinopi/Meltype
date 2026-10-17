@@ -78,9 +78,9 @@ struct RustApi {
     int (__cdecl *serviceInitialize)(RustServiceState*,unsigned int,int,int,const char*) = nullptr;
     void (__cdecl *serviceClearResume)(RustServiceState*) = nullptr;
     int (__cdecl *serviceExchange)(RustServiceState*,const char*,void*,const unsigned char*,unsigned int,unsigned int,int,void*,int (__cdecl *)(void*,const unsigned char*,unsigned int),void (__cdecl *)(void*)) = nullptr;
-    HRESULT (__cdecl *serviceFocus)(RustServiceState*,const char*,void*,void*,void*,int,void*,int (__cdecl *)(void*,int),void (__cdecl *)(void*),void (__cdecl *)(void*,unsigned int,int)) = nullptr;
-    int (__cdecl *serviceEdited)(RustServiceState*,void*,void*,void*,unsigned int,void*,void (__cdecl *)(void*,unsigned int,void*,int),void (__cdecl *)(void*)) = nullptr;
-    HRESULT (__cdecl *serviceOpened)(RustServiceState*,void*,const GUID*,void*,void (__cdecl *)(void*),void (__cdecl *)(void*,int)) = nullptr;
+    HRESULT (__cdecl *serviceFocusNative)(RustServiceState*,void*,void*,void*,const char*,void*,int,void*,void (__cdecl *)(void*,unsigned int,int)) = nullptr;
+    int (__cdecl *serviceEditedNative)(RustServiceState*,void*,void*,const char*,void*,void*,unsigned int,void*,void (__cdecl *)(void*,unsigned int,int)) = nullptr;
+    HRESULT (__cdecl *serviceOpenedNative)(RustServiceState*,void*,void*,const char*,const GUID*,void*,void (__cdecl *)(void*,unsigned int,int)) = nullptr;
     HRESULT (__cdecl *serviceShutdown)(RustServiceState*,void*,void*,const char*,void*,void (__cdecl *)(void*,unsigned int,int)) = nullptr;
     HRESULT (__cdecl *serviceActivate)(RustServiceState*,void*,const char*,void*,unsigned int,unsigned int,void* const*,void*,void (__cdecl *)(void*,int,int),int (__cdecl *)(void*),void (__cdecl *)(void*),void (__cdecl *)(void*,unsigned int,int),void* (__cdecl *)(void*)) = nullptr;
     int (__cdecl *serviceApplyComposition)(RustServiceState*,void*,void*,void*,unsigned int,const char*) = nullptr;
@@ -182,9 +182,9 @@ struct RustApi {
         processName = reinterpret_cast<decltype(processName)>(GetProcAddress(module, "meltype_tsf_process_name"));
         serviceInitialize = reinterpret_cast<decltype(serviceInitialize)>(GetProcAddress(module, "meltype_tsf_service_initialize"));
         serviceExchange = reinterpret_cast<decltype(serviceExchange)>(GetProcAddress(module, "meltype_tsf_service_exchange"));
-        serviceFocus = reinterpret_cast<decltype(serviceFocus)>(GetProcAddress(module, "meltype_tsf_service_focus"));
-        serviceEdited = reinterpret_cast<decltype(serviceEdited)>(GetProcAddress(module, "meltype_tsf_service_edited"));
-        serviceOpened = reinterpret_cast<decltype(serviceOpened)>(GetProcAddress(module, "meltype_tsf_service_opened"));
+        serviceFocusNative = reinterpret_cast<decltype(serviceFocusNative)>(GetProcAddress(module,"meltype_tsf_service_focus_native"));
+        serviceEditedNative = reinterpret_cast<decltype(serviceEditedNative)>(GetProcAddress(module,"meltype_tsf_service_edited_native"));
+        serviceOpenedNative = reinterpret_cast<decltype(serviceOpenedNative)>(GetProcAddress(module,"meltype_tsf_service_opened_native"));
         serviceShutdown = reinterpret_cast<decltype(serviceShutdown)>(GetProcAddress(module, "meltype_tsf_service_shutdown"));
         serviceActivate = reinterpret_cast<decltype(serviceActivate)>(GetProcAddress(module, "meltype_tsf_service_activate"));
         serviceApplyComposition = reinterpret_cast<decltype(serviceApplyComposition)>(GetProcAddress(module,"meltype_tsf_service_apply_composition"));
@@ -314,7 +314,7 @@ bool RustJsonVisit(const std::string& text,void* owner,RustJsonEmit emit) {
 }
 bool RustCoreReady(const RustCoreStateCallbacks& callbacks) {return api().coreReady && api().coreReady(&callbacks)!=0;}
 RustServiceState* RustCreateServiceState() {
-    if (!api().serviceCreate || !api().serviceDestroy || !api().serviceLayout || !api().serviceCore || !api().serviceApplyReply ||  !api().serviceCommit || !api().serviceSelectCandidate || !api().serviceDispatchKey || !api().serviceInputScope || !api().serviceModeAction || !api().serviceAbandon || !api().serviceTerminated || !api().serviceResume || !api().serviceApplyComposition || !api().serviceWriteCommit || !api().serviceEndComposition || !api().serviceActivate || !api().serviceShutdown || !api().serviceOpened || !api().serviceEdited || !api().serviceFocus || !api().serviceExchange || !api().serviceMode || !api().serviceWriteOpen || !api().serviceApplyMode || !api().serviceEditSink || !api().serviceInitialize || !api().serviceClearResume || !api().serviceSetSid || !api().serviceSid || !api().serviceClose || !api().serviceCreateBar || !api().serviceUpdateBar || !api().serviceRemoveBar || !api().serviceCreateCandidates || !api().serviceShowCandidates || !api().serviceHideCandidates || !api().serviceDropCandidates) return nullptr;
+    if (!api().serviceCreate || !api().serviceDestroy || !api().serviceLayout || !api().serviceCore || !api().serviceApplyReply ||  !api().serviceCommit || !api().serviceSelectCandidate || !api().serviceDispatchKey || !api().serviceInputScope || !api().serviceModeAction || !api().serviceAbandon || !api().serviceTerminated || !api().serviceResume || !api().serviceApplyComposition || !api().serviceWriteCommit || !api().serviceEndComposition || !api().serviceActivate || !api().serviceShutdown || !api().serviceOpenedNative || !api().serviceEditedNative || !api().serviceFocusNative || !api().serviceExchange || !api().serviceMode || !api().serviceWriteOpen || !api().serviceApplyMode || !api().serviceEditSink || !api().serviceInitialize || !api().serviceClearResume || !api().serviceSetSid || !api().serviceSid || !api().serviceClose || !api().serviceCreateBar || !api().serviceUpdateBar || !api().serviceRemoveBar || !api().serviceCreateCandidates || !api().serviceShowCandidates || !api().serviceHideCandidates || !api().serviceDropCandidates) return nullptr;
     const unsigned int expected[]={5,static_cast<unsigned int>(sizeof(RustServiceState)),static_cast<unsigned int>(alignof(RustServiceState)),
         static_cast<unsigned int>(offsetof(RustServiceState,refs)),
         static_cast<unsigned int>(offsetof(RustServiceState,manager)),
@@ -388,15 +388,6 @@ static void __cdecl ServiceCoreNotice(void*,unsigned int op,int active) {
     if (op==0) TipLog(L"Meltype.exe: %s",active?L"つながりました":L"使えません (動いていない・モードが Meltype IME でない)");
     else if (op==1) TipLog(L"応答を読めません");
 }
-HRESULT RustServiceFocus(RustServiceState* state,IUnknown* lifetime,ITfTextEditSink* sink,ITfDocumentMgr* document,int event,void* context,int (__cdecl *commit)(void*,int),void (__cdecl *resume)(void*)) {
-    return api().serviceFocus?api().serviceFocus(state,api().worker.c_str(),lifetime,sink,document,event,context,commit,resume,ServiceCoreNotice):E_NOINTERFACE;
-}
-bool RustServiceEdited(RustServiceState* state,IUnknown* lifetime,ITfContext* context,ITfEditRecord* record,TfEditCookie cookie,void* adapter,void (__cdecl *query)(void*,unsigned int,void*,int),void (__cdecl *commit)(void*)) {
-    return api().serviceEdited && api().serviceEdited(state,lifetime,context,record,cookie,adapter,query,commit)!=0;
-}
-HRESULT RustServiceOpened(RustServiceState* state,IUnknown* lifetime,REFGUID guid,void* context,void (__cdecl *commit)(void*),void (__cdecl *notice)(void*,int)) {
-    return api().serviceOpened?api().serviceOpened(state,lifetime,&guid,context,commit,notice):E_NOINTERFACE;
-}
 HRESULT RustServiceShutdown(RustServiceState* state,IUnknown* lifetime,ITfCompositionSink* sink) {
     return api().serviceShutdown?api().serviceShutdown(state,lifetime,sink,api().worker.c_str(),nullptr,
         [](void*,unsigned int op,int value) {try {
@@ -449,6 +440,22 @@ bool RustServiceInputScope(RustServiceState* state,IUnknown* lifetime,TfEditCook
 }
 bool RustServiceModeAction(RustServiceState* state,IUnknown* lifetime,ITfContext* context,TfEditCookie cookie,unsigned int op,int value) {
     return api().serviceModeAction && api().serviceModeAction(state,lifetime,api().worker.c_str(),context,cookie,op,value,nullptr,ServiceModeNotice)!=0;
+}
+static void __cdecl ServiceNotificationNotice(void*,unsigned int op,int value) {
+    try {
+        if (op==10) TipLog(L"キャレットが変換中の文字の外に出たので確定します");
+        else if (op==11) TipLog(L"入力モード: %s",value?L"日本語":L"英数");
+        else ServiceModeNotice(nullptr,op,value);
+    }catch (...) {}
+}
+HRESULT RustServiceFocusNative(RustServiceState* s,IUnknown* life,ITfCompositionSink* sink,ITfTextEditSink* edit,ITfDocumentMgr* doc,int event) {
+    return api().serviceFocusNative?api().serviceFocusNative(s,life,sink,edit,api().worker.c_str(),doc,event,nullptr,ServiceNotificationNotice):E_NOINTERFACE;
+}
+bool RustServiceEditedNative(RustServiceState* s,IUnknown* life,ITfCompositionSink* sink,ITfContext* context,ITfEditRecord* record,TfEditCookie cookie) {
+    return api().serviceEditedNative && api().serviceEditedNative(s,life,sink,api().worker.c_str(),context,record,cookie,nullptr,ServiceNotificationNotice)!=0;
+}
+HRESULT RustServiceOpenedNative(RustServiceState* s,IUnknown* life,ITfCompositionSink* sink,REFGUID guid) {
+    return api().serviceOpenedNative?api().serviceOpenedNative(s,life,sink,api().worker.c_str(),&guid,nullptr,ServiceNotificationNotice):E_NOINTERFACE;
 }
 static void __cdecl ServiceKeyNotice(void*,unsigned int op,int value) {
     try {switch (op) {

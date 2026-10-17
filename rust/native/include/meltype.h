@@ -592,6 +592,14 @@ int32_t meltype_tsf_service_shutdown(void *state,void *lifetime,void *sink,const
    substitutes SendInput (NULL uses OS). Async commits independently own worker,
    adapter and notices. No external commit/edit/reply callback is used. */
 int32_t meltype_tsf_service_dispatch_key(void *state,void *lifetime,void *sink,const char *worker,uint32_t kind,void *context,uint32_t key,uint64_t message,void *adapter,void (*mode_notice)(void *,uint32_t,int32_t),void (*key_notice)(void *,uint32_t,int32_t),uint32_t (*sender)(void *,const void *,uint32_t));
+/* Native notification follow-ups. Live service/root/sinks on the TSF thread;
+   worker trusted absolute UTF8. Root pins state/code; callbacks never unwind.
+   Notice uses mode-action codes plus7=resumed,10=caret-outside commit,11=open.
+   Deferred commit failures report op1; async work owns adapter/notice/path.
+   Focus event -1=document,0=lost,1=gained. Record may be null. */
+int32_t meltype_tsf_service_focus_native(void *state,void *lifetime,void *sink,void *edit_sink,const char *worker,void *document,int32_t event,void *adapter,void (*notice)(void *,uint32_t,int32_t));
+int32_t meltype_tsf_service_edited_native(void *state,void *lifetime,void *sink,const char *worker,void *context,void *record,uint32_t cookie,void *adapter,void (*notice)(void *,uint32_t,int32_t));
+int32_t meltype_tsf_service_opened_native(void *state,void *lifetime,void *sink,const char *worker,const void *guid,void *adapter,void (*notice)(void *,uint32_t,int32_t));
 /* Service mode actions op0=toggle,op1=code line(value Japanese),op2=query(cookie,
    value selection-changed). Notice 0=hello,1=invalid JSON,2=English display,
    3=code-line Japanese,4=scope source,5=scope unreadable reason. Query retains
