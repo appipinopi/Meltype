@@ -1,11 +1,57 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 appipinopi
-// Production RustPipe mode adapter ABI and real shell owner lifetime.
+// Generic native mode ABI reference and real shell owner lifetime.
+// Production service actions are covered by state and public-key hosts.
 #include "../../../native/tip/TextService.h"
 #include <cassert>
 #include <cstdio>
 using namespace meltype;
 namespace {
+struct RustModeCallbacks {
+    void* owner;IUnknown* lifetime;
+    unsigned int (__cdecl *read)(void*);
+    int (__cdecl *ready)(void*);
+    int (__cdecl *secret)(void*,unsigned int,void*);
+    void (__cdecl *setOpen)(void*,int);
+    int (__cdecl *request)(void*,const char*);
+    void (__cdecl *notice)(void*,int);
+};
+bool RustToggleMode(ITfContext*,ITfThreadMgr*,void*,TfClientId,const std::string&,const RustModeCallbacks&);
+bool RustCodeLine(ITfContext*,void*,TfClientId,const std::string&,const RustModeCallbacks&,bool);
+struct RustModeQueryCallbacks {
+    void* owner;IUnknown* lifetime;
+    unsigned int (__cdecl *read)(void*);
+    int (__cdecl *secret)(void*,unsigned int,void*);
+    int (__cdecl *request)(void*,const char*,unsigned int,int);
+};
+struct RustModeApplyCallbacks {
+    void* owner;IUnknown* lifetime;
+    unsigned int (__cdecl *read)(void*);
+    void (__cdecl *write)(void*,unsigned int);
+    void (__cdecl *notify)(void*,int);
+};
+bool RustQueryMode(ITfContext*,TfEditCookie,void*,const std::string&,const RustModeQueryCallbacks&,bool);
+bool RustApplyMode(unsigned int,const RustModeApplyCallbacks&);
+template<class F> F referenceMode(const char* name) {
+    auto module=GetModuleHandleW(L"meltype_native.dll");assert(module);
+    auto fn=reinterpret_cast<F>(GetProcAddress(module,name));assert(fn);return fn;
+}
+bool RustToggleMode(ITfContext* context,ITfThreadMgr* manager,void* token,TfClientId client,const std::string& metadata,const RustModeCallbacks& callbacks) {
+    using F=int (__cdecl *)(void*,void*,void*,unsigned int,const char*,const RustModeCallbacks*);
+    return referenceMode<F>("meltype_tsf_toggle_mode")(context,manager,token,client,metadata.c_str(),&callbacks)!=0;
+}
+bool RustCodeLine(ITfContext* context,void* token,TfClientId client,const std::string& metadata,const RustModeCallbacks& callbacks,bool japanese) {
+    using F=int (__cdecl *)(void*,void*,unsigned int,const char*,const RustModeCallbacks*,int);
+    return referenceMode<F>("meltype_tsf_code_line")(context,token,client,metadata.c_str(),&callbacks,japanese?1:0)!=0;
+}
+bool RustQueryMode(ITfContext* context,TfEditCookie cookie,void* token,const std::string& metadata,const RustModeQueryCallbacks& callbacks,bool changed) {
+    using F=int (__cdecl *)(void*,unsigned int,void*,const char*,const RustModeQueryCallbacks*,int);
+    return referenceMode<F>("meltype_tsf_query_mode")(context,cookie,token,metadata.c_str(),&callbacks,changed?1:0)!=0;
+}
+bool RustApplyMode(unsigned int bits,const RustModeApplyCallbacks& callbacks) {
+    using F=int (__cdecl *)(unsigned int,const RustModeApplyCallbacks*);
+    return referenceMode<F>("meltype_tsf_apply_mode")(bits,&callbacks)!=0;
+}
 void* methods[17]={};
 struct Context {
     void** table=methods;

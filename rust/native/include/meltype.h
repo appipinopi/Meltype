@@ -550,6 +550,13 @@ void meltype_tsf_service_clear_resume(void *state);
 /* TSF-thread edit subscription replacement. Lifetime pins the service/state;
    document and edit sink are borrowed SDK interfaces. Null document detaches.
    Reentrant replacement/end invalidates and cleans up a late subscription. */
+/* Service mode actions op0=toggle,op1=code line(value Japanese),op2=query(cookie,
+   value selection-changed). Notice 0=hello,1=invalid JSON,2=English display,
+   3=code-line Japanese,4=scope source,5=scope unreadable reason. Query retains
+   its 100ms optional policy. TSF thread, lifetime pins state/notice code. */
+int32_t meltype_tsf_service_mode_action(void *state,void *lifetime,const char *worker,void *context,uint32_t cookie,uint32_t op,int32_t value,void *adapter,void (*notice)(void *,uint32_t,int32_t));
+/* Same lifetime/thread contract and notice ops4/5; invalid owner is secret. */
+int32_t meltype_tsf_service_input_scope(void *state,void *lifetime,void *context,uint32_t cookie,void *adapter,void (*notice)(void *,uint32_t,int32_t));
 /* Native host-termination/recovery state and reply-discarding commit traffic.
    Borrowed TSF interfaces/cookie; lifetime pins state/adapter/notice code. Worker
    is a trusted absolute UTF-8 path. Optional notice logs parse failure and never

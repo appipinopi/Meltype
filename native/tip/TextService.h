@@ -173,7 +173,6 @@ private:
 #ifdef MELTYPE_RUST_CORE
     int ReadSecretForKey(ITfContext*,UINT,bool);
     HRESULT DispatchKey(unsigned int,ITfContext*,UINT,LPARAM,BOOL*);
-    RustModeCallbacks ModeCallbacks();
     RustCommitCallbacks CommitCallbacks();
 #endif
     void ResetStaleCommit();

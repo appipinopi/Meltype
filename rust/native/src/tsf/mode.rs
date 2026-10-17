@@ -18,14 +18,14 @@ use windows::{
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct Callbacks {
-    owner: *mut c_void,
-    lifetime: *mut c_void,
-    read: unsafe extern "C" fn(*mut c_void) -> u32,
-    ready: unsafe extern "C" fn(*mut c_void) -> i32,
-    secret: unsafe extern "C" fn(*mut c_void, u32, *mut c_void) -> i32,
-    set_open: unsafe extern "C" fn(*mut c_void, i32),
-    request: unsafe extern "C" fn(*mut c_void, *const c_char) -> i32,
-    notice: unsafe extern "C" fn(*mut c_void, i32),
+    pub(super) owner: *mut c_void,
+    pub(super) lifetime: *mut c_void,
+    pub(super) read: unsafe extern "C" fn(*mut c_void) -> u32,
+    pub(super) ready: unsafe extern "C" fn(*mut c_void) -> i32,
+    pub(super) secret: unsafe extern "C" fn(*mut c_void, u32, *mut c_void) -> i32,
+    pub(super) set_open: unsafe extern "C" fn(*mut c_void, i32),
+    pub(super) request: unsafe extern "C" fn(*mut c_void, *const c_char) -> i32,
+    pub(super) notice: unsafe extern "C" fn(*mut c_void, i32),
 }
 #[derive(Default)]
 struct ReadResult {
@@ -286,11 +286,11 @@ pub unsafe extern "C" fn meltype_tsf_code_line(
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct QueryCallbacks {
-    owner: *mut c_void,
-    lifetime: *mut c_void,
-    read: unsafe extern "C" fn(*mut c_void) -> u32,
-    secret: unsafe extern "C" fn(*mut c_void, u32, *mut c_void) -> i32,
-    request: unsafe extern "C" fn(*mut c_void, *const c_char, u32, i32) -> i32,
+    pub(super) owner: *mut c_void,
+    pub(super) lifetime: *mut c_void,
+    pub(super) read: unsafe extern "C" fn(*mut c_void) -> u32,
+    pub(super) secret: unsafe extern "C" fn(*mut c_void, u32, *mut c_void) -> i32,
+    pub(super) request: unsafe extern "C" fn(*mut c_void, *const c_char, u32, i32) -> i32,
 }
 /// Query mode during an existing read edit session; no new lock or hello.
 /// # Safety

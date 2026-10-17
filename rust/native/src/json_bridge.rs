@@ -209,6 +209,26 @@ fn parse(input: &[u8]) -> Option<Value> {
 pub(crate) fn valid(input: &[u8]) -> bool {
     parse(input).is_some()
 }
+#[cfg(windows)]
+pub(crate) fn mode_reply(input: &[u8]) -> Option<u32> {
+    let value = parse(input)?;
+    let Value::Object(fields) = value else {
+        return Some(0);
+    };
+    Some(
+        ["active", "code", "english", "consumed"]
+            .iter()
+            .enumerate()
+            .fold(0, |bits, (index, key)| {
+                let key = key.encode_utf16().collect::<Vec<_>>();
+                bits | if fields.get(&key) == Some(&Value::Bool(true)) {
+                    1 << index
+                } else {
+                    0
+                }
+            }),
+    )
+}
 pub type Emit = unsafe extern "C" fn(*mut c_void, u32, f64, *const u16, u32) -> i32;
 unsafe fn emit(value: &Value, owner: *mut c_void, callback: Emit) -> bool {
     let empty = std::ptr::null();

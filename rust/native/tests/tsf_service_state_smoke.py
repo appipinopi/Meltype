@@ -24,6 +24,7 @@ from tsf_open_change_smoke import Host as OpenHost
 from tsf_shutdown_smoke import REQUEST as SHUTDOWN_REQUEST
 from tsf_composition_owner_smoke import OwnerHost
 from tsf_range_smoke import units
+from tsf_mode_smoke import ModeHost
 SELECT=c.CFUNCTYPE(None,c.c_void_p,c.c_int,c.c_int)
 CORE_NOTICE=c.CFUNCTYPE(None,c.c_void_p,c.c_uint32,c.c_int)
 END=c.CFUNCTYPE(None,c.c_void_p,c.c_uint32)
@@ -127,6 +128,8 @@ class StateTests(unittest.TestCase):
         cls.api.meltype_tsf_service_resume.argtypes=[P,P,c.c_char_p,P,P,P,TOGGLE];cls.api.meltype_tsf_service_resume.restype=c.c_int
         cls.api.meltype_tsf_service_abandon.argtypes=[P,P,c.c_char_p,P,TOGGLE];cls.api.meltype_tsf_service_abandon.restype=c.c_int
         cls.api.meltype_tsf_abandoned_reset.argtypes=[P];cls.api.meltype_tsf_abandoned_reset.restype=None
+        cls.api.meltype_tsf_service_input_scope.argtypes=[P,P,P,U32,P,CORE_NOTICE];cls.api.meltype_tsf_service_input_scope.restype=c.c_int
+        cls.api.meltype_tsf_service_mode_action.argtypes=[P,P,c.c_char_p,P,U32,U32,c.c_int,P,CORE_NOTICE];cls.api.meltype_tsf_service_mode_action.restype=c.c_int
         cls.fixture=str(Path(sys.argv[2]).resolve()).encode() if len(sys.argv)>2 else None
 
 
@@ -1546,6 +1549,122 @@ class StateTests(unittest.TestCase):
         state=self.create();host=DeferredHost();address=c.addressof(state);before=c.string_at(address,c.sizeof(State))
         for data,lifetime,worker in [(None,c.byref(host.context),self.worker),(address,None,self.worker),(address,c.byref(host.context),None)]:
             self.assertEqual(self.api.meltype_tsf_service_abandon(data,lifetime,worker,None,TOGGLE()),-1)
+        self.assertEqual(c.string_at(address,c.sizeof(State)),before);host.verify(self)
+    def scope(self,state,host,notice=None,lifetime=None):
+        return self.api.meltype_tsf_service_input_scope(c.addressof(state),lifetime or c.byref(host.context),c.byref(host.context),7,123,notice or CORE_NOTICE(lambda *_:None))
+    def mode_action(self,state,host,op=1,value=1,worker=None,notice=None,context='same'):
+        pointer=c.byref(host.context) if context=='same' else context
+        return self.api.meltype_tsf_service_mode_action(c.addressof(state),c.byref(host.context),worker or self.worker,pointer,7,op,value,123,notice or CORE_NOTICE(lambda *_:None))
+    def fixture_mode(self,state,host,reply,op=1,value=1,notice=None,context='same'):
+        def action(worker):
+            if op==2:
+                # Prepare the private fixture before exercising the 100ms query.
+                response=self.api.meltype_tsf_service_request(c.addressof(state),worker,b'{}',5000,0)
+                self.assertTrue(response);self.api.meltype_free(response)
+            return self.mode_action(state,host,op,value,worker,notice,context)
+        return self.fixture_recovery(state,reply,action)
+    def test_scope_native_private_secret_source_labels_and_duplicate_suppression(self):
+        state=self.create();host=ModeHost();events=[];host.values[0].values=[61]
+        notice=CORE_NOTICE(lambda owner,op,value:events.append((owner,op,value)))
+        self.assertEqual(self.scope(state,host,notice),0);self.assertTrue(state.private_field)
+        self.assertEqual(c.wstring_at(state.scope_source),'Windows とアプリ')
+        self.assertEqual(self.scope(state,host,notice),0);self.assertEqual(events,[(123,4,3)])
+        host.values[0].values=[31];host.present[1]=False
+        self.assertEqual(self.scope(state,host,notice),1);self.assertFalse(state.private_field)
+        self.assertEqual(events[-1],(123,4,1));self.assertEqual(c.wstring_at(state.scope_source),'Windows');host.verify(self)
+    def test_scope_native_unreadable_metadata_preserves_private_and_notifies_reason(self):
+        state=self.create();host=ModeHost();host.values[0].fail_query=host.values[0].partial_query=True;host.values[1].values=[61];events=[]
+        notice=CORE_NOTICE(lambda owner,op,value:events.append((op,value)))
+        self.assertEqual(self.scope(state,host,notice),1);self.assertTrue(state.private_field)
+        self.assertEqual(events,[(4,3),(5,1)])
+        self.assertEqual(self.scope(state,host,notice),1);self.assertEqual(events[-1],(5,1));self.assertEqual(events.count((4,3)),1);host.verify(self)
+    def test_scope_native_last_caller_release_keeps_state_through_notice(self):
+        state=self.create();address=c.addressof(state);host=ModeHost();host.values[0].values=[61];events=[]
+        dispatch=DISPATCH(lambda *_:0)
+        @self.checked(DESTROY)
+        def destroyed(owner):events.append(('destroy',state.private_field));self.api.meltype_tsf_service_state_destroy(owner)
+        root=self.api.meltype_tsf_service_com_create(address,dispatch,destroyed);self.assertTrue(root);self.owned.remove(address)
+        @self.checked(CORE_NOTICE)
+        def notice(owner,op,value):
+            self.assertEqual((owner,op,value),(123,4,3));self.assertTrue(state.private_field);events.append('scope');release(root)
+            self.assertEqual(self.live(),self.before+1)
+        try:
+            self.assertEqual(self.scope(state,host,notice,root),0);self.assertEqual(events,['scope',('destroy',True)]);host.verify(self)
+        finally:
+            if not events:release(root)
+    def test_scope_native_invalid_owner_is_secret_without_mutating_state(self):
+        state=self.create();host=ModeHost();address=c.addressof(state);before=c.string_at(address,c.sizeof(State))
+        for data,lifetime in [(None,c.byref(host.context)),(address,None)]:
+            self.assertEqual(self.api.meltype_tsf_service_input_scope(data,lifetime,c.byref(host.context),7,None,CORE_NOTICE()),1)
+        self.assertEqual(c.string_at(address,c.sizeof(State)),before);self.assertEqual(host.value_reads,[]);host.verify(self)
+    def test_mode_action_native_plain_toggle_uses_owned_compartment_state(self):
+        state=self.create();host=ModeHost();state.client=17;state.manager=c.addressof(host.context)
+        host.on_write=lambda:self.opened(state,host)
+        try:
+            self.assertEqual(self.mode_action(state,host,op=0),1);self.assertFalse(state.open)
+            self.assertEqual(self.mode_action(state,host,op=0),1);self.assertTrue(state.open)
+            self.assertEqual(host.read_count,0);self.assertFalse(state.transport);host.verify(self)
+        finally:state.manager=None
+    def test_mode_action_native_code_request_metadata_privacy_and_reply_order(self):
+        state=self.create();host=ModeHost();state.client=17;state.server_active=True;state.code_app=True;events=[]
+        sid='切替"😀';self.api.meltype_tsf_service_set_sid(c.addressof(state),sid.encode())
+        notice=CORE_NOTICE(lambda owner,op,value:events.append((op,value)))
+        result,request=self.fixture_mode(state,host,'{"active":true,"code":true,"english":true,"consumed":true}',value=0,notice=notice)
+        self.assertEqual(result,1);self.assertEqual((request['op'],request['sid'],request['japanese']),('toggle',sid,False))
+        self.assertEqual(request['before'],'print("日本語😀")');self.assertEqual(request['process'].lower(),'python')
+        self.assertEqual(events,[(4,3),(2,1),(3,0)]);self.assertTrue(state.code_english);host.verify(self)
+    def test_mode_action_native_focus_fallback_releases_document_and_context(self):
+        state=self.create();host=ModeHost();state.client=17;state.server_active=True;state.code_app=True;state.manager=c.addressof(host.thread)
+        try:
+            result,request=self.fixture_mode(state,host,'{"active":true,"consumed":true}',op=0,context=None)
+            self.assertEqual(result,1);self.assertEqual(request['op'],'toggle');self.assertFalse(request['japanese'])
+            self.assertGreater(host.read_count,0);host.verify(self)
+        finally:state.manager=None
+    def test_mode_action_native_query_skips_noncode_inactive_and_secret_text(self):
+        state=self.create();host=ModeHost();state.client=17
+        for code,active in [(False,False),(True,False),(False,True)]:
+            state.code_app=code;state.server_active=active;self.assertEqual(self.mode_action(state,host,op=2),0)
+        self.assertEqual(host.value_reads,[])
+        state.code_app=state.server_active=True;host.values[0].values=[31]
+        self.assertEqual(self.mode_action(state,host,op=2),0);self.assertEqual(host.read_count,0);self.assertFalse(state.transport);host.verify(self)
+    def test_mode_action_native_query_applies_reply_without_consumed_requirement(self):
+        state=self.create();host=ModeHost();state.client=17;state.code_app=state.server_active=True;state.code_english=True
+        result,request=self.fixture_mode(state,host,'{"active":false,"code":true,"english":true,"consumed":false}',op=2,value=0)
+        self.assertEqual(result,1);self.assertEqual(request['op'],'mode');self.assertEqual(request['before'],'print("日本語😀")')
+        self.assertFalse(state.code_app);self.assertFalse(state.code_english);self.assertTrue(state.server_active);host.verify(self)
+    def test_mode_action_native_invalid_reply_does_not_change_display_state(self):
+        state=self.create();host=ModeHost();state.client=17;state.code_app=state.server_active=True;events=[]
+        result,_=self.fixture_mode(state,host,'invalid JSON',notice=CORE_NOTICE(lambda owner,op,value:events.append((op,value))))
+        self.assertEqual(result,0);self.assertTrue(state.code_app);self.assertFalse(state.code_english)
+        self.assertEqual(events,[(4,3),(1,0)]);host.verify(self)
+    def test_mode_action_native_all_response_flags_preserve_strict_booleans(self):
+        state=self.create();host=ModeHost();state.client=17;state.server_active=True
+        for flags in range(16):
+            value={key:bool(flags&(1<<bit)) for bit,key in enumerate(['active','code','english','consumed'])}
+            result,_=self.fixture_mode(state,host,json.dumps(value))
+            self.assertEqual(result,int(value['active'] and value['consumed']))
+            self.assertEqual(state.code_app,value['active'] and value['code'])
+            self.assertEqual(state.code_english,value['active'] and value['code'] and value['english'])
+        result,_=self.fixture_mode(state,host,'{"active":1,"code":true,"english":true,"consumed":true}')
+        self.assertEqual(result,0);self.assertFalse(state.code_app);self.assertFalse(state.code_english);host.verify(self)
+    def test_mode_action_native_compatible_reply_parser_accepts_surrogate_escape(self):
+        state=self.create();host=ModeHost();state.client=17;state.server_active=True;events=[]
+        result,_=self.fixture_mode(state,host,'{"active":true,"consumed":true,"label":"\\uD800"}',notice=CORE_NOTICE(lambda owner,op,value:events.append((op,value))))
+        self.assertEqual(result,1);self.assertNotIn((1,0),events);host.verify(self)
+    def test_mode_action_native_delayed_read_uses_tracked_line_and_disables_late_work(self):
+        state=self.create();host=ModeHost();state.client=17;state.server_active=True;host.lock_mode='async'
+        try:
+            result,request=self.fixture_mode(state,host,'{"active":true,"consumed":true}')
+            self.assertEqual(result,1);self.assertNotIn('before',request);self.assertEqual(host.read_count,0)
+            self.assertIsNotNone(host.pending);self.assertEqual(invoke(host.pending,3,HR,[U32],7),HR(0x80004004).value)
+        finally:
+            if host.pending:release(host.pending);host.pending=None
+            host.verify(self)
+    def test_mode_action_native_invalid_arguments_preserve_state(self):
+        state=self.create();host=ModeHost();address=c.addressof(state);before=c.string_at(address,c.sizeof(State))
+        for data,lifetime,worker,op in [(None,c.byref(host.context),self.worker,0),(address,None,self.worker,0),
+            (address,c.byref(host.context),None,0),(address,c.byref(host.context),self.worker,3)]:
+            self.assertEqual(self.api.meltype_tsf_service_mode_action(data,lifetime,worker,c.byref(host.context),7,op,0,None,CORE_NOTICE()),0)
         self.assertEqual(c.string_at(address,c.sizeof(State)),before);host.verify(self)
 if __name__=='__main__':unittest.main(argv=[sys.argv[0]],verbosity=2,failfast=True)
 

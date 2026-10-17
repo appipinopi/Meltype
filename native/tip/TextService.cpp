@@ -598,18 +598,7 @@ void TextService::AdviseTextEditSink(ITfDocumentMgr* documentMgr) {
 
 bool TextService::IsSecretField(TfEditCookie ec, ITfContext* context) {
 #ifdef MELTYPE_RUST_CORE
-    const unsigned int fields = RustInputScope(ec,context);
-    privateField_ = (fields & 2) != 0;
-    const unsigned int sources = (fields >> 8) & 3;
-    const wchar_t* source = sources == 3 ? L"Windows とアプリ" : sources == 1 ? L"Windows" : sources == 2 ? L"アプリ" : L"無い";
-    if (scopeSource_ != source) TipLog(L"入力欄の種類を読むところ: %s", source);
-    scopeSource_ = source;
-    if ((fields & 4) != 0) {
-        const unsigned int reason = fields >> 16;
-        const wchar_t* step = reason == 1 ? L"ITfInputScope" : reason == 2 ? L"GetInputScopes" : reason == 3 ? L"VARIANT" : L"Rust API";
-        TipLog(L"入力欄の種類を読めないので、パスワード欄として扱います (%s)",step);
-    }
-    return (fields & 1) != 0;
+    return RustServiceInputScope(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),ec,context);
 #else
     // 入力欄の種類 (InputScope) がパスワード・暗証番号か。
     // (入力欄が開いたときに非同期の編集セッションで読むと、それが終わるまでキーが届かなくなるアプリがあるので、キーの編集セッションの中で読む)
@@ -1325,8 +1314,7 @@ void TextService::HandleKey(ITfContext* context, UINT vk, wchar_t ch) {
 
 void TextService::ToggleInputMode(ITfContext* context) {
 #ifdef MELTYPE_RUST_CORE
-    const std::string metadata="{\"sid\":\""+SessionId()+"\",\"process\":"+JsonString(ProcessName())+"}";
-    RustToggleMode(context,threadMgr_,keyState_,clientId_,metadata,ModeCallbacks());
+    RustServiceModeAction(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),context,0,0,0);
 #else
     Microsoft::WRL::ComPtr<ITfContext> focused;
     if (context == nullptr && threadMgr_ != nullptr) {
@@ -1346,31 +1334,10 @@ void TextService::ToggleInputMode(ITfContext* context) {
 #endif
 }
 
-#ifdef MELTYPE_RUST_CORE
-RustModeCallbacks TextService::ModeCallbacks() {
-    return {
-        this,ServiceInterface<ITfTextInputProcessorEx>(),
-        [](void* p)->unsigned int {return RustServiceMode(static_cast<TextService*>(p)->state_.value);},
-        [](void* p)->int {try {return static_cast<TextService*>(p)->ServerReady()?1:0;}catch (...) {return 0;}},
-        [](void* p,unsigned int ec,void* c)->int {try {return static_cast<TextService*>(p)->IsSecretField(ec,static_cast<ITfContext*>(c))?1:0;}catch (...) {return 1;}},
-        [](void* p,int open) {try {static_cast<TextService*>(p)->SetOpen(open!=0);}catch (...) {}},
-        [](void* p,const char* text)->int {
-            try {
-                auto* s=static_cast<TextService*>(p);JsonValue reply;
-                if (!s->Request(text,reply)) return 0;
-                s->ApplyMode(reply);
-                return reply[L"active"].Bool() && reply[L"consumed"].Bool()?1:0;
-            }catch (...) {return 0;}
-        },
-        [](void*,int japanese) {TipLog(L"コードの行: %s",japanese?L"日本語にしました":L"英数に戻しました");},
-    };
-}
-#endif
 
 bool TextService::SetCodeLine(ITfContext* context, bool japanese) {
 #ifdef MELTYPE_RUST_CORE
-    const std::string metadata="{\"sid\":\""+SessionId()+"\",\"process\":"+JsonString(ProcessName())+"}";
-    return RustCodeLine(context,keyState_,clientId_,metadata,ModeCallbacks(),japanese);
+    return RustServiceModeAction(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),context,0,1,japanese?1:0);
 #else
     if (context == nullptr || ContextDisabled(context) || !ServerReady()) return false;
     std::string request = "{\"op\":\"toggle\",\"sid\":\"" + SessionId() + "\",\"process\":" + JsonString(ProcessName()) +
@@ -1398,18 +1365,7 @@ bool TextService::SetCodeLine(ITfContext* context, bool japanese) {
 
 void TextService::QueryMode(TfEditCookie ec, ITfContext* context, bool selectionChanged) {
 #ifdef MELTYPE_RUST_CORE
-    const auto mode=ModeCallbacks();
-    RustModeQueryCallbacks callbacks={
-        mode.owner,mode.lifetime,mode.read,mode.secret,
-        [](void* p,const char* text,unsigned int timeout,int optional)->int {
-            try {auto* s=static_cast<TextService*>(p);JsonValue reply;
-                if (!s->Request(text,reply,timeout,optional!=0)) return 0;
-                s->ApplyMode(reply);return 1;
-            }catch (...) {return 0;}
-        },
-    };
-    const std::string metadata="{\"sid\":\""+SessionId()+"\",\"process\":"+JsonString(ProcessName())+"}";
-    RustQueryMode(context,ec,keyState_,metadata,callbacks,selectionChanged);
+    RustServiceModeAction(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),context,ec,2,selectionChanged?1:0);
 #else
     if (!codeApp_ || !serverActive_ || ContextDisabled(context) || IsSecretField(ec, context)) return;
     std::wstring before, after;

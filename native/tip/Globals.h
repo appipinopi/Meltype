@@ -120,31 +120,6 @@ void RustKeyStaleWrite(void*,unsigned int,unsigned int,unsigned long long);
 void RustKeyStaleClear(void*);
 bool RustKeyPassedRead(void*,bool,bool,RustKeyPassed&);
 bool RustKeyEvent(void*,unsigned int,ITfContext*,UINT,LPARAM,const RustKeyEntry&);
-struct RustModeCallbacks {
-    void* owner;IUnknown* lifetime;
-    unsigned int (__cdecl *read)(void*);
-    int (__cdecl *ready)(void*);
-    int (__cdecl *secret)(void*,unsigned int,void*);
-    void (__cdecl *setOpen)(void*,int);
-    int (__cdecl *request)(void*,const char*);
-    void (__cdecl *notice)(void*,int);
-};
-bool RustToggleMode(ITfContext*,ITfThreadMgr*,void*,TfClientId,const std::string&,const RustModeCallbacks&);
-bool RustCodeLine(ITfContext*,void*,TfClientId,const std::string&,const RustModeCallbacks&,bool);
-struct RustModeQueryCallbacks {
-    void* owner;IUnknown* lifetime;
-    unsigned int (__cdecl *read)(void*);
-    int (__cdecl *secret)(void*,unsigned int,void*);
-    int (__cdecl *request)(void*,const char*,unsigned int,int);
-};
-struct RustModeApplyCallbacks {
-    void* owner;IUnknown* lifetime;
-    unsigned int (__cdecl *read)(void*);
-    void (__cdecl *write)(void*,unsigned int);
-    void (__cdecl *notify)(void*,int);
-};
-bool RustQueryMode(ITfContext*,TfEditCookie,void*,const std::string&,const RustModeQueryCallbacks&,bool);
-bool RustApplyMode(unsigned int,const RustModeApplyCallbacks&);
 struct RustKeyEditCallbacks {
     void* owner;IUnknown* lifetime;
     unsigned int (__cdecl *read)(void*);
@@ -208,6 +183,8 @@ int RustServiceEndComposition(RustServiceState*,IUnknown*,TfEditCookie);
 HRESULT RustServiceTerminated(RustServiceState*,IUnknown*,TfEditCookie,ITfComposition*);
 int RustServiceResume(RustServiceState*,IUnknown*,ITfCompositionSink*,ITfContext*);
 int RustServiceAbandon(RustServiceState*,IUnknown*);
+bool RustServiceInputScope(RustServiceState*,IUnknown*,TfEditCookie,ITfContext*);
+bool RustServiceModeAction(RustServiceState*,IUnknown*,ITfContext*,TfEditCookie,unsigned int,int);
 bool RustServiceCore(RustServiceState*,IUnknown*,bool);
 unsigned int RustServiceMode(const RustServiceState*);
 void RustServiceWriteOpen(RustServiceState*,bool);
