@@ -40,7 +40,7 @@ cp "$here/build/native/MeltypeNative.so" "$out/libMeltypeNative.so"
 
 echo "== 2/3 fcitx5 のアドオン"
 if command -v cmake > /dev/null && pkg-config --exists Fcitx5Core 2> /dev/null; then
-    cmake -S "$here/fcitx5" -B "$here/build/fcitx5" -DMELTYPE_DIR=/opt/meltype -DCMAKE_BUILD_TYPE=Release > /dev/null
+    cmake -DMELTYPE_RUST_CORE=OFF -S "$here/fcitx5" -B "$here/build/fcitx5" -DMELTYPE_DIR=/opt/meltype -DCMAKE_BUILD_TYPE=Release > /dev/null
     cmake --build "$here/build/fcitx5" > /dev/null
     mkdir -p "$out/fcitx5"
     cp "$here/build/fcitx5/meltype.so" "$here/fcitx5/meltype-addon.conf" "$here/fcitx5/meltype.conf" "$out/fcitx5/"

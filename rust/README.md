@@ -322,3 +322,7 @@ e27d3f6の設定Activity枠はAPI 35・x86_64で `OK (10 tests)` を確認しま
 1c47eddのAPI 35・x86_64エミュレーターでは `OK (11 tests)` を確認しました（[実行記録](https://github.com/appipinopi/Meltype/actions/runs/39034569336)）。実SettingsActivityの保存／編集、エラー表示、確認ボタンから学習削除・復元までが成功しました。学習削除・復元確認の2枚のスクリーンショットも目視済みです。
 
 その画像で復元確認に内部データの長い文字列が表示されていたため、作成日時・復元するデータの種類・対象ファイル数／容量・上書き説明へ変更しました。新しいbackup_preview操作は復元と共通のパス／base64検証を行い、書き込みや内部データの返却はしません。元のbackup_inspect APIは互換性のため維持しています。共通stateファイルに含まれる学習・ユーザー辞書・定型文も表示対象です。不正データ、対象外ファイル、作成日時、無変更を13件のfeatures試験で確認しました。この読みやすい確認版のAndroid実行・画像確認は未完了です。
+
+fcitx5の標準Rust構成ではJSON文字列の解析をRustの `meltype_json_visit_utf8` で行い、C++へUTF-8の値イベントを渡します。旧NativeAOT用の解析は明示的な `MELTYPE_RUST_CORE=OFF` へ分離しました。WSLでは製品と同じ受渡しコードを実Rustライブラリへ接続し、旧解析と実コア応答217件の値、日本語・絵文字・NUL、不正入力、中断、重複キーを確認しました。SDK結合ビルドはCI確認待ちで、fcitx5のOS連携はまだC++です。[詳細](../linux/fcitx5/README.md)。
+
+3172f5fのAPI 35・x86_64エミュレーターで `OK (12 tests)` を確認しました（[実行記録](https://github.com/appipinopi/Meltype/actions/runs/39034991787)）。実KeyEvent／Editableを使うサービス経路の入力・確定・表示再生成・非公開欄・getter内の欄切替が成功しています。IMEを登録／有効化した他アプリ入力や物理端末の証明ではありません。

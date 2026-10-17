@@ -375,6 +375,58 @@ pub unsafe extern "C" fn meltype_json_visit(
     }))
     .unwrap_or(0)
 }
+pub type EmitUtf8 = unsafe extern "C" fn(*mut c_void, u32, f64, *const u8, u32) -> i32;
+unsafe fn emit_utf8(value: &serde_json::Value, owner: *mut c_void, callback: EmitUtf8) -> bool {
+    use serde_json::Value;
+    let empty = std::ptr::null();
+    match value {
+        Value::Null => callback(owner, 0, 0., empty, 0) != 0,
+        Value::Bool(value) => callback(owner, 1, f64::from(*value), empty, 0) != 0,
+        Value::Number(value) => callback(owner, 2, value.as_f64().unwrap_or(0.), empty, 0) != 0,
+        Value::String(value) => callback(owner, 3, 0., value.as_ptr(), value.len() as u32) != 0,
+        Value::Array(values) => {
+            callback(owner, 4, 0., empty, 0) != 0
+                && values.iter().all(|value| emit_utf8(value, owner, callback))
+                && callback(owner, 5, 0., empty, 0) != 0
+        }
+        Value::Object(values) => {
+            callback(owner, 6, 0., empty, 0) != 0
+                && values.iter().all(|(key, value)| {
+                    callback(owner, 7, 0., key.as_ptr(), key.len() as u32) != 0
+                        && emit_utf8(value, owner, callback)
+                })
+                && callback(owner, 8, 0., empty, 0) != 0
+        }
+    }
+}
+/// # Safety
+/// input is readable for length bytes; callback/owner remain valid for this
+/// synchronous call and callback never unwinds. Events match meltype_json_visit,
+/// with UTF-8 text borrowed only during callbacks (including escaped NUL).
+/// Strict JSON/UTF-8 parsing rejects malformed input before emitting any event;
+/// unlike the TSF compatibility entry point, legacy numeric/UTF-16 quirks do not
+/// apply. Duplicate keys use the last value. Zero callback result cancels.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_json_visit_utf8(
+    input: *const u8,
+    length: u32,
+    owner: *mut c_void,
+    callback: Option<EmitUtf8>,
+) -> i32 {
+    catch_unwind(AssertUnwindSafe(|| {
+        if input.is_null() || callback.is_none() {
+            return 0;
+        }
+        let Ok(value) = serde_json::from_slice::<serde_json::Value>(slice::from_raw_parts(
+            input,
+            length as usize,
+        )) else {
+            return 0;
+        };
+        i32::from(emit_utf8(&value, owner, callback.unwrap()))
+    }))
+    .unwrap_or(0)
+}
 fn quote(text: &[u16]) -> String {
     let mut out = String::from("\"");
     for ch in String::from_utf16_lossy(text).chars() {
@@ -531,6 +583,84 @@ mod tests {
         assert_eq!(
             quote(&[0, 8, 12, 9, 10, 13, 34, 92, 0xd800]),
             "\"\\u0000\\u0008\\u000c\\t\\n\\r\\\"\\\\�\""
+        );
+    }
+    #[test]
+    fn utf8_visitor_delimits_unicode_nuls_and_rejects_before_callbacks() {
+        type Events = Vec<(u32, f64, Vec<u8>)>;
+        unsafe extern "C" fn collect(
+            owner: *mut c_void,
+            kind: u32,
+            number: f64,
+            text: *const u8,
+            length: u32,
+        ) -> i32 {
+            let events = &mut *(owner as *mut Events);
+            let text = if text.is_null() {
+                Vec::new()
+            } else {
+                slice::from_raw_parts(text, length as usize).to_vec()
+            };
+            events.push((kind, number, text));
+            1
+        }
+        unsafe extern "C" fn stop(_: *mut c_void, _: u32, _: f64, _: *const u8, _: u32) -> i32 {
+            0
+        }
+        let mut events = Events::new();
+        let owner = (&mut events as *mut Events).cast();
+        let text = r#"{"text":"日本😀\u0000","items":[true,2,null]}"#;
+        assert_eq!(
+            unsafe {
+                meltype_json_visit_utf8(text.as_ptr(), text.len() as u32, owner, Some(collect))
+            },
+            1
+        );
+        assert!(events
+            .iter()
+            .any(|(kind, _, text)| *kind == 3 && text == "日本😀\0".as_bytes()));
+        assert_eq!(events.first().unwrap().0, 6);
+        assert_eq!(events.last().unwrap().0, 8);
+        for invalid in [
+            b"[1,]".as_slice(),
+            b"1e9999",
+            b"1\0trailing",
+            b"\"\xff\"",
+            br#""\ud800""#,
+            b"{} trailing",
+        ] {
+            events.clear();
+            assert_eq!(
+                unsafe {
+                    meltype_json_visit_utf8(
+                        invalid.as_ptr(),
+                        invalid.len() as u32,
+                        owner,
+                        Some(collect),
+                    )
+                },
+                0
+            );
+            assert!(events.is_empty());
+        }
+        assert_eq!(
+            unsafe {
+                meltype_json_visit_utf8(
+                    text.as_ptr(),
+                    text.len() as u32,
+                    std::ptr::null_mut(),
+                    Some(stop),
+                )
+            },
+            0
+        );
+        assert_eq!(
+            unsafe { meltype_json_visit_utf8(std::ptr::null(), 0, owner, Some(collect)) },
+            0
+        );
+        assert_eq!(
+            unsafe { meltype_json_visit_utf8(text.as_ptr(), text.len() as u32, owner, None) },
+            0
         );
     }
 }

@@ -2,10 +2,17 @@
 // Copyright (C) 2026 Yukishiro
 //
 // Meltype の fcitx5 のアドオン (issue #99)。IBus のエンジン (linux/ibus-engine-meltype) と同じく、キーを Meltype の本体
-// (libMeltypeNative.so、Windows 版と共通の C# の部分を NativeAOT にしたもの) に渡し、返ってきた結果 (確定する文字・変換中の文字・候補)
+// (libMeltypeNative.so、標準構成はRust本体) に渡し、返ってきた結果 (確定する文字・変換中の文字・候補)
 // を入力欄に出す。本体は dlopen で読むので、ビルドに本体は要らない。
+// 旧NativeAOT用のJSON互換解析は -DMELTYPE_RUST_CORE=OFF で明示的に選ぶ。
 
 #include <dlfcn.h>
+#include "json_value.hpp"
+#ifdef MELTYPE_RUST_CORE
+#include "rust_json.hpp"
+#else
+#include "compat/json_reader.hpp"
+#endif
 
 #include <cstdint>
 #include <cstdlib>
@@ -37,11 +44,15 @@
 #endif
 
 namespace {
+using meltype_fcitx::Json;
 
 // ---- 本体 (libMeltypeNative.so) ----
 
 struct Native {
     void *handle = nullptr;
+#ifdef MELTYPE_RUST_CORE
+    meltype_fcitx::JsonVisit visitJson = nullptr;
+#endif
     int (*initMozc)(const char *, const char *) = nullptr;
     void *(*create)() = nullptr;
     void (*destroy)(void *) = nullptr;
@@ -74,6 +85,13 @@ struct Native {
         setCanDelete = reinterpret_cast<decltype(setCanDelete)>(sym("meltype_set_can_delete"));
         roleKey = reinterpret_cast<decltype(roleKey)>(sym("meltype_role_key"));
         free = reinterpret_cast<decltype(free)>(sym("meltype_free"));
+#ifdef MELTYPE_RUST_CORE
+        visitJson = reinterpret_cast<decltype(visitJson)>(sym("meltype_json_visit_utf8"));
+        if (!visitJson) {
+            FCITX_ERROR() << "Meltype: Rust JSON ABI (meltype_json_visit_utf8) is missing";
+            return false;
+        }
+#endif
         if (!create || !destroy || !handleKey || !commit || !selectCandidate || !setDirect || !free) {
             FCITX_ERROR() << "Meltype: libMeltypeNative.so の関数が足りません";
             return false;
@@ -84,177 +102,20 @@ struct Native {
         return true;
     }
 
+    bool readJson(const std::string &text, Json &value) const {
+#ifdef MELTYPE_RUST_CORE
+        return meltype_fcitx::readRustJson(text, value, visitJson);
+#else
+        return meltype_fcitx::JsonReader(text).read(value);
+#endif
+    }
+
     // 本体が返した JSON を受け取って解放する。NULL なら空 (キーはアプリに渡す)。
     std::string take(char *pointer) const {
         if (!pointer) return {};
         std::string text(pointer);
         free(pointer);
         return text;
-    }
-};
-
-// ---- 本体が返す JSON (SessionResult) を読む。形が決まっているので、必要な分だけの小さな読み取り ----
-
-struct Json {
-    enum class Kind { Null, Bool, Number, String, Array, Object } kind = Kind::Null;
-    bool boolean = false;
-    double number = 0;
-    std::string string;
-    std::vector<Json> items;
-    std::vector<std::pair<std::string, Json>> members;
-
-    const Json *get(const std::string &name) const {
-        for (const auto &[key, value] : members)
-            if (key == name) return &value;
-        return nullptr;
-    }
-    std::string str(const std::string &name) const {
-        auto *v = get(name);
-        return v && v->kind == Kind::String ? v->string : std::string();
-    }
-    int integer(const std::string &name, int fallback = 0) const {
-        auto *v = get(name);
-        return v && v->kind == Kind::Number ? static_cast<int>(v->number) : fallback;
-    }
-    bool flag(const std::string &name) const {
-        auto *v = get(name);
-        return v && v->kind == Kind::Bool && v->boolean;
-    }
-    std::vector<std::string> strings(const std::string &name) const {
-        std::vector<std::string> result;
-        if (auto *v = get(name); v && v->kind == Kind::Array)
-            for (const auto &item : v->items)
-                if (item.kind == Kind::String) result.push_back(item.string);
-        return result;
-    }
-};
-
-class JsonReader {
-public:
-    explicit JsonReader(const std::string &text) : s_(text) {}
-
-    bool read(Json &out) {
-        bool ok = value(out);
-        space();
-        return ok && i_ == s_.size();
-    }
-
-private:
-    const std::string &s_;
-    size_t i_ = 0;
-
-    void space() {
-        while (i_ < s_.size() && (s_[i_] == ' ' || s_[i_] == '\n' || s_[i_] == '\r' || s_[i_] == '\t')) i_++;
-    }
-    bool literal(const char *word) {
-        size_t n = std::char_traits<char>::length(word);
-        if (s_.compare(i_, n, word) != 0) return false;
-        i_ += n;
-        return true;
-    }
-    static void appendUtf8(std::string &out, uint32_t cp) {
-        if (cp < 0x80) out += static_cast<char>(cp);
-        else if (cp < 0x800) { out += static_cast<char>(0xC0 | (cp >> 6)); out += static_cast<char>(0x80 | (cp & 0x3F)); }
-        else if (cp < 0x10000) {
-            out += static_cast<char>(0xE0 | (cp >> 12));
-            out += static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
-            out += static_cast<char>(0x80 | (cp & 0x3F));
-        } else {
-            out += static_cast<char>(0xF0 | (cp >> 18));
-            out += static_cast<char>(0x80 | ((cp >> 12) & 0x3F));
-            out += static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
-            out += static_cast<char>(0x80 | (cp & 0x3F));
-        }
-    }
-    bool hex4(uint32_t &cp) {
-        if (i_ + 4 > s_.size()) return false;
-        cp = static_cast<uint32_t>(std::strtoul(s_.substr(i_, 4).c_str(), nullptr, 16));
-        i_ += 4;
-        return true;
-    }
-    bool stringValue(std::string &out) {
-        if (s_[i_] != '"') return false;
-        i_++;
-        while (i_ < s_.size() && s_[i_] != '"') {
-            char c = s_[i_++];
-            if (c != '\\') { out += c; continue; }
-            if (i_ >= s_.size()) return false;
-            char e = s_[i_++];
-            switch (e) {
-            case 'n': out += '\n'; break;
-            case 'r': out += '\r'; break;
-            case 't': out += '\t'; break;
-            case 'b': out += '\b'; break;
-            case 'f': out += '\f'; break;
-            case 'u': {
-                uint32_t cp;
-                if (!hex4(cp)) return false;
-                // サロゲートペア (絵文字)
-                if (cp >= 0xD800 && cp <= 0xDBFF && s_.compare(i_, 2, "\\u") == 0) {
-                    i_ += 2;
-                    uint32_t low;
-                    if (!hex4(low)) return false;
-                    cp = 0x10000 + ((cp - 0xD800) << 10) + (low - 0xDC00);
-                }
-                appendUtf8(out, cp);
-                break;
-            }
-            default: out += e; break;
-            }
-        }
-        if (i_ >= s_.size()) return false;
-        i_++;
-        return true;
-    }
-    bool value(Json &out) {
-        space();
-        if (i_ >= s_.size()) return false;
-        char c = s_[i_];
-        if (c == '{') {
-            out.kind = Json::Kind::Object;
-            i_++;
-            space();
-            if (i_ < s_.size() && s_[i_] == '}') { i_++; return true; }
-            while (true) {
-                space();
-                std::string key;
-                if (i_ >= s_.size() || !stringValue(key)) return false;
-                space();
-                if (i_ >= s_.size() || s_[i_++] != ':') return false;
-                Json member;
-                if (!value(member)) return false;
-                out.members.emplace_back(std::move(key), std::move(member));
-                space();
-                if (i_ < s_.size() && s_[i_] == ',') { i_++; continue; }
-                if (i_ < s_.size() && s_[i_] == '}') { i_++; return true; }
-                return false;
-            }
-        }
-        if (c == '[') {
-            out.kind = Json::Kind::Array;
-            i_++;
-            space();
-            if (i_ < s_.size() && s_[i_] == ']') { i_++; return true; }
-            while (true) {
-                Json item;
-                if (!value(item)) return false;
-                out.items.push_back(std::move(item));
-                space();
-                if (i_ < s_.size() && s_[i_] == ',') { i_++; continue; }
-                if (i_ < s_.size() && s_[i_] == ']') { i_++; return true; }
-                return false;
-            }
-        }
-        if (c == '"') { out.kind = Json::Kind::String; return stringValue(out.string); }
-        if (literal("true")) { out.kind = Json::Kind::Bool; out.boolean = true; return true; }
-        if (literal("false")) { out.kind = Json::Kind::Bool; out.boolean = false; return true; }
-        if (literal("null")) { out.kind = Json::Kind::Null; return true; }
-        char *end = nullptr;
-        out.number = std::strtod(s_.c_str() + i_, &end);
-        if (end == s_.c_str() + i_) return false;
-        out.kind = Json::Kind::Number;
-        i_ = static_cast<size_t>(end - s_.c_str());
-        return true;
     }
 };
 
@@ -385,7 +246,7 @@ public:
             int vk = sym == FcitxKey_Henkan ? 0x1C : sym == FcitxKey_Muhenkan ? 0x1D : 0x15;
             auto handled = native_.take(native_.roleKey(state->session(), vk));
             Json result;
-            if (!handled.empty() && JsonReader(handled).read(result)) {
+            if (!handled.empty() && native_.readJson(handled, result)) {
                 apply(ic, result);
                 event.filterAndAccept();
                 return;
@@ -419,7 +280,7 @@ public:
                                                    surrounding ? before.c_str() : nullptr, surrounding ? after.c_str() : nullptr));
         if (text.empty()) return;
         Json result;
-        if (!JsonReader(text).read(result)) return;
+        if (!native_.readJson(text, result)) return;
         apply(ic, result);
         if (result.flag("consumed")) event.filterAndAccept();
     }
@@ -472,7 +333,7 @@ private:
     void apply(fcitx::InputContext *ic, const std::string &text) {
         if (text.empty()) return;
         Json result;
-        if (JsonReader(text).read(result)) apply(ic, result);
+        if (native_.readJson(text, result)) apply(ic, result);
     }
 
     void apply(fcitx::InputContext *ic, const Json &result) {

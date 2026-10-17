@@ -18,6 +18,10 @@ set_target_properties(meltype PROPERTIES PREFIX "" CXX_STANDARD 17 CXX_STANDARD_
 if(Fcitx5Core_VERSION VERSION_GREATER_EQUAL 5.1.16)
     set_target_properties(meltype PROPERTIES CXX_STANDARD 20)
 endif()
+option(MELTYPE_RUST_CORE "Use the Rust core JSON ABI (legacy NativeAOT requires OFF)" ON)
+if(MELTYPE_RUST_CORE)
+    target_compile_definitions(meltype PRIVATE MELTYPE_RUST_CORE=1)
+endif()
 target_compile_definitions(meltype PRIVATE MELTYPE_DIR="${MELTYPE_DIR}")
 target_link_libraries(meltype PRIVATE Fcitx5::Core Fcitx5::Utils ${CMAKE_DL_LIBS})
 
