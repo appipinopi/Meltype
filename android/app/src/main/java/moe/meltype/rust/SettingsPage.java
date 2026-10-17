@@ -3,72 +3,33 @@
 package moe.meltype.rust;
 
 import android.content.Context;
-import android.widget.*;
+import android.view.View;
+import android.widget.CompoundButton;
+import android.widget.LinearLayout;
 import org.json.*;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
-/** Reusable framework renderer for Rust-owned settings page definitions. */
+/** Listener bridge; Rust creates widgets and reads/edits their fields through JNI. */
 final class SettingsPage {
     interface Actions { void perform(JSONObject operation); }
     private final Context context;
     private final LinearLayout body;
     private final Actions actions;
-    private final Map<String,EditText> fields = new LinkedHashMap<>();
     SettingsPage(Context context,LinearLayout body,Actions actions) {
         this.context=context;this.body=body;this.actions=actions;
     }
-    void clear() {body.removeAllViews();fields.clear();}
-    JSONObject values() throws JSONException {
-        JSONObject result=new JSONObject();
-        for(Map.Entry<String,EditText> field:fields.entrySet()) result.put(field.getKey(),field.getValue().getText().toString());
-        return result;
+    private static JSONObject checked(String json) throws JSONException {
+        JSONObject value=new JSONObject(json);
+        if(value.has("error"))throw new JSONException(value.getString("error"));
+        return value;
     }
-    void edit(JSONObject edits) throws JSONException {
-        Iterator<String> keys=edits.keys();
-        while(keys.hasNext()) {
-            String key=keys.next();EditText field=fields.get(key);
-            if(field==null)throw new JSONException("入力項目が見つかりません: "+key);
-            field.setText(edits.getString(key));
-        }
+    void clear(){body.removeAllViews();}
+    JSONObject values() throws JSONException {return checked(Native.settingsValues(this,"null"));}
+    JSONObject values(JSONObject operation) throws JSONException {return checked(Native.settingsValues(this,operation.toString()));}
+    void edit(JSONObject edits) throws JSONException {checked(Native.editSettingsFields(this,edits.toString()));}
+    void render(JSONObject page) throws JSONException {checked(Native.renderSettingsPage(this,page.toString()));}
+    private void dispatch(String operation) {
+        try{actions.perform(new JSONObject(operation));}catch(JSONException error){throw new IllegalStateException(error);}
     }
-    void render(JSONObject page) throws JSONException {
-        clear();JSONArray nodes=page.getJSONArray("nodes");
-        for(int i=0;i<nodes.length();i++) {
-            JSONObject node=nodes.getJSONObject(i);
-            switch(node.getString("type")) {
-                case "label" -> {
-                    TextView text=new TextView(context);text.setText(node.getString("text"));
-                    text.setTextIsSelectable(true);body.addView(text);
-                }
-                case "field" -> {
-                    EditText edit=new EditText(context);edit.setHint(node.getString("hint"));
-                    edit.setText(node.getString("value"));edit.setMinLines(node.getInt("lines"));
-                    fields.put(node.getString("id"),edit);body.addView(edit);
-                }
-                case "toggle" -> {
-                    Switch toggle=new Switch(context);toggle.setText(node.getString("text"));toggle.setChecked(node.getBoolean("checked"));
-                    JSONObject operation=node.getJSONObject("action");
-                    toggle.setOnCheckedChangeListener((button,enabled)->actions.perform(operation));
-                    // The clicked toggle is read at dispatch time, after the framework updates it.
-                    toggle.setTag(operation);body.addView(toggle);
-                }
-                case "button" -> {
-                    Button button=new Button(context);button.setText(node.getString("text"));
-                    JSONObject operation=node.getJSONObject("action");button.setOnClickListener(v->actions.perform(operation));body.addView(button);
-                }
-                default -> throw new JSONException("画面項目が見つかりません");
-            }
-        }
-    }
-    JSONObject values(JSONObject operation) throws JSONException {
-        JSONObject result=values();
-        for(int i=0;i<body.getChildCount();i++) {
-            if(body.getChildAt(i) instanceof Switch toggle && toggle.getTag()==operation) {
-                result.put("checked",toggle.isChecked());break;
-            }
-        }
-        return result;
-    }
+    private View.OnClickListener settingsButtonCallback(String operation){return view->dispatch(operation);}
+    private CompoundButton.OnCheckedChangeListener settingsToggleCallback(String operation){return (view,checked)->dispatch(operation);}
 }

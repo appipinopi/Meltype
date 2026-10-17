@@ -334,6 +334,12 @@ public final class NativeAndroidTest {
             SettingsHarness settings=new SettingsHarness(profile.session);
             for(int page=0;page<6;page++){settings.show(page);assertTrue(settings.body.getChildCount()>0);}
             settings.show(0);int toggles=0;
+            settings.body.measure(View.MeasureSpec.makeMeasureSpec(1080,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(0,View.MeasureSpec.UNSPECIFIED));
+            settings.body.layout(0,0,settings.body.getMeasuredWidth(),settings.body.getMeasuredHeight());
+            Bitmap settingsImage=Bitmap.createBitmap(settings.body.getWidth(),settings.body.getHeight(),Bitmap.Config.ARGB_8888);
+            Canvas settingsCanvas=new Canvas(settingsImage);settingsCanvas.drawColor(android.graphics.Color.WHITE);settings.body.draw(settingsCanvas);
+            File settingsArtifacts=new File(context().getFilesDir(),"instrumentation-artifacts");assertTrue(settingsArtifacts.isDirectory()||settingsArtifacts.mkdirs());
+            try(FileOutputStream stream=new FileOutputStream(new File(settingsArtifacts,"settings-page.png"))){assertTrue(settingsImage.compress(Bitmap.CompressFormat.PNG,100,stream));}finally{settingsImage.recycle();}
             for(int i=0;i<settings.body.getChildCount();i++)if(settings.body.getChildAt(i) instanceof Switch toggle) {
                 toggles++;if("予測候補".contentEquals(toggle.getText())){toggle.setChecked(true);toggle.performClick();assertFalse("framework switch toggled off",toggle.isChecked());}
             }
@@ -345,6 +351,8 @@ public final class NativeAndroidTest {
             settings.press("この単語を削除");JSONObject dictionary=new JSONObject(Native.control(profile.session,"{\"op\":\"dictionary_list\"}"));assertTrue(!dictionary.has("めるたいぷ")||dictionary.getJSONArray("めるたいぷ").length()==0);
             settings.show(2);settings.field("呼び出し名").setText("mail");settings.field("展開する文字列").setText("一行目\n\"二行目\"😀");settings.press("保存");
             settings.press("編集");assertEquals("mail",settings.field("呼び出し名").getText().toString());assertEquals("一行目\n\"二行目\"😀",settings.field("展開する文字列").getText().toString());
+            assertTrue(new JSONObject(Native.editSettingsFields(settings.form,"{\"name\":\"must-not-change\",\"missing\":\"x\"}")).has("error"));
+            assertEquals("mail",settings.field("呼び出し名").getText().toString());
             long reopened=Native.create(profile.root.getAbsolutePath());
             try{assertEquals("一行目\n\"二行目\"😀",new JSONObject(Native.control(reopened,"{\"op\":\"snippets_list\"}")).getString("mail"));}finally{Native.destroy(reopened);}
             settings.press("削除");assertFalse(new JSONObject(Native.control(profile.session,"{\"op\":\"snippets_list\"}")).has("mail"));

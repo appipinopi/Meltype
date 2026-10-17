@@ -43,7 +43,7 @@ def main() -> None:
     (args.output / "instrumentation.txt").write_text(report, encoding="utf-8")
     print(report, flush=True)
     # Retrieve only this test app's own generated preview/metadata.
-    for name in ("input-view.png", "input-view-narrow.png", "input-view-large-text.png", "device.txt", "label-fit.txt"):
+    for name in ("input-view.png", "input-view-narrow.png", "input-view-large-text.png", "settings-page.png", "device.txt", "label-fit.txt"):
         artifact = subprocess.run([
             *adb, "exec-out", "run-as", "moe.meltype.rust", "cat",
             f"files/instrumentation-artifacts/{name}",
@@ -52,7 +52,7 @@ def main() -> None:
             (args.output / name).write_bytes(artifact.stdout)
     result.check_returncode()
     verify_report(report, 9)
-    for name in ("input-view.png", "input-view-narrow.png", "input-view-large-text.png"):
+    for name in ("input-view.png", "input-view-narrow.png", "input-view-large-text.png", "settings-page.png"):
         if not (args.output / name).read_bytes().startswith(b"\x89PNG\r\n\x1a\n"):
             raise RuntimeError(f"Android preview PNG is missing or invalid: {name}")
     for name in ("device.txt", "label-fit.txt"):

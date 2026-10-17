@@ -9,6 +9,9 @@ public class View {
     public int minimumWidth=64;
     public int[] padding={0,0,0,0};
     private OnClickListener listener;
+    private Object tag;
+    public void setTag(Object tag){this.tag=tag;}
+    public Object getTag(){return tag;}
     public View(Context context){this.context=context;}
     public void setOnClickListener(OnClickListener listener){this.listener=listener;}
     public boolean performClick(){if(listener==null)return false;listener.onClick(this);return true;}
