@@ -1885,7 +1885,7 @@ void TextService::ResumeOrCommit(ITfContext* context) {
 
 void TextService::CommitAsync(bool keepAppCaret) {
 #ifdef MELTYPE_RUST_CORE
-    RustCommit(1,nullptr,clientId_,0,"{\"sid\":\""+SessionId()+"\"}",CommitCallbacks(),keepAppCaret);
+    ServiceCommit(1,nullptr,0,keepAppCaret);
 #else
     if (composition_ == nullptr || compositionContext_ == nullptr) return;
     // 非同期の編集セッションは、実行されずに捨てられることもある。参照は ComPtr に持たせ、セッションと一緒に解放する
@@ -1977,7 +1977,7 @@ void TextService::EndAbandonedNow() {
 
 bool TextService::CommitNow(bool keepAppCaret) {
 #ifdef MELTYPE_RUST_CORE
-    return SUCCEEDED(RustCommit(0,nullptr,clientId_,0,"{\"sid\":\""+SessionId()+"\"}",CommitCallbacks(),keepAppCaret));
+    return SUCCEEDED(ServiceCommit(0,nullptr,0,keepAppCaret));
 #else
     // 同期で確定する (キーをアプリに通す前・別の入力欄に移ったときに、変換中の文字を確定しておくため)
     if (composition_ == nullptr || compositionContext_ == nullptr) return true;
@@ -1992,31 +1992,22 @@ bool TextService::CommitNow(bool keepAppCaret) {
 }
 
 #ifdef MELTYPE_RUST_CORE
-RustCommitCallbacks TextService::CommitCallbacks() {
-    return {
-        this,ServiceInterface<ITfTextInputProcessorEx>(),
-        [](void* p,void** context,void** sink)->void* {auto* s=static_cast<TextService*>(p);*context=s->compositionContext_;*sink=s->editSinkContext_;return s->composition_;},
-        [](void* p,unsigned int op,unsigned int ec,int value) {auto* s=static_cast<TextService*>(p);
-            try {switch (op) {
-                case 0:s->ownEdit_=value!=0;break;
-                case 1:s->keepAppCaret_=value!=0;break;
-                case 2:s->EndComposition(ec);break;
-                case 3:s->HideCandidates();break;
-                case 4:s->ownEdit_=false;break;
-            }}catch (...) {}
-        },
-        [](void* p,const char* json,unsigned int ec,void* context,void* target) {auto* s=static_cast<TextService*>(p);
-            try {JsonValue reply;
-                if (s->Request(json,reply) && s->composition_==target && s->compositionContext_==context) s->Apply(ec,static_cast<ITfContext*>(context),reply);
-            }catch (...) {}
-        },
-    };
+int __cdecl TextService::ApplyServiceReply(void* p,unsigned int cookie,void* context,const unsigned char* bytes,unsigned int length) {
+    JsonValue reply;
+    try {
+        if (!ParseJson(length?std::string(reinterpret_cast<const char*>(bytes),length):std::string{},reply)) return 0;
+    }catch (...) {return 0;}
+    try {static_cast<TextService*>(p)->Apply(cookie,static_cast<ITfContext*>(context),reply);}catch (...) {}
+    return 1;
+}
+HRESULT TextService::ServiceCommit(unsigned int mode,ITfContext* context,TfEditCookie cookie,bool keep) {
+    return RustServiceCommit(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),mode,context,cookie,keep,this,ApplyServiceReply);
 }
 #endif
 
 void TextService::CommitInSession(TfEditCookie ec, ITfContext* context, bool keepAppCaret) {
 #ifdef MELTYPE_RUST_CORE
-    RustCommit(2,context,clientId_,ec,"{\"sid\":\""+SessionId()+"\"}",CommitCallbacks(),keepAppCaret);
+    ServiceCommit(2,context,ec,keepAppCaret);
 #else
     // 編集できるのは、この編集セッションの入力欄にある変換中の文字だけ
     if (composition_ != nullptr && context == compositionContext_) {
@@ -2035,7 +2026,7 @@ void TextService::CommitInSession(TfEditCookie ec, ITfContext* context, bool kee
 
 void TextService::SelectCandidate(int index, bool prediction) {
 #ifdef MELTYPE_RUST_CORE
-    RustSelectCandidate(clientId_,index,prediction,"{\"sid\":\""+SessionId()+"\"}",CommitCallbacks());
+    RustServiceSelectCandidate(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),index,prediction,this,ApplyServiceReply);
 #else
     if (compositionContext_ == nullptr) return;
     Microsoft::WRL::ComPtr<ITfContext> context = compositionContext_;

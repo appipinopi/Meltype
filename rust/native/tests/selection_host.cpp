@@ -5,6 +5,17 @@
 #include <cassert>
 #include <cstdio>
 using namespace meltype;
+struct RustCommitCallbacks {
+    void* owner;IUnknown* lifetime;
+    void* (__cdecl *current)(void*,void**,void**);
+    void (__cdecl *update)(void*,unsigned int,unsigned int,int);
+    void (__cdecl *requestApply)(void*,const char*,unsigned int,void*,void*);
+};
+HRESULT RustSelectCandidate(TfClientId client,int index,bool prediction,const std::string& metadata,const RustCommitCallbacks& callbacks) {
+    auto module=LoadLibraryW(L"meltype_native.dll");assert(module);
+    auto call=reinterpret_cast<HRESULT (__cdecl *)(unsigned int,int,int,const char*,const RustCommitCallbacks*)>(GetProcAddress(module,"meltype_tsf_select_candidate"));assert(call);
+    auto result=call(client,index,prediction?1:0,metadata.c_str(),&callbacks);FreeLibrary(module);return result;
+}
 namespace {
 void* methods[4]={};
 struct Context {

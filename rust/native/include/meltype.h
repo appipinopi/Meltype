@@ -557,6 +557,14 @@ void meltype_tsf_service_clear_resume(void *state);
 int32_t meltype_tsf_service_key_secret(void *state,void *lifetime,void *context,uint32_t key,int32_t test,void *adapter,void (*notice)(void *,uint32_t,int32_t));
 int32_t meltype_tsf_service_would_eat(void *state,void *lifetime,void *sink,const char *worker,void *context,uint32_t key,uint64_t message,int32_t test,void *adapter,int32_t (*commit)(void *,uint32_t,int32_t),void (*notice)(void *,uint32_t,int32_t),uint16_t *out);
 int32_t meltype_tsf_service_key_event(void *state,void *lifetime,void *sink,const char *worker,uint32_t kind,void *context,uint32_t key,uint64_t message,void *adapter,int32_t (*commit)(void *,uint32_t,int32_t),void (*handle)(void *,void *,uint32_t,uint16_t),void (*notice)(void *,uint32_t,int32_t));
+/* Native service commit/selection: state, SID, exchange, caret and ending remain
+   native. mode0=sync,1=async,2=existing context/cookie. Worker path is copied;
+   lifetime pins state/adapter/code until delayed execution or cancellation.
+   Apply receives borrowed compatible JSON at a valid edit cookie, after target
+   and context checks. Apply/notice never unwind or retain bytes. Notice reports
+   invalid replies. Returns HRESULT. No concurrent calls on the service. */
+int32_t meltype_tsf_service_commit(void *state,void *lifetime,const char *worker,uint32_t mode,void *context,uint32_t cookie,int32_t keep,void *adapter,int32_t (*apply)(void *,uint32_t,void *,const uint8_t *,uint32_t),void (*notice)(void *));
+int32_t meltype_tsf_service_select_candidate(void *state,void *lifetime,const char *worker,int32_t index,int32_t prediction,void *adapter,int32_t (*apply)(void *,uint32_t,void *,const uint8_t *,uint32_t),void (*notice)(void *));
 /* Service mode actions op0=toggle,op1=code line(value Japanese),op2=query(cookie,
    value selection-changed). Notice 0=hello,1=invalid JSON,2=English display,
    3=code-line Japanese,4=scope source,5=scope unreadable reason. Query retains

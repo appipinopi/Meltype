@@ -4,6 +4,7 @@
 use super::edit_session;
 use serde_json::{json, Value};
 use std::{
+    any::Any,
     cell::Cell,
     ffi::{c_char, c_void, CStr, CString},
     panic::{catch_unwind, AssertUnwindSafe},
@@ -17,13 +18,16 @@ use windows::{
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct Callbacks {
-    owner: *mut c_void,
-    lifetime: *mut c_void,
-    current: unsafe extern "C" fn(*mut c_void, *mut *mut c_void, *mut *mut c_void) -> *mut c_void,
-    update: unsafe extern "C" fn(*mut c_void, u32, u32, i32),
-    request_apply: unsafe extern "C" fn(*mut c_void, *const c_char, u32, *mut c_void, *mut c_void),
+    pub(super) owner: *mut c_void,
+    pub(super) lifetime: *mut c_void,
+    pub(super) current:
+        unsafe extern "C" fn(*mut c_void, *mut *mut c_void, *mut *mut c_void) -> *mut c_void,
+    pub(super) update: unsafe extern "C" fn(*mut c_void, u32, u32, i32),
+    pub(super) request_apply:
+        unsafe extern "C" fn(*mut c_void, *const c_char, u32, *mut c_void, *mut c_void),
 }
 struct Work {
+    _adapter: Option<Rc<dyn Any>>,
     c: Callbacks,
     _owner: IUnknown,
     context: ITfContext,
@@ -101,6 +105,22 @@ pub unsafe extern "C" fn meltype_tsf_commit(
     callbacks: *const Callbacks,
     keep: i32,
 ) -> HRESULT {
+    commit(
+        mode, context, client, cookie, metadata, callbacks, keep, None,
+    )
+}
+// Owned service adapters must survive delayed execution and synchronous cleanup.
+#[allow(clippy::too_many_arguments)]
+pub(super) unsafe fn commit(
+    mode: u32,
+    context: *mut c_void,
+    client: u32,
+    cookie: u32,
+    metadata: *const c_char,
+    callbacks: *const Callbacks,
+    keep: i32,
+    adapter: Option<Rc<dyn Any>>,
+) -> HRESULT {
     catch_unwind(AssertUnwindSafe(|| {
         let Some(c) = callbacks.as_ref().copied() else {
             return E_INVALIDARG;
@@ -143,6 +163,7 @@ pub unsafe extern "C" fn meltype_tsf_commit(
         let active = Rc::new(Cell::new(true));
         let executed = Rc::new(Cell::new(false));
         let work = Box::new(Work {
+            _adapter: adapter.clone(),
             c,
             _owner: owner,
             context: context.clone(),
@@ -185,6 +206,7 @@ pub unsafe extern "C" fn meltype_tsf_commit(
 }
 
 struct Selection {
+    _adapter: Option<Rc<dyn Any>>,
     c: Callbacks,
     _owner: IUnknown,
     context: ITfContext,
@@ -230,6 +252,16 @@ pub unsafe extern "C" fn meltype_tsf_select_candidate(
     metadata: *const c_char,
     callbacks: *const Callbacks,
 ) -> HRESULT {
+    select_candidate(client, index, prediction, metadata, callbacks, None)
+}
+pub(super) unsafe fn select_candidate(
+    client: u32,
+    index: i32,
+    prediction: i32,
+    metadata: *const c_char,
+    callbacks: *const Callbacks,
+    adapter: Option<Rc<dyn Any>>,
+) -> HRESULT {
     catch_unwind(AssertUnwindSafe(|| {
         let Some(c) = callbacks.as_ref().copied() else {
             return E_INVALIDARG;
@@ -261,6 +293,7 @@ pub unsafe extern "C" fn meltype_tsf_select_candidate(
             return E_INVALIDARG;
         };
         let work = Box::new(Selection {
+            _adapter: adapter,
             c,
             _owner: owner,
             context: context.clone(),

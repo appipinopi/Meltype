@@ -176,7 +176,8 @@ private:
 #endif
 #ifdef MELTYPE_RUST_CORE
     HRESULT DispatchKey(unsigned int,ITfContext*,UINT,LPARAM,BOOL*);
-    RustCommitCallbacks CommitCallbacks();
+    HRESULT ServiceCommit(unsigned int,ITfContext*,TfEditCookie,bool);
+    static int __cdecl ApplyServiceReply(void*,unsigned int,void*,const unsigned char*,unsigned int);
 #endif
     void ResetStaleCommit();
     std::string SessionId() const;
