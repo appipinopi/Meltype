@@ -298,28 +298,11 @@ STDMETHODIMP TextService::Activate(ITfThreadMgr* threadMgr, TfClientId clientId)
 
 STDMETHODIMP TextService::ActivateEx(ITfThreadMgr* threadMgr, TfClientId clientId, DWORD flags) {
 #ifdef MELTYPE_RUST_CORE
-    RustStartupCallbacks callbacks={
-        this,ServiceInterface<ITfTextInputProcessorEx>(),&focusEpoch_,&shutdownPhase_,
-        reinterpret_cast<void**>(&threadMgr_),&keyState_,&abandoned_,&resume_,
-        {&threadSubscription_,&keySubscription_,&modeSubscription_},{&atomInput_,&atomConverted_,&atomTarget_},
-        {ServiceInterface<ITfThreadMgrEventSink>(),ServiceInterface<ITfKeyEventSink>(),ServiceInterface<ITfCompartmentEventSink>()},
-        [](void* p,unsigned int client,int disabled,int own,const char* sid) {auto* s=static_cast<TextService*>(p);try {
-            RustServiceInitialize(s->state_.value,client,disabled,own,sid);
-            TipLog(L"Activate (%s)%s",ProcessName().c_str(),disabled?L" 無効: セキュリティ保護された画面":L"");
-        }catch (...) {}},
-        [](void* p,unsigned int op,int value,void* document)->void* {auto* s=static_cast<TextService*>(p);try {switch (op) {
-            case 0:s->open_=value!=0;break;
-            case 1:RustServiceCreateCandidates(s->state_.value,s,
-                [](void* p,int index,int prediction) {try {static_cast<TextService*>(p)->SelectCandidate(index,prediction!=0);}catch (...) {}});break;
-            case 2:return RustServiceCreateBar(s->state_.value,s,
-                [](void* p)->int {return static_cast<TextService*>(p)->IsOpen()?1:0;},
-                [](void* p) {try {static_cast<TextService*>(p)->ToggleInputMode(nullptr);}catch (...) {}});
-            case 3:s->AdviseTextEditSink(static_cast<ITfDocumentMgr*>(document));break;
-            case 4:s->Hello();break;
-        }}catch (...) {}return nullptr;},
-        nullptr,
-    };
-    return RustStartup(threadMgr,clientId,flags,callbacks);
+    void* sinks[]={ServiceInterface<ITfThreadMgrEventSink>(),ServiceInterface<ITfKeyEventSink>(),ServiceInterface<ITfCompartmentEventSink>(),ServiceInterface<ITfTextEditSink>()};
+    return RustServiceActivate(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),threadMgr,clientId,flags,sinks,this,
+        [](void* p,int index,int prediction) {try {static_cast<TextService*>(p)->SelectCandidate(index,prediction!=0);}catch (...) {}},
+        [](void* p)->int {return static_cast<TextService*>(p)->IsOpen()?1:0;},
+        [](void* p) {try {static_cast<TextService*>(p)->ToggleInputMode(nullptr);}catch (...) {}});
 #else
     threadMgr_ = threadMgr;
     threadMgr_->AddRef();

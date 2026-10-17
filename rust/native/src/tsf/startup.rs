@@ -22,20 +22,20 @@ use windows::{
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct Callbacks {
-    owner: *mut c_void,
-    lifetime: *mut c_void,
-    epoch: *mut u64,
-    phase: *mut u32,
-    manager: *mut *mut c_void,
-    keys: *mut *mut c_void,
-    abandoned: *mut *mut c_void,
-    resume: *mut *mut c_void,
-    subscriptions: [*mut *mut c_void; 3],
-    atoms: [*mut u32; 3],
-    sinks: [*mut c_void; 3],
-    initialize: unsafe extern "C" fn(*mut c_void, u32, i32, i32, *const c_char),
-    action: unsafe extern "C" fn(*mut c_void, u32, i32, *mut c_void) -> *mut c_void,
-    category: Option<unsafe extern "C" fn(*mut c_void) -> *mut c_void>,
+    pub(super) owner: *mut c_void,
+    pub(super) lifetime: *mut c_void,
+    pub(super) epoch: *mut u64,
+    pub(super) phase: *mut u32,
+    pub(super) manager: *mut *mut c_void,
+    pub(super) keys: *mut *mut c_void,
+    pub(super) abandoned: *mut *mut c_void,
+    pub(super) resume: *mut *mut c_void,
+    pub(super) subscriptions: [*mut *mut c_void; 3],
+    pub(super) atoms: [*mut u32; 3],
+    pub(super) sinks: [*mut c_void; 3],
+    pub(super) initialize: unsafe extern "C" fn(*mut c_void, u32, i32, i32, *const c_char),
+    pub(super) action: unsafe extern "C" fn(*mut c_void, u32, i32, *mut c_void) -> *mut c_void,
+    pub(super) category: Option<unsafe extern "C" fn(*mut c_void) -> *mut c_void>,
 }
 unsafe fn current(c: &Callbacks, epoch: u64) -> bool {
     c.epoch.read() == epoch && c.phase.read() == 0

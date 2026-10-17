@@ -3,6 +3,7 @@
 //! Rust-owned TSF state storage. Temporary C++ aliases use a checked C layout.
 //! Raw COM/subscription slots retain their TSF lifecycle ownership policy.
 //! Key/resume/abandoned state, SID, transport and UI tokens are freed by Drop.
+mod activate;
 mod core;
 mod deactivate;
 mod edited;

@@ -32,6 +32,7 @@ class StartupHost(SubscriptionHost):
             self.bind(table,2,U32,[],lambda _,name=name:self.count(name,-1))
         self.bind(self.category_table,14,HR,[c.POINTER(Guid),c.POINTER(U32)],self.register)
         self.bind(self.bar_manager_table,5,HR,[P],self.add_bar)
+        self.bind(self.bar_manager_table,6,HR,[P],self.remove_bar)
         self.category=self.Object(self.category_table);self.bar=self.Object(self.bar_table);self.bar_manager=self.Object(self.bar_manager_table)
     def query(self,this,iid,out):
         if bytes(iid.contents)==bytes(BAR_MANAGER):
@@ -54,6 +55,9 @@ class StartupHost(SubscriptionHost):
     def clear_bars(self):
         held,self.held=self.held,[]
         for bar in held:release(bar)
+    def remove_bar(self,this,bar):
+        if bar in self.held:self.held.remove(bar);release(bar)
+        return 0
     def verify(self,test):
         super().verify(test);test.assertEqual((self.category_refs,self.bar_refs,self.bar_manager_refs),(1,1,1))
 class StartupTests(unittest.TestCase):

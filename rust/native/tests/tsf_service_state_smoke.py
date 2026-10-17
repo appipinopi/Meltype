@@ -12,7 +12,7 @@ import threading
 import unittest
 sys.path.insert(0,str(Path(__file__).resolve().parent))
 from tsf_com_smoke import Guid, HR, invoke, release
-from tsf_startup_smoke import StartupHost
+from tsf_startup_smoke import StartupHost,CATEGORY
 from tsf_subscriptions_smoke import SubscriptionHost
 from tsf_candidate_smoke import windows, user
 from tsf_candidate_view_smoke import GeometryHost
@@ -116,6 +116,7 @@ class StateTests(unittest.TestCase):
         cls.api.meltype_tsf_service_opened.argtypes=[P,P,c.POINTER(Guid),P,TOGGLE,NOTICE];cls.api.meltype_tsf_service_opened.restype=HR
         cls.api.meltype_tsf_service_deactivate.argtypes=[P,P,P,SHUTDOWN_REQUEST,END,NOTICE];cls.api.meltype_tsf_service_deactivate.restype=HR
         cls.api.meltype_tsf_end_composition.argtypes=[P,P,U32];cls.api.meltype_tsf_end_composition.restype=HR
+        cls.api.meltype_tsf_service_activate.argtypes=[P,P,c.c_char_p,P,U32,U32,c.POINTER(P),P,SELECT,READ,TOGGLE,CORE_NOTICE,CATEGORY];cls.api.meltype_tsf_service_activate.restype=HR
         cls.fixture=str(Path(sys.argv[2]).resolve()).encode() if len(sys.argv)>2 else None
 
 
@@ -1154,6 +1155,108 @@ class StateTests(unittest.TestCase):
             (address,None,SHUTDOWN_REQUEST(lambda *_:None),END(lambda *_:None)),(address,c.byref(host.context),SHUTDOWN_REQUEST(),END(lambda *_:None)),
             (address,c.byref(host.context),SHUTDOWN_REQUEST(lambda *_:None),END())]:
             self.assertEqual(self.api.meltype_tsf_service_deactivate(data,lifetime,None,request,end,NOTICE()),HR(0x80070057).value)
+        self.assertEqual(c.string_at(address,c.sizeof(State)),before);host.verify(self)
+    def activate(self,state,host,flags=0,notice=None,toggle=None,lifetime=None):
+        sinks=(P*4)(*[c.addressof(host.sink)]*4)
+        select=SELECT(lambda *_:None);read=READ(lambda _:int(state.open and not state.code_english))
+        toggle=toggle or TOGGLE(lambda *_:None);notice=notice or CORE_NOTICE(lambda *_:None)
+        @self.checked(CATEGORY)
+        def category(owner):
+            self.assertEqual(owner,123);host.count('category_refs',1);return c.addressof(host.category)
+        self.callbacks.extend([select,read,toggle,notice,category])
+        return self.api.meltype_tsf_service_activate(c.addressof(state),lifetime or c.byref(host.context),self.worker,c.byref(host.context),17,flags,sinks,123,select,read,toggle,notice,category)
+    def finish_activation(self,state,host):
+        try:self.assertEqual(self.deactivate(state,host),0)
+        finally:host.clear_bars()
+        host.verify(self)
+    def test_activate_native_initializes_state_slots_ui_and_hello(self):
+        state=self.create();host=StartupHost();events=[]
+        try:
+            self.assertEqual(self.activate(state,host,notice=CORE_NOTICE(lambda owner,op,value:events.append((owner,op,value)))),0)
+            self.assertEqual(events,[(123,0,0),(123,1,1)])
+            self.assertEqual((state.client,state.open,state.deactivated,state.shutdown_phase),(17,True,False,0))
+            self.assertTrue(state.server_active);self.assertEqual(state.manager,c.addressof(host.context))
+            for field in ['keys','abandoned','thread_subscription','key_subscription','mode_subscription','edit_subscription','candidates','langbar']:
+                self.assertTrue(getattr(state,field),field)
+            self.assertEqual((state.atom_input,state.atom_converted,state.atom_target),(700,701,702))
+            self.assertRegex(c.string_at(self.api.meltype_tsf_service_sid(c.addressof(state))).decode(),r'^\d+-\d+-\d+$')
+        finally:self.finish_activation(state,host)
+    def test_activate_native_secure_mode_skips_bar_mode_subscription_and_hello(self):
+        state=self.create();host=StartupHost();events=[]
+        try:
+            self.assertEqual(self.activate(state,host,flags=2,notice=CORE_NOTICE(lambda owner,op,value:events.append((op,value)))),0)
+            self.assertEqual(events,[(0,1)]);self.assertTrue(state.disabled);self.assertFalse(state.open)
+            self.assertTrue(state.candidates);self.assertFalse(state.langbar);self.assertFalse(state.mode_subscription)
+            self.assertTrue(state.thread_subscription);self.assertTrue(state.key_subscription);self.assertFalse(state.transport)
+        finally:self.finish_activation(state,host)
+    def test_activate_native_persistent_bar_callbacks_work_after_return(self):
+        state=self.create();host=StartupHost();events=[]
+        @self.checked(TOGGLE)
+        def toggle(owner):self.assertEqual(owner,123);events.append('toggle')
+        try:
+            self.assertEqual(self.activate(state,host,toggle=toggle),0)
+            self.assertEqual(self.bar_text(state.langbar),'あ');self.click_bar(state.langbar)
+            state.open=False;self.assertEqual(self.bar_text(state.langbar),'A');self.assertEqual(events,['toggle'])
+        finally:self.finish_activation(state,host)
+    def test_activate_native_reactivates_same_service_after_shutdown(self):
+        state=self.create();host=StartupHost()
+        try:
+            self.assertEqual(self.activate(state,host,flags=2),0);self.assertEqual(self.deactivate(state,host),0)
+            state.key_failed=True;state.caret_moved=True;state.last_hello=123
+            self.assertEqual(self.activate(state,host),0)
+            self.assertFalse(state.deactivated);self.assertFalse(state.disabled);self.assertFalse(state.key_failed);self.assertFalse(state.caret_moved)
+            self.assertTrue(state.consumed);self.assertTrue(state.open);self.assertTrue(state.langbar)
+            self.assertEqual(state.focus_epoch,3);self.assertEqual(state.shutdown_phase,0)
+        finally:self.finish_activation(state,host)
+    def test_activate_native_nested_shutdown_from_initialize_stops_late_setup(self):
+        state=self.create();host=StartupHost();events=[]
+        @self.checked(CORE_NOTICE)
+        def notice(owner,op,value):
+            events.append((op,value));self.assertEqual(self.deactivate(state,host),0)
+        try:
+            self.assertEqual(self.activate(state,host,notice=notice),0)
+            self.assertEqual(events,[(0,0)]);self.assertEqual(state.shutdown_phase,2);self.assertTrue(state.deactivated)
+            for field in ['manager','keys','thread_subscription','key_subscription','mode_subscription','edit_subscription','candidates','langbar']:
+                self.assertFalse(getattr(state,field),field)
+        finally:self.finish_activation(state,host)
+    def test_activate_native_partial_focus_and_category_failures_release_refs(self):
+        state=self.create();host=StartupHost();host.fail_focus=host.partial_focus=True;host.fail_register=1
+        try:
+            self.assertEqual(self.activate(state,host),0)
+            self.assertFalse(state.edit_subscription);self.assertTrue(state.server_active)
+            self.assertEqual((state.atom_input,state.atom_converted,state.atom_target),(700,0,702))
+            self.assertEqual(host.document_refs,1)
+        finally:self.finish_activation(state,host)
+    def test_activate_native_last_caller_release_during_initialize_keeps_owner_alive(self):
+        state=self.create();address=c.addressof(state);host=StartupHost();events=[]
+        dispatch=DISPATCH(lambda *_:0)
+        @self.checked(DESTROY)
+        def destroyed(owner):
+            events.append(('destroy',state.disabled,state.candidates is not None))
+            self.finish_activation(state,host);self.api.meltype_tsf_service_state_destroy(owner)
+        root=self.api.meltype_tsf_service_com_create(address,dispatch,destroyed);self.assertTrue(root);self.owned.remove(address)
+        @self.checked(CORE_NOTICE)
+        def notice(owner,op,value):
+            self.assertEqual(op,0);events.append('initialize');release(root);self.assertEqual(self.live(),self.before+1)
+        try:
+            self.assertEqual(self.activate(state,host,flags=2,notice=notice,lifetime=root),0)
+            self.assertEqual(events,['initialize',('destroy',True,True)]);host.verify(self)
+        finally:
+            if not events:release(root)
+    def test_activate_native_invalid_arguments_preserve_state(self):
+        state=self.create();host=StartupHost();address=c.addressof(state);before=c.string_at(address,c.sizeof(State))
+        sink=c.addressof(host.sink);valid=(P*4)(sink,sink,sink,sink);missing=(P*4)(sink,sink,sink,None)
+        for data,lifetime,worker,manager,sinks,select,read,toggle in [
+            (None,c.byref(host.context),self.worker,c.byref(host.context),valid,SELECT(lambda *_:None),READ(lambda _:1),TOGGLE(lambda _:None)),
+            (address,None,self.worker,c.byref(host.context),valid,SELECT(lambda *_:None),READ(lambda _:1),TOGGLE(lambda _:None)),
+            (address,c.byref(host.context),None,c.byref(host.context),valid,SELECT(lambda *_:None),READ(lambda _:1),TOGGLE(lambda _:None)),
+            (address,c.byref(host.context),self.worker,None,valid,SELECT(lambda *_:None),READ(lambda _:1),TOGGLE(lambda _:None)),
+            (address,c.byref(host.context),self.worker,c.byref(host.context),None,SELECT(lambda *_:None),READ(lambda _:1),TOGGLE(lambda _:None)),
+            (address,c.byref(host.context),self.worker,c.byref(host.context),missing,SELECT(lambda *_:None),READ(lambda _:1),TOGGLE(lambda _:None)),
+            (address,c.byref(host.context),self.worker,c.byref(host.context),valid,SELECT(),READ(lambda _:1),TOGGLE(lambda _:None)),
+            (address,c.byref(host.context),self.worker,c.byref(host.context),valid,SELECT(lambda *_:None),READ(),TOGGLE(lambda _:None)),
+            (address,c.byref(host.context),self.worker,c.byref(host.context),valid,SELECT(lambda *_:None),READ(lambda _:1),TOGGLE())]:
+            self.assertEqual(self.api.meltype_tsf_service_activate(data,lifetime,worker,manager,17,0,sinks,None,select,read,toggle,CORE_NOTICE(),CATEGORY()),HR(0x80070057).value)
         self.assertEqual(c.string_at(address,c.sizeof(State)),before);host.verify(self)
 if __name__=='__main__':unittest.main(argv=[sys.argv[0]],verbosity=2,failfast=True)
 

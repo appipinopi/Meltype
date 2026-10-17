@@ -194,15 +194,6 @@ struct RustAbandonCallbacks {
     void (__cdecl *request)(void*,const char*);
 };
 int RustAbandonComposition(TfClientId,const std::string&,const RustAbandonCallbacks&);
-struct RustStartupCallbacks {
-    void* owner;IUnknown* lifetime;unsigned long long* epoch;unsigned int* phase;
-    void** manager;void** keys;void** abandoned;void** resume;
-    void** subscriptions[3];TfGuidAtom* atoms[3];void* sinks[3];
-    void (__cdecl *initialize)(void*,unsigned int,int,int,const char*);
-    void* (__cdecl *action)(void*,unsigned int,int,void*);
-    void* (__cdecl *category)(void*);
-};
-HRESULT RustStartup(ITfThreadMgr*,TfClientId,DWORD,const RustStartupCallbacks&);
 using RustJsonEmit=int (__cdecl *)(void*,unsigned int,double,const unsigned short*,unsigned int);
 bool RustJsonVisit(const std::string&,void*,RustJsonEmit);
 std::string RustJsonQuote(const std::wstring&);
@@ -234,6 +225,7 @@ HRESULT RustServiceFocus(RustServiceState*,IUnknown*,ITfTextEditSink*,ITfDocumen
 bool RustServiceEdited(RustServiceState*,IUnknown*,ITfContext*,ITfEditRecord*,TfEditCookie,void*,void (__cdecl *)(void*,unsigned int,void*,int),void (__cdecl *)(void*));
 HRESULT RustServiceOpened(RustServiceState*,IUnknown*,REFGUID,void*,void (__cdecl *)(void*),void (__cdecl *)(void*,int));
 HRESULT RustServiceDeactivate(RustServiceState*,IUnknown*,void*,void (__cdecl *)(void*,const char*,unsigned int,void*,void*),void (__cdecl *)(void*,unsigned int));
+HRESULT RustServiceActivate(RustServiceState*,IUnknown*,ITfThreadMgr*,TfClientId,DWORD,void* const*,void*,void (__cdecl *)(void*,int,int),int (__cdecl *)(void*),void (__cdecl *)(void*));
 bool RustServiceCore(RustServiceState*,IUnknown*,bool);
 unsigned int RustServiceMode(const RustServiceState*);
 void RustServiceWriteOpen(RustServiceState*,bool);
