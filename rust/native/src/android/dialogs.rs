@@ -87,7 +87,12 @@ fn build(env: &mut JNIEnv, activity: JObject, confirmation: &Value, action: &Act
     invoke(env, &builder, "show", "()Landroid/app/AlertDialog;", &[])?;
     Ok(())
 }
-fn show(env: &mut JNIEnv, handle: jlong, activity: JObject, input: JString) -> Result<Value> {
+pub(super) fn show(
+    env: &mut JNIEnv,
+    handle: jlong,
+    activity: JObject,
+    input: JString,
+) -> Result<Value> {
     let confirmation: Value =
         serde_json::from_str(&read(env, input)?).map_err(|e| e.to_string())?;
     let action = if let Some(token) = confirmation["token"].as_u64() {
@@ -108,7 +113,7 @@ fn show(env: &mut JNIEnv, handle: jlong, activity: JObject, input: JString) -> R
     }
     result.map(|_| json!({}))
 }
-fn complete(handle: jlong, payload: &str, accept: bool) -> Result<Value> {
+pub(super) fn complete(handle: jlong, payload: &str, accept: bool) -> Result<Value> {
     let action: Action = serde_json::from_str(payload).map_err(|e| e.to_string())?;
     match action {
         Action::Learning {} if accept => {

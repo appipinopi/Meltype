@@ -7,6 +7,10 @@ final class Native {
     static native String control(long handle,String request);
     static native String showSettingsConfirmation(long handle,Object activity,String confirmation);
     static native String completeSettingsConfirmation(long handle,String payload,boolean accept);
+    static native String settingsUiShow(long handle,Object activity,int page);
+    static native String settingsUiAction(long handle,Object activity,String operation);
+    static native String settingsUiResult(long handle,Object activity,int code,int result,Object data);
+    static native String settingsUiConfirmation(long handle,Object activity,String payload,boolean accept);
     static native String createSettingsActivity(Object activity);
     static native String renderSettingsPage(Object bridge,String page);
     static native String settingsValues(Object bridge,String operation);

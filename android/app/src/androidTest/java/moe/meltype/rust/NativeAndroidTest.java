@@ -64,6 +64,19 @@ public final class NativeAndroidTest {
         File artifacts=new File(context().getFilesDir(),"instrumentation-artifacts");assertTrue(artifacts.isDirectory()||artifacts.mkdirs());
         try(FileOutputStream stream=new FileOutputStream(new File(artifacts,name))){assertTrue(image.compress(Bitmap.CompressFormat.PNG,100,stream));}finally{image.recycle();}
     }
+    private static LinearLayout activityBody(SettingsActivity activity)throws Exception {
+        java.lang.reflect.Field field=SettingsActivity.class.getDeclaredField("body");field.setAccessible(true);return (LinearLayout)field.get(activity);
+    }
+    private static EditText activityField(SettingsActivity activity,String hint)throws Exception {
+        LinearLayout body=activityBody(activity);
+        for(int i=0;i<body.getChildCount();i++)if(body.getChildAt(i) instanceof EditText edit&&hint.contentEquals(edit.getHint()))return edit;
+        throw new AssertionError("missing activity field: "+hint);
+    }
+    private static void activityPress(SettingsActivity activity,String label)throws Exception {
+        LinearLayout body=activityBody(activity);
+        for(int i=0;i<body.getChildCount();i++)if(body.getChildAt(i) instanceof Button button&&label.contentEquals(button.getText())){assertTrue(button.performClick());return;}
+        throw new AssertionError("missing activity button: "+label);
+    }
     @Test public void realSettingsActivityConfirmationButtons()throws Throwable {
         Instrumentation instrumentation=InstrumentationRegistry.getInstrumentation();UiAutomation automation=instrumentation.getUiAutomation();
         SettingsActivity activity=(SettingsActivity)instrumentation.startActivitySync(new Intent(context(),SettingsActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
@@ -71,6 +84,15 @@ public final class NativeAndroidTest {
         try(Profile files=new Profile()) {
             ui(()->{
                 java.lang.reflect.Field field=SettingsActivity.class.getDeclaredField("session");field.setAccessible(true);handle[0]=field.getLong(activity);assertTrue(handle[0]!=0);
+                assertFalse(new JSONObject(Native.settingsUiShow(handle[0],activity,2)).has("error"));
+                activityField(activity,"呼び出し名").setText("native-ui");activityField(activity,"展開する文字列").setText("設定経由\n😀");activityPress(activity,"保存");
+                assertEquals("設定経由\n😀",new JSONObject(Native.control(handle[0],"{\"op\":\"snippets_list\"}")).getString("native-ui"));
+                activityPress(activity,"編集");assertEquals("設定経由\n😀",activityField(activity,"展開する文字列").getText().toString());
+                assertFalse(new JSONObject(Native.settingsUiShow(handle[0],activity,1)).has("error"));
+                assertTrue(new JSONObject(Native.settingsUiAction(handle[0],activity,"{\"action\":\"dictionary_add\"}")).has("error"));
+                java.lang.reflect.Field statusField=SettingsActivity.class.getDeclaredField("status");statusField.setAccessible(true);assertTrue(((TextView)statusField.get(activity)).getText().toString().startsWith("エラー: "));
+                activityField(activity,"読み（ひらがな）").setText("てすとせってい");activityField(activity,"単語").setText("Settings😀");activityPress(activity,"登録");
+                assertEquals("Settings😀",new JSONObject(Native.control(handle[0],"{\"op\":\"dictionary_list\"}")).getJSONArray("てすとせってい").getString(0));
                 JSONObject request=new JSONObject(Native.settingsAction(handle[0],"{\"action\":\"learning_confirm\"}","{}"));
                 assertFalse(new JSONObject(Native.showSettingsConfirmation(handle[0],activity,request.getJSONObject("confirm").toString())).has("error"));
             });
@@ -93,6 +115,8 @@ public final class NativeAndroidTest {
             idle(instrumentation,automation);clickOwnDialogButton(automation,"復元");idle(instrumentation,automation);
             assertEquals("Dialog😀",new JSONObject(Native.control(handle[0],"{\"op\":\"dictionary_list\"}")).getJSONArray("てすとかくにん").getString(0));
             Native.control(handle[0],"{\"op\":\"dictionary_remove\",\"reading\":\"てすとかくにん\"}");
+            Native.control(handle[0],"{\"op\":\"dictionary_remove\",\"reading\":\"てすとせってい\"}");
+            Native.control(handle[0],"{\"op\":\"snippet_remove\",\"name\":\"native-ui\"}");
         } finally {ui(activity::finish);instrumentation.waitForIdleSync();}
     }
     public static final class ActivityFrame extends ContextThemeWrapper {
@@ -102,12 +126,12 @@ public final class NativeAndroidTest {
         private void settingsFormReady(){
             assertNotNull(body);assertNotNull(status);
             form=new SettingsPage(this,body,operation->{try{
-                JSONObject result=new JSONObject(Native.settingsAction(session,operation.toString(),form.values(operation).toString()));
+                JSONObject result=new JSONObject(Native.settingsAction(session,operation.toString(),form.values(operation.toString())));
                 assertFalse(result.toString(),result.has("error"));if(result.has("page"))show(result.getInt("page"));
             }catch(Exception error){throw new AssertionError(error);}});
             ready=true;
         }
-        private void show(int page)throws Exception{form.render(new JSONObject(Native.settingsPage(session,page)));}
+        private void show(int page)throws Exception{assertFalse(new JSONObject(form.render(Native.settingsPage(session,page))).has("error"));}
         private AdapterView.OnItemSelectedListener settingsNavigationCallback(){
             assertTrue(ready);return new AdapterView.OnItemSelectedListener(){
                 public void onNothingSelected(AdapterView<?> parent){}
@@ -134,15 +158,15 @@ public final class NativeAndroidTest {
             this.session=session;
             Context themed=new ContextThemeWrapper(context(),android.R.style.Theme_Material_Light_NoActionBar);
             body=new LinearLayout(themed);body.setOrientation(LinearLayout.VERTICAL);
-            form=new SettingsPage(themed,body,operation->{try{perform(operation);}catch(Exception e){throw new AssertionError(e);}});
+            form=new SettingsPage(themed,body,operation->{try{perform(new JSONObject(operation));}catch(Exception e){throw new AssertionError(e);}});
         }
         JSONObject checked(String text) throws Exception {
             JSONObject value=new JSONObject(text);assertFalse(value.toString(),value.has("error"));return value;
         }
-        void show(int page) throws Exception {form.render(checked(Native.settingsPage(session,page)));}
+        void show(int page) throws Exception {checked(form.render(Native.settingsPage(session,page)));}
         void perform(JSONObject operation) throws Exception {
-            last=checked(Native.settingsAction(session,operation.toString(),form.values(operation).toString()));
-            if(last.has("edit"))form.edit(last.getJSONObject("edit"));
+            last=checked(Native.settingsAction(session,operation.toString(),form.values(operation.toString())));
+            if(last.has("edit"))checked(form.edit(last.getJSONObject("edit").toString()));
             if(last.has("page"))show(last.getInt("page"));
         }
         EditText field(String hint) {

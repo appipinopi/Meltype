@@ -41,7 +41,7 @@ const TOGGLES: &[(&str, &str)] = &[
     ("ContinueAfterConversion", "変換後も入力を続ける"),
     ("SeparateKeyRoles", "変換キーの役割を分ける"),
 ];
-fn page(handle: jlong, page: jint) -> Result<Value> {
+pub(super) fn page(handle: jlong, page: jint) -> Result<Value> {
     let mut nodes = Vec::new();
     match page {
         0 => {

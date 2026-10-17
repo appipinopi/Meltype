@@ -73,7 +73,12 @@ fn cancel_picker(handle: jlong, token: u64) {
         }
     }
 }
-fn pick(env: &mut JNIEnv, handle: jlong, activity: JObject, operation: JString) -> Result<Value> {
+pub(super) fn pick(
+    env: &mut JNIEnv,
+    handle: jlong,
+    activity: JObject,
+    operation: JString,
+) -> Result<Value> {
     let operation = text(env, operation)?;
     let (output, title) = specification(&operation)?;
     // One activity-result request is outstanding at a time. In particular, an
@@ -146,7 +151,7 @@ fn pick(env: &mut JNIEnv, handle: jlong, activity: JObject, operation: JString) 
     }
     result
 }
-fn picker_result(
+pub(super) fn picker_result(
     env: &mut JNIEnv,
     handle: jlong,
     context: JObject,

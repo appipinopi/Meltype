@@ -14,6 +14,7 @@ mod editor_jni;
 mod input_view;
 mod service_state;
 mod settings;
+mod settings_ui;
 mod settings_view;
 #[no_mangle]
 pub extern "system" fn Java_moe_meltype_rust_Native_startInput(

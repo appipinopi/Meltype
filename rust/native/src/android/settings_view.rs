@@ -194,7 +194,7 @@ fn node(
     )?;
     Ok(())
 }
-fn render(env: &mut JNIEnv, bridge: JObject, input: JString) -> Result<Value> {
+pub(super) fn render(env: &mut JNIEnv, bridge: JObject, input: JString) -> Result<Value> {
     let page: Page = serde_json::from_str(&string(env, input)?).map_err(|e| e.to_string())?;
     // Validate the complete definition before removing the current page.
     let mut ids = std::collections::HashSet::new();
@@ -222,7 +222,7 @@ fn render(env: &mut JNIEnv, bridge: JObject, input: JString) -> Result<Value> {
     }
     Ok(json!({}))
 }
-fn fields(env: &mut JNIEnv, bridge: JObject, operation: JString) -> Result<Value> {
+pub(super) fn fields(env: &mut JNIEnv, bridge: JObject, operation: JString) -> Result<Value> {
     let operation: Value =
         serde_json::from_str(&string(env, operation)?).map_err(|e| e.to_string())?;
     let body = body(env, &bridge)?;
@@ -269,7 +269,7 @@ fn fields(env: &mut JNIEnv, bridge: JObject, operation: JString) -> Result<Value
     }
     Ok(Value::Object(result))
 }
-fn edit(env: &mut JNIEnv, bridge: JObject, input: JString) -> Result<Value> {
+pub(super) fn edit(env: &mut JNIEnv, bridge: JObject, input: JString) -> Result<Value> {
     let edits: Map<String, Value> =
         serde_json::from_str(&string(env, input)?).map_err(|e| e.to_string())?;
     if edits.values().any(|value| !value.is_string()) {
