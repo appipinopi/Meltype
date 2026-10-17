@@ -83,8 +83,6 @@ struct RustApi {
     HRESULT (__cdecl *compositionTerminated)(unsigned int,void*,const char*,const RustTerminationCallbacks*) = nullptr;
     int (__cdecl *resumeOrCommit)(void*,unsigned int,unsigned int,const char*,const RustRecoveryCallbacks*) = nullptr;
     int (__cdecl *abandonComposition)(unsigned int,const char*,const RustAbandonCallbacks*) = nullptr;
-    HRESULT (__cdecl *documentFocus)(void*,const RustFocusCallbacks*) = nullptr;
-    HRESULT (__cdecl *foregroundFocus)(int,void*,const RustFocusCallbacks*) = nullptr;
     HRESULT (__cdecl *shutdown)(unsigned int,const char*,const RustShutdownCallbacks*) = nullptr;
     HRESULT (__cdecl *startup)(void*,unsigned int,unsigned int,const RustStartupCallbacks*) = nullptr;
     int (__cdecl *jsonVisit)(const unsigned char*,unsigned int,void*,RustJsonEmit) = nullptr;
@@ -101,6 +99,7 @@ struct RustApi {
     int (__cdecl *serviceInitialize)(RustServiceState*,unsigned int,int,int,const char*) = nullptr;
     void (__cdecl *serviceClearResume)(RustServiceState*) = nullptr;
     int (__cdecl *serviceExchange)(RustServiceState*,const char*,void*,const unsigned char*,unsigned int,unsigned int,int,void*,int (__cdecl *)(void*,const unsigned char*,unsigned int),void (__cdecl *)(void*)) = nullptr;
+    HRESULT (__cdecl *serviceFocus)(RustServiceState*,const char*,void*,void*,void*,int,void*,int (__cdecl *)(void*,int),void (__cdecl *)(void*),void (__cdecl *)(void*,unsigned int,int)) = nullptr;
     int (__cdecl *serviceCore)(RustServiceState*,const char*,void*,void*,void (__cdecl *)(void*,unsigned int,int),unsigned long long (__cdecl *)(void*),int) = nullptr;
     unsigned int (__cdecl *serviceMode)(const RustServiceState*) = nullptr;
     int (__cdecl *serviceWriteOpen)(RustServiceState*,int) = nullptr;
@@ -196,8 +195,6 @@ struct RustApi {
         compositionTerminated = reinterpret_cast<decltype(compositionTerminated)>(GetProcAddress(module, "meltype_tsf_composition_terminated"));
         resumeOrCommit = reinterpret_cast<decltype(resumeOrCommit)>(GetProcAddress(module, "meltype_tsf_resume_or_commit"));
         abandonComposition = reinterpret_cast<decltype(abandonComposition)>(GetProcAddress(module, "meltype_tsf_abandon_composition"));
-        documentFocus = reinterpret_cast<decltype(documentFocus)>(GetProcAddress(module, "meltype_tsf_document_focus"));
-        foregroundFocus = reinterpret_cast<decltype(foregroundFocus)>(GetProcAddress(module, "meltype_tsf_foreground_focus"));
         shutdown = reinterpret_cast<decltype(shutdown)>(GetProcAddress(module, "meltype_tsf_shutdown"));
         startup = reinterpret_cast<decltype(startup)>(GetProcAddress(module, "meltype_tsf_startup"));
         jsonVisit = reinterpret_cast<decltype(jsonVisit)>(GetProcAddress(module, "meltype_json_visit"));
@@ -211,6 +208,7 @@ struct RustApi {
         processName = reinterpret_cast<decltype(processName)>(GetProcAddress(module, "meltype_tsf_process_name"));
         serviceInitialize = reinterpret_cast<decltype(serviceInitialize)>(GetProcAddress(module, "meltype_tsf_service_initialize"));
         serviceExchange = reinterpret_cast<decltype(serviceExchange)>(GetProcAddress(module, "meltype_tsf_service_exchange"));
+        serviceFocus = reinterpret_cast<decltype(serviceFocus)>(GetProcAddress(module, "meltype_tsf_service_focus"));
         serviceCore = reinterpret_cast<decltype(serviceCore)>(GetProcAddress(module, "meltype_tsf_service_core"));
         serviceMode = reinterpret_cast<decltype(serviceMode)>(GetProcAddress(module, "meltype_tsf_service_mode"));
         serviceWriteOpen = reinterpret_cast<decltype(serviceWriteOpen)>(GetProcAddress(module, "meltype_tsf_service_write_open"));
@@ -340,12 +338,6 @@ int RustResumeOrCommit(ITfContext* context,TfClientId client,TfGuidAtom atom,con
 int RustAbandonComposition(TfClientId client,const std::string& metadata,const RustAbandonCallbacks& callbacks) {
     return api().abandonComposition?api().abandonComposition(client,metadata.c_str(),&callbacks):-1;
 }
-HRESULT RustDocumentFocus(ITfDocumentMgr* document,const RustFocusCallbacks& callbacks) {
-    return api().documentFocus?api().documentFocus(document,&callbacks):E_NOINTERFACE;
-}
-HRESULT RustForegroundFocus(bool foreground,void* keys,const RustFocusCallbacks& callbacks) {
-    return api().foregroundFocus?api().foregroundFocus(foreground?1:0,keys,&callbacks):E_NOINTERFACE;
-}
 HRESULT RustShutdown(TfClientId client,const std::string& metadata,const RustShutdownCallbacks& callbacks) {
     return api().shutdown?api().shutdown(client,metadata.c_str(),&callbacks):E_NOINTERFACE;
 }
@@ -360,7 +352,7 @@ HRESULT RustOpenChanged(REFGUID guid,const RustOpenChangeCallbacks& callbacks) {
 }
 bool RustCoreReady(const RustCoreStateCallbacks& callbacks) {return api().coreReady && api().coreReady(&callbacks)!=0;}
 RustServiceState* RustCreateServiceState() {
-    if (!api().serviceCreate || !api().serviceDestroy || !api().serviceLayout || !api().serviceCore || !api().serviceExchange || !api().serviceMode || !api().serviceWriteOpen || !api().serviceApplyMode || !api().serviceEditSink || !api().serviceInitialize || !api().serviceClearResume || !api().serviceSetSid || !api().serviceSid || !api().serviceClose || !api().serviceCreateBar || !api().serviceUpdateBar || !api().serviceRemoveBar || !api().serviceCreateCandidates || !api().serviceShowCandidates || !api().serviceHideCandidates || !api().serviceDropCandidates) return nullptr;
+    if (!api().serviceCreate || !api().serviceDestroy || !api().serviceLayout || !api().serviceCore || !api().serviceFocus || !api().serviceExchange || !api().serviceMode || !api().serviceWriteOpen || !api().serviceApplyMode || !api().serviceEditSink || !api().serviceInitialize || !api().serviceClearResume || !api().serviceSetSid || !api().serviceSid || !api().serviceClose || !api().serviceCreateBar || !api().serviceUpdateBar || !api().serviceRemoveBar || !api().serviceCreateCandidates || !api().serviceShowCandidates || !api().serviceHideCandidates || !api().serviceDropCandidates) return nullptr;
     const unsigned int expected[]={5,static_cast<unsigned int>(sizeof(RustServiceState)),static_cast<unsigned int>(alignof(RustServiceState)),
         static_cast<unsigned int>(offsetof(RustServiceState,refs)),
         static_cast<unsigned int>(offsetof(RustServiceState,manager)),
@@ -430,12 +422,15 @@ void* RustServiceComInterface(void* root,REFIID iid) {return api().serviceComInt
 bool RustServiceExchange(RustServiceState* state,IUnknown* lifetime,const std::string& request,DWORD timeout,bool optional,void* context,int (__cdecl *reply)(void*,const unsigned char*,unsigned int),void (__cdecl *failure)(void*)) {
     return request.size()<=UINT_MAX && api().serviceExchange && api().serviceExchange(state,api().worker.c_str(),lifetime,reinterpret_cast<const unsigned char*>(request.data()),static_cast<unsigned int>(request.size()),timeout,optional?1:0,context,reply,failure)!=0;
 }
+static void __cdecl ServiceCoreNotice(void*,unsigned int op,int active) {
+    if (op==0) TipLog(L"Meltype.exe: %s",active?L"つながりました":L"使えません (動いていない・モードが Meltype IME でない)");
+    else if (op==1) TipLog(L"応答を読めません");
+}
+HRESULT RustServiceFocus(RustServiceState* state,IUnknown* lifetime,ITfTextEditSink* sink,ITfDocumentMgr* document,int event,void* context,int (__cdecl *commit)(void*,int),void (__cdecl *resume)(void*)) {
+    return api().serviceFocus?api().serviceFocus(state,api().worker.c_str(),lifetime,sink,document,event,context,commit,resume,ServiceCoreNotice):E_NOINTERFACE;
+}
 bool RustServiceCore(RustServiceState* state,IUnknown* lifetime,bool hello) {
-    return api().serviceCore && api().serviceCore(state,api().worker.c_str(),lifetime,nullptr,
-        [](void*,unsigned int op,int active) {
-            if (op==0) TipLog(L"Meltype.exe: %s",active?L"つながりました":L"使えません (動いていない・モードが Meltype IME でない)");
-            else if (op==1) TipLog(L"応答を読めません");
-        },nullptr,hello?1:0)!=0;
+    return api().serviceCore && api().serviceCore(state,api().worker.c_str(),lifetime,nullptr,ServiceCoreNotice,nullptr,hello?1:0)!=0;
 }
 unsigned int RustServiceMode(const RustServiceState* state) {return api().serviceMode?api().serviceMode(state):0;}
 void RustServiceWriteOpen(RustServiceState* state,bool open) {if (api().serviceWriteOpen) api().serviceWriteOpen(state,open?1:0);}
@@ -552,7 +547,7 @@ bool RustWouldEat(ITfContext* context,UINT key,LPARAM message,bool test,const Ru
     ch=0;
     return api().wouldEat && api().wouldEat(context,key,static_cast<ULONG_PTR>(message),test?1:0,&callbacks,&ch)!=0;
 }
-void* RustKeyStateCreate() {return api().keyStateCreate && api().keyStateReset && api().keyStateDestroy && api().keyCacheClear && api().isReinjected && api().keySecret && api().reinject && api().keyForeground && api().keyStaleRead && api().keyStaleWrite && api().keyStaleClear && api().keyPassed && api().keyEvent && api().toggleMode && api().codeLine && api().queryMode && api().applyMode && api().handleKey && api().commit && api().selectCandidate && api().applyReply && api().applyOwnedComposition && api().writeOwnedCommit && api().endOwnedComposition && api().compositionTerminated && api().resumeOrCommit && api().abandonComposition && api().documentFocus && api().foregroundFocus && api().shutdown && api().startup && api().jsonVisit && api().jsonQuote && api().openChanged && api().coreReady && api().coreHello && api().processName ? api().keyStateCreate() : nullptr;}
+void* RustKeyStateCreate() {return api().keyStateCreate && api().keyStateReset && api().keyStateDestroy && api().keyCacheClear && api().isReinjected && api().keySecret && api().reinject && api().keyForeground && api().keyStaleRead && api().keyStaleWrite && api().keyStaleClear && api().keyPassed && api().keyEvent && api().toggleMode && api().codeLine && api().queryMode && api().applyMode && api().handleKey && api().commit && api().selectCandidate && api().applyReply && api().applyOwnedComposition && api().writeOwnedCommit && api().endOwnedComposition && api().compositionTerminated && api().resumeOrCommit && api().abandonComposition && api().shutdown && api().startup && api().jsonVisit && api().jsonQuote && api().openChanged && api().coreReady && api().coreHello && api().processName ? api().keyStateCreate() : nullptr;}
 void RustKeyStateReset(void* state) {if (api().keyStateReset) api().keyStateReset(state);}
 void RustKeyStateDestroy(void* state) {if (api().keyStateDestroy) api().keyStateDestroy(state);}
 void RustKeyCacheClear(void* state) {if (api().keyCacheClear) api().keyCacheClear(state);}

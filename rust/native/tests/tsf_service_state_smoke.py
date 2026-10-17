@@ -21,6 +21,7 @@ from tsf_fields_smoke import CompartmentHost,OPEN
 from tsf_service_com_smoke import DISPATCH,DESTROY
 SELECT=c.CFUNCTYPE(None,c.c_void_p,c.c_int,c.c_int)
 CORE_NOTICE=c.CFUNCTYPE(None,c.c_void_p,c.c_uint32,c.c_int)
+FOCUS_COMMIT=c.CFUNCTYPE(c.c_int,c.c_void_p,c.c_int)
 REPLY=c.CFUNCTYPE(c.c_int,c.c_void_p,c.c_void_p,c.c_uint32)
 CORE_CLOCK=c.CFUNCTYPE(c.c_uint64,c.c_void_p)
 NOTICE=c.CFUNCTYPE(None,c.c_void_p,c.c_int)
@@ -105,6 +106,7 @@ class StateTests(unittest.TestCase):
         cls.api.meltype_tsf_service_com_create.argtypes=[P,DISPATCH,DESTROY];cls.api.meltype_tsf_service_com_create.restype=P
         cls.api.meltype_tsf_service_core.argtypes=[P,c.c_char_p,P,P,CORE_NOTICE,CORE_CLOCK,c.c_int];cls.api.meltype_tsf_service_core.restype=c.c_int
         cls.api.meltype_tsf_service_exchange.argtypes=[P,c.c_char_p,P,P,U32,U32,c.c_int,P,REPLY,TOGGLE];cls.api.meltype_tsf_service_exchange.restype=c.c_int
+        cls.api.meltype_tsf_service_focus.argtypes=[P,c.c_char_p,P,P,P,c.c_int,P,FOCUS_COMMIT,TOGGLE,CORE_NOTICE];cls.api.meltype_tsf_service_focus.restype=HR
         cls.fixture=str(Path(sys.argv[2]).resolve()).encode() if len(sys.argv)>2 else None
 
 
@@ -137,7 +139,7 @@ class StateTests(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):cls.ole.CoUninitialize()
     def setUp(self):
-        self.owned=[];self.callbacks=[];self.before=self.live()
+        self.owned=[];self.callbacks=[];self.before=self.live();self.callback_errors=[]
         self.directory=tempfile.TemporaryDirectory(prefix='meltype-service-state-')
         self.old_data=os.environ.get('MELTYPE_RUST_DATA_DIR')
         os.environ['MELTYPE_RUST_DATA_DIR']=self.directory.name
@@ -153,6 +155,16 @@ class StateTests(unittest.TestCase):
             except PermissionError:
                 if time.monotonic()>=deadline:raise
                 time.sleep(.02)
+        self.assertEqual(self.callback_errors,[])
+    def checked(self,kind):
+        # ctypes otherwise prints and swallows exceptions from native callbacks.
+        def decorate(fn):
+            def guarded(*args):
+                try:return fn(*args)
+                except BaseException as error:
+                    self.callback_errors.append((fn.__name__,repr(error)));return 0
+            return kind(guarded)
+        return decorate
     def live(self):return self.api.meltype_tsf_service_state_live_count()
     def create(self):
         data=self.api.meltype_tsf_service_state_create()
@@ -246,7 +258,7 @@ class StateTests(unittest.TestCase):
         mode=mode if mode is not None else [False]
         @READ
         def read(owner):return int(mode[0])
-        @TOGGLE
+        @self.checked(TOGGLE)
         def toggle(owner):mode[0]=not mode[0]
         self.callbacks.extend([read,toggle])
         bar=self.api.meltype_tsf_service_create_langbar(c.addressof(state),123,read,toggle)
@@ -578,7 +590,7 @@ class StateTests(unittest.TestCase):
         state=self.create();address=c.addressof(state);destroyed=[];root=[None];events=[]
         @DISPATCH
         def dispatch(_owner,_call):return 0
-        @DESTROY
+        @self.checked(DESTROY)
         def destroy(_owner):
             self.owned.remove(address);self.api.meltype_tsf_service_state_destroy(address);destroyed.append(True)
         root[0]=self.api.meltype_tsf_service_com_create(None,dispatch,destroy);self.assertTrue(root[0])
@@ -704,7 +716,7 @@ class StateTests(unittest.TestCase):
         response.write_text('{"view":{"text":"試験😀"}}',encoding='utf-8')
         changes={'MELTYPE_TEST_HELLO_REPLY_FILE':str(response),'MELTYPE_TEST_HELLO_REQUEST_FILE':str(request)}
         previous={key:os.environ.get(key) for key in changes};events=[]
-        @REPLY
+        @self.checked(REPLY)
         def parsed(owner,data,length):
             events.append((owner,json.loads(c.string_at(data,length))));return 1
         try:
@@ -726,22 +738,22 @@ class StateTests(unittest.TestCase):
         self.assertEqual(events,[('reply',123),('notice',123)]);host.verify(self)
     def test_exchange_reentrant_epoch_change_discards_result_and_notice(self):
         state=self.create();host=SubscriptionHost();events=[]
-        @REPLY
+        @self.checked(REPLY)
         def parsed(owner,data,length):
             state.focus_epoch+=1;state.server_active=True;return 0
         self.assertEqual(self.exchange(state,host,reply=parsed,notice=TOGGLE(lambda _:events.append(1))),0)
         self.assertTrue(state.server_active);self.assertEqual(events,[]);host.verify(self)
     def test_exchange_reentrant_shutdown_discards_success(self):
         state=self.create();host=SubscriptionHost()
-        @REPLY
+        @self.checked(REPLY)
         def parsed(owner,data,length):state.deactivated=True;return 1
         self.assertEqual(self.exchange(state,host,reply=parsed),0);host.verify(self)
     def test_exchange_nested_request_keeps_outer_reply_bytes_alive(self):
         state=self.create();host=SubscriptionHost();events=[]
-        @REPLY
+        @self.checked(REPLY)
         def inner(owner,data,length):
             events.append(json.loads(c.string_at(data,length))['active']);return 1
-        @REPLY
+        @self.checked(REPLY)
         def outer(owner,data,length):
             before=c.string_at(data,length)
             self.assertEqual(self.exchange(state,host,b'{"op":"reset","sid":"nested"}',reply=inner),1)
@@ -769,12 +781,12 @@ class StateTests(unittest.TestCase):
     def test_exchange_native_lifetime_pins_service_during_reply(self):
         state=self.create();address=c.addressof(state);host=SubscriptionHost();events=[]
         dispatch=DISPATCH(lambda *_:0)
-        @DESTROY
+        @self.checked(DESTROY)
         def destroyed(owner):
             events.append('destroy');self.api.meltype_tsf_service_state_destroy(owner)
         root=self.api.meltype_tsf_service_com_create(address,dispatch,destroyed)
         self.assertTrue(root);self.owned.remove(address)
-        @REPLY
+        @self.checked(REPLY)
         def parsed(owner,data,length):
             events.append('reply');release(root)
             self.assertEqual(self.live(),self.before+1);return 1
@@ -783,5 +795,78 @@ class StateTests(unittest.TestCase):
             self.assertEqual(events,['reply','destroy']);self.assertEqual(self.live(),self.before)
         finally:
             if 'reply' not in events:release(root)
+    def focus(self,state,host,event=-1,document=None,commit=None,resume=None,notice=None,lifetime=None):
+        return self.api.meltype_tsf_service_focus(c.addressof(state),self.worker,lifetime or c.byref(host.context),c.byref(host.sink),document,event,123,
+            commit or FOCUS_COMMIT(lambda *_:1),resume or TOGGLE(lambda *_:None),notice or CORE_NOTICE(lambda *_:None))
+    def test_focus_native_flags_reset_and_hello_publication(self):
+        state=self.create();host=SubscriptionHost();events=[];state.direct_word=True
+        resume=TOGGLE(lambda owner:events.append(('resume',owner,state.direct_word,state.caret_moved)))
+        notice=CORE_NOTICE(lambda owner,op,value:events.append(('notice',owner,op,value,state.direct_word,state.caret_moved)))
+        self.assertEqual(self.focus(state,host,resume=resume,notice=notice),0)
+        self.assertEqual(events,[('resume',123,True,False),('notice',123,0,1,False,True)])
+        self.assertTrue(state.server_active);self.assertEqual(state.focus_epoch,1);host.verify(self)
+    def test_focus_native_edit_binding_and_disabled_hello_skip(self):
+        state=self.create();host=SubscriptionHost();state.disabled=True;events=[]
+        self.assertEqual(self.focus(state,host,document=c.byref(host.document_manager),notice=CORE_NOTICE(lambda *_:events.append(1))),0)
+        self.assertTrue(state.edit_subscription);self.assertEqual(state.edit_context,c.addressof(host.context))
+        self.assertEqual(events,[]);self.assertFalse(state.transport)
+        self.edit_sink(state,host,False);host.verify(self)
+    def test_focus_native_sync_failure_queues_async_before_resume(self):
+        state=self.create();host=SubscriptionHost();state.disabled=True;state.composition=123;state.direct_word=True;events=[]
+        @self.checked(FOCUS_COMMIT)
+        def commit(owner,mode):events.append(('commit',owner,mode,state.direct_word));return 0
+        @self.checked(TOGGLE)
+        def resume(owner):events.append(('resume',owner,state.direct_word));state.composition=None
+        self.assertEqual(self.focus(state,host,commit=commit,resume=resume),0)
+        self.assertEqual(events,[('commit',123,0,True),('commit',123,1,True),('resume',123,True)])
+        self.assertFalse(state.direct_word);self.assertTrue(state.caret_moved);host.verify(self)
+    def test_focus_native_nested_focus_keeps_new_state(self):
+        state=self.create();host=SubscriptionHost();state.disabled=True;events=[]
+        @self.checked(TOGGLE)
+        def resume(owner):
+            events.append('outer')
+            self.assertEqual(self.focus(state,host,resume=TOGGLE(lambda _:events.append('inner'))),0)
+            state.direct_word=True;state.caret_moved=False
+        self.assertEqual(self.focus(state,host,resume=resume),0)
+        self.assertEqual(events,['outer','inner']);self.assertEqual(state.focus_epoch,2)
+        self.assertTrue(state.direct_word);self.assertFalse(state.caret_moved);host.verify(self)
+    def test_focus_native_stopping_document_is_inert(self):
+        state=self.create();host=SubscriptionHost();events=[]
+        for field,value in [('deactivated',True),('shutdown_phase',1)]:
+            setattr(state,field,value)
+            self.assertEqual(self.focus(state,host,resume=TOGGLE(lambda _:events.append(1))),0)
+            setattr(state,field,0)
+        self.assertEqual(events,[]);self.assertEqual(state.focus_epoch,0);self.assertFalse(state.transport);host.verify(self)
+    def test_focus_native_foreground_preserves_document_state(self):
+        state=self.create();host=SubscriptionHost();state.direct_word=True;events=[]
+        for event in [1,0]:self.assertEqual(self.focus(state,host,event=event,resume=TOGGLE(lambda _:events.append(1))),0)
+        self.assertEqual(events,[]);self.assertTrue(state.direct_word);self.assertFalse(state.caret_moved)
+        self.assertEqual(state.focus_epoch,0);self.assertFalse(state.transport);host.verify(self)
+    def test_focus_native_lifetime_pins_state_after_resume_releases_caller(self):
+        state=self.create();address=c.addressof(state);host=SubscriptionHost();state.disabled=True;events=[]
+        dispatch=DISPATCH(lambda *_:0)
+        @self.checked(DESTROY)
+        def destroyed(owner):events.append('destroy');self.api.meltype_tsf_service_state_destroy(owner)
+        root=self.api.meltype_tsf_service_com_create(address,dispatch,destroyed);self.assertTrue(root);self.owned.remove(address)
+        @self.checked(TOGGLE)
+        def resume(owner):
+            events.append('resume');release(root);self.assertEqual(self.live(),self.before+1)
+        try:
+            self.assertEqual(self.focus(state,host,lifetime=root,resume=resume),0)
+            self.assertEqual(events,['resume','destroy']);self.assertEqual(self.live(),self.before)
+        finally:
+            if 'resume' not in events:release(root)
+    def test_focus_native_invalid_arguments_preserve_state(self):
+        state=self.create();host=SubscriptionHost();address=c.addressof(state);before=c.string_at(address,c.sizeof(State))
+        for data,worker,lifetime,sink,document,event,commit,resume in [
+            (None,self.worker,c.byref(host.context),None,None,-1,FOCUS_COMMIT(lambda *_:1),TOGGLE(lambda *_:None)),
+            (address,None,c.byref(host.context),None,None,-1,FOCUS_COMMIT(lambda *_:1),TOGGLE(lambda *_:None)),
+            (address,self.worker,None,None,None,-1,FOCUS_COMMIT(lambda *_:1),TOGGLE(lambda *_:None)),
+            (address,self.worker,c.byref(host.context),None,c.byref(host.document_manager),-1,FOCUS_COMMIT(lambda *_:1),TOGGLE(lambda *_:None)),
+            (address,self.worker,c.byref(host.context),None,None,2,FOCUS_COMMIT(lambda *_:1),TOGGLE(lambda *_:None)),
+            (address,self.worker,c.byref(host.context),None,None,-1,FOCUS_COMMIT(),TOGGLE(lambda *_:None)),
+            (address,self.worker,c.byref(host.context),None,None,-1,FOCUS_COMMIT(lambda *_:1),TOGGLE())]:
+            self.assertEqual(self.api.meltype_tsf_service_focus(data,worker,lifetime,sink,document,event,None,commit,resume,CORE_NOTICE()),HR(0x80070057).value)
+        self.assertEqual(c.string_at(address,c.sizeof(State)),before);host.verify(self)
 if __name__=='__main__':unittest.main(argv=[sys.argv[0]],verbosity=2,failfast=True)
 

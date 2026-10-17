@@ -550,6 +550,11 @@ void meltype_tsf_service_clear_resume(void *state);
 /* TSF-thread edit subscription replacement. Lifetime pins the service/state;
    document and edit sink are borrowed SDK interfaces. Null document detaches.
    Reentrant replacement/end invalidates and cleans up a late subscription. */
+/* Native focus actions. Event -1=document,0=foreground loss,1=foreground gain.
+   Commit mode 0=sync keep caret,1=async keep caret; resume uses null context.
+   Borrowed lifetime pins state/context/callbacks. Sink is required for a nonnull
+   document; optional notice follows service_core. TSF thread, no unwinding. */
+int32_t meltype_tsf_service_focus(void *state,const char *worker,void *lifetime,void *sink,void *document,int32_t event,void *context,int32_t (*commit)(void *,int32_t),void (*resume)(void *),void (*notice)(void *,uint32_t,int32_t));
 /* Native request mediation with service state, thread metadata and owned transport.
    Reply bytes live only during callback. Zero callback result reports parse failure;
    notice is optional. Service IUnknown pins state/context/code through callbacks.

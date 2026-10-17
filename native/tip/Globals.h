@@ -204,14 +204,6 @@ struct RustAbandonCallbacks {
     void (__cdecl *request)(void*,const char*);
 };
 int RustAbandonComposition(TfClientId,const std::string&,const RustAbandonCallbacks&);
-struct RustFocusCallbacks {
-    void* owner;IUnknown* lifetime;unsigned long long* epoch;
-    unsigned int (__cdecl *read)(void*);
-    int (__cdecl *commit)(void*,int);
-    void (__cdecl *action)(void*,unsigned int,void*);
-};
-HRESULT RustDocumentFocus(ITfDocumentMgr*,const RustFocusCallbacks&);
-HRESULT RustForegroundFocus(bool,void*,const RustFocusCallbacks&);
 struct RustShutdownCallbacks {
     void* owner;IUnknown* lifetime;unsigned long long* epoch;unsigned int* phase;
     void** composition;void** context;void** manager;
@@ -263,6 +255,7 @@ void RustServiceSetSid(RustServiceState*,const char*);
 void RustServiceInitialize(RustServiceState*,unsigned int,int,int,const char*);
 void RustServiceClearResume(RustServiceState*);
 bool RustServiceExchange(RustServiceState*,IUnknown*,const std::string&,DWORD,bool,void*,int (__cdecl *)(void*,const unsigned char*,unsigned int),void (__cdecl *)(void*));
+HRESULT RustServiceFocus(RustServiceState*,IUnknown*,ITfTextEditSink*,ITfDocumentMgr*,int,void*,int (__cdecl *)(void*,int),void (__cdecl *)(void*));
 bool RustServiceCore(RustServiceState*,IUnknown*,bool);
 unsigned int RustServiceMode(const RustServiceState*);
 void RustServiceWriteOpen(RustServiceState*,bool);

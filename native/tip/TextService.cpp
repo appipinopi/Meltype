@@ -567,7 +567,7 @@ STDMETHODIMP TextService::Deactivate() {
 
 STDMETHODIMP TextService::OnSetFocus(ITfDocumentMgr* focus, ITfDocumentMgr*) {
 #ifdef MELTYPE_RUST_CORE
-    return RustDocumentFocus(focus,FocusCallbacks());
+    return ServiceFocus(focus,-1);
 #else
     // 別の入力欄に移ったら、変換中の内容は確定する (前の入力欄のキャレットは動かさない)。
     // できればその場で確定する (あとで確定すると、それまでに新しい入力欄で打ったキーが、前の入力欄の変換中の文字に入る)
@@ -586,7 +586,7 @@ STDMETHODIMP TextService::OnSetFocus(ITfDocumentMgr* focus, ITfDocumentMgr*) {
 
 STDMETHODIMP TextService::OnSetFocus(BOOL foreground) {
 #ifdef MELTYPE_RUST_CORE
-    return RustForegroundFocus(foreground!=FALSE,keyState_,FocusCallbacks());
+    return ServiceFocus(nullptr,foreground?1:0);
 #else
     if (!foreground) HideCandidates();
     // キーを受け取らなくなった (スレッドが前面でなくなった・ほかの IME に移った): 受け取ったキーを離したことは届かないかもしれないので忘れる
@@ -603,20 +603,10 @@ STDMETHODIMP TextService::OnSetFocus(BOOL foreground) {
 }
 
 #ifdef MELTYPE_RUST_CORE
-RustFocusCallbacks TextService::FocusCallbacks() {
-    return {
-        this,ServiceInterface<ITfTextInputProcessorEx>(),&focusEpoch_,
-        [](void* p)->unsigned int {auto* s=static_cast<TextService*>(p);return (s->composition_?1u:0u)|(s->disabled_?2u:0u)|((s->deactivated_ || s->shutdownPhase_!=0)?4u:0u);},
+HRESULT TextService::ServiceFocus(ITfDocumentMgr* document,int event) {
+    return RustServiceFocus(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),ServiceInterface<ITfTextEditSink>(),document,event,this,
         [](void* p,int mode)->int {auto* s=static_cast<TextService*>(p);try {if (!mode) return s->CommitNow(true)?1:0;s->CommitAsync(true);return 1;}catch (...) {return 0;}},
-        [](void* p,unsigned int op,void* doc) {auto* s=static_cast<TextService*>(p);try {switch (op) {
-            case 0:s->ResumeOrCommit(nullptr);break;
-            case 1:s->directEnglishWord_=false;s->caretMoved_=true;break;
-            case 2:s->ForgetSecretField();break;
-            case 3:s->HideCandidates();break;
-            case 4:s->AdviseTextEditSink(static_cast<ITfDocumentMgr*>(doc));break;
-            case 5:s->Hello();break;
-        }}catch (...) {}},
-    };
+        [](void* p) {try {static_cast<TextService*>(p)->ResumeOrCommit(nullptr);}catch (...) {}});
 }
 #endif
 
