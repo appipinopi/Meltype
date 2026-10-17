@@ -24,6 +24,7 @@ mod ranges;
 mod recovery;
 mod recovery_control;
 mod registration;
+mod shutdown;
 mod subscriptions;
 mod termination;
 use std::{

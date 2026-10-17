@@ -212,6 +212,15 @@ struct RustFocusCallbacks {
 };
 HRESULT RustDocumentFocus(ITfDocumentMgr*,const RustFocusCallbacks&);
 HRESULT RustForegroundFocus(bool,void*,const RustFocusCallbacks&);
+struct RustShutdownCallbacks {
+    void* owner;IUnknown* lifetime;unsigned long long* epoch;unsigned int* phase;
+    void** composition;void** context;void** manager;
+    void** modeSubscription;void** keySubscription;void** threadSubscription;
+    unsigned int (__cdecl *read)(void*);
+    void (__cdecl *action)(void*,unsigned int,unsigned int,void*);
+    void (__cdecl *request)(void*,const char*,unsigned int,void*,void*);
+};
+HRESULT RustShutdown(TfClientId,const std::string&,const RustShutdownCallbacks&);
 #endif
 
 // 文字コードの変換

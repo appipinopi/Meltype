@@ -420,6 +420,27 @@ int32_t meltype_tsf_document_focus(void *document, const MeltypeTsfFocusCallback
 /* Foreground loss hides candidates then forgets consumed keys. Foreground gain
    is inert. Same owner/callback lifetime contract; key_state is a native token. */
 int32_t meltype_tsf_foreground_focus(int32_t foreground, void *key_state, const MeltypeTsfFocusCallbacks *callbacks);
+typedef struct MeltypeTsfShutdownCallbacks {
+    void *owner,*lifetime;
+    uint64_t *epoch;
+    uint32_t *phase;
+    void **composition,**context,**manager;
+    void **mode_subscription,**key_subscription,**thread_subscription;
+    uint32_t (*read)(void *);
+    void (*action)(void *, uint32_t operation, uint32_t cookie, void *manager);
+    void (*request)(void *, const char *json, uint32_t cookie, void *context, void *target);
+} MeltypeTsfShutdownCallbacks;
+/* TSF thread, distinct writable owned COM/token slots; epoch/phase/storage/code
+   survive while lifetime is retained. Callbacks never throw. metadata={sid:string}.
+   phase=0 active,1 stopping,2 stopped; activation resets phase and advances epoch.
+   read bit0 disabled. action 0 mark deactivated,1 clear resume,2 clear field cache,
+   3 end abandoned,4 close transport,5 drop candidates,6 unadvise edit,7 remove and
+   detach language bar(manager),8 reset client,9 end composition(cookie).
+   request applies commit reply only to matching context/target; ignores close.
+   Deactivation/phase!=0 must make document-focus read report ended.
+   Reentrant/repeated shutdown is inert; reactivation supersedes remaining cleanup.
+   A delayed SYNC edit is disabled before return. Returns HRESULT. */
+int32_t meltype_tsf_shutdown(uint32_t client, const char *metadata, const MeltypeTsfShutdownCallbacks *callbacks);
 #endif
 #ifdef __cplusplus
 }

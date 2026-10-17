@@ -255,6 +255,10 @@ STDMETHODIMP_(ULONG) TextService::Release() {
 STDMETHODIMP TextService::Activate(ITfThreadMgr* threadMgr, TfClientId clientId) { return ActivateEx(threadMgr, clientId, 0); }
 
 STDMETHODIMP TextService::ActivateEx(ITfThreadMgr* threadMgr, TfClientId clientId, DWORD flags) {
+#ifdef MELTYPE_RUST_CORE
+    ++focusEpoch_;
+    shutdownPhase_=0;
+#endif
     threadMgr_ = threadMgr;
     threadMgr_->AddRef();
     clientId_ = clientId;
@@ -381,6 +385,42 @@ STDMETHODIMP TextService::ActivateEx(ITfThreadMgr* threadMgr, TfClientId clientI
 }
 
 STDMETHODIMP TextService::Deactivate() {
+#ifdef MELTYPE_RUST_CORE
+    RustShutdownCallbacks callbacks={
+        this,static_cast<ITfTextInputProcessorEx*>(this),&focusEpoch_,&shutdownPhase_,
+        reinterpret_cast<void**>(&composition_),reinterpret_cast<void**>(&compositionContext_),reinterpret_cast<void**>(&threadMgr_),
+        &modeSubscription_,&keySubscription_,&threadSubscription_,
+        [](void* p)->unsigned int {return static_cast<TextService*>(p)->disabled_?1u:0u;},
+        [](void* p,unsigned int op,unsigned int ec,void* manager) {auto* s=static_cast<TextService*>(p);try {switch (op) {
+            case 0:s->deactivated_=true;break;
+            case 1:s->ClearResume();break;
+            case 2:s->ForgetSecretField();break;
+            case 3:s->EndAbandonedNow();break;
+            case 4:s->pipe_.Close();break;
+            case 5:s->candidates_.reset();break;
+            case 6:s->UnadviseTextEditSink();break;
+            case 7:{
+                auto* bar=s->langBar_;s->langBar_=nullptr;
+                if (!bar) break;
+                bar->Detach();
+                ITfLangBarItemMgr* items=nullptr;
+                if (manager) {
+                    HRESULT hr=static_cast<IUnknown*>(manager)->QueryInterface(IID_ITfLangBarItemMgr,reinterpret_cast<void**>(&items));
+                    if (SUCCEEDED(hr) && items && bar->Item()) items->RemoveItem(bar->Item());
+                }
+                if (items) items->Release();
+                bar->Release();break;
+            }
+            case 8:s->clientId_=TF_CLIENTID_NULL;break;
+            case 9:s->EndComposition(ec);break;
+        }}catch (...) {}},
+        [](void* p,const char* json,unsigned int ec,void* context,void* target) {auto* s=static_cast<TextService*>(p);try {
+            JsonValue reply;
+            if (s->Request(json,reply) && context && s->compositionContext_==context && s->composition_==target) s->Apply(ec,static_cast<ITfContext*>(context),reply);
+        }catch (...) {}},
+    };
+    return RustShutdown(clientId_,"{\"sid\":\""+sid_+"\"}",callbacks);
+#else
     TipLog(L"Deactivate");
     if (composition_ != nullptr && compositionContext_ != nullptr) {
         // 確定してから終わる
@@ -468,6 +508,7 @@ STDMETHODIMP TextService::Deactivate() {
     threadMgr_ = nullptr;
     clientId_ = TF_CLIENTID_NULL;
     return S_OK;
+#endif
 }
 
 // ---- フォーカス ----
@@ -513,7 +554,7 @@ STDMETHODIMP TextService::OnSetFocus(BOOL foreground) {
 RustFocusCallbacks TextService::FocusCallbacks() {
     return {
         this,static_cast<ITfTextInputProcessorEx*>(this),&focusEpoch_,
-        [](void* p)->unsigned int {auto* s=static_cast<TextService*>(p);return (s->composition_?1u:0u)|(s->disabled_?2u:0u)|(s->deactivated_?4u:0u);},
+        [](void* p)->unsigned int {auto* s=static_cast<TextService*>(p);return (s->composition_?1u:0u)|(s->disabled_?2u:0u)|((s->deactivated_ || s->shutdownPhase_!=0)?4u:0u);},
         [](void* p,int mode)->int {auto* s=static_cast<TextService*>(p);try {if (!mode) return s->CommitNow(true)?1:0;s->CommitAsync(true);return 1;}catch (...) {return 0;}},
         [](void* p,unsigned int op,void* doc) {auto* s=static_cast<TextService*>(p);try {switch (op) {
             case 0:s->ResumeOrCommit(nullptr);break;

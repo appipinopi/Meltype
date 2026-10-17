@@ -211,6 +211,18 @@ int wmain() {
     assert(nextDoc.text==beforeFocus && nextDoc.selectionStart==focusCaret && nextDoc.selectionEnd==focusCaret);
     assert(nextComposition.refs==0 && nextComposition.ended==endedBeforeFocus+1 && nextContext.refs==1);
     assert(nextDoc.ranges==1 && nextSelected.refs==1);
+    assert(service->OnTestKeyDown(nextDoc.context,'A',0,&eaten)==S_OK && eaten);
+    assert(service->OnKeyDown(nextDoc.context,'A',0,&eaten)==S_OK && eaten);
+    assert(nextComposition.refs==1);
+    const auto beforeShutdown=nextDoc.text;const auto endedBeforeShutdown=nextComposition.ended;
+    // Public Deactivate runs the production Rust shutdown adapter, final commit,
+    // close notification and cleanup without registering/activating this IME.
+    assert(service->Deactivate()==S_OK);
+    assert(nextDoc.text==beforeShutdown && nextComposition.refs==0 && nextComposition.ended==endedBeforeShutdown+1);
+    assert(nextContext.refs==1 && nextDoc.ranges==1 && nextSelected.refs==1);
+    assert(service->Deactivate()==S_OK);
+    assert(service->OnSetFocus(static_cast<ITfDocumentMgr*>(nullptr),nullptr)==S_OK);
+    assert(nextComposition.ended==endedBeforeShutdown+1 && nextDoc.text==beforeShutdown);
     service->Release();assert(g_locks==0);assert(SetKeyboardState(saved));
-    puts("Actual key edit/commit/termination/abandonment/focus: public TSF entry, packaged core, UTF-16 caret, kana preedit, shortcut/packet commit, host-terminated continuation, refused old field, replacement preedit and focus commit passed");
+    puts("Actual key edit/commit/termination/abandonment/focus/shutdown: public TSF entry, packaged core, UTF-16 caret, kana preedit, shortcut/packet commit, host-terminated continuation, refused old field, replacement preedit, focus commit and idempotent shutdown passed");
 }

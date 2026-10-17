@@ -45,11 +45,20 @@ pub unsafe extern "C" fn meltype_tsf_document_focus(
         if c.epoch.is_null() {
             return E_INVALIDARG;
         }
+        if c.lifetime.is_null() {
+            return E_INVALIDARG;
+        }
+        let before = c.epoch.read();
+        let owner = IUnknown::from_raw_borrowed(&c.lifetime).cloned().unwrap();
+        if c.epoch.read() != before {
+            return S_OK;
+        }
+        if (c.read)(c.owner) & 4 != 0 || c.epoch.read() != before {
+            return S_OK;
+        }
         let epoch = c.epoch.read().wrapping_add(1);
         c.epoch.write(epoch);
-        let Some(_owner) = IUnknown::from_raw_borrowed(&c.lifetime).cloned() else {
-            return E_INVALIDARG;
-        };
+        let _owner = owner;
         if !current(&c, epoch) {
             return S_OK;
         }
