@@ -285,12 +285,29 @@ fn snippets_tab_and_private_learning() {
     assert!(s.raw().is_empty());
 }
 #[test]
-fn protected_spans_survive_explicit_transforms() {
+fn protected_spans_preserve_automatic_text_and_honor_explicit_width() {
     let raw = "https://example.com/a 日本語 @name C:\\foo\\bar";
     let spans = protection::scan(raw);
     assert_eq!(spans.len(), 3);
-    let mut s = Session::default();
-    type_text(&mut s, "https://example.com/a");
-    s.key(0x78, 0, 0);
-    assert_eq!(s.commit().commits[0].text, "https://example.com/a");
+    let mut automatic = Session::default();
+    type_text(&mut automatic, "https://example.com/a");
+    assert_eq!(automatic.commit().commits[0].text, "https://example.com/a");
+    // Upstream CompositionText.Display explicitly applies width/case to Raw;
+    // protection is an automatic-conversion policy, not a veto of F9/F10.
+    let mut explicit = Session::default();
+    type_text(&mut explicit, "https://example.com/a");
+    explicit.key(0x78, 0, 0);
+    assert_eq!(
+        explicit.commit().commits[0].text,
+        "ｈｔｔｐｓ：／／ｅｘａｍｐｌｅ．ｃｏｍ／ａ"
+    );
+    let mut uppercase = Session::default();
+    uppercase
+        .settings
+        .set("SigilWordsDirect", json!(false))
+        .unwrap();
+    type_text(&mut uppercase, "@name");
+    uppercase.key(0x79, 0, 0);
+    uppercase.key(0x79, 0, 0);
+    assert_eq!(uppercase.commit().commits[0].text, "@NAME");
 }

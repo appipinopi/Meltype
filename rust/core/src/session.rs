@@ -1423,6 +1423,14 @@ impl Session {
                 result.consumed = vk == 0x20;
                 result
             }
+            0x09 if !self.is_converting()
+                && self.function_key == 0
+                && !crate::protection::scan(&self.raw).is_empty() =>
+            {
+                let mut result = self.commit();
+                result.consumed = false;
+                result
+            }
             0x09 if !self.raw.is_empty() && !self.is_converting() => {
                 if let Some(suggestion) = self.language_suggestion() {
                     self.explicit = Some(suggestion);
@@ -1557,6 +1565,10 @@ impl Session {
                         0x76 => romaji::katakana(&reading),
                         _ => crate::kana::halfwidth(&romaji::katakana(&reading)),
                     }
+                } else if vk == 0x78 {
+                    crate::kana::fullwidth(&raw)
+                } else if vk == 0x79 {
+                    raw.clone()
                 } else {
                     crate::protection::transform(&raw, |part| match vk {
                         0x75 => romaji::hiragana(part, true),

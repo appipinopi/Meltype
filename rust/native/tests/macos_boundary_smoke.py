@@ -79,3 +79,15 @@ with tempfile.TemporaryDirectory(prefix="meltype-macos-converter-fallback-") as 
 print("macOS missing-converter complete-reading fallback passed")
 
 api.meltype_init(None,None,None)
+
+with tempfile.TemporaryDirectory(prefix="meltype-macos-explicit-") as directory:
+    Path(directory,"config.json").write_text('{"SigilWordsDirect":false,"LiveConversion":false}',encoding="utf-8")
+    for raw,vk,expected in [("kyouha「@kuraido」ashita",9,"きょうは「@kuraido」あした"),("@kuraido",0x78,"＠ｋｕｒａｉｄｏ")]:
+        handle=api.meltype_macos_create_at(directory.encode())
+        try:
+            for ch in raw:result(api.meltype_macos_handle_key(handle,ord(ch.upper()) if ch.isascii() and ch.isalpha() else 7,ord(ch),0,None,None))
+            actual=result(api.meltype_macos_handle_key(handle,vk,0,0,None,None))
+            if vk==0x78:actual=result(api.meltype_macos_handle_key(handle,13,0,0,None,None))
+            assert actual["view"] is None and [edit["text"] for edit in actual["commits"]]==[expected],actual
+        finally:api.meltype_destroy(handle)
+print("macOS mixed-protection Tab and explicit F9 fixtures passed")
