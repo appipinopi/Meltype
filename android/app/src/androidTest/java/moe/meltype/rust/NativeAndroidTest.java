@@ -14,6 +14,8 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.inputmethod.BaseInputConnection;
 import android.widget.Button;
+import android.widget.EditText;
+import android.widget.Switch;
 import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -34,6 +36,37 @@ import static org.junit.Assert.*;
 /** Runs on Android's real framework, without registering or activating an IME. */
 @RunWith(AndroidJUnit4.class)
 public final class NativeAndroidTest {
+    private static final class SettingsHarness {
+        final long session;
+        final LinearLayout body;
+        final SettingsPage form;
+        JSONObject last;
+        SettingsHarness(long session) {
+            this.session=session;
+            Context themed=new ContextThemeWrapper(context(),android.R.style.Theme_Material_Light_NoActionBar);
+            body=new LinearLayout(themed);body.setOrientation(LinearLayout.VERTICAL);
+            form=new SettingsPage(themed,body,operation->{try{perform(operation);}catch(Exception e){throw new AssertionError(e);}});
+        }
+        JSONObject checked(String text) throws Exception {
+            JSONObject value=new JSONObject(text);assertFalse(value.toString(),value.has("error"));return value;
+        }
+        void show(int page) throws Exception {form.render(checked(Native.settingsPage(session,page)));}
+        void perform(JSONObject operation) throws Exception {
+            last=checked(Native.settingsAction(session,operation.toString(),form.values(operation).toString()));
+            if(last.has("edit"))form.edit(last.getJSONObject("edit"));
+            if(last.has("page"))show(last.getInt("page"));
+        }
+        EditText field(String hint) {
+            for(int i=0;i<body.getChildCount();i++)if(body.getChildAt(i) instanceof EditText edit&&hint.contentEquals(edit.getHint()))return edit;
+            throw new AssertionError("missing field: "+hint);
+        }
+        void press(String label) {
+            for(int i=0;i<body.getChildCount();i++)if(body.getChildAt(i) instanceof Button button&&label.contentEquals(button.getText())) {
+                assertTrue(button.performClick());return;
+            }
+            throw new AssertionError("missing settings button: "+label);
+        }
+    }
     private interface Checked {void run() throws Exception;}
     private static void ui(Checked action) throws Throwable {
         AtomicReference<Throwable> failure=new AtomicReference<>();
@@ -221,6 +254,35 @@ public final class NativeAndroidTest {
             assertTrue((service.intents.get(0).getFlags()&Intent.FLAG_ACTIVITY_NEW_TASK)!=0);
             Native.startInput(profile.session,1,0);service.editor=new Editor();service.editor.onRead=()->Native.startInput(profile.session,0x81,0);
             press(root,"a");assertEquals("",service.editor.text.toString());assertEquals(3,Native.editorFlags(profile.session));assertEquals(1,service.editor.reads);
+        }
+    });}
+    @Test public void settingsWidgetsDispatchRustPagesAndPersistEdits() throws Throwable {ui(()->{
+        try(Profile profile=new Profile()) {
+            SettingsHarness settings=new SettingsHarness(profile.session);
+            for(int page=0;page<6;page++){settings.show(page);assertTrue(settings.body.getChildCount()>0);}
+            settings.show(0);int toggles=0;
+            for(int i=0;i<settings.body.getChildCount();i++)if(settings.body.getChildAt(i) instanceof Switch toggle) {
+                toggles++;if("予測候補".contentEquals(toggle.getText())){toggle.setChecked(true);assertTrue(toggle.performClick());}
+            }
+            assertEquals(13,toggles);assertFalse(new JSONObject(Native.control(profile.session,"{\"op\":\"settings_get\"}")).getBoolean("PredictiveCandidates"));
+            settings.field("定型文の開始記号").setText(";");settings.press("開始記号を保存");
+            assertEquals(";",new JSONObject(Native.control(profile.session,"{\"op\":\"settings_get\"}")).getString("SnippetMark"));
+            settings.show(1);settings.field("読み（ひらがな）").setText("めるたいぷ");settings.field("単語").setText("Meltype😀");settings.press("登録");
+            assertEquals("Meltype😀",new JSONObject(Native.control(profile.session,"{\"op\":\"dictionary_list\"}")).getJSONArray("めるたいぷ").getString(0));
+            settings.press("この単語を削除");JSONObject dictionary=new JSONObject(Native.control(profile.session,"{\"op\":\"dictionary_list\"}"));assertTrue(!dictionary.has("めるたいぷ")||dictionary.getJSONArray("めるたいぷ").length()==0);
+            settings.show(2);settings.field("呼び出し名").setText("mail");settings.field("展開する文字列").setText("一行目\n\"二行目\"😀");settings.press("保存");
+            settings.press("編集");assertEquals("mail",settings.field("呼び出し名").getText().toString());assertEquals("一行目\n\"二行目\"😀",settings.field("展開する文字列").getText().toString());
+            long reopened=Native.create(profile.root.getAbsolutePath());
+            try{assertEquals("一行目\n\"二行目\"😀",new JSONObject(Native.control(reopened,"{\"op\":\"snippets_list\"}")).getString("mail"));}finally{Native.destroy(reopened);}
+            settings.press("削除");assertFalse(new JSONObject(Native.control(profile.session,"{\"op\":\"snippets_list\"}")).has("mail"));
+            settings.show(3);settings.press("すべての学習を削除");assertEquals("削除",settings.last.getJSONObject("confirm").getString("positive"));
+            settings.perform(settings.last.getJSONObject("confirm").getJSONObject("action"));
+            settings.show(4);settings.field("プロファイル名").setText("テスト");settings.press("新規作成");settings.press("テスト");assertEquals("テスト",settings.field("プロファイル名").getText().toString());
+            settings.press("切り替え");assertEquals("テスト",new JSONObject(Native.control(profile.session,"{\"op\":\"settings_get\"}")).getString("ActiveProfile"));
+            settings.show(5);settings.press("バックアップを保存");assertTrue(settings.last.getJSONObject("pick").getBoolean("output"));
+            settings.press("バックアップを検査・復元");assertFalse(settings.last.getJSONObject("pick").getBoolean("output"));
+            assertTrue(new JSONObject(Native.settingsAction(profile.session,"{\"action\":\"dictionary_add\"}","{}")).has("error"));
+            assertTrue(new JSONObject(Native.settingsAction(profile.session,"broken","{}")).has("error"));
         }
     });}
     @Test public void wrappedLabelsStayWithinRowsAcrossWidthsAndFontScale() throws Throwable {ui(()->{

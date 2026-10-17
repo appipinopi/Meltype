@@ -10,14 +10,14 @@ import android.widget.*;
 import org.json.*;
 import java.io.*;
 import java.nio.file.Files;
-import java.util.Iterator;
 
-/** Android widgets and document picker; validation and persistence live in Rust. */
+/** Generic Android widgets/document bridge; page definitions and actions live in Rust. */
 public final class SettingsActivity extends Activity {
     private long session;
     private LinearLayout body;
     private TextView status;
     private String documentOperation;
+    private SettingsPage form;
     private static final int DOCUMENT = 1;
 
     @Override public void onCreate(Bundle state) {
@@ -36,6 +36,7 @@ public final class SettingsActivity extends Activity {
                 new String[]{"入力設定","ユーザー辞書","定型文","学習","プロファイル","バックアップ・診断"}));
         root.addView(navigation);
         body = new LinearLayout(this); body.setOrientation(LinearLayout.VERTICAL); root.addView(body);
+        form = new SettingsPage(this,body,operation -> action(() -> execute(operation,form.values(operation))));
         navigation.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
             public void onNothingSelected(AdapterView<?> parent) {}
             public void onItemSelected(AdapterView<?> parent,android.view.View view,int position,long id) { show(position); }
@@ -55,111 +56,28 @@ public final class SettingsActivity extends Activity {
         catch (Exception error) { status.setText("エラー: " + error.getMessage()); }
     }
     private interface RunnableChecked { void run() throws Exception; }
-    private void button(String label,RunnableChecked action) {
-        Button button = new Button(this); button.setText(label); button.setOnClickListener(v -> action(action)); body.addView(button);
+    private static JSONObject checked(String json) throws JSONException {
+        JSONObject result = new JSONObject(json);
+        if (result.has("error")) throw new JSONException(result.getString("error"));
+        return result;
     }
-    private void label(String value) { TextView text = new TextView(this); text.setText(value); text.setTextIsSelectable(true); body.addView(text); }
-    private EditText field(String hint) { EditText edit = new EditText(this); edit.setHint(hint); body.addView(edit); return edit; }
+    private void execute(JSONObject operation,JSONObject values) throws JSONException {
+        JSONObject result = checked(Native.settingsAction(session,operation.toString(),values.toString()));
+        if (result.has("edit")) form.edit(result.getJSONObject("edit"));
+        if (result.has("pick")) {
+            JSONObject pick = result.getJSONObject("pick"); pick(pick.getString("operation"),pick.getBoolean("output"));
+        }
+        if (result.has("confirm")) {
+            JSONObject confirm = result.getJSONObject("confirm");
+            new AlertDialog.Builder(this).setMessage(confirm.getString("message"))
+                .setNegativeButton("キャンセル",null).setPositiveButton(confirm.getString("positive"),
+                    (dialog,which) -> action(() -> execute(confirm.getJSONObject("action"),form.values()))).show();
+        }
+        if (result.has("page")) show(result.getInt("page"));
+    }
     private void show(int page) {
-        body.removeAllViews(); status.setText("");
-        action(() -> {
-            switch (page) {
-                case 0 -> settings();
-                case 1 -> dictionary();
-                case 2 -> snippets();
-                case 3 -> learning();
-                case 4 -> profiles();
-                default -> backups();
-            }
-        });
-    }
-    private void settings() throws JSONException {
-        JSONObject settings = request("settings_get");
-        String[][] toggles = {
-            {"Enabled","入力を有効にする"}, {"LearningEnabled","入力から学習する"},
-            {"PredictiveCandidates","予測候補"}, {"TranslationCandidates","英訳候補"},
-            {"ShowCandidateMeanings","候補の意味"}, {"ShowTypedKeys","入力したキーを表示"},
-            {"CorrectTypos","書き間違いの提案"}, {"AutoCorrectAfterCommit","次の語に合わせて確定後に訂正"}, {"SpaceAroundEnglish","英語の前後に空白"},
-            {"SlashAsMiddleDot","スラッシュを中点にする"}, {"TabConversion","Tabで変換"},
-            {"ContinueAfterConversion","変換後も入力を続ける"}, {"SeparateKeyRoles","変換キーの役割を分ける"}
-        };
-        for (String[] option : toggles) {
-            Switch toggle = new Switch(this); toggle.setText(option[1]); toggle.setChecked(settings.optBoolean(option[0]));
-            toggle.setOnCheckedChangeListener((button,checked) -> action(() -> {
-                JSONObject r = new JSONObject().put("op","settings_set").put("name",option[0]).put("value",checked);
-                JSONObject result = new JSONObject(Native.control(session,r.toString()));
-                if (result.has("error")) throw new JSONException(result.getString("error"));
-            })); body.addView(toggle);
-        }
-        label("ソフトキーボードはローマ字入力です。JISかな入力は外付けキーボードで使用できます。");
-        EditText mark = field("定型文の開始記号"); mark.setText(settings.optString("SnippetMark"));
-        button("開始記号を保存",() -> request("settings_set","name","SnippetMark","value",mark.getText().toString()));
-    }
-    private void dictionary() throws JSONException {
-        EditText reading = field("読み（ひらがな）"), word = field("単語");
-        button("登録",() -> { request("dictionary_set","reading",reading.getText().toString(),"word",word.getText().toString()); show(1); });
-        button("辞書を取り込む",() -> pick("dictionary_import",false));
-        button("辞書を書き出す",() -> pick("dictionary_export",true));
-        JSONObject entries = request("dictionary_list");
-        Iterator<String> keys = entries.keys();
-        while (keys.hasNext()) {
-            String key = keys.next(); JSONArray words = entries.getJSONArray(key);
-            for (int i=0;i<words.length();i++) {
-                String value = words.getString(i); label(key + " → " + value);
-                button("この単語を削除",() -> { request("dictionary_remove","reading",key,"word",value); show(1); });
-            }
-        }
-    }
-    private void snippets() throws JSONException {
-        EditText name = field("呼び出し名"), text = field("展開する文字列"); text.setMinLines(2);
-        button("保存",() -> { request("snippet_set","name",name.getText().toString(),"text",text.getText().toString()); show(2); });
-        JSONObject entries = request("snippets_list"); Iterator<String> keys = entries.keys();
-        while (keys.hasNext()) {
-            String key = keys.next(), value = entries.getString(key); label(key + " → " + value);
-            button("編集",() -> { name.setText(key); text.setText(value); });
-            button("削除",() -> { request("snippet_remove","name",key); show(2); });
-        }
-    }
-    private void learning() throws JSONException {
-        JSONObject learned = request("learning_list");
-        JSONObject languages = learned.getJSONObject("languages");
-        label("覚えた入力言語");
-        Iterator<String> names = languages.keys();
-        while (names.hasNext()) {
-            String name = names.next(); JSONObject entry = languages.getJSONObject(name);
-            label(name + " → " + (entry.optBoolean("english") ? "英語" : "日本語") +
-                    (entry.optBoolean("active",true) ? "" : "（もう一度英語で確定すると有効）"));
-        }
-        label("覚えた変換");
-        JSONObject conversions = learned.getJSONObject("conversions"); names = conversions.keys();
-        while (names.hasNext()) { String name = names.next(); label(name + " → " + conversions.getString(name)); }
-        label("覚えたフレーズ");
-        JSONArray phrases = learned.getJSONArray("phrases");
-        for (int i=0;i<phrases.length();i++) {
-            JSONObject phrase = phrases.getJSONObject(i);
-            label(phrase.getString("reading") + " → " + phrase.getString("text"));
-        }
-        EditText key = field("削除する学習キー");
-        button("指定した学習を削除",() -> { request("learning_remove","key",key.getText().toString()); show(3); });
-        button("すべての学習を削除",() -> new AlertDialog.Builder(this).setMessage("学習した内容をすべて削除しますか？")
-                .setNegativeButton("キャンセル",null).setPositiveButton("削除",(dialog,which) -> action(() -> { request("learning_clear"); show(3); })).show());
-    }
-    private void profiles() throws JSONException {
-        label("使用中: " + request("settings_get").optString("ActiveProfile"));
-        EditText name = field("プロファイル名");
-        button("新規作成",() -> { request("profile_add","name",name.getText().toString()); show(4); });
-        button("切り替え",() -> { request("profile_switch","name",name.getText().toString()); show(4); });
-        button("削除",() -> { request("profile_delete","name",name.getText().toString()); show(4); });
-        JSONArray available = request("settings_get").getJSONArray("Profiles");
-        for (int i=0;i<available.length();i++) {
-            String profileName = available.getJSONObject(i).getString("Name");
-            button(profileName,() -> name.setText(profileName));
-        }
-    }
-    private void backups() throws JSONException {
-        button("バックアップを保存",() -> pick("backup_create",true));
-        button("バックアップを検査・復元",() -> pick("backup_restore",false));
-        label(request("diagnostics").toString(2));
+        form.clear(); status.setText("");
+        action(() -> form.render(checked(Native.settingsPage(session,page))));
     }
     private void pick(String operation,boolean output) {
         documentOperation = operation;

@@ -1,0 +1,549 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 appipinopi
+//! Settings page content and actions. Java only renders these nodes and forwards
+//! field values; all page-specific control requests are constructed here.
+use super::*;
+use serde_json::{json, Value};
+
+type Result<T> = std::result::Result<T, String>;
+
+fn request(handle: jlong, value: Value) -> Result<Value> {
+    let input = CString::new(value.to_string()).map_err(|e| e.to_string())?;
+    let output = unsafe { take(meltype_control(handle as *mut c_void, input.as_ptr())) }
+        .ok_or("設定を読み込めません")?;
+    let value: Value = serde_json::from_str(&output).map_err(|e| e.to_string())?;
+    if let Some(error) = value.get("error") {
+        return Err(error.as_str().unwrap_or("設定の操作に失敗しました").into());
+    }
+    Ok(value)
+}
+fn label(nodes: &mut Vec<Value>, text: impl Into<String>) {
+    nodes.push(json!({"type":"label","text":text.into()}));
+}
+fn field(nodes: &mut Vec<Value>, id: &str, hint: &str, value: &str, lines: i32) {
+    nodes.push(json!({"type":"field","id":id,"hint":hint,"value":value,"lines":lines}));
+}
+fn button(nodes: &mut Vec<Value>, text: &str, action: Value) {
+    nodes.push(json!({"type":"button","text":text,"action":action}));
+}
+const TOGGLES: &[(&str, &str)] = &[
+    ("Enabled", "入力を有効にする"),
+    ("LearningEnabled", "入力から学習する"),
+    ("PredictiveCandidates", "予測候補"),
+    ("TranslationCandidates", "英訳候補"),
+    ("ShowCandidateMeanings", "候補の意味"),
+    ("ShowTypedKeys", "入力したキーを表示"),
+    ("CorrectTypos", "書き間違いの提案"),
+    ("AutoCorrectAfterCommit", "次の語に合わせて確定後に訂正"),
+    ("SpaceAroundEnglish", "英語の前後に空白"),
+    ("SlashAsMiddleDot", "スラッシュを中点にする"),
+    ("TabConversion", "Tabで変換"),
+    ("ContinueAfterConversion", "変換後も入力を続ける"),
+    ("SeparateKeyRoles", "変換キーの役割を分ける"),
+];
+fn page(handle: jlong, page: jint) -> Result<Value> {
+    let mut nodes = Vec::new();
+    match page {
+        0 => {
+            let settings = request(handle, json!({"op":"settings_get"}))?;
+            for (name, text) in TOGGLES {
+                nodes.push(json!({"type":"toggle","text":text,"checked":settings[name].as_bool().unwrap_or(false),"action":{"action":"toggle","name":name}}));
+            }
+            label(
+                &mut nodes,
+                "ソフトキーボードはローマ字入力です。JISかな入力は外付けキーボードで使用できます。",
+            );
+            field(
+                &mut nodes,
+                "mark",
+                "定型文の開始記号",
+                settings["SnippetMark"].as_str().unwrap_or(""),
+                1,
+            );
+            button(&mut nodes, "開始記号を保存", json!({"action":"mark"}));
+        }
+        1 => {
+            field(&mut nodes, "reading", "読み（ひらがな）", "", 1);
+            field(&mut nodes, "word", "単語", "", 1);
+            button(&mut nodes, "登録", json!({"action":"dictionary_add"}));
+            button(
+                &mut nodes,
+                "辞書を取り込む",
+                json!({"action":"pick","operation":"dictionary_import"}),
+            );
+            button(
+                &mut nodes,
+                "辞書を書き出す",
+                json!({"action":"pick","operation":"dictionary_export"}),
+            );
+            let entries = request(handle, json!({"op":"dictionary_list"}))?;
+            let entries = entries.as_object().ok_or("辞書の形式が正しくありません")?;
+            for (reading, words) in entries {
+                for word in words.as_array().ok_or("辞書の形式が正しくありません")? {
+                    let word = word.as_str().ok_or("辞書の形式が正しくありません")?;
+                    label(&mut nodes, format!("{reading} → {word}"));
+                    button(
+                        &mut nodes,
+                        "この単語を削除",
+                        json!({"action":"dictionary_remove","reading":reading,"word":word}),
+                    );
+                }
+            }
+        }
+        2 => {
+            field(&mut nodes, "name", "呼び出し名", "", 1);
+            field(&mut nodes, "text", "展開する文字列", "", 2);
+            button(&mut nodes, "保存", json!({"action":"snippet_save"}));
+            let entries = request(handle, json!({"op":"snippets_list"}))?;
+            for (name, text) in entries
+                .as_object()
+                .ok_or("定型文の形式が正しくありません")?
+            {
+                let text = text.as_str().ok_or("定型文の形式が正しくありません")?;
+                label(&mut nodes, format!("{name} → {text}"));
+                button(
+                    &mut nodes,
+                    "編集",
+                    json!({"action":"snippet_edit","name":name,"text":text}),
+                );
+                button(
+                    &mut nodes,
+                    "削除",
+                    json!({"action":"snippet_remove","name":name}),
+                );
+            }
+        }
+        3 => {
+            let learned = request(handle, json!({"op":"learning_list"}))?;
+            label(&mut nodes, "覚えた入力言語");
+            for (name, entry) in learned["languages"]
+                .as_object()
+                .ok_or("学習の形式が正しくありません")?
+            {
+                let language = if entry["english"].as_bool().unwrap_or(false) {
+                    "英語"
+                } else {
+                    "日本語"
+                };
+                let pending = if entry["active"].as_bool().unwrap_or(true) {
+                    ""
+                } else {
+                    "（もう一度英語で確定すると有効）"
+                };
+                label(&mut nodes, format!("{name} → {language}{pending}"));
+            }
+            label(&mut nodes, "覚えた変換");
+            for (name, text) in learned["conversions"]
+                .as_object()
+                .ok_or("学習の形式が正しくありません")?
+            {
+                label(
+                    &mut nodes,
+                    format!(
+                        "{name} → {}",
+                        text.as_str().ok_or("学習の形式が正しくありません")?
+                    ),
+                );
+            }
+            label(&mut nodes, "覚えたフレーズ");
+            for phrase in learned["phrases"]
+                .as_array()
+                .ok_or("学習の形式が正しくありません")?
+            {
+                label(
+                    &mut nodes,
+                    format!(
+                        "{} → {}",
+                        phrase["reading"]
+                            .as_str()
+                            .ok_or("学習の形式が正しくありません")?,
+                        phrase["text"]
+                            .as_str()
+                            .ok_or("学習の形式が正しくありません")?
+                    ),
+                );
+            }
+            field(&mut nodes, "key", "削除する学習キー", "", 1);
+            button(
+                &mut nodes,
+                "指定した学習を削除",
+                json!({"action":"learning_remove"}),
+            );
+            button(
+                &mut nodes,
+                "すべての学習を削除",
+                json!({"action":"learning_confirm"}),
+            );
+        }
+        4 => {
+            let settings = request(handle, json!({"op":"settings_get"}))?;
+            label(
+                &mut nodes,
+                format!(
+                    "使用中: {}",
+                    settings["ActiveProfile"].as_str().unwrap_or("")
+                ),
+            );
+            field(&mut nodes, "name", "プロファイル名", "", 1);
+            for (text, action) in [
+                ("新規作成", "profile_add"),
+                ("切り替え", "profile_switch"),
+                ("削除", "profile_delete"),
+            ] {
+                button(&mut nodes, text, json!({"action":action}));
+            }
+            for profile in settings["Profiles"]
+                .as_array()
+                .ok_or("プロファイルの形式が正しくありません")?
+            {
+                let name = profile["Name"]
+                    .as_str()
+                    .ok_or("プロファイルの形式が正しくありません")?;
+                button(
+                    &mut nodes,
+                    name,
+                    json!({"action":"profile_select","name":name}),
+                );
+            }
+        }
+        5 => {
+            button(
+                &mut nodes,
+                "バックアップを保存",
+                json!({"action":"pick","operation":"backup_create"}),
+            );
+            button(
+                &mut nodes,
+                "バックアップを検査・復元",
+                json!({"action":"pick","operation":"backup_restore"}),
+            );
+            let diagnostics = request(handle, json!({"op":"diagnostics"}))?;
+            label(
+                &mut nodes,
+                serde_json::to_string_pretty(&diagnostics).map_err(|e| e.to_string())?,
+            );
+        }
+        _ => return Err("設定ページが見つかりません".into()),
+    }
+    Ok(json!({"nodes":nodes}))
+}
+fn string<'a>(value: &'a Value, key: &str) -> Result<&'a str> {
+    value
+        .get(key)
+        .and_then(Value::as_str)
+        .ok_or_else(|| format!("入力項目がありません: {key}"))
+}
+fn action(handle: jlong, action: Value, fields: Value) -> Result<Value> {
+    let kind = string(&action, "action")?;
+    let (request, page) = match kind {
+        "toggle" => {
+            let name = string(&action, "name")?;
+            if !TOGGLES.iter().any(|(allowed, _)| name == *allowed) {
+                return Err("設定項目が見つかりません".into());
+            }
+            let value = fields["checked"]
+                .as_bool()
+                .ok_or("設定値が正しくありません")?;
+            (json!({"op":"settings_set","name":name,"value":value}), None)
+        }
+        "mark" => (
+            json!({"op":"settings_set","name":"SnippetMark","value":string(&fields,"mark")?}),
+            None,
+        ),
+        "dictionary_add" => (
+            json!({"op":"dictionary_set","reading":string(&fields,"reading")?,"word":string(&fields,"word")?}),
+            Some(1),
+        ),
+        "dictionary_remove" => (
+            json!({"op":"dictionary_remove","reading":string(&action,"reading")?,"word":string(&action,"word")?}),
+            Some(1),
+        ),
+        "snippet_save" => (
+            json!({"op":"snippet_set","name":string(&fields,"name")?,"text":string(&fields,"text")?}),
+            Some(2),
+        ),
+        "snippet_remove" => (
+            json!({"op":"snippet_remove","name":string(&action,"name")?}),
+            Some(2),
+        ),
+        "snippet_edit" => {
+            return Ok(
+                json!({"edit":{"name":string(&action,"name")?,"text":string(&action,"text")?}}),
+            )
+        }
+        "learning_remove" => (
+            json!({"op":"learning_remove","key":string(&fields,"key")?}),
+            Some(3),
+        ),
+        "learning_confirm" => {
+            return Ok(
+                json!({"confirm":{"message":"学習した内容をすべて削除しますか？","positive":"削除","action":{"action":"learning_clear"}}}),
+            )
+        }
+        "learning_clear" => (json!({"op":"learning_clear"}), Some(3)),
+        "profile_add" | "profile_switch" | "profile_delete" => {
+            (json!({"op":kind,"name":string(&fields,"name")?}), Some(4))
+        }
+        "profile_select" => return Ok(json!({"edit":{"name":string(&action,"name")?}})),
+        "pick" => {
+            let operation = string(&action, "operation")?;
+            let output = match operation {
+                "dictionary_export" | "backup_create" => true,
+                "dictionary_import" | "backup_restore" => false,
+                _ => return Err("ファイル操作が見つかりません".into()),
+            };
+            return Ok(json!({"pick":{"operation":operation,"output":output}}));
+        }
+        _ => return Err("設定操作が見つかりません".into()),
+    };
+    request_control(handle, request, page)
+}
+fn request_control(handle: jlong, input: Value, page: Option<i32>) -> Result<Value> {
+    request(handle, input)?;
+    Ok(match page {
+        Some(page) => json!({"page":page}),
+        None => json!({}),
+    })
+}
+fn reply(env: &mut JNIEnv, result: Result<Value>) -> jstring {
+    let value = result.unwrap_or_else(|error| json!({"error":error}));
+    env.new_string(value.to_string())
+        .map_or(std::ptr::null_mut(), JString::into_raw)
+}
+#[no_mangle]
+pub extern "system" fn Java_moe_meltype_rust_Native_settingsPage(
+    mut env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    number: jint,
+) -> jstring {
+    let result = std::panic::catch_unwind(|| page(handle, number))
+        .unwrap_or_else(|_| Err("設定画面の生成に失敗しました".into()));
+    reply(&mut env, result)
+}
+#[no_mangle]
+pub extern "system" fn Java_moe_meltype_rust_Native_settingsAction(
+    mut env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    input: JString,
+    fields: JString,
+) -> jstring {
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let input: String = env.get_string(&input).map_err(|e| e.to_string())?.into();
+        let fields: String = env.get_string(&fields).map_err(|e| e.to_string())?.into();
+        action(
+            handle,
+            serde_json::from_str(&input).map_err(|e| e.to_string())?,
+            serde_json::from_str(&fields).map_err(|e| e.to_string())?,
+        )
+    }))
+    .unwrap_or_else(|_| Err("設定操作に失敗しました".into()));
+    reply(&mut env, result)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    struct Profile {
+        handle: jlong,
+        directory: tempfile::TempDir,
+    }
+    impl Profile {
+        fn new() -> Self {
+            let directory = tempfile::tempdir().unwrap();
+            let path = CString::new(directory.path().to_str().unwrap()).unwrap();
+            let handle = unsafe { meltype_create_at(path.as_ptr()) as jlong };
+            assert_ne!(handle, 0);
+            Self { handle, directory }
+        }
+        fn act(&self, input: Value, fields: Value) -> Result<Value> {
+            action(self.handle, input, fields)
+        }
+    }
+    impl Drop for Profile {
+        fn drop(&mut self) {
+            meltype_destroy(self.handle as *mut c_void);
+        }
+    }
+    #[test]
+    fn settings_pages_actions_and_storage_roundtrip() {
+        let profile = Profile::new();
+        let h = profile.handle;
+        let original = request(h, json!({"op":"settings_get"})).unwrap()["ActiveProfile"].clone();
+        for number in 0..6 {
+            assert!(!page(h, number).unwrap()["nodes"]
+                .as_array()
+                .unwrap()
+                .is_empty());
+        }
+        let settings = page(h, 0).unwrap();
+        assert_eq!(
+            settings["nodes"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|n| n["type"] == "toggle")
+                .count(),
+            13
+        );
+        profile
+            .act(
+                json!({"action":"toggle","name":"PredictiveCandidates"}),
+                json!({"checked":false}),
+            )
+            .unwrap();
+        assert_eq!(
+            request(h, json!({"op":"settings_get"})).unwrap()["PredictiveCandidates"],
+            false
+        );
+        profile
+            .act(json!({"action":"mark"}), json!({"mark":";"}))
+            .unwrap();
+        assert_eq!(
+            request(h, json!({"op":"settings_get"})).unwrap()["SnippetMark"],
+            ";"
+        );
+        assert_eq!(
+            profile
+                .act(
+                    json!({"action":"dictionary_add"}),
+                    json!({"reading":"めるたいぷ","word":"Meltype😀"})
+                )
+                .unwrap()["page"],
+            1
+        );
+        let dictionary = page(h, 1).unwrap().to_string();
+        assert!(dictionary.contains("めるたいぷ → Meltype😀"));
+        profile
+            .act(
+                json!({"action":"dictionary_remove","reading":"めるたいぷ","word":"Meltype😀"}),
+                json!({}),
+            )
+            .unwrap();
+        assert!(!page(h, 1).unwrap().to_string().contains("Meltype😀"));
+        profile
+            .act(
+                json!({"action":"snippet_save"}),
+                json!({"name":"mail","text":"一行目\n\"二行目\"😀"}),
+            )
+            .unwrap();
+        let nodes = page(h, 2).unwrap();
+        let edit = nodes["nodes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|n| n["action"]["action"] == "snippet_edit")
+            .unwrap();
+        assert_eq!(
+            profile.act(edit["action"].clone(), json!({})).unwrap()["edit"]["text"],
+            "一行目\n\"二行目\"😀"
+        );
+        let path = CString::new(profile.directory.path().to_str().unwrap()).unwrap();
+        let reopened = unsafe { meltype_create_at(path.as_ptr()) as jlong };
+        assert_eq!(
+            request(reopened, json!({"op":"snippets_list"})).unwrap()["mail"],
+            "一行目\n\"二行目\"😀"
+        );
+        meltype_destroy(reopened as *mut c_void);
+        profile
+            .act(json!({"action":"snippet_remove","name":"mail"}), json!({}))
+            .unwrap();
+        assert!(request(h, json!({"op":"snippets_list"})).unwrap()["mail"].is_null());
+        profile
+            .act(json!({"action":"profile_add"}), json!({"name":"テスト"}))
+            .unwrap();
+        profile
+            .act(json!({"action":"profile_switch"}), json!({"name":"テスト"}))
+            .unwrap();
+        assert_eq!(
+            request(h, json!({"op":"settings_get"})).unwrap()["ActiveProfile"],
+            "テスト"
+        );
+        assert_eq!(
+            profile
+                .act(
+                    json!({"action":"profile_select","name":"テスト"}),
+                    json!({})
+                )
+                .unwrap()["edit"]["name"],
+            "テスト"
+        );
+        assert!(profile
+            .act(json!({"action":"profile_delete"}), json!({"name":"テスト"}))
+            .is_err());
+        profile
+            .act(json!({"action":"profile_switch"}), json!({"name":original}))
+            .unwrap();
+        profile
+            .act(json!({"action":"profile_delete"}), json!({"name":"テスト"}))
+            .unwrap();
+        profile
+            .act(
+                json!({"action":"learning_remove"}),
+                json!({"key":"missing"}),
+            )
+            .unwrap();
+        let confirmation = profile
+            .act(json!({"action":"learning_confirm"}), json!({}))
+            .unwrap();
+        assert_eq!(confirmation["confirm"]["positive"], "削除");
+        profile
+            .act(confirmation["confirm"]["action"].clone(), json!({}))
+            .unwrap();
+        assert!(
+            request(h, json!({"op":"learning_list"})).unwrap()["languages"]
+                .as_object()
+                .unwrap()
+                .is_empty()
+        );
+    }
+    #[test]
+    fn invalid_settings_actions_cannot_mutate_storage_or_choose_file_direction() {
+        let profile = Profile::new();
+        let before = request(profile.handle, json!({"op":"settings_get"})).unwrap();
+        for (operation, fields) in [
+            (
+                json!({"action":"toggle","name":"Profiles"}),
+                json!({"checked":true}),
+            ),
+            (
+                json!({"action":"toggle","name":"Enabled"}),
+                json!({"checked":"false"}),
+            ),
+            (
+                json!({"action":"dictionary_add"}),
+                json!({"reading":"める"}),
+            ),
+            (
+                json!({"action":"pick","operation":"learning_clear"}),
+                json!({}),
+            ),
+            (json!({"action":"unknown"}), json!({})),
+        ] {
+            assert!(profile.act(operation, fields).is_err());
+        }
+        assert_eq!(
+            before,
+            request(profile.handle, json!({"op":"settings_get"})).unwrap()
+        );
+        for (operation, output) in [
+            ("dictionary_import", false),
+            ("dictionary_export", true),
+            ("backup_create", true),
+            ("backup_restore", false),
+        ] {
+            let result = profile
+                .act(
+                    json!({"action":"pick","operation":operation}),
+                    json!({"output":!output}),
+                )
+                .unwrap();
+            assert_eq!(result["pick"]["operation"], operation);
+            assert_eq!(result["pick"]["output"], output);
+        }
+        assert!(page(profile.handle, -1).is_err());
+        assert!(page(profile.handle, 6).is_err());
+        assert!(page(0, 0).is_err());
+    }
+}

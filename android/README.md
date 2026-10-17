@@ -53,16 +53,18 @@ WidgetHostはSDKと同じメソッド形のテスト用ウィジェットをJVM�
 
 ## Androidフレームワーク上の検証（追加、実行結果はCIで確認）
 
-`NativeAndroidTest` は実際のAndroidウィジェット、Editable／BaseInputConnection、KeyEventを使う6テストです。キーボードの構造と候補クリック、変換→確定→Undo、UTF-16削除と選択保護、非公開欄、直接入力への代替、入力欄切替時の世代保護を確認します。IMEの登録・有効化や、他アプリへの入力は行いません。矢印イベントはテスト用InputConnectionが受け取ります。
+`NativeAndroidTest` は実際のAndroidウィジェット、Editable／BaseInputConnection、KeyEventを使う7テストです。キーボードの構造と候補クリック、変換→確定→Undo、UTF-16削除と選択保護、非公開欄、直接入力への代替、入力欄切替時の世代保護を確認します。IMEの登録・有効化や、他アプリへの入力は行いません。矢印イベントはテスト用InputConnectionが受け取ります。
 
 CIはAPI 35 x86_64の専用AVDを一時フォルダーに作り、明示した `emulator-5580` だけにアプリとテストAPKをインストールします。同じシリアルが使用中なら中止します。AVDと起動したエミュレータープロセスは終了時に片付けます。`android/tests/run-emulator.sh` はLinuxのAndroid SDK／KVMと、組み立て済みの両APKがあるCI向けです。通常の端末には使用しません。
 
-実行方法は `gradle -p android assembleDebug assembleDebugAndroidTest lintDebug --no-daemon`、続いて `bash android/tests/run-emulator.sh` です。SDKにはemulatorと `system-images;android-35;google_apis;x86_64` が必要です。`dist/android-emulator/` にJUnitの実行記録、エミュレーター／logcat、Android自身で描画した `input-view.png`、SDK・ABI・画像寸法などの記録を保存します。6件の正常終了と3枚のPNG・測定記録を必須とし、0件・スキップ・クラッシュを成功とみなしません。この追加だけでは端末上での成功や元版との全UI一致を証明しません。
+実行方法は `gradle -p android assembleDebug assembleDebugAndroidTest lintDebug --no-daemon`、続いて `bash android/tests/run-emulator.sh` です。SDKにはemulatorと `system-images;android-35;google_apis;x86_64` が必要です。`dist/android-emulator/` にJUnitの実行記録、エミュレーター／logcat、Android自身で描画した `input-view.png`、SDK・ABI・画像寸法などの記録を保存します。7件の正常終了と3枚のPNG・測定記録を必須とし、0件・スキップ・クラッシュを成功とみなしません。この追加だけでは端末上での成功や元版との全UI一致を証明しません。
 
 テスト基盤は [AndroidJUnitRunner](https://developer.android.com/training/testing/instrumented-tests/androidx-test-libraries/runner) と [adbによる実行](https://developer.android.com/studio/test/command-line) に従います。
 
 クリック操作の振分けもRustへ移しました。文字・Shift・モード・候補／予測・Undo・再変換、設定IntentとAPI世代別IME切替をRustから呼びます。Javaのリスナーは操作番号と現在の入力欄を受け渡します。周辺文字の取得中に欄の世代が変わった場合は、残りの取得・コア操作・応答反映と代替入力を止めます。JVMのDispatchHostは生成済みのボタンを実際に押し、入力・確定・Undo・候補／予測と、捕捉した設定Intent／IME切替APIを確認します。端末テストも、実際のボタンからRustの操作振分けを通してEditableを更新する5件目を追加しました。
 
-9371829のCIでは、既存の4件がAPI 35・x86_64エミュレーターで成功しました（[実行記録](https://github.com/appipinopi/Meltype/actions/runs/39029589014)）。取得したPNGとSDK／ABI記録も確認済みです。今回追加した5件目の成功はまだ未確認で、物理端末・タッチ／他アプリ入力・IME登録と全UI一致は未検証です。取得画像では長い操作ラベルの折返しが窮屈に見えたため、画面全体の収まりは今後の確認項目として残します。
+9371829のCIでは、既存の4件がAPI 35・x86_64エミュレーターで成功しました（[実行記録](https://github.com/appipinopi/Meltype/actions/runs/39029589014)）。取得したPNGとSDK／ABI記録も確認済みです。0065fd4のCIでは操作振分けと折返し測定を含む6件が成功しました（[実行記録](https://github.com/appipinopi/Meltype/actions/runs/39030769321)）。3枚の生成画像も確認しました。物理端末・タッチ／他アプリ入力・IME登録と全UI一致は引き続き未検証です。
 
-折返しラベルの行内位置について、キー列と候補列の文字ベースライン揃えを無効にしました。折返し文字の最初の行に合わせてボタン全体が下へずれる処理を避け、セルを行内に保ちます。キー配列・ラベル・重み・文字サイズは変更していません。新しい6件目の端末テストで、1080px幅・720px幅・文字倍率1.5の各条件におけるボタン境界、文字レイアウトの高さ、末尾文字・省略の有無を確認し、狭幅と文字拡大時のPNG・測定記録も必須にしました。このテストのAndroid上での成功と画像の確認はまだ未完了です。
+折返しラベルの行内位置について、キー列と候補列の文字ベースライン揃えを無効にしました。折返し文字の最初の行に合わせてボタン全体が下へずれる処理を避け、セルを行内に保ちます。キー配列・ラベル・重み・文字サイズは変更していません。新しい6件目の端末テストで、1080px幅・720px幅・文字倍率1.5の各条件におけるボタン境界、文字レイアウトの高さ、末尾文字・省略の有無を確認し、狭幅と文字拡大時のPNG・測定記録も必須にしました。0065fd4では `OK (6 tests)` と3枚のPNGを確認済みです。測定は幅1080／720px・文字倍率1.5を通過し、合計11個の折返しラベルが行内に収まりました。
+
+Android設定の6ページ（入力設定・辞書・定型文・学習・プロファイル・バックアップ診断）の定義とページ固有の操作判断をRustへ移しました。JavaのSettingsPageはラベル・入力欄・スイッチ・ボタンを共通に描画し、フォーム値をJNIへ返します。既存13スイッチ・ラベル・入力項目と削除確認を維持しています。Rustの保存／再読込、辞書・定型文の追加削除、編集欄への復元、プロファイルの切替と使用中削除の拒否を単体試験とSettingsHostで確認しました。追加した7件目は実Androidの共通描画とクリックから保存までを検証しますが、その実行結果はまだ未確認です。OS画面の組立て、確認ダイアログ、ドキュメント選択とストリーム転送はJavaに残ります。

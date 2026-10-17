@@ -5,6 +5,8 @@ final class Native {
     static { System.loadLibrary("meltype_native"); }
     static native long create(String directory);
     static native String control(long handle,String request);
+    static native String settingsPage(long handle,int page);
+    static native String settingsAction(long handle,String action,String fields);
     static native String predict(long handle,int index);
     static native void destroy(long handle);
     static native String key(long handle, int vk, int scalar, int modifiers);
