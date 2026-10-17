@@ -51,7 +51,7 @@ def main() -> None:
         if artifact.returncode == 0:
             (args.output / name).write_bytes(artifact.stdout)
     result.check_returncode()
-    verify_report(report, 8)
+    verify_report(report, 9)
     for name in ("input-view.png", "input-view-narrow.png", "input-view-large-text.png"):
         if not (args.output / name).read_bytes().startswith(b"\x89PNG\r\n\x1a\n"):
             raise RuntimeError(f"Android preview PNG is missing or invalid: {name}")

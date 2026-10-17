@@ -52,6 +52,8 @@
 - [ ] Android設定の実ウィジェット操作を含む7件目のエミュレーター検証（実ボタン／スイッチ→Rust→保存とフォーム復元。SDK 35コンパイルとローカル試験は通過。6355396ではスイッチのperformClick戻り値検査で失敗したため、状態と保存値の検査へ修正。修正版のAndroid上の結果は未確認）
 - [x] Android辞書・バックアップのドキュメント転送をRust／JNIへ移行（ContentResolverストリーム、一時ファイル所有、32 MiB上限、復元検査と固有確認トークン。JVMでUnicode往復・確認前の無変更・取消・失敗／close例外・読込中破棄・一時ファイル削除を確認。OS選択Intentと確認ダイアログはJavaに残る）
 - [ ] Android実ContentResolverの8件目のエミュレーター検証（アプリ専用ファイルURIで辞書とバックアップ往復。OS選択画面・外部プロバイダーは未検証）
+- [x] Androidファイル選択Intentと選択待ち状態をRust／JNIへ移行（4操作の種類・MIME・出力名、重複開始の拒否、起動失敗・取消・空結果、番号照合、一度の結果処理、再生成時の操作名検証。DocumentHostで確認。JavaはOSコールバックと共通描画へ転送）
+- [ ] Android実Intentを用いる9件目の選択ライフサイクル検証（Intentを捕捉し、アプリ専用URIへ結果を返す。SDKコンパイル・ローカル試験は通過、エミュレーター結果は未確認。実際のOS選択画面は未検証）
 - [x] Windows TSFの配布DLLをRust単体へ移行（COMのDLL入口・workerパス取得・ログ・登録API・解放判定をRust化。C++ソースを製品へリンクせず、MSVCリンカー／Windows SDKで元のアイコンと版情報を結合。COM子オブジェクト・遅延編集・候補ウィンドウの寿命をDLLの解放判定へ反映。旧C++は上流参照／互換SDK試験用に保持。単体DLL試験10件・SDK試験14種類を各アーキテクチャで確認し、入力からDLL再読込みまでを各3回追加確認。実アプリへのIME登録・操作と全UIの一致確認は未完了。以下の記録は段階ごとの経緯）
 - [x] Windowsの配布用TSF DLLをDll.cpp＋最小RustDll.cppだけでリンク（TextService.cpp／RustPipe.cpp／Json.cppは互換SDK試験用に分離。リンクマップで旧オブジェクト不在を検査。配布DLLをLoadLibrary／DllGetClassObject／CreateInstanceから使う入力・確定・終了／再起動・解放試験をx64/x86で確認。DLL入口・読込・ログのC++は残り、完全なRust単体DLL化と実アプリ確認は未完了）
 - [x] Windows TSFクラスファクトリーの生成先をRust所有サービスへ変更（状態・workerパス・COM root・参照寿命をRustで確保／破棄し、本番生成時にC++ TextServiceを作らない。状態試験x64/x86各240件で全インターフェースの同一性、未対応IID失敗時の解放、最終参照解放とDLL保持、公開起動／終了を確認。Rust所有者を使う入力／ライフサイクル試験をCIへ追加。C++互換所有者は比較用に残り、DLL入口／読込／ログ等と実アプリ確認は未完了）

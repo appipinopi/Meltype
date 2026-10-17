@@ -2,6 +2,7 @@
 // Copyright (C) 2026 appipinopi
 package moe.meltype.rust;
 import android.content.ContentResolver;
+import android.content.Intent;
 import android.net.Uri;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -10,9 +11,14 @@ import java.util.regex.*;
 public final class DocumentHost {
     final Path cache;
     final ContentResolver resolver=new ContentResolver();
+    Intent launched;int launches;boolean failLaunch;
     public DocumentHost(Path cache){this.cache=cache;}
     public File getCacheDir(){return cache.toFile();}
     public ContentResolver getContentResolver(){return resolver;}
+    public void startActivityForResult(Intent intent,int request) {
+        check(request==1,"document request code");if(failLaunch)throw new IllegalStateException("picker unavailable");
+        launches++;launched=intent;
+    }
     static class Input extends ByteArrayInputStream {
         int closed;boolean failClose;Runnable callback;
         Input(byte[] data){super(data);}
@@ -35,9 +41,28 @@ public final class DocumentHost {
         DocumentHost host=new DocumentHost(Files.createDirectory(root.resolve("cache")));long session=Native.create(profile.toString());
         try {
             check(session!=0,"session");
+            for(String operation:new String[]{"dictionary_import","dictionary_export","backup_create","backup_restore"}) {
+                ok(Native.settingsPick(session,host,operation));check(operation.equals(Native.pendingDocument(session)),"native pending operation");
+                boolean output=operation.equals("dictionary_export")||operation.equals("backup_create");
+                check(host.launched.action.equals(output?"android.intent.action.CREATE_DOCUMENT":"android.intent.action.OPEN_DOCUMENT"),"intent action");
+                check(host.launched.type.equals("*/*")&&host.launched.category.equals("android.intent.category.OPENABLE"),"openable MIME");
+                check(output?host.launched.title.equals(operation.equals("dictionary_export")?"meltype-dictionary.txt":"meltype-backup.json"):host.launched.title==null,"export title");
+                int count=host.launches;error(Native.settingsPick(session,host,"backup_create"));check(host.launches==count,"one outstanding picker");
+                ok(Native.settingsPickerResult(session,host,2,0,null));check(Native.pendingDocument(session)!=null,"unrelated activity result does not consume");
+                ok(Native.settingsPickerResult(session,host,1,0,null));check(Native.pendingDocument(session)==null,"cancel clears pending operation");
+            }
+            host.failLaunch=true;error(Native.settingsPick(session,host,"dictionary_import"));check(Native.pendingDocument(session)==null,"launch failure clears pending operation");host.failLaunch=false;
+            error(Native.settingsPick(session,host,"unknown"));check(Native.pendingDocument(session)==null,"invalid operation no launch");
+            Native.restoreDocumentPicker(session,"not-an-operation");check(Native.pendingDocument(session)==null,"invalid saved state rejected");
+            Native.restoreDocumentPicker(session,"dictionary_import");String saved=Native.pendingDocument(session);long recreated=Native.create(profile.toString());
+            Native.restoreDocumentPicker(recreated,saved);check(saved.equals(Native.pendingDocument(recreated)),"recreated activity resumes valid operation");Native.destroy(recreated);
+            ok(Native.settingsPickerResult(session,host,1,-1,new Intent("result")));check(Native.pendingDocument(session)==null,"null URI consumes pending operation");
             ok(Native.control(session,"{\"op\":\"dictionary_set\",\"reading\":\"めるたいぷ\",\"word\":\"Meltype😀\"}"));
             Output output=new Output();host.resolver.output=output;ok(host.transfer(session,"dictionary_export"));check(output.closed==1,"export closed");
             byte[] dictionary=output.toByteArray();check(new String(dictionary,StandardCharsets.UTF_16).contains("Meltype😀"),"UTF-16 dictionary export");host.empty();
+            Input picked=new Input(dictionary);host.resolver.input=picked;Intent result=new Intent("result");result.data=new Uri();
+            ok(Native.settingsPick(session,host,"dictionary_import"));ok(Native.settingsPickerResult(session,host,1,-1,result));check(picked.closed==1&&Native.pendingDocument(session)==null,"picker result transfers once");
+            int opened=host.resolver.reads;ok(Native.settingsPickerResult(session,host,1,-1,result));check(host.resolver.reads==opened,"repeated result without request has no I/O");host.empty();
             ok(Native.control(session,"{\"op\":\"dictionary_remove\",\"reading\":\"めるたいぷ\"}"));
             Input input=new Input(dictionary);host.resolver.input=input;check(ok(host.transfer(session,"dictionary_import")).contains("\"page\":1"),"reload dictionary page");
             check(input.closed==1,"import closed");check(Native.control(session,"{\"op\":\"dictionary_list\"}").contains("Meltype😀"),"import saved");host.empty();

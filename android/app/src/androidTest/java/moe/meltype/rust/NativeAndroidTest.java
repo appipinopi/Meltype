@@ -38,6 +38,13 @@ import static org.junit.Assert.*;
 /** Runs on Android's real framework, without registering or activating an IME. */
 @RunWith(AndroidJUnit4.class)
 public final class NativeAndroidTest {
+    public static final class PickerCapture {
+        Intent launched;int launches;boolean fail;
+        public void startActivityForResult(Intent intent,int code) {
+            assertEquals(1,code);if(fail)throw new IllegalStateException("picker unavailable");
+            launched=intent;launches++;
+        }
+    }
     private static final class SettingsHarness {
         final long session;
         final LinearLayout body;
@@ -256,6 +263,42 @@ public final class NativeAndroidTest {
             assertTrue((service.intents.get(0).getFlags()&Intent.FLAG_ACTIVITY_NEW_TASK)!=0);
             Native.startInput(profile.session,1,0);service.editor=new Editor();service.editor.onRead=()->Native.startInput(profile.session,0x81,0);
             press(root,"a");assertEquals("",service.editor.text.toString());assertEquals(3,Native.editorFlags(profile.session));assertEquals(1,service.editor.reads);
+        }
+    });}
+    @Test public void rustPickerIntentsAndResultLifecycle() throws Throwable {ui(()->{
+        try(Profile profile=new Profile()) {
+            PickerCapture picker=new PickerCapture();
+            for(String operation:new String[]{"dictionary_import","dictionary_export","backup_create","backup_restore"}) {
+                JSONObject reply=new JSONObject(Native.settingsPick(profile.session,picker,operation));assertFalse(reply.toString(),reply.has("error"));
+                assertEquals(operation,Native.pendingDocument(profile.session));
+                boolean output=operation.equals("dictionary_export")||operation.equals("backup_create");
+                assertEquals(output?Intent.ACTION_CREATE_DOCUMENT:Intent.ACTION_OPEN_DOCUMENT,picker.launched.getAction());
+                assertEquals("*/*",picker.launched.getType());assertTrue(picker.launched.hasCategory(Intent.CATEGORY_OPENABLE));
+                assertEquals(output?(operation.equals("dictionary_export")?"meltype-dictionary.txt":"meltype-backup.json"):null,picker.launched.getStringExtra(Intent.EXTRA_TITLE));
+                int count=picker.launches;assertTrue(new JSONObject(Native.settingsPick(profile.session,picker,"dictionary_import")).has("error"));assertEquals(count,picker.launches);
+                Native.settingsPickerResult(profile.session,context(),2,0,null);assertEquals(operation,Native.pendingDocument(profile.session));
+                Native.settingsPickerResult(profile.session,context(),1,0,null);assertNull(Native.pendingDocument(profile.session));
+            }
+            picker.fail=true;assertTrue(new JSONObject(Native.settingsPick(profile.session,picker,"dictionary_import")).has("error"));assertNull(Native.pendingDocument(profile.session));picker.fail=false;
+            assertTrue(new JSONObject(Native.settingsPick(profile.session,picker,"unknown")).has("error"));
+            Native.restoreDocumentPicker(profile.session,"dictionary_import");String saved=Native.pendingDocument(profile.session);
+            long recreated=Native.create(profile.root.getAbsolutePath());
+            try{Native.restoreDocumentPicker(recreated,saved);assertEquals(saved,Native.pendingDocument(recreated));}finally{Native.destroy(recreated);}
+            Native.settingsPickerResult(profile.session,context(),1,-1,new Intent());assertNull(Native.pendingDocument(profile.session));
+            Native.restoreDocumentPicker(profile.session,"unknown");assertNull(Native.pendingDocument(profile.session));
+            File cache=new File(profile.root,"picker-cache");assertTrue(cache.mkdir());
+            Context transferContext=new ContextWrapper(context()){@Override public File getCacheDir(){return cache;}};
+            File dictionary=new File(profile.root,"picked-dictionary.txt");
+            String seed=Native.control(profile.session,"{\"op\":\"dictionary_set\",\"reading\":\"めるたいぷ\",\"word\":\"Meltype😀\"}");assertFalse(seed.contains("\"error\":"));
+            assertFalse(new JSONObject(Native.settingsPick(profile.session,picker,"dictionary_export")).has("error"));
+            Intent data=new Intent().setData(Uri.fromFile(dictionary));
+            assertFalse(new JSONObject(Native.settingsPickerResult(profile.session,transferContext,1,-1,data)).has("error"));
+            assertNull(Native.pendingDocument(profile.session));assertTrue(dictionary.isFile());
+            Native.control(profile.session,"{\"op\":\"dictionary_remove\",\"reading\":\"めるたいぷ\"}");
+            Native.settingsPick(profile.session,picker,"dictionary_import");
+            assertEquals(1,new JSONObject(Native.settingsPickerResult(profile.session,transferContext,1,-1,data)).getInt("page"));
+            assertTrue(new JSONObject(Native.control(profile.session,"{\"op\":\"dictionary_list\"}")).has("めるたいぷ"));
+            assertEquals("{}",Native.settingsPickerResult(profile.session,transferContext,1,-1,data));assertEquals(0,cache.list().length);
         }
     });}
     @Test public void rustDocumentTransferUsesRealContentResolverAndRestoreConfirmation() throws Throwable {ui(()->{

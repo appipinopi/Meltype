@@ -14,14 +14,12 @@ public final class SettingsActivity extends Activity {
     private long session;
     private LinearLayout body;
     private TextView status;
-    private String documentOperation;
     private SettingsPage form;
-    private static final int DOCUMENT = 1;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
-        if (state != null) documentOperation = state.getString("documentOperation");
         session = Native.create(getFilesDir().getAbsolutePath());
+        if (state != null) Native.restoreDocumentPicker(session,state.getString("documentOperation"));
         ScrollView scroll = new ScrollView(this);
         LinearLayout root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL);
         int padding = (int)(16 * getResources().getDisplayMetrics().density);
@@ -40,7 +38,7 @@ public final class SettingsActivity extends Activity {
             public void onItemSelected(AdapterView<?> parent,android.view.View view,int position,long id) { show(position); }
         });
     }
-    @Override protected void onSaveInstanceState(Bundle state) { state.putString("documentOperation",documentOperation); super.onSaveInstanceState(state); }
+    @Override protected void onSaveInstanceState(Bundle state) { state.putString("documentOperation",Native.pendingDocument(session)); super.onSaveInstanceState(state); }
     @Override public void onDestroy() { Native.destroy(session); super.onDestroy(); }
     private void action(RunnableChecked action) {
         try { action.run(); status.setText("完了"); }
@@ -56,7 +54,7 @@ public final class SettingsActivity extends Activity {
         JSONObject result = checked(Native.settingsAction(session,operation.toString(),values.toString()));
         if (result.has("edit")) form.edit(result.getJSONObject("edit"));
         if (result.has("pick")) {
-            JSONObject pick = result.getJSONObject("pick"); pick(pick.getString("operation"),pick.getBoolean("output"));
+            JSONObject pick = result.getJSONObject("pick"); checked(Native.settingsPick(session,this,pick.getString("operation")));
         }
         if (result.has("confirm")) {
             JSONObject confirm = result.getJSONObject("confirm");
@@ -70,19 +68,10 @@ public final class SettingsActivity extends Activity {
         form.clear(); status.setText("");
         action(() -> form.render(checked(Native.settingsPage(session,page))));
     }
-    private void pick(String operation,boolean output) {
-        documentOperation = operation;
-        Intent intent = new Intent(output ? Intent.ACTION_CREATE_DOCUMENT : Intent.ACTION_OPEN_DOCUMENT);
-        intent.setType("*/*").addCategory(Intent.CATEGORY_OPENABLE);
-        if (output) intent.putExtra(Intent.EXTRA_TITLE,operation.equals("dictionary_export") ? "meltype-dictionary.txt" : "meltype-backup.json");
-        startActivityForResult(intent,DOCUMENT);
-    }
     @Override protected void onActivityResult(int code,int result,Intent data) {
         super.onActivityResult(code,result,data);
-        if (code != DOCUMENT || result != RESULT_OK || data == null || data.getData() == null || documentOperation == null) return;
-        String operation = documentOperation; documentOperation = null;
         action(() -> {
-            JSONObject reply = checked(Native.settingsDocument(session,this,data.getData(),operation));
+            JSONObject reply = checked(Native.settingsPickerResult(session,this,code,result,data));
             if (reply.has("confirm")) {
                 JSONObject confirm = reply.getJSONObject("confirm"); long token = confirm.getLong("token");
                 try {

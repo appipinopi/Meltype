@@ -6,6 +6,10 @@ final class Native {
     static native long create(String directory);
     static native String control(long handle,String request);
     static native String settingsPage(long handle,int page);
+    static native String settingsPick(long handle,Object activity,String operation);
+    static native String settingsPickerResult(long handle,Object context,int code,int result,Object data);
+    static native String pendingDocument(long handle);
+    static native void restoreDocumentPicker(long handle,String operation);
     static native String settingsDocument(long handle,Object context,Object uri,String operation);
     static native String settingsRestore(long handle,long token,boolean accept);
     static native String settingsAction(long handle,String action,String fields);

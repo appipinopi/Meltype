@@ -53,11 +53,11 @@ WidgetHostはSDKと同じメソッド形のテスト用ウィジェットをJVM�
 
 ## Androidフレームワーク上の検証（追加、実行結果はCIで確認）
 
-`NativeAndroidTest` は実際のAndroidウィジェット、Editable／BaseInputConnection、KeyEventを使う8テストです。キーボードの構造と候補クリック、変換→確定→Undo、UTF-16削除と選択保護、非公開欄、直接入力への代替、入力欄切替時の世代保護を確認します。IMEの登録・有効化や、他アプリへの入力は行いません。矢印イベントはテスト用InputConnectionが受け取ります。
+`NativeAndroidTest` は実際のAndroidウィジェット、Editable／BaseInputConnection、KeyEventを使う9テストです。キーボードの構造と候補クリック、変換→確定→Undo、UTF-16削除と選択保護、非公開欄、直接入力への代替、入力欄切替時の世代保護を確認します。IMEの登録・有効化や、他アプリへの入力は行いません。矢印イベントはテスト用InputConnectionが受け取ります。
 
 CIはAPI 35 x86_64の専用AVDを一時フォルダーに作り、明示した `emulator-5580` だけにアプリとテストAPKをインストールします。同じシリアルが使用中なら中止します。AVDと起動したエミュレータープロセスは終了時に片付けます。`android/tests/run-emulator.sh` はLinuxのAndroid SDK／KVMと、組み立て済みの両APKがあるCI向けです。通常の端末には使用しません。
 
-実行方法は `gradle -p android assembleDebug assembleDebugAndroidTest lintDebug --no-daemon`、続いて `bash android/tests/run-emulator.sh` です。SDKにはemulatorと `system-images;android-35;google_apis;x86_64` が必要です。`dist/android-emulator/` にJUnitの実行記録、エミュレーター／logcat、Android自身で描画した `input-view.png`、SDK・ABI・画像寸法などの記録を保存します。8件の正常終了と3枚のPNG・測定記録を必須とし、0件・スキップ・クラッシュを成功とみなしません。この追加だけでは端末上での成功や元版との全UI一致を証明しません。
+実行方法は `gradle -p android assembleDebug assembleDebugAndroidTest lintDebug --no-daemon`、続いて `bash android/tests/run-emulator.sh` です。SDKにはemulatorと `system-images;android-35;google_apis;x86_64` が必要です。`dist/android-emulator/` にJUnitの実行記録、エミュレーター／logcat、Android自身で描画した `input-view.png`、SDK・ABI・画像寸法などの記録を保存します。9件の正常終了と3枚のPNG・測定記録を必須とし、0件・スキップ・クラッシュを成功とみなしません。この追加だけでは端末上での成功や元版との全UI一致を証明しません。
 
 テスト基盤は [AndroidJUnitRunner](https://developer.android.com/training/testing/instrumented-tests/androidx-test-libraries/runner) と [adbによる実行](https://developer.android.com/studio/test/command-line) に従います。
 
@@ -72,3 +72,5 @@ Android設定の6ページ（入力設定・辞書・定型文・学習・プロ
 辞書の取込／書出し、バックアップ作成／検査／復元のドキュメント転送もRust／JNIへ移しました。ContentResolverのストリームをRustから開閉し、入力上限32 MiBと復元前の確認を維持します。一時ファイルはRustが所有し、取消・エラー・画面破棄で削除します。復元確認に固有トークンを付け、古いダイアログが新しい復元対象を操作することを防ぎます。DocumentHostでは実JVMストリームによるUnicode辞書の往復、確認前の無変更、取消・再確認、容量超過・null・書込／close例外・読込中の破棄と一時ファイル削除を確認しました。8件目はAndroid ContentResolverとアプリ専用ファイルURIで往復を検証し、OSの選択画面や外部プロバイダーは操作しません。
 
 6355396のAndroid実行では7件目がスイッチのperformClick戻り値の検査で失敗しました。スイッチはクリックリスナーがなくても状態を変更するため、クリック後の状態と保存値を検査するよう修正しています。残り6件は成功しました。修正版7件目と新しい8件目のエミュレーター結果は未確認です。JavaにはOSコールバック・共通設定描画・ファイル選択Intentと確認ダイアログが残ります。
+
+ファイル選択Intentの生成と選択待ちの操作管理もRustへ移しました。操作からOPEN_DOCUMENT／CREATE_DOCUMENT、OPENABLE、MIMEと出力名を決定し、JNIで起動します。同時の選択開始は拒否し、起動失敗・取消・空の結果で待ち状態を解除します。異なるリクエスト番号は無視し、結果は一度だけ処理します。画面再生成時はBundleに渡した操作名をRustで検証して戻します。DocumentHostで4操作のIntent・起動失敗・取消・再生成・結果経由の入出力を確認済みです。9件目のAndroidテストは実Intentを捕捉して同じ経路を検証し、OSの選択画面は起動しません。Javaに残るのはOSコールバックの転送、共通設定ウィジェットと確認ダイアログの描画です。この追加のAndroid実行結果は未確認です。

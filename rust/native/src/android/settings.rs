@@ -287,11 +287,7 @@ fn action(handle: jlong, action: Value, fields: Value) -> Result<Value> {
         "profile_select" => return Ok(json!({"edit":{"name":string(&action,"name")?}})),
         "pick" => {
             let operation = string(&action, "operation")?;
-            let output = match operation {
-                "dictionary_export" | "backup_create" => true,
-                "dictionary_import" | "backup_restore" => false,
-                _ => return Err("ファイル操作が見つかりません".into()),
-            };
+            let (output, _) = super::documents::specification(operation)?;
             return Ok(json!({"pick":{"operation":operation,"output":output}}));
         }
         _ => return Err("設定操作が見つかりません".into()),

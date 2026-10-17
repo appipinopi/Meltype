@@ -16,6 +16,7 @@ static NEXT: AtomicU64 = AtomicU64::new(1);
 struct State {
     token: u64,
     pending: Option<TempPath>,
+    picker: Option<(u64, String)>,
 }
 fn states() -> &'static Mutex<HashMap<jlong, State>> {
     static STATES: OnceLock<Mutex<HashMap<jlong, State>>> = OnceLock::new();
@@ -28,9 +29,155 @@ pub(super) fn create(handle: jlong) {
             State {
                 token: NEXT.fetch_add(1, Ordering::Relaxed),
                 pending: None,
+                picker: None,
             },
         );
     }
+}
+pub(super) fn specification(operation: &str) -> Result<(bool, &'static str)> {
+    match operation {
+        "dictionary_import" | "backup_restore" => Ok((false, "")),
+        "dictionary_export" => Ok((true, "meltype-dictionary.txt")),
+        "backup_create" => Ok((true, "meltype-backup.json")),
+        _ => Err("ファイル操作が見つかりません".into()),
+    }
+}
+fn picker(handle: jlong) -> Option<String> {
+    states()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .get(&handle)
+        .and_then(|s| s.picker.as_ref().map(|(_, operation)| operation.clone()))
+}
+fn set_picker(handle: jlong, operation: Option<String>) -> Result<u64> {
+    let mut states = states().lock().unwrap_or_else(|e| e.into_inner());
+    let state = states
+        .get_mut(&handle)
+        .ok_or("設定画面は閉じられています")?;
+    let token = NEXT.fetch_add(1, Ordering::Relaxed);
+    state.picker = operation.map(|operation| (token, operation));
+    Ok(token)
+}
+fn cancel_picker(handle: jlong, token: u64) {
+    if let Some(state) = states()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .get_mut(&handle)
+    {
+        if state
+            .picker
+            .as_ref()
+            .is_some_and(|(current, _)| *current == token)
+        {
+            state.picker = None;
+        }
+    }
+}
+fn pick(env: &mut JNIEnv, handle: jlong, activity: JObject, operation: JString) -> Result<Value> {
+    let operation = text(env, operation)?;
+    let (output, title) = specification(&operation)?;
+    // One activity-result request is outstanding at a time. In particular, an
+    // old result cannot be interpreted using a later operation's direction.
+    if picker(handle).is_some() {
+        return Err("ファイル選択が完了していません".into());
+    }
+    let token = set_picker(handle, Some(operation))?;
+    let result = (|| {
+        let action = env.new_string(if output {
+            "android.intent.action.CREATE_DOCUMENT"
+        } else {
+            "android.intent.action.OPEN_DOCUMENT"
+        });
+        let action = checked(env, action)?;
+        let intent = env.new_object(
+            "android/content/Intent",
+            "(Ljava/lang/String;)V",
+            &[JValue::Object(&action)],
+        );
+        let intent = checked(env, intent)?;
+        for (method, value) in [
+            ("setType", "*/*"),
+            ("addCategory", "android.intent.category.OPENABLE"),
+        ] {
+            let value = env.new_string(value);
+            let value = checked(env, value)?;
+            call(
+                env,
+                &intent,
+                method,
+                "(Ljava/lang/String;)Landroid/content/Intent;",
+                &[JValue::Object(&value)],
+            )?;
+        }
+        if output {
+            let key = env.new_string("android.intent.extra.TITLE");
+            let key = checked(env, key)?;
+            let title = env.new_string(title);
+            let title = checked(env, title)?;
+            call(
+                env,
+                &intent,
+                "putExtra",
+                "(Ljava/lang/String;Ljava/lang/String;)Landroid/content/Intent;",
+                &[JValue::Object(&key), JValue::Object(&title)],
+            )?;
+        }
+        // JNI setters/launch can reenter the activity. Do not launch for an
+        // activity that was destroyed or superseded while constructing Intent.
+        let expected = states()
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(&handle)
+            .and_then(|s| s.picker.as_ref().map(|(token, _)| *token));
+        if expected != Some(token) {
+            return Err("ファイル選択は取り消されました".into());
+        }
+        call(
+            env,
+            &activity,
+            "startActivityForResult",
+            "(Landroid/content/Intent;I)V",
+            &[JValue::Object(&intent), JValue::Int(1)],
+        )?;
+        Ok(json!({}))
+    })();
+    if result.is_err() {
+        cancel_picker(handle, token);
+    }
+    result
+}
+fn picker_result(
+    env: &mut JNIEnv,
+    handle: jlong,
+    context: JObject,
+    code: jint,
+    result: jint,
+    data: JObject,
+) -> Result<Value> {
+    if code != 1 {
+        return Ok(json!({}));
+    }
+    let operation = states()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .get_mut(&handle)
+        .and_then(|s| s.picker.take())
+        .map(|(_, op)| op);
+    let Some(operation) = operation else {
+        return Ok(json!({}));
+    };
+    if result != -1 || data.is_null() {
+        return Ok(json!({}));
+    }
+    let uri = call(env, &data, "getData", "()Landroid/net/Uri;", &[])?
+        .l()
+        .map_err(|e| e.to_string())?;
+    if uri.is_null() {
+        return Ok(json!({}));
+    }
+    let operation = env.new_string(operation);
+    let operation = checked(env, operation)?;
+    transfer(env, handle, context, uri, operation)
 }
 pub(super) fn destroy(handle: jlong) {
     let removed = states()
@@ -214,11 +361,7 @@ fn transfer(
     operation: JString,
 ) -> Result<Value> {
     let operation = text(env, operation)?;
-    let output = match operation.as_str() {
-        "dictionary_export" | "backup_create" => true,
-        "dictionary_import" | "backup_restore" => false,
-        _ => return Err("ファイル操作が見つかりません".into()),
-    };
+    let (output, _) = specification(&operation)?;
     let token = begin(handle)?;
     let cache = call(env, &context, "getCacheDir", "()Ljava/io/File;", &[])?
         .l()
@@ -325,4 +468,60 @@ pub extern "system" fn Java_moe_meltype_rust_Native_settingsRestore(
     let result = std::panic::catch_unwind(|| restore(handle, token as u64, accept != 0))
         .unwrap_or_else(|_| Err("復元に失敗しました".into()));
     settings::reply(&mut env, result)
+}
+#[no_mangle]
+pub extern "system" fn Java_moe_meltype_rust_Native_settingsPick(
+    mut env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    activity: JObject,
+    operation: JString,
+) -> jstring {
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        pick(&mut env, handle, activity, operation)
+    }))
+    .unwrap_or_else(|_| Err("ファイル選択に失敗しました".into()));
+    settings::reply(&mut env, result)
+}
+#[no_mangle]
+pub extern "system" fn Java_moe_meltype_rust_Native_settingsPickerResult(
+    mut env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    context: JObject,
+    code: jint,
+    result: jint,
+    data: JObject,
+) -> jstring {
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        picker_result(&mut env, handle, context, code, result, data)
+    }))
+    .unwrap_or_else(|_| Err("ファイル選択に失敗しました".into()));
+    settings::reply(&mut env, result)
+}
+#[no_mangle]
+pub extern "system" fn Java_moe_meltype_rust_Native_pendingDocument(
+    env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+) -> jstring {
+    picker(handle)
+        .and_then(|value| env.new_string(value).ok())
+        .map_or(std::ptr::null_mut(), JString::into_raw)
+}
+#[no_mangle]
+pub extern "system" fn Java_moe_meltype_rust_Native_restoreDocumentPicker(
+    mut env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    operation: JString,
+) {
+    let value = if operation.is_null() {
+        None
+    } else {
+        text(&mut env, operation)
+            .ok()
+            .filter(|s| specification(s).is_ok())
+    };
+    let _ = set_picker(handle, value);
 }
