@@ -1855,19 +1855,7 @@ void TextService::EndComposition(TfEditCookie ec) {
 STDMETHODIMP TextService::OnCompositionTerminated(TfEditCookie ec, ITfComposition* composition) {
 #ifdef MELTYPE_RUST_CORE
     TipLog(L"アプリが変換中の文字を確定しました");
-    RustTerminationCallbacks callbacks={
-        this,ServiceInterface<ITfTextInputProcessorEx>(),reinterpret_cast<void**>(&composition_),reinterpret_cast<void**>(&compositionContext_),&resume_,abandoned_,
-        [](void* p)->unsigned int {auto* s=static_cast<TextService*>(p);return (s->disabled_?1u:0u)|(s->deactivated_?2u:0u)|(s->lastConverting_?4u:0u);},
-        [](void* p,unsigned int op) {auto* s=static_cast<TextService*>(p);
-            try {switch (op) {
-                case 0:s->HideCandidates();break;
-                case 1:s->ResetStaleCommit();s->lastConverting_=false;break;
-                case 2:s->directEnglishWord_=false;s->caretMoved_=true;break;
-            }}catch (...) {}
-        },
-        [](void* p,const char* json) {try {JsonValue ignored;static_cast<TextService*>(p)->Request(json,ignored);}catch (...) {}},
-    };
-    return RustCompositionTerminated(ec,composition,"{\"sid\":\""+SessionId()+"\"}",callbacks);
+    return RustServiceTerminated(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),ec,composition);
 #else
     // アプリの側で変換中の文字を確定した (入力欄の外をクリックしたなど)。文字は入力欄に残っているので、
     // Meltype.exe の側も確定したことにする (返ってきた確定の文字は入れない)
@@ -1938,13 +1926,7 @@ bool TextService::HasResume() const {
 }
 void TextService::ResumeOrCommit(ITfContext* context) {
 #ifdef MELTYPE_RUST_CORE
-    RustRecoveryCallbacks callbacks={
-        this,ServiceInterface<ITfTextInputProcessorEx>(),reinterpret_cast<void**>(&composition_),reinterpret_cast<void**>(&compositionContext_),&resume_,ServiceInterface<ITfCompositionSink>(),
-        [](void* p)->void* {return static_cast<TextService*>(p)->editSinkContext_;},
-        [](void* p,unsigned int op,int value) {auto* s=static_cast<TextService*>(p);if (op==0) s->ownEdit_=value!=0;else if (op==1) {s->directEnglishWord_=false;s->caretMoved_=true;}},
-        [](void* p,const char* json) {try {JsonValue ignored;static_cast<TextService*>(p)->Request(json,ignored);}catch (...) {}},
-    };
-    if (RustResumeOrCommit(context,clientId_,atomInput_,"{\"sid\":\""+SessionId()+"\"}",callbacks)==1) TipLog(L"アプリが確定した打ちかけの文字を、変換中に戻しました");
+    if (RustServiceResume(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),ServiceInterface<ITfCompositionSink>(),context)==1) TipLog(L"アプリが確定した打ちかけの文字を、変換中に戻しました");
 #else
     if (!resumeRange_) return;
     Microsoft::WRL::ComPtr<ITfRange> range = resumeRange_;
@@ -2014,16 +1996,7 @@ void TextService::CommitAsync(bool keepAppCaret) {
 
 void TextService::AbandonComposition() {
 #ifdef MELTYPE_RUST_CORE
-    RustAbandonCallbacks callbacks={
-        this,ServiceInterface<ITfTextInputProcessorEx>(),reinterpret_cast<void**>(&composition_),reinterpret_cast<void**>(&compositionContext_),&abandoned_,
-        [](void* p,unsigned int op) {auto* s=static_cast<TextService*>(p);try {switch (op) {
-            case 0:s->ResetStaleCommit();break;
-            case 1:s->HideCandidates();break;
-            case 2:s->directEnglishWord_=false;s->caretMoved_=true;break;
-        }}catch (...) {}},
-        [](void* p,const char* json) {try {JsonValue ignored;static_cast<TextService*>(p)->Request(json,ignored);}catch (...) {}},
-    };
-    RustAbandonComposition(clientId_,"{\"sid\":\""+SessionId()+"\"}",callbacks);
+    RustServiceAbandon(state_.value,ServiceInterface<ITfTextInputProcessorEx>());
 #else
     // 前の入力欄の変換中の文字を、入力欄には触らずに手放す (文字はそのまま残る)。Meltype.exe の側も確定したことにする
     TipLog(L"前の入力欄の変換中の文字を確定できないので、手放します");

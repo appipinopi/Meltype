@@ -205,6 +205,10 @@ fn parse(input: &[u8]) -> Option<Value> {
     parser.skip();
     (parser.index == input.len()).then_some(result)
 }
+#[cfg(windows)]
+pub(crate) fn valid(input: &[u8]) -> bool {
+    parse(input).is_some()
+}
 pub type Emit = unsafe extern "C" fn(*mut c_void, u32, f64, *const u16, u32) -> i32;
 unsafe fn emit(value: &Value, owner: *mut c_void, callback: Emit) -> bool {
     let empty = std::ptr::null();

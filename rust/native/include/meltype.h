@@ -550,6 +550,15 @@ void meltype_tsf_service_clear_resume(void *state);
 /* TSF-thread edit subscription replacement. Lifetime pins the service/state;
    document and edit sink are borrowed SDK interfaces. Null document detaches.
    Reentrant replacement/end invalidates and cleans up a late subscription. */
+/* Native host-termination/recovery state and reply-discarding commit traffic.
+   Borrowed TSF interfaces/cookie; lifetime pins state/adapter/notice code. Worker
+   is a trusted absolute UTF-8 path. Optional notice logs parse failure and never
+   unwinds. Replies use the compatible parser and are never inserted. */
+int32_t meltype_tsf_service_terminated(void *state,void *lifetime,const char *worker,uint32_t cookie,void *composition,void *adapter,void (*notice)(void *));
+int32_t meltype_tsf_service_resume(void *state,void *lifetime,const char *worker,void *sink,void *context,void *adapter,void (*notice)(void *));
+/* Same ignored-reply/lifetime contract; detaches uneditable old input and queues
+   cleanup without changing its document. Returns 1=notified,0=replaced,-1=invalid. */
+int32_t meltype_tsf_service_abandon(void *state,void *lifetime,const char *worker,void *adapter,void (*notice)(void *));
 /* Native service composition slots, attributes, keep-caret and stale-key cleanup.
    Borrowed TSF interfaces/cookie; service IUnknown pins state through COM and
    post-end cleanup. UTF-8 view is NUL-terminated; UTF-16 text null only if empty. */

@@ -16,15 +16,15 @@ use windows::{
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct Callbacks {
-    owner: *mut c_void,
-    lifetime: *mut c_void,
-    composition: *mut *mut c_void,
-    context: *mut *mut c_void,
-    resume: *mut *mut c_void,
-    abandoned: *mut c_void,
-    read: unsafe extern "C" fn(*mut c_void) -> u32,
-    update: unsafe extern "C" fn(*mut c_void, u32),
-    request: unsafe extern "C" fn(*mut c_void, *const c_char),
+    pub(super) owner: *mut c_void,
+    pub(super) lifetime: *mut c_void,
+    pub(super) composition: *mut *mut c_void,
+    pub(super) context: *mut *mut c_void,
+    pub(super) resume: *mut *mut c_void,
+    pub(super) abandoned: *mut c_void,
+    pub(super) read: unsafe extern "C" fn(*mut c_void) -> u32,
+    pub(super) update: unsafe extern "C" fn(*mut c_void, u32),
+    pub(super) request: unsafe extern "C" fn(*mut c_void, *const c_char),
 }
 unsafe fn same(a: &ITfComposition, b: &ITfComposition) -> bool {
     a.as_raw() == b.as_raw()

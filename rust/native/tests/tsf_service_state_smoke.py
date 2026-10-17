@@ -123,6 +123,10 @@ class StateTests(unittest.TestCase):
         cls.api.meltype_tsf_service_write_commit.argtypes=[P,P,P,P,P,U32,c.POINTER(c.c_uint16),U32];cls.api.meltype_tsf_service_write_commit.restype=c.c_int
         cls.api.meltype_tsf_service_end_composition.argtypes=[P,P,U32];cls.api.meltype_tsf_service_end_composition.restype=c.c_int
         cls.api.meltype_tsf_service_stop.argtypes=[P,P,P,SHUTDOWN_REQUEST,NOTICE];cls.api.meltype_tsf_service_stop.restype=HR
+        cls.api.meltype_tsf_service_terminated.argtypes=[P,P,c.c_char_p,U32,P,P,TOGGLE];cls.api.meltype_tsf_service_terminated.restype=HR
+        cls.api.meltype_tsf_service_resume.argtypes=[P,P,c.c_char_p,P,P,P,TOGGLE];cls.api.meltype_tsf_service_resume.restype=c.c_int
+        cls.api.meltype_tsf_service_abandon.argtypes=[P,P,c.c_char_p,P,TOGGLE];cls.api.meltype_tsf_service_abandon.restype=c.c_int
+        cls.api.meltype_tsf_abandoned_reset.argtypes=[P];cls.api.meltype_tsf_abandoned_reset.restype=None
         cls.fixture=str(Path(sys.argv[2]).resolve()).encode() if len(sys.argv)>2 else None
 
 
@@ -1365,6 +1369,183 @@ class StateTests(unittest.TestCase):
         for data,lifetime,request in [(None,c.byref(host.context),SHUTDOWN_REQUEST(lambda *_:None)),
             (address,None,SHUTDOWN_REQUEST(lambda *_:None)),(address,c.byref(host.context),SHUTDOWN_REQUEST())]:
             self.assertEqual(self.api.meltype_tsf_service_stop(data,lifetime,None,request,NOTICE()),HR(0x80070057).value)
+        self.assertEqual(c.string_at(address,c.sizeof(State)),before);host.verify(self)
+    def terminated(self,state,host,target=None,worker=None,notice=None,lifetime=None):
+        return self.api.meltype_tsf_service_terminated(c.addressof(state),lifetime or c.byref(host.context),worker or self.worker,7,
+            target or state.composition,123,notice or TOGGLE(lambda *_:None))
+    def recovered(self,state,host,worker=None,notice=None,context='same'):
+        pointer=c.byref(host.context) if context=='same' else context
+        return self.api.meltype_tsf_service_resume(c.addressof(state),c.byref(host.context),worker or self.worker,c.byref(host.sink),pointer,123,notice or TOGGLE(lambda *_:None))
+    def fixture_recovery(self,state,reply,action):
+        if not self.fixture:self.skipTest('Pass framed transport fixture')
+        root=Path(self.directory.name);response=root/'recovery-reply.json';request=root/'recovery-request.json'
+        response.write_text(reply,encoding='utf-8');changes={'MELTYPE_TEST_HELLO_REPLY_FILE':str(response),'MELTYPE_TEST_HELLO_REQUEST_FILE':str(request)}
+        previous={key:os.environ.get(key) for key in changes}
+        try:
+            os.environ.update(changes);self.api.meltype_tsf_service_close(c.addressof(state));result=action(self.fixture)
+        finally:
+            for key,value in previous.items():
+                if value is None:os.environ.pop(key,None)
+                else:os.environ[key]=value
+        return result,json.loads(request.read_text(encoding='utf-8'))
+    def cleanup_recovered(self,state,host):
+        host.cancel();self.clear_owned_pair(state);self.api.meltype_tsf_service_clear_resume(c.addressof(state))
+        if state.edit_context:release(state.edit_context);state.edit_context=None
+        host.verify(self)
+    def test_terminated_native_captures_resume_and_clears_stale_without_writing(self):
+        state=self.create();host=DeferredHost();self.shutdown_composition(state,host);self.stale_state(state)
+        try:
+            self.assertEqual(self.terminated(state,host),0)
+            self.assertTrue(state.resume);self.assertFalse(state.composition);self.assertFalse(state.composition_context)
+            self.assertEqual(self.stale_tries(state),0);self.assertFalse(state.last_converting);self.assertFalse(state.transport)
+            self.assertFalse(state.caret_moved);self.assertEqual(host.document,units('old'));self.assertEqual(host.writes,[])
+        finally:self.cleanup_recovered(state,host)
+    def test_terminated_native_disabled_and_deactivated_flags_prevent_snapshot(self):
+        for flag in ['disabled','deactivated']:
+            state=self.create();host=DeferredHost();self.shutdown_composition(state,host);setattr(state,flag,True);state.direct_word=True
+            try:
+                self.assertEqual(self.terminated(state,host),0);self.assertFalse(state.resume);self.assertFalse(state.composition)
+                self.assertFalse(state.direct_word);self.assertTrue(state.caret_moved);self.assertFalse(state.transport)
+                self.assertEqual(host.writes,[])
+            finally:self.cleanup_recovered(state,host)
+    def test_terminated_native_unicode_metadata_discards_commit_reply(self):
+        state=self.create();host=DeferredHost();self.shutdown_composition(state,host);state.last_converting=True;state.direct_word=True
+        sid='確定"😀';self.api.meltype_tsf_service_set_sid(c.addressof(state),sid.encode())
+        try:
+            result,request=self.fixture_recovery(state,'{"commits":[{"text":"MUST NOT INSERT"}],"active":true}',lambda worker:self.terminated(state,host,worker=worker))
+            self.assertEqual(result,0);self.assertEqual(request,{'op':'commit','sid':sid,'moved':True})
+            self.assertFalse(state.last_converting);self.assertFalse(state.resume);self.assertFalse(state.direct_word);self.assertTrue(state.caret_moved)
+            self.assertEqual(host.document,units('old'));self.assertEqual(host.writes,[])
+        finally:self.cleanup_recovered(state,host)
+    def test_terminated_native_old_target_preserves_current_input(self):
+        state=self.create();host=DeferredHost();other=DeferredHost();self.shutdown_composition(state,host);target=state.composition
+        pointer=self.api.meltype_tsf_start_composition(c.byref(other.context),c.byref(other.sink),other.original,7);self.assertTrue(pointer)
+        try:
+            self.assertEqual(self.terminated(state,host,target=pointer),0);self.assertEqual(state.composition,target)
+            self.assertFalse(state.resume);self.assertFalse(state.caret_moved);self.assertFalse(state.transport)
+        finally:release(pointer);other.verify(self);self.cleanup_recovered(state,host)
+    def test_terminated_native_parse_failure_notice_pins_last_caller_reference(self):
+        if not self.fixture:self.skipTest('Pass framed transport fixture')
+        state=self.create();address=c.addressof(state);host=DeferredHost();self.shutdown_composition(state,host);state.last_converting=True;events=[]
+        dispatch=DISPATCH(lambda *_:0)
+        @self.checked(DESTROY)
+        def destroyed(owner):
+            events.append(('destroy',state.composition,state.resume));self.api.meltype_tsf_service_state_destroy(owner)
+        root=self.api.meltype_tsf_service_com_create(address,dispatch,destroyed);self.assertTrue(root);self.owned.remove(address)
+        @self.checked(TOGGLE)
+        def notice(owner):
+            self.assertEqual(owner,123);events.append('invalid');release(root);self.assertEqual(self.live(),self.before+1)
+        try:
+            result,_=self.fixture_recovery(state,'invalid JSON',lambda worker:self.terminated(state,host,worker=worker,notice=notice,lifetime=root))
+            self.assertEqual(result,0);self.assertEqual(events,['invalid',('destroy',None,None)]);host.verify(self)
+        finally:
+            if not events:self.cleanup_recovered(state,host);release(root)
+    def test_recovered_native_compatible_json_validation_accepts_unpaired_surrogate(self):
+        state=self.create();host=DeferredHost();state.client=17;state.resume=self.capture_resume(host);events=[]
+        try:
+            result,request=self.fixture_recovery(state,'{"text":"\\uD800"}',lambda worker:self.recovered(state,host,worker=worker,context=None,notice=TOGGLE(lambda _:events.append('invalid'))))
+            self.assertEqual(result,2);self.assertEqual(request['op'],'commit');self.assertEqual(events,[])
+            self.assertFalse(state.resume);self.assertEqual(host.writes,[])
+        finally:self.cleanup_recovered(state,host)
+    def test_recovered_native_resumes_without_reinserting_and_publishes_own_edit(self):
+        state=self.create();host=DeferredHost();host.mode='sync';self.shutdown_composition(state,host);state.atom_input=11
+        state.edit_context=c.addressof(host.context);host.context_ref(1);events=[]
+        def style(this,cookie,range,value):
+            events.append(state.own_edit);return host.set_value(this,cookie,range,value)
+        host.bind(host.property_table,9,HR,[U32,P,P],style)
+        try:
+            self.assertEqual(self.terminated(state,host),0);self.assertTrue(state.resume)
+            self.assertEqual(self.recovered(state,host),1)
+            self.assertFalse(state.resume);self.assertTrue(state.composition);self.assertFalse(state.own_edit)
+            self.assertEqual(events,[True]);self.assertEqual(host.attributes,[(0,3,11)])
+            self.assertEqual(host.document,units('old'));self.assertEqual(host.writes,[]);self.assertFalse(state.transport)
+        finally:self.cleanup_recovered(state,host)
+    def test_recovered_native_no_snapshot_does_not_contact_worker_or_change_state(self):
+        state=self.create();host=DeferredHost();before=c.string_at(c.addressof(state),c.sizeof(State))
+        self.assertEqual(self.recovered(state,host),0);self.assertEqual(c.string_at(c.addressof(state),c.sizeof(State)),before);host.verify(self)
+    def test_recovered_native_changed_text_commits_without_reinsertion(self):
+        state=self.create();host=DeferredHost();host.mode='sync';state.resume=self.capture_resume(host);state.client=17;state.direct_word=True
+        host.document=units('new')
+        try:
+            result,request=self.fixture_recovery(state,'{"commits":[{"text":"duplicate"}]}',lambda worker:self.recovered(state,host,worker=worker))
+            self.assertEqual(result,2);self.assertEqual(request['op'],'commit');self.assertTrue(request['moved'])
+            self.assertFalse(state.resume);self.assertFalse(state.composition);self.assertFalse(state.direct_word);self.assertTrue(state.caret_moved)
+            self.assertEqual(host.document,units('new'));self.assertEqual(host.writes,[])
+        finally:self.cleanup_recovered(state,host)
+    def test_recovered_native_rejected_and_delayed_edits_release_snapshot(self):
+        for mode in ['reject','async']:
+            state=self.create();host=DeferredHost();state.resume=self.capture_resume(host);state.client=17;state.own_edit=True;host.mode=mode
+            try:
+                self.assertEqual(self.recovered(state,host),2);self.assertFalse(state.resume);self.assertFalse(state.own_edit);self.assertFalse(state.composition)
+                if host.pending:self.assertEqual(invoke(host.pending[0],3,HR,[U32],7),HR(0x80004004).value)
+                self.assertEqual(host.writes,[])
+            finally:self.cleanup_recovered(state,host)
+    def test_recovered_native_retermination_during_style_preserves_new_snapshot(self):
+        state=self.create();host=DeferredHost();host.mode='sync';self.shutdown_composition(state,host);state.atom_input=11
+        try:
+            self.assertEqual(self.terminated(state,host),0)
+            def style(this,cookie,range,value):
+                result=host.set_value(this,cookie,range,value)
+                self.assertEqual(self.terminated(state,host),0);return result
+            host.bind(host.property_table,9,HR,[U32,P,P],style)
+            self.assertEqual(self.recovered(state,host),1);self.assertFalse(state.composition);self.assertTrue(state.resume)
+            self.assertEqual(host.writes,[]);self.assertFalse(state.transport)
+        finally:self.cleanup_recovered(state,host)
+    def test_recovered_native_invalid_arguments_preserve_state(self):
+        state=self.create();host=DeferredHost();address=c.addressof(state);life=c.byref(host.context);before=c.string_at(address,c.sizeof(State))
+        for data,lifetime,worker in [(None,life,self.worker),(address,None,self.worker),(address,life,None)]:
+            self.assertEqual(self.api.meltype_tsf_service_terminated(data,lifetime,worker,7,None,None,TOGGLE()),HR(0x80070057).value)
+            self.assertEqual(self.api.meltype_tsf_service_resume(data,lifetime,worker,c.byref(host.sink),c.byref(host.context),None,TOGGLE()),-1)
+        self.assertEqual(c.string_at(address,c.sizeof(State)),before);host.verify(self)
+    def abandoned(self,state,host,worker=None,lifetime=None):
+        return self.api.meltype_tsf_service_abandon(c.addressof(state),lifetime or c.byref(host.context),worker or self.worker,123,TOGGLE())
+    def cleanup_native_abandoned(self,state,host):
+        self.api.meltype_tsf_abandoned_reset(state.abandoned);host.cancel();self.clear_owned_pair(state);host.verify(self)
+    def test_abandoned_native_detaches_old_pair_and_late_cleanup_does_not_insert(self):
+        state=self.create();host=DeferredHost();self.shutdown_composition(state,host);self.stale_state(state);state.direct_word=True
+        try:
+            result,request=self.fixture_recovery(state,'{"commits":[{"text":"duplicate"}]}',lambda worker:self.abandoned(state,host,worker=worker))
+            self.assertEqual(result,1);self.assertEqual(request['op'],'commit');self.assertTrue(request['moved'])
+            self.assertFalse(state.composition);self.assertFalse(state.composition_context);self.assertTrue(state.abandoned)
+            self.assertEqual(self.stale_tries(state),0);self.assertFalse(state.direct_word);self.assertTrue(state.caret_moved)
+            self.assertTrue(host.pending);host.flush();self.assertEqual(host.ended,1)
+            self.assertEqual(host.document,units('old'));self.assertEqual(host.writes,[])
+        finally:self.cleanup_native_abandoned(state,host)
+    def test_abandoned_native_reentrant_new_input_preserves_bookkeeping(self):
+        state=self.create();host=DeferredHost();other=DeferredHost();self.shutdown_composition(state,host);self.stale_state(state);state.direct_word=True
+        def queue(this,client,session,flags,out):
+            self.assertFalse(state.composition);self.assertFalse(state.composition_context)
+            result=host.request(this,client,session,flags,out)
+            pointer=self.api.meltype_tsf_start_composition(c.byref(other.context),c.byref(other.sink),other.original,7)
+            self.assertTrue(pointer);state.composition=pointer;state.composition_context=c.addressof(other.context);other.context_ref(1)
+            return result
+        host.bind(host.context_table,3,HR,[U32,P,U32,c.POINTER(HR)],queue)
+        try:
+            self.assertEqual(self.abandoned(state,host),0)
+            self.assertEqual(state.composition,c.addressof(other.composition));self.assertEqual(self.stale_tries(state),8)
+            self.assertTrue(state.direct_word);self.assertFalse(state.caret_moved);self.assertFalse(state.transport)
+        finally:self.cleanup_native_abandoned(state,host);other.verify(self)
+    def test_abandoned_native_pending_cleanup_keeps_service_alive_after_return(self):
+        state=self.create();address=c.addressof(state);host=DeferredHost();self.shutdown_composition(state,host);events=[]
+        dispatch=DISPATCH(lambda *_:0)
+        @self.checked(DESTROY)
+        def destroyed(owner):events.append('destroy');self.api.meltype_tsf_service_state_destroy(owner)
+        root=self.api.meltype_tsf_service_com_create(address,dispatch,destroyed);self.assertTrue(root);self.owned.remove(address)
+        def queue(this,client,session,flags,out):
+            result=host.request(this,client,session,flags,out)
+            events.append('queued');release(root);self.assertEqual(self.live(),self.before+1);return result
+        host.bind(host.context_table,3,HR,[U32,P,U32,c.POINTER(HR)],queue)
+        try:
+            self.assertEqual(self.abandoned(state,host,lifetime=root),1)
+            self.assertEqual(events,['queued']);self.assertEqual(self.live(),self.before+1)
+            host.cancel();self.assertEqual(events,['queued','destroy']);self.assertEqual(self.live(),self.before);host.verify(self)
+        finally:
+            if not events:self.cleanup_native_abandoned(state,host);release(root)
+            else:host.cancel()
+    def test_abandoned_native_invalid_arguments_preserve_owned_state(self):
+        state=self.create();host=DeferredHost();address=c.addressof(state);before=c.string_at(address,c.sizeof(State))
+        for data,lifetime,worker in [(None,c.byref(host.context),self.worker),(address,None,self.worker),(address,c.byref(host.context),None)]:
+            self.assertEqual(self.api.meltype_tsf_service_abandon(data,lifetime,worker,None,TOGGLE()),-1)
         self.assertEqual(c.string_at(address,c.sizeof(State)),before);host.verify(self)
 if __name__=='__main__':unittest.main(argv=[sys.argv[0]],verbosity=2,failfast=True)
 

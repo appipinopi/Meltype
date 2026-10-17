@@ -170,26 +170,6 @@ struct RustApplyReplyCallbacks {
     void (__cdecl *action)(void*,unsigned int,unsigned int,void*,const char*,int);
 };
 bool RustApplyReply(TfEditCookie,ITfContext*,const JsonValue&,const std::string&,const RustApplyReplyCallbacks&);
-struct RustTerminationCallbacks {
-    void* owner;IUnknown* lifetime;void** composition;void** context;void** resume;void* abandoned;
-    unsigned int (__cdecl *read)(void*);
-    void (__cdecl *update)(void*,unsigned int);
-    void (__cdecl *request)(void*,const char*);
-};
-HRESULT RustCompositionTerminated(TfEditCookie,ITfComposition*,const std::string&,const RustTerminationCallbacks&);
-struct RustRecoveryCallbacks {
-    void* owner;IUnknown* lifetime;void** composition;void** context;void** resume;ITfCompositionSink* sink;
-    void* (__cdecl *editContext)(void*);
-    void (__cdecl *update)(void*,unsigned int,int);
-    void (__cdecl *request)(void*,const char*);
-};
-int RustResumeOrCommit(ITfContext*,TfClientId,TfGuidAtom,const std::string&,const RustRecoveryCallbacks&);
-struct RustAbandonCallbacks {
-    void* owner;IUnknown* lifetime;void** composition;void** context;void** abandoned;
-    void (__cdecl *update)(void*,unsigned int);
-    void (__cdecl *request)(void*,const char*);
-};
-int RustAbandonComposition(TfClientId,const std::string&,const RustAbandonCallbacks&);
 using RustJsonEmit=int (__cdecl *)(void*,unsigned int,double,const unsigned short*,unsigned int);
 bool RustJsonVisit(const std::string&,void*,RustJsonEmit);
 std::string RustJsonQuote(const std::wstring&);
@@ -225,6 +205,9 @@ HRESULT RustServiceActivate(RustServiceState*,IUnknown*,ITfThreadMgr*,TfClientId
 int RustServiceApplyComposition(RustServiceState*,IUnknown*,ITfCompositionSink*,TfEditCookie,ITfContext*,const JsonValue&);
 int RustServiceWriteCommit(RustServiceState*,IUnknown*,ITfCompositionSink*,TfEditCookie,ITfContext*,ITfRange*,const std::wstring&);
 int RustServiceEndComposition(RustServiceState*,IUnknown*,TfEditCookie);
+HRESULT RustServiceTerminated(RustServiceState*,IUnknown*,TfEditCookie,ITfComposition*);
+int RustServiceResume(RustServiceState*,IUnknown*,ITfCompositionSink*,ITfContext*);
+int RustServiceAbandon(RustServiceState*,IUnknown*);
 bool RustServiceCore(RustServiceState*,IUnknown*,bool);
 unsigned int RustServiceMode(const RustServiceState*);
 void RustServiceWriteOpen(RustServiceState*,bool);
