@@ -73,6 +73,7 @@ struct SessionResult: Decodable {
 struct TextEdit: Decodable {
     let deleteBefore: Int
     let text: String
+    let expect: String?
 }
 
 struct CompositionView: Decodable {

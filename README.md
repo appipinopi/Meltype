@@ -1,3 +1,5 @@
+> **Rust移植Fork（開発中）**: [Rust版の構成・ビルド手順・未移植機能](rust/README.md)。全機能のRust化・4OSでの実機動作確認はまだ完了していません。以下は上流版の説明です。
+
 <p align="center">
   <img src="docs/images/logo.png" alt="Meltype" width="480"><br>
   <sub>Logo by <a href="https://github.com/Crysta1221">@Crysta1221</a></sub>

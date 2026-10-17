@@ -1,0 +1,459 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Yukishiro, appipinopi
+//! Lossless settings document: upstream names and unknown future fields survive
+//! edits. Defaults originate from Settings.cs at the migration baseline.
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Map, Value};
+use std::collections::HashSet;
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct Settings(pub Map<String, Value>);
+
+const SHARED: &[&str] = &[
+    "Profiles",
+    "ActiveProfile",
+    "SettingsVersion",
+    "WelcomeShown",
+    "Enabled",
+    "JapaneseKeyboardOnly",
+    "AllowInjectedInput",
+    "FileLog",
+    "LogTypedText",
+    "AutoUpdate",
+    "Mode",
+    "TsfIntroduced",
+    "TsfOffered",
+    "SettingsShowHelp",
+    "SettingsWheelChangesValue",
+];
+impl Default for Settings {
+    fn default() -> Self {
+        Self(
+            serde_json::from_str(include_str!("../data/settings-defaults.json"))
+                .expect("bundled settings"),
+        )
+    }
+}
+impl Settings {
+    pub fn parse(text: &str) -> Result<Self, String> {
+        let mut loaded: Map<String, Value> = json5::from_str(text).map_err(|e| e.to_string())?;
+        let mut defaults = Self::default();
+        let version = loaded
+            .get("SettingsVersion")
+            .and_then(Value::as_i64)
+            .unwrap_or(1);
+        if version < 2 {
+            if loaded.get("IdleFlushMs") == Some(&json!(400)) {
+                loaded.insert("IdleFlushMs".into(), json!(700));
+            }
+            if loaded.get("MaxHoldMs") == Some(&json!(1200)) {
+                loaded.insert("MaxHoldMs".into(), json!(2500));
+            }
+        }
+        if version < 4 {
+            let rules = loaded.entry("AppRules").or_insert_with(|| json!([]));
+            if let Some(rules) = rules.as_array_mut() {
+                for rule in defaults.0["AppRules"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .filter(|r| r["Profile"] == "Code")
+                {
+                    if let Some(old) = rules.iter_mut().find(|r| {
+                        r["Process"]
+                            .as_str()
+                            .unwrap_or("")
+                            .eq_ignore_ascii_case(rule["Process"].as_str().unwrap())
+                    }) {
+                        old["Profile"] = json!("Code");
+                    } else {
+                        rules.push(rule.clone());
+                    }
+                }
+            }
+        } else if version < 5 {
+            if let Some(rules) = loaded.get_mut("AppRules").and_then(Value::as_array_mut) {
+                if !rules.iter().any(|r| {
+                    r["Process"]
+                        .as_str()
+                        .unwrap_or("")
+                        .eq_ignore_ascii_case("maya.exe")
+                }) {
+                    rules.push(json!({"Process":"maya.exe","Enabled":true,"Profile":"Code"}));
+                }
+            }
+        }
+        loaded.insert("SettingsVersion".into(), json!(5));
+        defaults.0.extend(loaded);
+        defaults.normalize();
+        Ok(defaults)
+    }
+    pub fn boolean(&self, name: &str) -> bool {
+        self.0.get(name).and_then(Value::as_bool).unwrap_or(false)
+    }
+    pub fn integer(&self, name: &str) -> i64 {
+        self.0.get(name).and_then(Value::as_i64).unwrap_or(0)
+    }
+    pub fn text(&self, name: &str) -> &str {
+        self.0.get(name).and_then(Value::as_str).unwrap_or("")
+    }
+    pub fn set(&mut self, name: &str, value: Value) -> Result<(), String> {
+        if let Some(default) = Self::default().0.get(name) {
+            if !(default.is_boolean() && value.is_boolean()
+                || default.is_number() && value.is_i64()
+                || default.is_string() && value.is_string()
+                || default.is_array() && value.is_array())
+            {
+                return Err(format!("invalid type for {name}"));
+            }
+        }
+        self.0.insert(name.into(), value);
+        self.normalize();
+        Ok(())
+    }
+    pub fn normalize(&mut self) {
+        let defaults = Self::default();
+        for (name, default) in &defaults.0 {
+            let value = self
+                .0
+                .entry(name.clone())
+                .or_insert_with(|| default.clone());
+            if value.is_null() {
+                *value = default.clone();
+            }
+        }
+        for (name, min, max) in [
+            ("JapaneseThreshold", 2, 20),
+            ("MaxPendingKeys", 2, 12),
+            ("IdleFlushMs", 100, 3000),
+            ("MaxHoldMs", 200, 5000),
+            ("SessionIdleMs", 300, 60000),
+            ("FeedbackWindowMs", 500, 30000),
+            ("ImeTimeoutMs", 50, 2000),
+        ] {
+            let value = self
+                .0
+                .get(name)
+                .and_then(Value::as_i64)
+                .unwrap_or(defaults.integer(name))
+                .clamp(min, max);
+            self.0.insert(name.into(), json!(value));
+        }
+        for key in ["AppRules", "AppKinds", "Profiles"] {
+            if !self.0[key].is_array() {
+                self.0.insert(key.into(), json!([]));
+            }
+        }
+        if let Some(rules) = self.0.get_mut("AppRules").and_then(Value::as_array_mut) {
+            let mut seen = HashSet::new();
+            rules.reverse();
+            rules.retain(|r| {
+                r["Process"]
+                    .as_str()
+                    .is_some_and(|s| !s.trim().is_empty() && seen.insert(s.trim().to_lowercase()))
+            });
+            rules.reverse();
+            for r in rules {
+                r["Process"] = json!(r["Process"].as_str().unwrap().trim());
+            }
+        }
+        let name = self.text("ActiveProfile").trim().to_owned();
+        let name = if name.is_empty() {
+            "標準".to_owned()
+        } else {
+            name
+        };
+        self.0.insert("ActiveProfile".into(), json!(name));
+        let profiles = self.0["Profiles"].as_array().unwrap();
+        let mut seen = HashSet::new();
+        let mut profiles: Vec<_> = profiles
+            .iter()
+            .filter_map(|p| {
+                let name = p["Name"].as_str()?.trim();
+                if name.is_empty() || !seen.insert(name.to_owned()) {
+                    return None;
+                }
+                Some(json!({"Name":name,"Values":p["Values"]}))
+            })
+            .collect();
+        if !profiles.iter().any(|p| p["Name"] == name) {
+            profiles.insert(0, json!({"Name":name,"Values":null}));
+        }
+        self.0.insert("Profiles".into(), json!(profiles));
+    }
+    fn profile_values(&self) -> Value {
+        Value::Object(
+            self.0
+                .iter()
+                .filter(|(k, _)| !SHARED.contains(&k.as_str()))
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect(),
+        )
+    }
+    fn values_of(&self, name: &str) -> Option<Map<String, Value>> {
+        if name == self.text("ActiveProfile") {
+            return self.profile_values().as_object().cloned();
+        }
+        self.0["Profiles"]
+            .as_array()?
+            .iter()
+            .find(|p| p["Name"] == name)?["Values"]
+            .as_object()
+            .cloned()
+    }
+    /// Apply only fields edited in a settings window, preserving newer tray or
+    /// other-process changes. Profile-local edits stay in their named profile.
+    pub fn merge_edits(opened: &Self, edited: &Self, current: &Self) -> Self {
+        if opened.0 == edited.0 {
+            return current.clone();
+        }
+        let mut merged = current.clone();
+        for key in SHARED
+            .iter()
+            .filter(|k| !["Profiles", "ActiveProfile"].contains(k))
+        {
+            if opened.0.get(*key) != edited.0.get(*key) {
+                if let Some(value) = edited.0.get(*key) {
+                    merged.0.insert((*key).into(), value.clone());
+                }
+            }
+        }
+        let names: Vec<_> = edited.0["Profiles"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|p| p["Name"].as_str())
+            .collect();
+        let active = if opened.text("ActiveProfile") != edited.text("ActiveProfile")
+            || !names.contains(&current.text("ActiveProfile"))
+        {
+            edited.text("ActiveProfile")
+        } else {
+            current.text("ActiveProfile")
+        };
+        let mut profiles = vec![];
+        for name in names {
+            let Some(edits) = edited.values_of(name) else {
+                continue;
+            };
+            let values = if let (Some(original), Some(mut values)) =
+                (opened.values_of(name), current.values_of(name))
+            {
+                for (key, value) in edits {
+                    if original.get(&key) != Some(&value) {
+                        values.insert(key, value);
+                    }
+                }
+                values
+            } else {
+                edits
+            };
+            if name == active {
+                for (key, value) in &values {
+                    if !SHARED.contains(&key.as_str()) {
+                        merged.0.insert(key.clone(), value.clone());
+                    }
+                }
+            }
+            profiles.push(json!({"Name":name,"Values":values}));
+        }
+        merged.0.insert("Profiles".into(), json!(profiles));
+        merged.0.insert("ActiveProfile".into(), json!(active));
+        merged.normalize();
+        merged
+    }
+    pub fn add_profile(&mut self, name: &str) -> Result<(), String> {
+        let name = name.trim();
+        if name.is_empty() {
+            return Err("empty profile name".into());
+        }
+        if self.0["Profiles"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|p| p["Name"] == name)
+        {
+            return Err("profile already exists".into());
+        }
+        let values = self.profile_values();
+        self.0["Profiles"]
+            .as_array_mut()
+            .unwrap()
+            .push(json!({"Name":name,"Values":values}));
+        Ok(())
+    }
+    pub fn switch_profile(&mut self, name: &str) -> Result<(), String> {
+        let target = self.0["Profiles"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|p| p["Name"] == name)
+            .cloned()
+            .ok_or("unknown profile")?;
+        let active = self.text("ActiveProfile").to_owned();
+        let values = self.profile_values();
+        if let Some(current) = self.0["Profiles"]
+            .as_array_mut()
+            .unwrap()
+            .iter_mut()
+            .find(|p| p["Name"] == active)
+        {
+            current["Values"] = values;
+        }
+        let defaults = Self::default();
+        for (key, value) in defaults
+            .0
+            .iter()
+            .filter(|(k, _)| !SHARED.contains(&k.as_str()))
+        {
+            self.0.insert(key.clone(), value.clone());
+        }
+        if let Some(values) = target["Values"].as_object() {
+            for (key, value) in values.iter().filter(|(k, _)| !SHARED.contains(&k.as_str())) {
+                self.0.insert(key.clone(), value.clone());
+            }
+        }
+        self.0.insert("ActiveProfile".into(), json!(name));
+        self.normalize();
+        Ok(())
+    }
+    pub fn delete_profile(&mut self, name: &str) -> Result<(), String> {
+        if name == self.text("ActiveProfile") {
+            return Err("switch profiles before deleting the active profile".into());
+        }
+        self.0["Profiles"]
+            .as_array_mut()
+            .unwrap()
+            .retain(|p| p["Name"] != name);
+        Ok(())
+    }
+    pub fn rename_profile(&mut self, old: &str, new: &str) -> Result<(), String> {
+        let new = new.trim();
+        if new.is_empty()
+            || self.0["Profiles"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|p| p["Name"] == new)
+        {
+            return Err("empty or duplicate profile name".into());
+        }
+        let profile = self.0["Profiles"]
+            .as_array_mut()
+            .unwrap()
+            .iter_mut()
+            .find(|p| p["Name"] == old)
+            .ok_or("unknown profile")?;
+        profile["Name"] = json!(new);
+        if self.text("ActiveProfile") == old {
+            self.0.insert("ActiveProfile".into(), json!(new));
+        }
+        Ok(())
+    }
+    pub fn remove_profile(&mut self, name: &str) -> Result<(), String> {
+        let names: Vec<String> = self.0["Profiles"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|p| p["Name"].as_str().map(str::to_owned))
+            .collect();
+        if names.len() <= 1 || !names.iter().any(|n| n == name) {
+            return Err("cannot remove the last or unknown profile".into());
+        }
+        if self.text("ActiveProfile") == name {
+            self.switch_profile(names.iter().find(|n| n.as_str() != name).unwrap())?;
+        }
+        self.delete_profile(name)
+    }
+    pub fn export_profile(&self) -> Value {
+        json!({"format":"meltype-profile","version":5,"name":self.text("ActiveProfile"),"values":self.profile_values()})
+    }
+    pub fn import_profile(&mut self, text: &str) -> Result<String, String> {
+        let file: Value = json5::from_str(text).map_err(|e| e.to_string())?;
+        if file["format"] != "meltype-profile" {
+            return Err("not a Meltype profile".into());
+        }
+        let raw = file["values"]
+            .as_object()
+            .ok_or("profile values must be an object")?;
+        let mut imported = Self::default();
+        for (key, value) in raw {
+            if imported.0.contains_key(key) && !SHARED.contains(&key.as_str()) {
+                imported.set(key, value.clone())?;
+            }
+        }
+        let name = file["name"].as_str().unwrap_or("").trim();
+        let name: String = if name.is_empty() {
+            "読み込んだプロファイル"
+        } else {
+            name
+        }
+        .chars()
+        .take(50)
+        .collect();
+        let mut unique = name.clone();
+        let mut i = 2;
+        while self.0["Profiles"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|p| p["Name"] == unique)
+        {
+            unique = format!("{name} ({i})");
+            i += 1;
+        }
+        self.add_profile(&unique)?;
+        let profile = self.0["Profiles"]
+            .as_array_mut()
+            .unwrap()
+            .last_mut()
+            .unwrap();
+        profile["Values"] = imported.profile_values();
+        self.switch_profile(&unique)?;
+        Ok(unique)
+    }
+    pub fn for_app(&self, process: &str) -> Self {
+        let mut settings = self.clone();
+        let stem = |s: &str| s.to_lowercase().trim_end_matches(".exe").to_owned();
+        let rule = self.0["AppRules"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .rev()
+            .find(|r| {
+                r["Process"]
+                    .as_str()
+                    .is_some_and(|s| stem(s) == stem(process))
+            });
+        if let Some(rule) = rule {
+            if rule["Enabled"] == false {
+                settings.0.insert("Enabled".into(), json!(false));
+            }
+            settings.0.insert(
+                "AppProfile".into(),
+                rule.get("Profile").cloned().unwrap_or(json!("General")),
+            );
+            if let Some(kind) = self.0["AppKinds"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|k| k["Name"] == rule["Kind"] && k["Name"].is_string())
+            {
+                settings.0.insert(
+                    "AppProfile".into(),
+                    kind.get("Base").cloned().unwrap_or(json!("General")),
+                );
+                for key in ["DetectionLevel", "LiveConversion", "StartInEnglish"] {
+                    if let Some(v) = kind.get(key).filter(|v| !v.is_null()) {
+                        settings.0.insert(key.into(), v.clone());
+                    }
+                }
+            }
+        }
+        if settings.text("AppProfile") == "Game" {
+            settings.0.insert("Enabled".into(), json!(false));
+        }
+        settings
+    }
+}

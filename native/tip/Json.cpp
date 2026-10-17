@@ -6,6 +6,57 @@
 #include "Globals.h"
 
 namespace meltype {
+#ifdef MELTYPE_RUST_CORE
+namespace {
+struct JsonBuilder {
+    struct Frame {JsonValue* value;std::wstring key;bool pending=false;};
+    JsonValue root;bool hasRoot=false;std::vector<Frame> stack;
+    JsonValue* Append(JsonValue::Type type) {
+        JsonValue* value=nullptr;
+        if (stack.empty()) {if (hasRoot) return nullptr;value=&root;hasRoot=true;}
+        else {
+            auto& parent=stack.back();
+            if (parent.value->type==JsonValue::Type::Array) {parent.value->array.emplace_back();value=&parent.value->array.back();}
+            else if (parent.value->type==JsonValue::Type::Object && parent.pending) {value=&parent.value->object[std::move(parent.key)];parent.pending=false;}
+            else return nullptr;
+        }
+        *value=JsonValue{};value->type=type;return value;
+    }
+    static int __cdecl Emit(void* owner,unsigned int kind,double number,const unsigned short* text,unsigned int length) {
+        try {
+            auto& self=*static_cast<JsonBuilder*>(owner);
+            if (kind==5 || kind==8) {
+                auto expected=kind==5?JsonValue::Type::Array:JsonValue::Type::Object;
+                if (self.stack.empty() || self.stack.back().value->type!=expected || self.stack.back().pending) return 0;
+                self.stack.pop_back();return 1;
+            }
+            if (kind==7) {
+                if (self.stack.empty() || self.stack.back().value->type!=JsonValue::Type::Object || self.stack.back().pending) return 0;
+                auto& frame=self.stack.back();frame.key=length?std::wstring(reinterpret_cast<const wchar_t*>(text),length):std::wstring{};frame.pending=true;return 1;
+            }
+            JsonValue::Type type;
+            switch (kind) {
+                case 0:type=JsonValue::Type::Null;break;case 1:type=JsonValue::Type::Bool;break;
+                case 2:type=JsonValue::Type::Number;break;case 3:type=JsonValue::Type::String;break;
+                case 4:type=JsonValue::Type::Array;break;case 6:type=JsonValue::Type::Object;break;default:return 0;
+            }
+            auto* value=self.Append(type);if (!value) return 0;
+            if (kind==1) value->boolean=number!=0;
+            else if (kind==2) value->number=number;
+            else if (kind==3 && length) value->string.assign(reinterpret_cast<const wchar_t*>(text),length);
+            else if (kind==4 || kind==6) self.stack.push_back({value});
+            return 1;
+        }catch (...) {return 0;}
+    }
+};
+}
+bool ParseJson(const std::string& text,JsonValue& out) {
+    JsonBuilder builder;
+    if (!RustJsonVisit(text,&builder,JsonBuilder::Emit) || !builder.hasRoot || !builder.stack.empty()) return false;
+    out=std::move(builder.root);return true;
+}
+std::string JsonString(const std::wstring& text) {return RustJsonQuote(text);}
+#else
 namespace {
 
 class Parser {
@@ -220,4 +271,5 @@ std::string JsonString(const std::wstring& text) {
     return out;
 }
 
+#endif
 }  // namespace meltype

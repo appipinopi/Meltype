@@ -1,0 +1,600 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Yukishiro, appipinopi
+mod ffi;
+use ffi::*;
+use meltype_core::session::{SessionResult, View};
+use meltype_native as native;
+use std::{
+    cell::RefCell,
+    ffi::{c_char, c_void, CStr, CString},
+    panic::{catch_unwind, AssertUnwindSafe},
+    ptr,
+};
+
+const KEY: &CStr = c"meltype-rust-state";
+const ENGINE: &CStr = c"meltype-rust";
+const BUS: &CStr = c"org.freedesktop.IBus.MeltypeRust";
+
+struct State {
+    session: Obj,
+    direct: bool,
+    private: bool,
+    preedit: bool,
+    caps: u32,
+    selected: usize,
+    predicting: bool,
+    count: usize,
+    timer: u32,
+}
+impl Drop for State {
+    fn drop(&mut self) {
+        native::meltype_destroy(self.session);
+    }
+}
+fn with<R: Default>(engine: Obj, f: impl FnOnce(&mut State) -> R) -> R {
+    catch_unwind(AssertUnwindSafe(|| unsafe {
+        let cell = g_object_get_data(engine, KEY.as_ptr()).cast::<RefCell<State>>();
+        if cell.is_null() {
+            return R::default();
+        }
+        let Ok(mut state) = (*cell).try_borrow_mut() else {
+            return R::default();
+        };
+        f(&mut state)
+    }))
+    .unwrap_or_default()
+}
+unsafe fn result(pointer: *mut c_char) -> Option<SessionResult> {
+    if pointer.is_null() {
+        return None;
+    }
+    let parsed = serde_json::from_slice(CStr::from_ptr(pointer).to_bytes()).ok();
+    native::meltype_free(pointer.cast());
+    parsed
+}
+fn text(value: &str) -> Obj {
+    // IBus's text ABI is NUL-terminated; never silently truncate a commit.
+    let value = CString::new(value.replace('\0', "�")).unwrap();
+    unsafe { ibus_text_new_from_string(value.as_ptr()) }
+}
+unsafe extern "C" fn free_state(data: Obj) {
+    drop(Box::from_raw(data.cast::<RefCell<State>>()));
+}
+unsafe fn connect(engine: Obj, signal: &CStr, callback: *const c_void) {
+    g_signal_connect_data(engine, signal.as_ptr(), callback, ptr::null_mut(), None, 0);
+}
+unsafe extern "C" fn initialize(engine: Obj, _class: Obj) {
+    let _ = catch_unwind(AssertUnwindSafe(|| {
+        let state = State {
+            session: native::meltype_create(),
+            direct: false,
+            private: false,
+            preedit: false,
+            caps: 0,
+            selected: 0,
+            predicting: false,
+            count: 0,
+            timer: 0,
+        };
+        native::meltype_set_direct_detection(state.session, 1);
+        g_object_set_data_full(
+            engine,
+            KEY.as_ptr(),
+            Box::into_raw(Box::new(RefCell::new(state))).cast(),
+            Some(free_state),
+        );
+        connect(engine, c"process-key-event", process_key as *const c_void);
+        for signal in [c"focus-out", c"reset", c"disable"] {
+            connect(engine, signal, flush as *const c_void);
+        }
+        connect(engine, c"focus-in", focus_in as *const c_void);
+        connect(engine, c"enable", enable as *const c_void);
+        connect(engine, c"set-capabilities", capabilities as *const c_void);
+        connect(engine, c"set-content-type", content_type as *const c_void);
+        connect(engine, c"candidate-clicked", candidate as *const c_void);
+        connect(engine, c"cursor-up", previous as *const c_void);
+        connect(engine, c"cursor-down", next as *const c_void);
+        connect(engine, c"page-up", page_up as *const c_void);
+        connect(engine, c"page-down", page_down as *const c_void);
+        connect(engine, c"property-activate", property as *const c_void);
+        connect(engine, c"destroy", destroy as *const c_void);
+    }));
+}
+impl State {
+    fn cancel_timer(&mut self) {
+        if self.timer != 0 {
+            unsafe {
+                g_source_remove(self.timer);
+            }
+            self.timer = 0;
+        }
+    }
+    fn hide(&mut self, engine: Obj) {
+        self.cancel_timer();
+        unsafe {
+            if self.preedit {
+                ibus_engine_update_preedit_text_with_mode(engine, text(""), 0, 0, 0);
+            }
+            ibus_engine_hide_lookup_table(engine);
+            ibus_engine_hide_auxiliary_text(engine);
+        }
+        self.preedit = false;
+        self.count = 0;
+    }
+    fn surrounding(&self, engine: Obj) -> Option<(String, String)> {
+        if self.private || self.caps & (1 << 5) == 0 {
+            return None;
+        }
+        unsafe {
+            let mut value = ptr::null_mut();
+            let mut cursor = 0;
+            let mut anchor = 0;
+            ibus_engine_get_surrounding_text(engine, &mut value, &mut cursor, &mut anchor);
+            if value.is_null() {
+                return None;
+            }
+            let raw = ibus_text_get_text(value);
+            let value_text = if raw.is_null() {
+                String::new()
+            } else {
+                CStr::from_ptr(raw).to_string_lossy().into_owned()
+            };
+            g_object_unref(value);
+            // Editing nonempty selections cannot use backward-only edits.
+            if cursor != anchor || cursor as usize > value_text.chars().count() {
+                return None;
+            }
+            let before: String = value_text.chars().take(cursor as usize).collect();
+            let after: String = value_text
+                .chars()
+                .skip(cursor as usize)
+                .take(4000)
+                .collect();
+            let before: String = before
+                .chars()
+                .rev()
+                .take(4000)
+                .collect::<String>()
+                .chars()
+                .rev()
+                .collect();
+            Some((before, after))
+        }
+    }
+    fn apply(&mut self, engine: Obj, result: Option<SessionResult>) {
+        let Some(result) = result else {
+            return;
+        };
+        for edit in result.commits {
+            self.hide(engine);
+            if edit.delete_before > 0 {
+                let expected = edit.expect.as_deref().unwrap_or("");
+                if expected.is_empty()
+                    || expected.encode_utf16().count() != edit.delete_before
+                    || !self
+                        .surrounding(engine)
+                        .is_some_and(|(before, _)| before.ends_with(expected))
+                {
+                    unsafe {
+                        result_free(native::meltype_reset(self.session));
+                    }
+                    return;
+                }
+                unsafe {
+                    ibus_engine_delete_surrounding_text(
+                        engine,
+                        -(expected.chars().count() as i32),
+                        expected.chars().count() as u32,
+                    );
+                }
+            }
+            if !edit.text.is_empty() {
+                unsafe {
+                    ibus_engine_commit_text(engine, text(&edit.text));
+                }
+            }
+        }
+        if let Some(view) = result.view {
+            self.render(engine, view);
+        } else {
+            self.hide(engine);
+        }
+    }
+    fn render(&mut self, engine: Obj, view: View) {
+        self.cancel_timer();
+        unsafe {
+            let preedit = text(&view.text);
+            if view.converting && !view.clauses.is_empty() {
+                let mut offset = 0;
+                for (index, clause) in view.clauses.iter().enumerate() {
+                    let end = offset + clause.chars().count() as u32;
+                    ibus_text_append_attribute(preedit, 1, 1, offset, end as i32);
+                    if index == view.selected_clause {
+                        ibus_text_append_attribute(preedit, 3, 0x4ca0ff, offset, end as i32);
+                        ibus_text_append_attribute(preedit, 2, 0xffffff, offset, end as i32);
+                    }
+                    offset = end;
+                }
+            } else {
+                ibus_text_append_attribute(preedit, 1, 1, 0, view.text.chars().count() as i32);
+            }
+            self.preedit = !view.text.is_empty();
+            ibus_engine_update_preedit_text_with_mode(
+                engine,
+                preedit,
+                view.text.chars().count() as u32,
+                self.preedit as i32,
+                1,
+            );
+            let hint = match view.suggestion.as_deref() {
+                Some(s) => format!("{s}　{}", view.hint),
+                None => view.hint.clone(),
+            };
+            if hint.is_empty() {
+                ibus_engine_hide_auxiliary_text(engine);
+            } else {
+                ibus_engine_update_auxiliary_text(engine, text(&hint), 1);
+            }
+            self.predicting = !view.converting;
+            let candidates = if self.predicting {
+                &view.predictions
+            } else {
+                &view.candidates
+            };
+            self.selected = if self.predicting {
+                view.selected_prediction.max(0) as usize
+            } else {
+                view.selected_index
+            };
+            self.count = candidates.len();
+            if self.count > usize::from(!self.predicting) {
+                let table =
+                    ibus_lookup_table_new(9, self.selected.min(self.count - 1) as u32, 1, 1);
+                ibus_lookup_table_set_orientation(table, 1);
+                for (i, candidate) in candidates.iter().enumerate() {
+                    let annotation = if self.predicting {
+                        None
+                    } else {
+                        view.notes.get(i).and_then(|n| n.as_deref())
+                    };
+                    let value = annotation
+                        .map_or_else(|| candidate.clone(), |note| format!("{candidate}  {note}"));
+                    ibus_lookup_table_append_candidate(table, text(&value));
+                }
+                ibus_engine_update_lookup_table(engine, table, 1);
+                if let Some(meaning) = view.meaning.filter(|s| !s.is_empty()) {
+                    let timer = Box::new(Meaning {
+                        engine: g_object_ref(engine),
+                        text: meaning,
+                    });
+                    self.timer = g_timeout_add_full(
+                        0,
+                        1500,
+                        Some(show_meaning),
+                        Box::into_raw(timer).cast(),
+                        Some(free_meaning),
+                    );
+                }
+            } else {
+                ibus_engine_hide_lookup_table(engine);
+            }
+        }
+    }
+    fn key(&mut self, engine: Obj, vk: i32, ch: i32, modifiers: i32) -> bool {
+        let surrounding = if self.preedit {
+            None
+        } else {
+            self.surrounding(engine)
+        };
+        let before = surrounding
+            .as_ref()
+            .and_then(|(b, _)| CString::new(b.as_str()).ok());
+        let after = surrounding
+            .as_ref()
+            .and_then(|(_, a)| CString::new(a.as_str()).ok());
+        // Preedit keeps the starting context; every returned deletion is checked
+        // against a new selection-free snapshot in apply() before it is sent.
+        let can_delete = if self.preedit {
+            !self.private && self.caps & (1 << 5) != 0
+        } else {
+            surrounding.is_some()
+        };
+        native::meltype_set_can_delete(self.session, i32::from(can_delete));
+        let response = unsafe {
+            result(native::meltype_handle_key(
+                self.session,
+                vk,
+                ch,
+                modifiers,
+                before.as_ref().map_or(ptr::null(), |s| s.as_ptr()),
+                after.as_ref().map_or(ptr::null(), |s| s.as_ptr()),
+            ))
+        };
+        let consumed = response.as_ref().is_some_and(|r| r.consumed);
+        self.apply(engine, response);
+        consumed
+    }
+}
+unsafe fn result_free(pointer: *mut c_char) {
+    if !pointer.is_null() {
+        native::meltype_free(pointer.cast());
+    }
+}
+struct Meaning {
+    engine: Obj,
+    text: String,
+}
+unsafe extern "C" fn show_meaning(data: Obj) -> i32 {
+    let meaning = &*data.cast::<Meaning>();
+    with(meaning.engine, |s| {
+        s.timer = 0;
+        if s.count > 0 {
+            ibus_engine_update_auxiliary_text(meaning.engine, text(&meaning.text), 1);
+        }
+    });
+    0
+}
+unsafe extern "C" fn free_meaning(data: Obj) {
+    let meaning = Box::from_raw(data.cast::<Meaning>());
+    g_object_unref(meaning.engine);
+}
+unsafe extern "C" fn process_key(
+    engine: Obj,
+    keyval: u32,
+    _keycode: u32,
+    state: u32,
+    _data: Obj,
+) -> i32 {
+    if state & (1 << 30) != 0 {
+        return 0;
+    }
+    with(engine, |s| {
+        if s.session.is_null() {
+            return 0;
+        }
+        if !s.direct && !s.private {
+            let role = match keyval {
+                0xff23 => Some(0x1c),
+                0xff22 => Some(0x1d),
+                0xff27 => Some(0x15),
+                _ => None,
+            };
+            if let Some(vk) = role {
+                let pointer = native::meltype_role_key(s.session, vk);
+                if !pointer.is_null() {
+                    s.apply(engine, result(pointer));
+                    return 1;
+                }
+            }
+        }
+        if !s.private
+            && matches!(
+                keyval,
+                0xff2a | 0xff29 | 0xff28 | 0xff30 | 0xff27 | 0xff22 | 0xff23
+            )
+        {
+            s.apply(engine, result(native::meltype_commit(s.session)));
+            s.direct =
+                matches!(keyval, 0xff30 | 0xff22) || matches!(keyval, 0xff28..=0xff2a) && !s.direct;
+            native::meltype_set_direct(s.session, s.direct as i32);
+            return 1;
+        }
+        match crate::keys::translate(keyval, ibus_keyval_to_unicode(keyval)) {
+            Some((vk, ch)) => s.key(engine, vk, ch, crate::keys::modifiers(state)) as i32,
+            None => 0,
+        }
+    })
+}
+unsafe extern "C" fn flush(engine: Obj, _data: Obj) {
+    with(engine, |s| {
+        // IBus's COMMIT focus mode commits the displayed text before it sends
+        // FocusOut/Reset. Learn that text, but do not insert it a second time.
+        result_free(native::meltype_commit_preedit(s.session));
+        s.hide(engine);
+        result_free(native::meltype_reset(s.session));
+    });
+}
+unsafe extern "C" fn enable(engine: Obj, _data: Obj) {
+    with(engine, |s| {
+        if !s.private {
+            ibus_engine_get_surrounding_text(
+                engine,
+                ptr::null_mut(),
+                ptr::null_mut(),
+                ptr::null_mut(),
+            );
+        }
+    });
+}
+unsafe extern "C" fn capabilities(engine: Obj, caps: u32, _data: Obj) {
+    with(engine, |s| s.caps = caps);
+}
+unsafe extern "C" fn content_type(engine: Obj, purpose: u32, hints: u32, _data: Obj) {
+    with(engine, |s| {
+        let private = matches!(purpose, 8 | 9) || hints & ((1 << 11) | (1 << 12)) != 0;
+        if private != s.private {
+            s.hide(engine);
+            result_free(native::meltype_reset(s.session));
+        }
+        s.private = private;
+        native::meltype_set_private(s.session, private as i32);
+    });
+}
+unsafe extern "C" fn candidate(engine: Obj, index: u32, _button: u32, _state: u32, _data: Obj) {
+    with(engine, |s| {
+        let index = s.selected / 9 * 9 + index as usize;
+        if index >= s.count {
+            return;
+        }
+        let pointer = if s.predicting {
+            native::meltype_select_prediction(s.session, index as i32)
+        } else {
+            native::meltype_select_candidate(s.session, index as i32)
+        };
+        s.apply(engine, result(pointer));
+    });
+}
+unsafe extern "C" fn previous(engine: Obj, _data: Obj) {
+    with(engine, |s| {
+        s.key(engine, 0x26, 0, 0);
+    });
+}
+unsafe extern "C" fn next(engine: Obj, _data: Obj) {
+    with(engine, |s| {
+        s.key(engine, 0x28, 0, 0);
+    });
+}
+unsafe extern "C" fn page_up(engine: Obj, _data: Obj) {
+    with(engine, |s| {
+        for _ in 0..9 {
+            s.key(engine, 0x26, 0, 0);
+        }
+    });
+}
+unsafe extern "C" fn page_down(engine: Obj, _data: Obj) {
+    with(engine, |s| {
+        for _ in 0..9 {
+            s.key(engine, 0x28, 0, 0);
+        }
+    });
+}
+unsafe extern "C" fn focus_in(engine: Obj, _data: Obj) {
+    let _ = catch_unwind(AssertUnwindSafe(|| {
+        let properties = ibus_prop_list_new();
+        for (key, label) in [
+            (c"settings", "設定..."),
+            (c"report", "不具合の報告・提案..."),
+        ] {
+            let property = ibus_property_new(
+                key.as_ptr(),
+                0,
+                text(label),
+                c"".as_ptr(),
+                text(label),
+                1,
+                1,
+                0,
+                ptr::null_mut(),
+            );
+            ibus_prop_list_append(properties, property);
+        }
+        ibus_engine_register_properties(engine, properties);
+    }));
+}
+unsafe extern "C" fn property(_engine: Obj, name: *const c_char, _state: u32, _data: Obj) {
+    let _ = catch_unwind(AssertUnwindSafe(|| {
+        if name.is_null() {
+            return;
+        }
+        if CStr::from_ptr(name) == c"settings" {
+            if let Ok(exe) = std::env::current_exe() {
+                let _ = std::process::Command::new(exe.with_file_name("meltype-settings")).spawn();
+            }
+        } else if CStr::from_ptr(name) == c"report" {
+            let _ = std::process::Command::new("xdg-open")
+                .arg("https://github.com/appipinopi/Meltype/issues/new")
+                .spawn();
+        }
+    }));
+}
+unsafe extern "C" fn destroy(engine: Obj, _data: Obj) {
+    with(engine, |s| {
+        s.cancel_timer();
+        native::meltype_destroy(s.session);
+        s.session = ptr::null_mut();
+    });
+}
+unsafe extern "C" fn disconnected(_bus: Obj, loop_: Obj) {
+    g_main_loop_quit(loop_);
+}
+
+pub fn run() -> Result<(), String> {
+    unsafe {
+        ibus_init();
+        let bus = ibus_bus_new();
+        if bus.is_null() || ibus_bus_is_connected(bus) == 0 {
+            if !bus.is_null() {
+                g_object_unref(bus);
+            }
+            return Err("IBusにつながりません。".into());
+        }
+        let mut query = GTypeQuery::default();
+        g_type_query(ibus_engine_get_type(), &mut query);
+        let type_ = g_type_register_static_simple(
+            ibus_engine_get_type(),
+            c"MeltypeRustEngine".as_ptr(),
+            query.class_size,
+            None,
+            query.instance_size,
+            Some(initialize),
+            0,
+        );
+        let factory = ibus_factory_new(ibus_bus_get_connection(bus));
+        ibus_factory_add_engine(factory, ENGINE.as_ptr(), type_);
+        if let Ok(exe) = std::env::current_exe() {
+            let helper = std::env::var_os("MELTYPE_MOZC_HELPER")
+                .map(std::path::PathBuf::from)
+                .unwrap_or_else(|| exe.with_file_name("mozc").join("meltype_mozc_helper"));
+            if helper.is_file() {
+                if let Ok(path) = CString::new(helper.to_string_lossy().as_ref()) {
+                    if native::meltype_init_mozc(path.as_ptr(), ptr::null()) == 0 {
+                        eprintln!("Meltype: Mozcを起動できませんでした。");
+                    }
+                }
+            }
+        }
+        if std::env::args().any(|a| a == "--ibus") {
+            if ibus_bus_request_name(bus, BUS.as_ptr(), 4) != 1 {
+                g_object_unref(factory);
+                g_object_unref(bus);
+                return Err("IBusの名前を取得できません。".into());
+            }
+        } else {
+            let component = ibus_component_new(
+                BUS.as_ptr(),
+                c"Meltype Rust".as_ptr(),
+                c"0.1.0".as_ptr(),
+                c"GPL-3.0-or-later".as_ptr(),
+                c"Yukishiro, appipinopi".as_ptr(),
+                c"https://github.com/appipinopi/Meltype".as_ptr(),
+                c"".as_ptr(),
+                c"".as_ptr(),
+            );
+            g_object_ref_sink(component);
+            ibus_component_add_engine(
+                component,
+                ibus_engine_desc_new(
+                    ENGINE.as_ptr(),
+                    c"Meltype Rust".as_ptr(),
+                    c"Meltype Rust".as_ptr(),
+                    c"ja".as_ptr(),
+                    c"GPL-3.0-or-later".as_ptr(),
+                    c"Yukishiro, appipinopi".as_ptr(),
+                    c"".as_ptr(),
+                    c"default".as_ptr(),
+                ),
+            );
+            let registered = ibus_bus_register_component(bus, component);
+            g_object_unref(component);
+            if registered == 0 {
+                g_object_unref(factory);
+                g_object_unref(bus);
+                return Err("IBusへ登録できません。".into());
+            }
+        }
+        let loop_ = g_main_loop_new(ptr::null_mut(), 0);
+        g_signal_connect_data(
+            bus,
+            c"disconnected".as_ptr(),
+            disconnected as *const c_void,
+            loop_,
+            None,
+            0,
+        );
+        g_main_loop_run(loop_);
+        g_object_unref(factory);
+        g_object_unref(bus);
+        g_main_loop_unref(loop_);
+    }
+    Ok(())
+}

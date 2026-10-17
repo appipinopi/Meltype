@@ -43,10 +43,15 @@ rm -rf "$BUILD/native" "$APP"
 mkdir -p "$BUILD"
 
 echo "== 1/3 本体 (C#, NativeAOT) をビルド"
+if [[ -n "${MELTYPE_NATIVE_LIBRARY:-}" ]]; then
+    mkdir -p "$BUILD/native"
+    cp "$MELTYPE_NATIVE_LIBRARY" "$BUILD/native/MeltypeNative.dylib"
+else
 # リポジトリの nuget.config は NuGet を使わない設定 (Windows の開発環境用) なので、NativeAOT のコンパイラを取るために nuget.org を指定する。
 dotnet publish ../src/Meltype.Mac.Native/Meltype.Mac.Native.csproj -c Release -r "$RID" \
     -p:PublishAot=true -p:NativeLib=Shared -p:StripSymbols=true -p:Version="$VERSION" \
     --source https://api.nuget.org/v3/index.json -o "$BUILD/native"
+fi
 
 echo "== 2/3 IME (Swift) をビルド (初回は azooKey の変換エンジンと辞書のダウンロードに時間がかかります)"
 swift build -c release

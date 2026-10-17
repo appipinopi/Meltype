@@ -11,9 +11,11 @@ namespace meltype {
 
 class TextService;
 
+#ifndef MELTYPE_RUST_CORE
 class LangBarButton final : public ITfLangBarItemButton, public ITfSource {
 public:
     explicit LangBarButton(TextService* service);
+    ITfLangBarItem* Item() { return this; }
 
     // IUnknown
     STDMETHODIMP QueryInterface(REFIID riid, void** ppv) override;
@@ -49,5 +51,6 @@ private:
     TextService* service_;  // Deactivate で Detach して nullptr にする
     ITfLangBarItemSink* sink_ = nullptr;
 };
+#endif
 
 }  // namespace meltype

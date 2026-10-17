@@ -1,0 +1,9 @@
+[package]
+name = "meltype-tip-worker"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+meltype-native = { path = "../native" }
+libc = "0.2"

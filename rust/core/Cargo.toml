@@ -1,0 +1,17 @@
+[package]
+name = "meltype-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+tempfile = "3"
+fs2 = "0.4"
+base64 = "0.22"
+unicode-normalization = "0.1"
+roxmltree = "0.20"
+json5 = "0.4"
+chrono = { version = "0.4", default-features = false, features = ["clock", "serde"] }
