@@ -278,6 +278,32 @@ int32_t meltype_tsf_apply_mode(uint32_t reply, const MeltypeTsfModeApplyCallback
 void *meltype_tip_transport_create(const char *worker_path);
 char *meltype_tip_transport_request(void *transport, const char *request, uint32_t timeout_ms, int32_t optional);
 void meltype_tip_transport_destroy(void *transport);
+typedef struct MeltypeTsfKeyEditCallbacks {
+    void *owner,*lifetime;
+    uint32_t (*read)(void *);
+    void (*update)(void *, uint32_t operation, uint32_t value);
+    int32_t (*edit)(void *, uint32_t operation, uint32_t cookie, void *context);
+    int32_t (*request)(void *, const char *json, uint32_t *reply_flags);
+    int32_t (*write)(void *, uint32_t cookie, void *context, void *range, uint16_t character);
+    void (*log)(void *, uint32_t kind, int32_t code);
+} MeltypeTsfKeyEditCallbacks;
+/* TSF thread, live borrowed interfaces and non-null callbacks which never throw.
+   metadata: UTF-8 {sid:string,process:string}. Uses a SYNC READWRITE session and
+   pins context/owner. Refused or delayed sessions cannot execute key edits later.
+   Snapshot bits: composing=1,open=2,secret checked=4,secret while composing=8,
+     moved=16,private=32,failed=64,consumed=128.
+   update operations: 0 set outcome (failed=1,consumed=2),1 own edit,2 clear moved,
+     3 server flags (active=1,detection=2,English word=4),4 server off,
+     5 clear last hello,6 set open,7 commit async preserving caret,8 reinject key.
+   edit operations: 0 check secret (return bool),1 commit preserving caret,
+     2 hide candidates/end composition,3 apply reply mode,4 apply reply edits.
+   request stores callback-owned reply until return and returns success. Reply
+     flags: active=1,detection=2,English word=4,switch=8,consumed=16,
+     empty commits=32,null view=64. write borrows range and returns success.
+   log kinds: secret=0,direct write failed=1,edit failed=2,core unavailable=3.
+   Delayed SYNC session destruction retains lifetime but never calls owner state
+   after this function returns; callback storage need only live until return. */
+int32_t meltype_tsf_handle_key(void *context, uint32_t client, void *key_state, uint32_t key, uint16_t character, const char *metadata, const MeltypeTsfKeyEditCallbacks *callbacks);
 #endif
 #ifdef __cplusplus
 }

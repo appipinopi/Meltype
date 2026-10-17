@@ -1086,6 +1086,57 @@ void TextService::ResetStaleCommit() {
 }
 
 void TextService::HandleKey(ITfContext* context, UINT vk, wchar_t ch) {
+#ifdef MELTYPE_RUST_CORE
+    struct Owner {TextService* service;JsonValue reply;} owner={this};
+    RustKeyEditCallbacks callbacks={
+        &owner,static_cast<ITfTextInputProcessorEx*>(this),
+        [](void* p)->unsigned int {auto* s=static_cast<Owner*>(p)->service;
+            return (s->composition_?1u:0u)|(s->open_?2u:0u)|(s->secretChecked_?4u:0u)|(s->secretWhileComposing_?8u:0u)|
+                (s->caretMoved_?16u:0u)|(s->privateField_?32u:0u)|(s->keyFailed_?64u:0u)|(s->consumed_?128u:0u);
+        },
+        [](void* p,unsigned int op,unsigned int value) {auto* s=static_cast<Owner*>(p)->service;
+            try {switch (op) {
+                case 0:s->keyFailed_=(value&1)!=0;s->consumed_=(value&2)!=0;break;
+                case 1:s->ownEdit_=value!=0;break;
+                case 2:s->caretMoved_=false;break;
+                case 3:s->serverActive_=(value&1)!=0;s->directDetection_=(value&2)!=0;s->directEnglishWord_=(value&4)!=0;break;
+                case 4:s->serverActive_=false;break;
+                case 5:s->lastHello_=0;break;
+                case 6:s->SetOpen(value!=0);break;
+                case 7:s->CommitAsync(true);break;
+                case 8:s->Reinject(value);break;
+            }}catch (...) {s->keyFailed_=true;s->consumed_=false;}
+        },
+        [](void* p,unsigned int op,unsigned int ec,void* c)->int {auto* o=static_cast<Owner*>(p);auto* s=o->service;
+            try {switch (op) {
+                case 0:return s->IsSecretField(ec,static_cast<ITfContext*>(c))?1:0;
+                case 1:s->CommitInSession(ec,static_cast<ITfContext*>(c),true);break;
+                case 2:if (s->candidates_) s->candidates_->Hide();s->EndComposition(ec);break;
+                case 3:s->ApplyMode(o->reply);break;
+                case 4:s->Apply(ec,static_cast<ITfContext*>(c),o->reply);break;
+            }}catch (...) {s->keyFailed_=true;s->consumed_=false;return op==0?1:0;}
+            return 0;
+        },
+        [](void* p,const char* json,unsigned int* flags)->int {auto* o=static_cast<Owner*>(p);
+            try {if (!o->service->Request(json,o->reply)) return 0;const auto& r=o->reply;
+                *flags=(r[L"active"].Bool()?1u:0u)|(r[L"directDetection"].Bool()?2u:0u)|(r[L"directEnglishWord"].Bool()?4u:0u)|
+                    (r[L"switchToJapanese"].Bool()?8u:0u)|(r[L"consumed"].Bool()?16u:0u)|(r[L"commits"].array.empty()?32u:0u)|(r[L"view"].IsNull()?64u:0u);
+                return 1;
+            }catch (...) {return 0;}
+        },
+        [](void* p,unsigned int ec,void* c,void* range,wchar_t ch)->int {
+            try {return static_cast<Owner*>(p)->service->WriteCommit(ec,static_cast<ITfContext*>(c),static_cast<ITfRange*>(range),std::wstring(1,ch))?1:0;}catch (...) {return 0;}
+        },
+        [](void*,unsigned int kind,int code) {try {switch (kind) {
+            case 0:TipLog(L"パスワードの入力欄なので何もしません");break;
+            case 1:TipLog(L"英数文字を直接入力できませんでした。キーをアプリへ送り直します");break;
+            case 2:TipLog(L"編集セッションを始められません: 0x%08X",static_cast<unsigned int>(code));break;
+            case 3:TipLog(L"Meltype.exe から応答が来ないので、打った文字をそのまま入れました");break;
+        }}catch (...) {}},
+    };
+    const std::string metadata="{\"sid\":\""+sid_+"\",\"process\":"+JsonString(ProcessName())+"}";
+    RustHandleKey(context,clientId_,keyState_,vk,ch,metadata,callbacks);
+#else
     // 8 = Windows キー (Meltype.exe は Mac の Command と同じく、確定してアプリに渡す)
     int mods = (KeyDown(VK_SHIFT) ? 1 : 0) | (KeyDown(VK_CONTROL) ? 2 : 0) | (KeyDown(VK_MENU) ? 4 : 0) | (KeyDown(VK_LWIN) || KeyDown(VK_RWIN) ? 8 : 0);
     keyFailed_ = false;
@@ -1184,6 +1235,7 @@ void TextService::HandleKey(ITfContext* context, UINT vk, wchar_t ch) {
         TipLog(L"Meltype.exe から応答が来ないので、打った文字をそのまま入れました");
     }
     if ((keyFailed_ && !insertedOnFailure) || (!consumed_ && !insertedDirect)) Reinject(vk);
+#endif
 }
 
 void TextService::ToggleInputMode(ITfContext* context) {

@@ -155,6 +155,16 @@ struct RustModeApplyCallbacks {
 };
 bool RustQueryMode(ITfContext*,TfEditCookie,void*,const std::string&,const RustModeQueryCallbacks&,bool);
 bool RustApplyMode(unsigned int,const RustModeApplyCallbacks&);
+struct RustKeyEditCallbacks {
+    void* owner;IUnknown* lifetime;
+    unsigned int (__cdecl *read)(void*);
+    void (__cdecl *update)(void*,unsigned int,unsigned int);
+    int (__cdecl *edit)(void*,unsigned int,unsigned int,void*);
+    int (__cdecl *request)(void*,const char*,unsigned int*);
+    int (__cdecl *write)(void*,unsigned int,void*,void*,wchar_t);
+    void (__cdecl *log)(void*,unsigned int,int);
+};
+HRESULT RustHandleKey(ITfContext*,TfClientId,void*,UINT,wchar_t,const std::string&,const RustKeyEditCallbacks&);
 #endif
 
 // 文字コードの変換
