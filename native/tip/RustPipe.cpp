@@ -50,7 +50,6 @@ struct RustApi {
     int (__cdecl *contextDisabled)(void*) = nullptr;
     void* (__cdecl *subscribe)(unsigned int,void*,unsigned int,void*,void**) = nullptr;
     void (__cdecl *unsubscribe)(void*) = nullptr;
-    int (__cdecl *editNotification)(void*,void*,unsigned int,const RustEditCallbacks*) = nullptr;
     unsigned int (__cdecl *keyFlags)(unsigned int,unsigned long long,unsigned int) = nullptr;
     unsigned int (__cdecl *keyModifiers)() = nullptr;
     int (__cdecl *keyDown)(int) = nullptr;
@@ -100,6 +99,7 @@ struct RustApi {
     void (__cdecl *serviceClearResume)(RustServiceState*) = nullptr;
     int (__cdecl *serviceExchange)(RustServiceState*,const char*,void*,const unsigned char*,unsigned int,unsigned int,int,void*,int (__cdecl *)(void*,const unsigned char*,unsigned int),void (__cdecl *)(void*)) = nullptr;
     HRESULT (__cdecl *serviceFocus)(RustServiceState*,const char*,void*,void*,void*,int,void*,int (__cdecl *)(void*,int),void (__cdecl *)(void*),void (__cdecl *)(void*,unsigned int,int)) = nullptr;
+    int (__cdecl *serviceEdited)(RustServiceState*,void*,void*,void*,unsigned int,void*,void (__cdecl *)(void*,unsigned int,void*,int),void (__cdecl *)(void*)) = nullptr;
     int (__cdecl *serviceCore)(RustServiceState*,const char*,void*,void*,void (__cdecl *)(void*,unsigned int,int),unsigned long long (__cdecl *)(void*),int) = nullptr;
     unsigned int (__cdecl *serviceMode)(const RustServiceState*) = nullptr;
     int (__cdecl *serviceWriteOpen)(RustServiceState*,int) = nullptr;
@@ -162,7 +162,6 @@ struct RustApi {
         contextDisabled = reinterpret_cast<decltype(contextDisabled)>(GetProcAddress(module, "meltype_tsf_context_disabled"));
         subscribe = reinterpret_cast<decltype(subscribe)>(GetProcAddress(module, "meltype_tsf_subscribe"));
         unsubscribe = reinterpret_cast<decltype(unsubscribe)>(GetProcAddress(module, "meltype_tsf_unsubscribe"));
-        editNotification = reinterpret_cast<decltype(editNotification)>(GetProcAddress(module, "meltype_tsf_edit_notification"));
         keyFlags = reinterpret_cast<decltype(keyFlags)>(GetProcAddress(module, "meltype_tsf_key_flags"));
         keyModifiers = reinterpret_cast<decltype(keyModifiers)>(GetProcAddress(module, "meltype_tsf_key_modifiers"));
         keyDown = reinterpret_cast<decltype(keyDown)>(GetProcAddress(module, "meltype_tsf_key_down"));
@@ -209,6 +208,7 @@ struct RustApi {
         serviceInitialize = reinterpret_cast<decltype(serviceInitialize)>(GetProcAddress(module, "meltype_tsf_service_initialize"));
         serviceExchange = reinterpret_cast<decltype(serviceExchange)>(GetProcAddress(module, "meltype_tsf_service_exchange"));
         serviceFocus = reinterpret_cast<decltype(serviceFocus)>(GetProcAddress(module, "meltype_tsf_service_focus"));
+        serviceEdited = reinterpret_cast<decltype(serviceEdited)>(GetProcAddress(module, "meltype_tsf_service_edited"));
         serviceCore = reinterpret_cast<decltype(serviceCore)>(GetProcAddress(module, "meltype_tsf_service_core"));
         serviceMode = reinterpret_cast<decltype(serviceMode)>(GetProcAddress(module, "meltype_tsf_service_mode"));
         serviceWriteOpen = reinterpret_cast<decltype(serviceWriteOpen)>(GetProcAddress(module, "meltype_tsf_service_write_open"));
@@ -352,7 +352,7 @@ HRESULT RustOpenChanged(REFGUID guid,const RustOpenChangeCallbacks& callbacks) {
 }
 bool RustCoreReady(const RustCoreStateCallbacks& callbacks) {return api().coreReady && api().coreReady(&callbacks)!=0;}
 RustServiceState* RustCreateServiceState() {
-    if (!api().serviceCreate || !api().serviceDestroy || !api().serviceLayout || !api().serviceCore || !api().serviceFocus || !api().serviceExchange || !api().serviceMode || !api().serviceWriteOpen || !api().serviceApplyMode || !api().serviceEditSink || !api().serviceInitialize || !api().serviceClearResume || !api().serviceSetSid || !api().serviceSid || !api().serviceClose || !api().serviceCreateBar || !api().serviceUpdateBar || !api().serviceRemoveBar || !api().serviceCreateCandidates || !api().serviceShowCandidates || !api().serviceHideCandidates || !api().serviceDropCandidates) return nullptr;
+    if (!api().serviceCreate || !api().serviceDestroy || !api().serviceLayout || !api().serviceCore || !api().serviceEdited || !api().serviceFocus || !api().serviceExchange || !api().serviceMode || !api().serviceWriteOpen || !api().serviceApplyMode || !api().serviceEditSink || !api().serviceInitialize || !api().serviceClearResume || !api().serviceSetSid || !api().serviceSid || !api().serviceClose || !api().serviceCreateBar || !api().serviceUpdateBar || !api().serviceRemoveBar || !api().serviceCreateCandidates || !api().serviceShowCandidates || !api().serviceHideCandidates || !api().serviceDropCandidates) return nullptr;
     const unsigned int expected[]={5,static_cast<unsigned int>(sizeof(RustServiceState)),static_cast<unsigned int>(alignof(RustServiceState)),
         static_cast<unsigned int>(offsetof(RustServiceState,refs)),
         static_cast<unsigned int>(offsetof(RustServiceState,manager)),
@@ -428,6 +428,9 @@ static void __cdecl ServiceCoreNotice(void*,unsigned int op,int active) {
 }
 HRESULT RustServiceFocus(RustServiceState* state,IUnknown* lifetime,ITfTextEditSink* sink,ITfDocumentMgr* document,int event,void* context,int (__cdecl *commit)(void*,int),void (__cdecl *resume)(void*)) {
     return api().serviceFocus?api().serviceFocus(state,api().worker.c_str(),lifetime,sink,document,event,context,commit,resume,ServiceCoreNotice):E_NOINTERFACE;
+}
+bool RustServiceEdited(RustServiceState* state,IUnknown* lifetime,ITfContext* context,ITfEditRecord* record,TfEditCookie cookie,void* adapter,void (__cdecl *query)(void*,unsigned int,void*,int),void (__cdecl *commit)(void*)) {
+    return api().serviceEdited && api().serviceEdited(state,lifetime,context,record,cookie,adapter,query,commit)!=0;
 }
 bool RustServiceCore(RustServiceState* state,IUnknown* lifetime,bool hello) {
     return api().serviceCore && api().serviceCore(state,api().worker.c_str(),lifetime,nullptr,ServiceCoreNotice,nullptr,hello?1:0)!=0;
@@ -535,9 +538,6 @@ void* RustSubscribe(unsigned int kind,IUnknown* owner,TfClientId client,IUnknown
     return api().subscribe && api().unsubscribe ? api().subscribe(kind,owner,client,sink,reinterpret_cast<void**>(context)) : nullptr;
 }
 void RustUnsubscribe(void* state) { if (state && api().unsubscribe) api().unsubscribe(state); }
-void RustEditNotification(TfEditCookie cookie,ITfContext* context,ITfEditRecord* record,const RustEditCallbacks& callbacks) {
-    if (api().editNotification) api().editNotification(context,record,cookie,&callbacks);
-}
 unsigned int RustKeyFlags(UINT key,LPARAM message,bool state) {
     return api().keyFlags ? api().keyFlags(key,static_cast<ULONG_PTR>(message),state && api().keyModifiers ? api().keyModifiers() : 0) : 0;
 }

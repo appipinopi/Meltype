@@ -15,13 +15,13 @@ use windows::{
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct Callbacks {
-    owner: *mut c_void,
-    lifetime: *mut c_void,
-    take_own: Option<unsafe extern "C" fn(*mut c_void) -> i32>,
-    current: Option<unsafe extern "C" fn(*mut c_void, *mut *mut c_void) -> *mut c_void>,
-    query: Option<unsafe extern "C" fn(*mut c_void, u32, *mut c_void, i32)>,
-    moved: Option<unsafe extern "C" fn(*mut c_void, i32)>,
-    commit: Option<unsafe extern "C" fn(*mut c_void)>,
+    pub(super) owner: *mut c_void,
+    pub(super) lifetime: *mut c_void,
+    pub(super) take_own: Option<unsafe extern "C" fn(*mut c_void) -> i32>,
+    pub(super) current: Option<unsafe extern "C" fn(*mut c_void, *mut *mut c_void) -> *mut c_void>,
+    pub(super) query: Option<unsafe extern "C" fn(*mut c_void, u32, *mut c_void, i32)>,
+    pub(super) moved: Option<unsafe extern "C" fn(*mut c_void, i32)>,
+    pub(super) commit: Option<unsafe extern "C" fn(*mut c_void)>,
 }
 /// Borrowed context/record and callbacks. Retains lifetime (IUnknown), context
 /// and record across callbacks. commit requests preserving the application's

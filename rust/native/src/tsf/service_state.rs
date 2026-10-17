@@ -4,6 +4,7 @@
 //! Raw COM/subscription slots retain their TSF lifecycle ownership policy.
 //! Key/resume/abandoned state, SID, transport and UI tokens are freed by Drop.
 mod core;
+mod edited;
 mod exchange;
 mod focus;
 use super::{abandoned, candidates, fields, key_state, langbar, mode, recovery, subscriptions};

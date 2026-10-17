@@ -749,18 +749,12 @@ void TextService::UnadviseTextEditSink() {
 
 STDMETHODIMP TextService::OnEndEdit(ITfContext* context, TfEditCookie ec, ITfEditRecord* record) {
 #ifdef MELTYPE_RUST_CORE
-    RustEditCallbacks callbacks = {
-        this,ServiceInterface<ITfTextInputProcessorEx>(),
-        [](void* p) -> int { auto* self=static_cast<TextService*>(p); bool own=self->ownEdit_; self->ownEdit_=false; return own ? 1 : 0; },
-        [](void* p,void** context) -> void* { auto* self=static_cast<TextService*>(p); *context=self->compositionContext_; return self->composition_; },
-        [](void* p,unsigned int cookie,void* context,int changed) { try { static_cast<TextService*>(p)->QueryMode(cookie,static_cast<ITfContext*>(context),changed!=0); } catch (...) {} },
-        [](void* p,int reset) { auto* self=static_cast<TextService*>(p); if (reset) self->directEnglishWord_=false; self->caretMoved_=true; },
-        [](void* p) { try {
+    RustServiceEdited(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),context,record,ec,this,
+        [](void* p,unsigned int cookie,void* context,int changed) {try {static_cast<TextService*>(p)->QueryMode(cookie,static_cast<ITfContext*>(context),changed!=0);}catch (...) {}},
+        [](void* p) {try {
             TipLog(L"キャレットが変換中の文字の外に出たので確定します");
             static_cast<TextService*>(p)->CommitAsync(true);
-        } catch (...) {} },
-    };
-    RustEditNotification(ec,context,record,callbacks);
+        }catch (...) {}});
     return S_OK;
 #else
     if (record == nullptr) return S_OK;

@@ -19,6 +19,7 @@ from tsf_candidate_view_smoke import GeometryHost
 from tsf_abandoned_smoke import DeferredHost
 from tsf_fields_smoke import CompartmentHost,OPEN
 from tsf_service_com_smoke import DISPATCH,DESTROY
+from tsf_edit_events_smoke import EventHost,QUERY
 SELECT=c.CFUNCTYPE(None,c.c_void_p,c.c_int,c.c_int)
 CORE_NOTICE=c.CFUNCTYPE(None,c.c_void_p,c.c_uint32,c.c_int)
 FOCUS_COMMIT=c.CFUNCTYPE(c.c_int,c.c_void_p,c.c_int)
@@ -107,6 +108,8 @@ class StateTests(unittest.TestCase):
         cls.api.meltype_tsf_service_core.argtypes=[P,c.c_char_p,P,P,CORE_NOTICE,CORE_CLOCK,c.c_int];cls.api.meltype_tsf_service_core.restype=c.c_int
         cls.api.meltype_tsf_service_exchange.argtypes=[P,c.c_char_p,P,P,U32,U32,c.c_int,P,REPLY,TOGGLE];cls.api.meltype_tsf_service_exchange.restype=c.c_int
         cls.api.meltype_tsf_service_focus.argtypes=[P,c.c_char_p,P,P,P,c.c_int,P,FOCUS_COMMIT,TOGGLE,CORE_NOTICE];cls.api.meltype_tsf_service_focus.restype=HR
+        cls.api.meltype_tsf_service_edited.argtypes=[P,P,P,P,U32,P,QUERY,TOGGLE];cls.api.meltype_tsf_service_edited.restype=c.c_int
+        cls.api.meltype_tsf_start_composition.argtypes=[P,P,P,U32];cls.api.meltype_tsf_start_composition.restype=P
         cls.fixture=str(Path(sys.argv[2]).resolve()).encode() if len(sys.argv)>2 else None
 
 
@@ -867,6 +870,78 @@ class StateTests(unittest.TestCase):
             (address,self.worker,c.byref(host.context),None,None,-1,FOCUS_COMMIT(),TOGGLE(lambda *_:None)),
             (address,self.worker,c.byref(host.context),None,None,-1,FOCUS_COMMIT(lambda *_:1),TOGGLE())]:
             self.assertEqual(self.api.meltype_tsf_service_focus(data,worker,lifetime,sink,document,event,None,commit,resume,CORE_NOTICE()),HR(0x80070057).value)
+        self.assertEqual(c.string_at(address,c.sizeof(State)),before);host.verify(self)
+    def edited(self,state,host,query=None,commit=None,record=True,lifetime=None):
+        return self.api.meltype_tsf_service_edited(c.addressof(state),lifetime or c.byref(host.context),c.byref(host.context),
+            c.byref(host.record) if record else None,7,123,query or QUERY(lambda *_:None),commit or TOGGLE(lambda *_:None))
+    def event_composition(self,state,host):
+        pointer=self.api.meltype_tsf_start_composition(c.byref(host.context),c.byref(host.sink),host.original,7)
+        self.assertTrue(pointer);state.composition=pointer;state.composition_context=c.addressof(host.context)
+        self.addCleanup(host.verify,self);self.addCleanup(release,pointer);return pointer
+    def test_edited_native_null_record_and_own_edit_consumption(self):
+        state=self.create();host=EventHost();state.own_edit=True;events=[]
+        query=QUERY(lambda *_:events.append('query'))
+        self.assertEqual(self.edited(state,host,query=query,record=False),1);self.assertTrue(state.own_edit)
+        self.assertEqual(self.edited(state,host,query=query),1);self.assertFalse(state.own_edit)
+        self.assertEqual(events,[]);self.assertEqual(host.record_reads,0);host.verify(self)
+    def test_edited_native_mode_query_precedes_moved_state(self):
+        state=self.create();host=EventHost();events=[]
+        @self.checked(QUERY)
+        def query(owner,cookie,context,changed):
+            self.assertEqual((owner,cookie,context,changed),(123,7,c.addressof(host.context),1))
+            events.append(state.caret_moved)
+        self.assertEqual(self.edited(state,host,query=query),1)
+        self.assertEqual(events,[False]);self.assertTrue(state.caret_moved);host.verify(self)
+    def test_edited_native_unchanged_or_failed_status_preserves_flags(self):
+        state=self.create();host=EventHost();state.direct_word=True;events=[]
+        query=QUERY(lambda owner,cookie,context,changed:events.append(changed))
+        host.changed=False;self.assertEqual(self.edited(state,host,query=query),1)
+        host.changed=True;host.fail_status=True;self.assertEqual(self.edited(state,host,query=query),1)
+        self.assertEqual(events,[0]);self.assertTrue(state.direct_word);self.assertFalse(state.caret_moved);host.verify(self)
+    def test_edited_native_outside_composition_marks_before_commit(self):
+        state=self.create();host=EventHost();pointer=self.event_composition(state,host);events=[]
+        state.direct_word=True;host.selection=(0,0)
+        @self.checked(TOGGLE)
+        def commit(owner):events.append((owner,state.caret_moved,state.direct_word))
+        try:
+            self.assertEqual(self.edited(state,host,commit=commit),1)
+            self.assertEqual(events,[(123,True,False)]);self.assertEqual(state.composition,pointer)
+        finally:state.composition=None;state.composition_context=None
+    def test_edited_native_boundary_selection_keeps_composition(self):
+        state=self.create();host=EventHost();self.event_composition(state,host);events=[]
+        try:
+            for selection in [(2,2),(3,3),(5,5),(2,5)]:
+                host.selection=selection;self.assertEqual(self.edited(state,host,commit=TOGGLE(lambda _:events.append(1))),1)
+            self.assertEqual(events,[]);self.assertFalse(state.caret_moved)
+        finally:state.composition=None;state.composition_context=None
+    def test_edited_native_reentrant_range_replacement_suppresses_commit(self):
+        state=self.create();host=EventHost();self.event_composition(state,host);events=[];host.selection=(0,0)
+        host.on_range=lambda:setattr(state,'composition',None)
+        try:
+            self.assertEqual(self.edited(state,host,commit=TOGGLE(lambda _:events.append(1))),1)
+            self.assertEqual(events,[]);self.assertFalse(state.caret_moved)
+        finally:state.composition=None;state.composition_context=None
+    def test_edited_native_query_can_release_last_caller_reference(self):
+        state=self.create();address=c.addressof(state);host=EventHost();events=[]
+        dispatch=DISPATCH(lambda *_:0)
+        @self.checked(DESTROY)
+        def destroyed(owner):
+            events.append(('destroy',state.caret_moved));self.api.meltype_tsf_service_state_destroy(owner)
+        root=self.api.meltype_tsf_service_com_create(address,dispatch,destroyed);self.assertTrue(root);self.owned.remove(address)
+        @self.checked(QUERY)
+        def query(*args):
+            events.append(('query',state.caret_moved));release(root);self.assertEqual(self.live(),self.before+1)
+        try:
+            self.assertEqual(self.edited(state,host,query=query,lifetime=root),1)
+            self.assertEqual(events,[('query',False),('destroy',True)]);host.verify(self)
+        finally:
+            if not events:release(root)
+    def test_edited_native_invalid_arguments_leave_state_unchanged(self):
+        state=self.create();host=EventHost();address=c.addressof(state);state.own_edit=True;before=c.string_at(address,c.sizeof(State))
+        for data,lifetime,query,commit in [(None,c.byref(host.context),QUERY(lambda *_:None),TOGGLE(lambda *_:None)),
+            (address,None,QUERY(lambda *_:None),TOGGLE(lambda *_:None)),(address,c.byref(host.context),QUERY(),TOGGLE(lambda *_:None)),
+            (address,c.byref(host.context),QUERY(lambda *_:None),TOGGLE())]:
+            self.assertEqual(self.api.meltype_tsf_service_edited(data,lifetime,c.byref(host.context),c.byref(host.record),7,None,query,commit),0)
         self.assertEqual(c.string_at(address,c.sizeof(State)),before);host.verify(self)
 if __name__=='__main__':unittest.main(argv=[sys.argv[0]],verbosity=2,failfast=True)
 
