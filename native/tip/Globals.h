@@ -91,13 +91,6 @@ void RustKeyStaleRead(void*,RustKeyStale&);
 void RustKeyStaleWrite(void*,unsigned int,unsigned int,unsigned long long);
 void RustKeyStaleClear(void*);
 bool RustKeyPassedRead(void*,bool,bool,RustKeyPassed&);
-struct RustApplyReplyCallbacks {
-    void* owner;IUnknown* lifetime;
-    void* (__cdecl *current)(void*);
-    int (__cdecl *write)(void*,void*,const unsigned short*,unsigned int);
-    void (__cdecl *action)(void*,unsigned int,unsigned int,void*,const char*,int);
-};
-bool RustApplyReply(TfEditCookie,ITfContext*,const JsonValue&,const std::string&,const RustApplyReplyCallbacks&);
 using RustJsonEmit=int (__cdecl *)(void*,unsigned int,double,const unsigned short*,unsigned int);
 bool RustJsonVisit(const std::string&,void*,RustJsonEmit);
 std::string RustJsonQuote(const std::wstring&);
@@ -138,6 +131,8 @@ int RustServiceResume(RustServiceState*,IUnknown*,ITfCompositionSink*,ITfContext
 int RustServiceAbandon(RustServiceState*,IUnknown*);
 bool RustServiceInputScope(RustServiceState*,IUnknown*,TfEditCookie,ITfContext*);
 using RustServiceApply=int (__cdecl *)(void*,unsigned int,void*,const unsigned char*,unsigned int);
+int RustServiceApplyReplyBytes(RustServiceState*,IUnknown*,ITfCompositionSink*,TfEditCookie,ITfContext*,const unsigned char*,unsigned int);
+void RustServiceApplyReply(RustServiceState*,IUnknown*,ITfCompositionSink*,TfEditCookie,ITfContext*,const JsonValue&);
 HRESULT RustServiceHandleKey(RustServiceState*,IUnknown*,ITfCompositionSink*,ITfContext*,UINT,wchar_t,void*,RustServiceApply);
 HRESULT RustServiceCommit(RustServiceState*,IUnknown*,unsigned int,ITfContext*,TfEditCookie,bool,void*,RustServiceApply);
 HRESULT RustServiceSelectCandidate(RustServiceState*,IUnknown*,int,bool,void*,RustServiceApply);

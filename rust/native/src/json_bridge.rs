@@ -260,6 +260,75 @@ pub(crate) fn key_reply(input: &[u8]) -> Option<(u32, u32)> {
     Some((flags, mode))
 }
 pub type Emit = unsafe extern "C" fn(*mut c_void, u32, f64, *const u16, u32) -> i32;
+// Match the former C++ JsonValue -> CommitJson/ViewJson boundary, including
+// UTF-16 replacement and MSVC's truncating numeric conversion (overflow=MIN).
+#[cfg(windows)]
+pub(crate) fn application_reply(input: &[u8]) -> Option<serde_json::Value> {
+    fn get<'a>(v: &'a Value, key: &str) -> Option<&'a Value> {
+        match v {
+            Value::Object(fields) => fields.get(&key.encode_utf16().collect::<Vec<_>>()),
+            _ => None,
+        }
+    }
+    fn text(v: Option<&Value>) -> String {
+        match v {
+            Some(Value::String(units)) => String::from_utf16_lossy(units),
+            _ => String::new(),
+        }
+    }
+    fn boolean(v: Option<&Value>) -> bool {
+        v == Some(&Value::Bool(true))
+    }
+    fn integer(v: Option<&Value>) -> i32 {
+        let Some(Value::Number(n)) = v else {
+            return 0;
+        };
+        let n = n.trunc();
+        if n >= f64::from(i32::MIN) && n <= f64::from(i32::MAX) {
+            n as i32
+        } else {
+            i32::MIN
+        }
+    }
+    fn array(v: Option<&Value>) -> &[Value] {
+        match v {
+            Some(Value::Array(items)) => items,
+            _ => &[],
+        }
+    }
+    let value = parse(input)?;
+    let commits:Vec<_>=array(get(&value,"commits")).iter().map(|edit|serde_json::json!({
+        "text":text(get(edit,"text")),"deleteBefore":integer(get(edit,"deleteBefore")),
+        "expect":match get(edit,"expect") {Some(v@Value::String(_))=>Some(text(Some(v))),_=>None}
+    })).collect();
+    let view = match get(&value, "view") {
+        None | Some(Value::Null) => serde_json::Value::Null,
+        Some(view) => {
+            let mut fields = serde_json::Map::new();
+            for name in ["candidates", "notes", "predictions", "clauses"] {
+                fields.insert(
+                    name.into(),
+                    serde_json::json!(array(get(view, name))
+                        .iter()
+                        .map(|v| text(Some(v)))
+                        .collect::<Vec<_>>()),
+                );
+            }
+            for name in ["suggestion", "meaning", "typed", "text"] {
+                fields.insert(name.into(), serde_json::json!(text(get(view, name))));
+            }
+            for name in ["selectedIndex", "selectedPrediction", "selectedClause"] {
+                fields.insert(name.into(), serde_json::json!(integer(get(view, name))));
+            }
+            fields.insert(
+                "converting".into(),
+                serde_json::json!(boolean(get(view, "converting"))),
+            );
+            serde_json::Value::Object(fields)
+        }
+    };
+    Some(serde_json::json!({"active":boolean(get(&value,"active")),"commits":commits,"view":view}))
+}
 unsafe fn emit(value: &Value, owner: *mut c_void, callback: Emit) -> bool {
     let empty = std::ptr::null();
     match value {
@@ -346,6 +415,52 @@ pub unsafe extern "C" fn meltype_json_quote(text: *const u16, length: u32) -> *m
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(windows)]
+    #[test]
+    fn application_projection_keeps_typed_defaults_and_utf16_replacement() {
+        let value=application_reply(br#"{"active":1,"commits":[{"text":"\ud800\ud83d\ude00","deleteBefore":2.9,"expect":false},null],"view":{"text":false,"predictions":[7,"\udc00"],"selectedIndex":"2","converting":1}}"#).unwrap();
+        assert_eq!(value["active"], false);
+        assert_eq!(
+            value["commits"],
+            serde_json::json!([{"text":"�😀","deleteBefore":2,"expect":null},{"text":"","deleteBefore":0,"expect":null}])
+        );
+        assert_eq!(value["view"]["text"], "");
+        assert_eq!(value["view"]["predictions"], serde_json::json!(["", "�"]));
+        assert_eq!(value["view"]["selectedIndex"], 0);
+        assert_eq!(value["view"]["converting"], false);
+    }
+    #[cfg(windows)]
+    #[test]
+    fn application_projection_numeric_boundaries_match_msvc() {
+        for (input, expected) in [
+            ("2147483647.9", i32::MAX),
+            ("2147483648", i32::MIN),
+            ("-2147483648.9", i32::MIN),
+            ("-2147483649", i32::MIN),
+            ("1e500", i32::MIN),
+            ("-1.9", -1),
+        ] {
+            let input = format!("{{\"view\":{{\"selectedIndex\":{input}}}}}");
+            assert_eq!(
+                application_reply(input.as_bytes()).unwrap()["view"]["selectedIndex"],
+                expected
+            );
+        }
+    }
+    #[cfg(windows)]
+    #[test]
+    fn application_projection_handles_nonobject_null_duplicate_and_invalid_inputs() {
+        assert_eq!(
+            application_reply(b"[]"),
+            Some(serde_json::json!({"active":false,"commits":[],"view":null}))
+        );
+        assert_eq!(
+            application_reply(br#"{"view":{"text":"old"},"view":null}"#).unwrap()["view"],
+            serde_json::Value::Null
+        );
+        assert!(application_reply(br#"{"view":false}"#).unwrap()["view"].is_object());
+        assert_eq!(application_reply(b"{} invalid"), None);
+    }
     #[cfg(windows)]
     #[test]
     fn key_flags_preserve_boolean_types_and_all_combinations() {

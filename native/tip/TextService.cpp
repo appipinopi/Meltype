@@ -1111,13 +1111,7 @@ void TextService::ResetStaleCommit() {
 
 void TextService::HandleKey(ITfContext* context, UINT vk, wchar_t ch) {
 #ifdef MELTYPE_RUST_CORE
-    RustServiceHandleKey(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),ServiceInterface<ITfCompositionSink>(),context,vk,ch,this,
-        [](void* p,unsigned int cookie,void* context,const unsigned char* bytes,unsigned int length)->int {try {
-            JsonValue reply;
-            if (!ParseJson(length?std::string(reinterpret_cast<const char*>(bytes),length):std::string{},reply)) return 0;
-            static_cast<TextService*>(p)->Apply(cookie,static_cast<ITfContext*>(context),reply);
-            return 1;
-        }catch (...) {return 0;}});
+    RustServiceHandleKey(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),ServiceInterface<ITfCompositionSink>(),context,vk,ch,this,ApplyServiceReply);
 #else
     // 8 = Windows キー (Meltype.exe は Mac の Command と同じく、確定してアプリに渡す)
     int mods = (KeyDown(VK_SHIFT) ? 1 : 0) | (KeyDown(VK_CONTROL) ? 2 : 0) | (KeyDown(VK_MENU) ? 4 : 0) | (KeyDown(VK_LWIN) || KeyDown(VK_RWIN) ? 8 : 0);
@@ -1455,33 +1449,7 @@ void TextService::SurroundingText(TfEditCookie ec, ITfContext* context, std::wst
 
 void TextService::Apply(TfEditCookie ec, ITfContext* context, const JsonValue& reply) {
 #ifdef MELTYPE_RUST_CORE
-    struct Owner { TextService* service; ITfContext* context; TfEditCookie cookie; } owner = {this,context,ec};
-    auto current = [](void* value) -> void* { return static_cast<Owner*>(value)->service->composition_; };
-    auto write = [](void* value,void* range,const unsigned short* text,unsigned int length) -> int {
-        auto* owner = static_cast<Owner*>(value);
-        try {
-            return owner->service->WriteCommit(owner->cookie,owner->context,static_cast<ITfRange*>(range),
-                std::wstring(reinterpret_cast<const wchar_t*>(text),length)) ? 1 : 0;
-        } catch (...) { return 0; }
-    };
-    RustApplyReplyCallbacks callbacks={
-        &owner,ServiceInterface<ITfTextInputProcessorEx>(),current,write,
-        [](void* p,unsigned int op,unsigned int cookie,void* context,const char* json,int value) {
-            auto* s=static_cast<Owner*>(p)->service;
-            try {switch (op) {
-                case 0:s->lastConverting_=value!=0;break;
-                case 1:case 2:{JsonValue view;if (!ParseJson(json,view)) return;
-                    if (op==1) s->ApplyComposition(cookie,static_cast<ITfContext*>(context),view);
-                    else s->ShowCandidates(cookie,static_cast<ITfContext*>(context),view);
-                    break;}
-                case 3:s->EndComposition(cookie);break;
-                case 4:s->HideCandidates();break;
-                case 5:{JsonValue ignored;s->Request(json,ignored);s->keyFailed_=true;s->consumed_=false;break;}
-            }}catch (...) {s->keyFailed_=true;s->consumed_=false;}
-        },
-    };
-    const std::string metadata="{\"sid\":\""+SessionId()+"\",\"direct\":"+(!open_?"true":"false")+"}";
-    RustApplyReply(ec,context,reply,metadata,callbacks);
+    RustServiceApplyReply(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),ServiceInterface<ITfCompositionSink>(),ec,context,reply);
 #else
     // 1 つの応答の中の確定は、前の確定の後ろに続けて入れる (クリックで確定したときは、キャレットがもうクリックした所にあるので、
     // キャレットの位置に入れると、クリックした所に入ったり、選んでいた文字を上書きしたりする)
@@ -1951,12 +1919,8 @@ bool TextService::CommitNow(bool keepAppCaret) {
 
 #ifdef MELTYPE_RUST_CORE
 int __cdecl TextService::ApplyServiceReply(void* p,unsigned int cookie,void* context,const unsigned char* bytes,unsigned int length) {
-    JsonValue reply;
-    try {
-        if (!ParseJson(length?std::string(reinterpret_cast<const char*>(bytes),length):std::string{},reply)) return 0;
-    }catch (...) {return 0;}
-    try {static_cast<TextService*>(p)->Apply(cookie,static_cast<ITfContext*>(context),reply);}catch (...) {}
-    return 1;
+    auto* s=static_cast<TextService*>(p);
+    return RustServiceApplyReplyBytes(s->state_.value,s->ServiceInterface<ITfTextInputProcessorEx>(),s->ServiceInterface<ITfCompositionSink>(),cookie,static_cast<ITfContext*>(context),bytes,length)>=0?1:0;
 }
 HRESULT TextService::ServiceCommit(unsigned int mode,ITfContext* context,TfEditCookie cookie,bool keep) {
     return RustServiceCommit(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),mode,context,cookie,keep,this,ApplyServiceReply);

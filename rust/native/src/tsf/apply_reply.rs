@@ -15,11 +15,11 @@ use windows::{
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct Callbacks {
-    owner: *mut c_void,
-    lifetime: *mut c_void,
-    current: unsafe extern "C" fn(*mut c_void) -> *mut c_void,
-    write: unsafe extern "C" fn(*mut c_void, *mut c_void, *const u16, u32) -> i32,
-    action: unsafe extern "C" fn(*mut c_void, u32, u32, *mut c_void, *const c_char, i32),
+    pub(super) owner: *mut c_void,
+    pub(super) lifetime: *mut c_void,
+    pub(super) current: unsafe extern "C" fn(*mut c_void) -> *mut c_void,
+    pub(super) write: unsafe extern "C" fn(*mut c_void, *mut c_void, *const u16, u32) -> i32,
+    pub(super) action: unsafe extern "C" fn(*mut c_void, u32, u32, *mut c_void, *const c_char, i32),
 }
 /// # Safety
 /// TSF-thread-only borrowed context, valid read/write cookie and UTF-8 reply

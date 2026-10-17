@@ -137,6 +137,7 @@ class StateTests(unittest.TestCase):
         cls.api.meltype_tsf_service_commit.argtypes=[P,P,c.c_char_p,U32,P,U32,c.c_int,P,COMMIT_APPLY,TOGGLE];cls.api.meltype_tsf_service_commit.restype=HR
         cls.api.meltype_tsf_service_select_candidate.argtypes=[P,P,c.c_char_p,c.c_int,c.c_int,P,COMMIT_APPLY,TOGGLE];cls.api.meltype_tsf_service_select_candidate.restype=HR
         cls.api.meltype_tsf_service_handle_key.argtypes=[P,P,P,c.c_char_p,P,U32,c.c_uint16,P,COMMIT_APPLY,CORE_NOTICE,SENDER];cls.api.meltype_tsf_service_handle_key.restype=HR
+        cls.api.meltype_tsf_service_apply_reply.argtypes=[P,P,P,c.c_char_p,P,U32,P,U32,P,TOGGLE];cls.api.meltype_tsf_service_apply_reply.restype=c.c_int
         cls.api.meltype_tsf_service_key_secret.argtypes=[P,P,P,U32,c.c_int,P,CORE_NOTICE];cls.api.meltype_tsf_service_key_secret.restype=c.c_int
         cls.api.meltype_tsf_service_would_eat.argtypes=[P,P,P,c.c_char_p,P,U32,c.c_uint64,c.c_int,P,KEY_COMMIT,CORE_NOTICE,c.POINTER(c.c_uint16)];cls.api.meltype_tsf_service_would_eat.restype=c.c_int
         cls.api.meltype_tsf_service_key_event.argtypes=[P,P,P,c.c_char_p,U32,P,U32,c.c_uint64,P,KEY_COMMIT,KEY_HANDLE,CORE_NOTICE];cls.api.meltype_tsf_service_key_event.restype=c.c_int
@@ -1398,7 +1399,14 @@ class StateTests(unittest.TestCase):
         response.write_text(reply,encoding='utf-8');changes={'MELTYPE_TEST_HELLO_REPLY_FILE':str(response),'MELTYPE_TEST_HELLO_REQUEST_FILE':str(request)}
         previous={key:os.environ.get(key) for key in changes}
         try:
-            os.environ.update(changes);self.api.meltype_tsf_service_close(c.addressof(state));result=action(self.fixture)
+            os.environ.update(changes);self.api.meltype_tsf_service_close(c.addressof(state))
+            # This suite checks service policy, not cold-process scheduling. Warm
+            # the private fixture before the product's 800/100ms action. Transport
+            # deadline/backoff tests retain their own cold/fault scenarios.
+            response=self.api.meltype_tsf_service_request(c.addressof(state),self.fixture,b'{}',5000,0)
+            self.assertTrue(response,'private fixture readiness');self.api.meltype_free(response)
+            request.unlink() # A warm-up record must never satisfy action assertions.
+            result=action(self.fixture)
         finally:
             for key,value in previous.items():
                 if value is None:os.environ.pop(key,None)
@@ -2122,5 +2130,90 @@ class StateTests(unittest.TestCase):
         for data,life,worker,callback in [(None,c.byref(host.context),self.worker,apply),(address,None,self.worker,apply),(address,c.byref(host.context),None,apply),(address,c.byref(host.context),self.worker,COMMIT_APPLY())]:
             self.assertEqual(self.api.meltype_tsf_service_handle_key(data,life,c.byref(host.sink),worker,c.byref(host.context),65,97,None,callback,CORE_NOTICE(),sender),HR(0x80070057).value)
         self.assertEqual(self.handle_service_key(state,host,key=256),HR(0x80070057).value);self.assertEqual(c.string_at(address,c.sizeof(State)),before);host.verify(self)
+    def service_apply(self,state,host,reply,worker=None,notice=None,lifetime=None):
+        raw=reply.encode() if isinstance(reply,str) else json.dumps(reply,ensure_ascii=False).encode()
+        return self.api.meltype_tsf_service_apply_reply(c.addressof(state),lifetime or c.byref(host.context),c.byref(host.sink),worker or self.worker,c.byref(host.context),7,raw,len(raw),123,notice or TOGGLE())
+    def test_apply_native_commits_then_preedit_and_attributes(self):
+        state=self.create();host=DeferredHost();host.selection=(0,3);state.atom_input=11;state.atom_converted=22;state.atom_target=33
+        try:
+            self.assertEqual(self.service_apply(state,host,{'active':True,'commits':[{'text':'確定'}],'view':{'text':'日本😀','converting':True,'clauses':['日','本😀'],'selectedClause':1}}),1)
+            self.assertEqual(host.document,units('確定日本😀'));self.assertTrue(state.last_converting);self.assertTrue(state.composition);self.assertEqual(host.ended,1)
+            self.assertEqual(host.attributes,[(2,3,22),(3,6,33)])
+        finally:self.cleanup_recovered(state,host)
+    def test_apply_native_active_empty_view_erases_and_ends(self):
+        state=self.create();host=DeferredHost();self.shutdown_composition(state,host);self.stale_state(state);state.last_converting=True
+        try:
+            self.assertEqual(self.service_apply(state,host,{'active':True,'view':None}),1);self.assertEqual(host.document,[])
+            self.assertFalse(state.composition);self.assertFalse(state.last_converting);self.assertEqual(host.ended,1);self.assertEqual(self.stale_tries(state),0)
+        finally:self.cleanup_recovered(state,host)
+    def test_apply_native_inactive_empty_view_preserves_text(self):
+        state=self.create();host=DeferredHost();self.shutdown_composition(state,host)
+        try:
+            self.assertEqual(self.service_apply(state,host,{'active':False}),1);self.assertEqual(host.document,units('old'));self.assertFalse(state.composition);self.assertEqual(host.ended,1)
+        finally:self.cleanup_recovered(state,host)
+    def test_apply_native_commit_batch_anchors_after_preceding_edit_with_keep_caret(self):
+        state=self.create();host=DeferredHost();self.shutdown_composition(state,host);host.selection=(0,0);state.keep_caret=True
+        try:
+            self.assertEqual(self.service_apply(state,host,{'commits':[{'text':'日本'},{'text':'😀'}]}),1)
+            self.assertEqual(host.document,units('日本😀'));self.assertEqual(host.selection,(0,0));self.assertTrue(state.keep_caret);self.assertFalse(state.composition)
+        finally:self.cleanup_recovered(state,host)
+    def test_apply_native_guarded_failure_resets_core_then_marks_outcome(self):
+        state=self.create();host=DeferredHost();state.open=False;state.last_converting=True
+        self.api.meltype_tsf_service_set_sid(c.addressof(state),'reset"😀'.encode())
+        try:
+            result,request=self.fixture_recovery(state,'{}',lambda worker:self.service_apply(state,host,{'commits':[{'text':'wrong','deleteBefore':3,'expect':'bad'},{'text':'later'}],'view':{'text':'discard'}},worker=worker))
+            self.assertEqual(result,0);self.assertEqual(request,{'op':'reset','sid':'reset"😀','direct':True})
+            self.assertTrue(state.key_failed);self.assertFalse(state.consumed);self.assertTrue(state.last_converting);self.assertEqual(host.document,units('old'));self.assertFalse(state.composition)
+        finally:self.cleanup_recovered(state,host)
+    def test_apply_native_guarded_replacement_checks_expected_text(self):
+        state=self.create();host=DeferredHost()
+        try:
+            self.assertEqual(self.service_apply(state,host,{'commits':[{'text':'日本😀','deleteBefore':3,'expect':'old'}]}),1)
+            self.assertEqual(host.document,units('日本😀'));self.assertFalse(state.key_failed);self.assertFalse(state.composition)
+        finally:self.cleanup_recovered(state,host)
+    def test_apply_native_wrong_typed_values_follow_shell_defaults(self):
+        state=self.create();host=DeferredHost();host.selection=(0,3)
+        try:
+            self.assertEqual(self.service_apply(state,host,{'active':'true','commits':[{'text':8,'deleteBefore':'3','expect':False}],'view':False}),1)
+            self.assertEqual(host.document,[]);self.assertFalse(state.last_converting);self.assertFalse(state.composition)
+        finally:self.cleanup_recovered(state,host)
+    def test_apply_native_compatible_surrogates_are_replaced_at_value_projection(self):
+        state=self.create();host=DeferredHost();host.selection=(0,3)
+        try:
+            self.assertEqual(self.service_apply(state,host,'{"commits":[{"text":"\\ud800\\ud83d\\ude00"}]}'),1)
+            self.assertEqual(host.document,units('�😀'));self.assertFalse(state.key_failed)
+        finally:self.cleanup_recovered(state,host)
+    def test_apply_native_bad_json_preserves_document_state(self):
+        state=self.create();host=DeferredHost();before=c.string_at(c.addressof(state),c.sizeof(State))
+        self.assertEqual(self.service_apply(state,host,'invalid'),-1);self.assertEqual(c.string_at(c.addressof(state),c.sizeof(State)),before);self.assertEqual(host.document,units('old'));host.verify(self)
+    def test_apply_native_failed_plain_write_does_not_trigger_guard_reset(self):
+        state=self.create();host=DeferredHost();host.fail_write=True
+        try:
+            self.assertEqual(self.service_apply(state,host,{'commits':[{'text':'failure'}]}),1)
+            self.assertEqual(host.document,units('old'));self.assertFalse(state.key_failed);self.assertFalse(state.transport);self.assertFalse(state.composition)
+        finally:self.cleanup_recovered(state,host)
+    def test_apply_native_last_caller_release_retained_through_end_and_hide(self):
+        state=self.create();host=DeferredHost();self.shutdown_composition(state,host);address=c.addressof(state);events=[];dispatch=DISPATCH(lambda *_:0)
+        @self.checked(DESTROY)
+        def destroyed(owner):events.append(('destroy',state.composition,state.last_converting));self.api.meltype_tsf_service_state_destroy(owner)
+        root=self.api.meltype_tsf_service_com_create(address,dispatch,destroyed);self.assertTrue(root);self.owned.remove(address)
+        def ended():events.append('end');release(root);self.assertEqual(self.live(),self.before+1)
+        host.on_end=ended
+        self.assertEqual(self.service_apply(state,host,{'active':False},lifetime=root),1)
+        self.assertEqual(events,['end',('destroy',None,False)]);host.verify(self)
+    def test_apply_native_reset_failure_notice_pins_outcome_updates(self):
+        state=self.create();host=DeferredHost();address=c.addressof(state);events=[];dispatch=DISPATCH(lambda *_:0)
+        @self.checked(DESTROY)
+        def destroyed(owner):events.append(('destroy',state.key_failed,state.consumed));self.api.meltype_tsf_service_state_destroy(owner)
+        root=self.api.meltype_tsf_service_com_create(address,dispatch,destroyed);self.assertTrue(root);self.owned.remove(address)
+        @self.checked(TOGGLE)
+        def notice(owner):self.assertEqual(owner,123);events.append('invalid');release(root);self.assertEqual(self.live(),self.before+1)
+        result,request=self.fixture_recovery(state,'invalid',lambda worker:self.service_apply(state,host,{'commits':[{'text':'wrong','deleteBefore':3,'expect':'bad'}]},worker=worker,notice=notice,lifetime=root))
+        self.assertEqual(result,0);self.assertEqual(request['op'],'reset');self.assertEqual(events,['invalid',('destroy',True,False)]);host.verify(self)
+    def test_apply_native_invalid_arguments_preserve_state(self):
+        state=self.create();host=DeferredHost();address=c.addressof(state);before=c.string_at(address,c.sizeof(State));life=c.byref(host.context);context=c.byref(host.context)
+        for data,root,worker,ctx,raw in [(None,life,self.worker,context,b'{}'),(address,None,self.worker,context,b'{}'),(address,life,None,context,b'{}'),(address,life,self.worker,None,b'{}'),(address,life,self.worker,context,None)]:
+            self.assertEqual(self.api.meltype_tsf_service_apply_reply(data,root,c.byref(host.sink),worker,ctx,7,raw,2,None,TOGGLE()),-1)
+        self.assertEqual(c.string_at(address,c.sizeof(State)),before);host.verify(self)
 if __name__=='__main__':unittest.main(argv=[sys.argv[0]],verbosity=2,failfast=True)
 

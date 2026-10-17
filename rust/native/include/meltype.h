@@ -573,6 +573,12 @@ int32_t meltype_tsf_service_select_candidate(void *state,void *lifetime,const ch
    7=scope unreadable,8=reinjection guard,9=SendInput error. All callbacks must not
    unwind or retain arguments. Async commits independently retain real adapters. */
 int32_t meltype_tsf_service_handle_key(void *state,void *lifetime,void *sink,const char *worker,void *context,uint32_t key,uint16_t ch,void *adapter,int32_t (*apply)(void *,uint32_t,void *,const uint8_t *,uint32_t),void (*notice)(void *,uint32_t,int32_t),uint32_t (*sender)(void *,const void *,uint32_t));
+/* Apply raw compatible reply bytes through native service document/UI state.
+   Live root/context/composition sink on its TSF thread, valid read/write cookie.
+   Worker is trusted absolute UTF-8. Root pins state/notice through reentry.
+   Notice reports invalid reset replies, never unwinds or retains arguments.
+   Returns -1 invalid input,0 guarded application failure,1 applied. */
+int32_t meltype_tsf_service_apply_reply(void *state,void *lifetime,void *sink,const char *worker,void *context,uint32_t cookie,const uint8_t *reply,uint32_t length,void *adapter,void (*notice)(void *));
 /* Service mode actions op0=toggle,op1=code line(value Japanese),op2=query(cookie,
    value selection-changed). Notice 0=hello,1=invalid JSON,2=English display,
    3=code-line Japanese,4=scope source,5=scope unreadable reason. Query retains
