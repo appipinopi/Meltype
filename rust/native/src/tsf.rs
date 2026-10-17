@@ -27,6 +27,7 @@ mod ranges;
 mod recovery;
 mod recovery_control;
 mod registration;
+mod service_com;
 mod service_state;
 mod shutdown;
 mod startup;

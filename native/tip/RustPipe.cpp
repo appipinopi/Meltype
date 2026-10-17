@@ -97,6 +97,8 @@ struct RustApi {
     void (__cdecl *serviceDestroy)(RustServiceState*) = nullptr;
     unsigned int (__cdecl *serviceLayout)(unsigned int*,unsigned int) = nullptr;
     unsigned int (__cdecl *serviceLive)() = nullptr;
+    void* (__cdecl *serviceComCreate)(void*,HRESULT (__cdecl *)(void*,const RustServiceCall*),void (__cdecl *)(void*)) = nullptr;
+    void* (__cdecl *serviceComInterface)(void*,const GUID*) = nullptr;
     int (__cdecl *serviceSetSid)(RustServiceState*,const char*) = nullptr;
     const char* (__cdecl *serviceSid)(const RustServiceState*) = nullptr;
     char* (__cdecl *serviceRequest)(RustServiceState*,const char*,const char*,unsigned int,int) = nullptr;
@@ -213,6 +215,8 @@ struct RustApi {
         serviceShowCandidates = reinterpret_cast<decltype(serviceShowCandidates)>(GetProcAddress(module, "meltype_tsf_service_show_candidates"));
         serviceHideCandidates = reinterpret_cast<decltype(serviceHideCandidates)>(GetProcAddress(module, "meltype_tsf_service_hide_candidates"));
         serviceDropCandidates = reinterpret_cast<decltype(serviceDropCandidates)>(GetProcAddress(module, "meltype_tsf_service_drop_candidates"));
+        serviceComCreate = reinterpret_cast<decltype(serviceComCreate)>(GetProcAddress(module, "meltype_tsf_service_com_create"));
+        serviceComInterface = reinterpret_cast<decltype(serviceComInterface)>(GetProcAddress(module, "meltype_tsf_service_com_interface"));
         serviceLive = reinterpret_cast<decltype(serviceLive)>(GetProcAddress(module, "meltype_tsf_service_state_live_count"));
     }
     bool ready() const { return create && destroy && request && freeText; }
@@ -406,6 +410,10 @@ RustServiceStateStorage::~RustServiceStateStorage() {
     DllRelease();
 }
 
+void* RustCreateServiceCom(void* owner,HRESULT (__cdecl *dispatch)(void*,const RustServiceCall*),void (__cdecl *destroy)(void*)) {
+    return api().serviceComCreate && api().serviceComInterface?api().serviceComCreate(owner,dispatch,destroy):nullptr;
+}
+void* RustServiceComInterface(void* root,REFIID iid) {return api().serviceComInterface?api().serviceComInterface(root,&iid):nullptr;}
 void RustServiceSetSid(RustServiceState* state,const char* sid) {
     if (api().serviceSetSid) api().serviceSetSid(state,sid);
 }

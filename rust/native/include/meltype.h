@@ -520,6 +520,14 @@ typedef struct MeltypeTsfCoreRequestCallbacks {
    Own-process requests retain the original thread-id byte insertion rule.
    Stale/ended replies are skipped. No borrowed stack survives this call. */
 int32_t meltype_tsf_core_request(const uint8_t *input,uint32_t length,uint32_t timeout,int32_t optional,const MeltypeTsfCoreRequestCallbacks *callbacks);
+/* Native TSF COM owner. Final Release on creator thread destroys the adapter.
+   Dispatch never unwinds or retains Call; callbacks remain valid until destroy.
+   Interface lookup is borrowed and does not AddRef. */
+typedef struct MeltypeTsfServiceCall {
+    uint32_t op;void *a;void *b;void *c;uintptr_t n1;intptr_t n2;
+} MeltypeTsfServiceCall;
+void *meltype_tsf_service_com_create(void *owner,int32_t (*dispatch)(void *,const MeltypeTsfServiceCall *),void (*destroy)(void *));
+void *meltype_tsf_service_com_interface(void *root,const void *iid);
 /* TSF-thread state allocation with upstream defaults. Opaque except to a shell
    that first checks layout version,size,alignment and every field offset.
    Destroy once, on its TSF thread, after aliases/callbacks/UI have ceased and

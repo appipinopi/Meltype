@@ -8,6 +8,7 @@
 
 #include <cstdlib>
 #include <cwctype>
+#include <new>
 
 #include "DisplayAttributes.h"
 #include "LangBar.h"
@@ -215,6 +216,25 @@ TextService::TextService() {
     DllAddRef();
 #endif
 #ifdef MELTYPE_RUST_CORE
+    comEntry_=RustCreateServiceCom(this,
+        [](void* owner,const RustServiceCall* call)->HRESULT {
+            auto* s=static_cast<TextService*>(owner);try {switch (call->op) {
+                case 0:return s->Activate(static_cast<ITfThreadMgr*>(call->a),static_cast<TfClientId>(call->n1));
+                case 1:return s->ActivateEx(static_cast<ITfThreadMgr*>(call->a),static_cast<TfClientId>(call->n1),static_cast<DWORD>(call->n2));
+                case 2:return s->Deactivate();
+                case 5:return s->OnSetFocus(static_cast<ITfDocumentMgr*>(call->a),static_cast<ITfDocumentMgr*>(call->b));
+                case 8:return s->OnSetFocus(static_cast<BOOL>(call->n1));
+                case 9:return s->OnTestKeyDown(static_cast<ITfContext*>(call->a),call->n1,call->n2,static_cast<BOOL*>(call->b));
+                case 10:return s->OnTestKeyUp(static_cast<ITfContext*>(call->a),call->n1,call->n2,static_cast<BOOL*>(call->b));
+                case 11:return s->OnKeyDown(static_cast<ITfContext*>(call->a),call->n1,call->n2,static_cast<BOOL*>(call->b));
+                case 12:return s->OnKeyUp(static_cast<ITfContext*>(call->a),call->n1,call->n2,static_cast<BOOL*>(call->b));
+                case 14:return s->OnCompositionTerminated(static_cast<TfEditCookie>(call->n1),static_cast<ITfComposition*>(call->a));
+                case 17:return s->OnChange(*static_cast<const GUID*>(call->a));
+                case 18:return s->OnEndEdit(static_cast<ITfContext*>(call->a),static_cast<TfEditCookie>(call->n1),static_cast<ITfEditRecord*>(call->b));
+                default:return E_NOTIMPL;
+            }}catch (const std::bad_alloc&) {return E_OUTOFMEMORY;}catch (...) {return E_FAIL;}
+        },[](void* owner) {delete static_cast<TextService*>(owner);});
+    if (!comEntry_) throw std::bad_alloc();
     keyState_=RustKeyStateCreate();
 #endif
 }
@@ -234,6 +254,9 @@ TextService::~TextService() {
 }
 
 STDMETHODIMP TextService::QueryInterface(REFIID riid, void** ppv) {
+#ifdef MELTYPE_RUST_CORE
+    return static_cast<IUnknown*>(comEntry_)->QueryInterface(riid,ppv);
+#else
     if (ppv == nullptr) return E_INVALIDARG;
     *ppv = nullptr;
     if (IsEqualIID(riid, IID_IUnknown) || IsEqualIID(riid, IID_ITfTextInputProcessor) || IsEqualIID(riid, IID_ITfTextInputProcessorEx)) {
@@ -254,14 +277,25 @@ STDMETHODIMP TextService::QueryInterface(REFIID riid, void** ppv) {
     if (*ppv == nullptr) return E_NOINTERFACE;
     AddRef();
     return S_OK;
+#endif
 }
 
-STDMETHODIMP_(ULONG) TextService::AddRef() { return InterlockedIncrement(&refs_); }
+STDMETHODIMP_(ULONG) TextService::AddRef() {
+#ifdef MELTYPE_RUST_CORE
+    return static_cast<IUnknown*>(comEntry_)->AddRef();
+#else
+    return InterlockedIncrement(&refs_);
+#endif
+}
 
 STDMETHODIMP_(ULONG) TextService::Release() {
+#ifdef MELTYPE_RUST_CORE
+    return static_cast<IUnknown*>(comEntry_)->Release();
+#else
     ULONG count = InterlockedDecrement(&refs_);
     if (count == 0) delete this;
     return count;
+#endif
 }
 
 // ---- 起動・終了 ----
@@ -271,10 +305,10 @@ STDMETHODIMP TextService::Activate(ITfThreadMgr* threadMgr, TfClientId clientId)
 STDMETHODIMP TextService::ActivateEx(ITfThreadMgr* threadMgr, TfClientId clientId, DWORD flags) {
 #ifdef MELTYPE_RUST_CORE
     RustStartupCallbacks callbacks={
-        this,static_cast<ITfTextInputProcessorEx*>(this),&focusEpoch_,&shutdownPhase_,
+        this,ServiceInterface<ITfTextInputProcessorEx>(),&focusEpoch_,&shutdownPhase_,
         reinterpret_cast<void**>(&threadMgr_),&keyState_,&abandoned_,&resume_,
         {&threadSubscription_,&keySubscription_,&modeSubscription_},{&atomInput_,&atomConverted_,&atomTarget_},
-        {static_cast<ITfThreadMgrEventSink*>(this),static_cast<ITfKeyEventSink*>(this),static_cast<ITfCompartmentEventSink*>(this)},
+        {ServiceInterface<ITfThreadMgrEventSink>(),ServiceInterface<ITfKeyEventSink>(),ServiceInterface<ITfCompartmentEventSink>()},
         [](void* p,unsigned int client,int disabled,int own,const char* sid) {auto* s=static_cast<TextService*>(p);try {
             ++s->modeEpoch_;
             s->clientId_=client;s->deactivated_=false;s->serverActive_=false;s->directDetection_=false;s->directEnglishWord_=false;
@@ -351,17 +385,17 @@ STDMETHODIMP TextService::ActivateEx(ITfThreadMgr* threadMgr, TfClientId clientI
     TipLog(L"Activate (%s)%s%s", ProcessName().c_str(), disabled_ ? L" 無効: " : L"", disabled_ ? reason : L"");
 
 #ifdef MELTYPE_RUST_CORE
-    threadSubscription_ = RustSubscribe(0,threadMgr_,clientId_,static_cast<ITfThreadMgrEventSink*>(this));
-    keySubscription_ = RustSubscribe(1,threadMgr_,clientId_,static_cast<ITfKeyEventSink*>(this));
+    threadSubscription_ = RustSubscribe(0,threadMgr_,clientId_,ServiceInterface<ITfThreadMgrEventSink>());
+    keySubscription_ = RustSubscribe(1,threadMgr_,clientId_,ServiceInterface<ITfKeyEventSink>());
 #else
     ITfSource* source = nullptr;
     if (SUCCEEDED(threadMgr_->QueryInterface(IID_ITfSource, reinterpret_cast<void**>(&source)))) {
-        source->AdviseSink(IID_ITfThreadMgrEventSink, static_cast<ITfThreadMgrEventSink*>(this), &threadMgrCookie_);
+        source->AdviseSink(IID_ITfThreadMgrEventSink, ServiceInterface<ITfThreadMgrEventSink>(), &threadMgrCookie_);
         source->Release();
     }
     ITfKeystrokeMgr* keystroke = nullptr;
     if (SUCCEEDED(threadMgr_->QueryInterface(IID_ITfKeystrokeMgr, reinterpret_cast<void**>(&keystroke)))) {
-        keystroke->AdviseKeyEventSink(clientId_, static_cast<ITfKeyEventSink*>(this), TRUE);
+        keystroke->AdviseKeyEventSink(clientId_, ServiceInterface<ITfKeyEventSink>(), TRUE);
         keystroke->Release();
     }
 #endif
@@ -378,7 +412,7 @@ STDMETHODIMP TextService::ActivateEx(ITfThreadMgr* threadMgr, TfClientId clientI
     // 日本語 / 英数 (IME の ON/OFF)。Meltype は日本語から始める (半角/全角 を押さなくてよいのが Meltype なので)
     // 何もしないプロセス (Meltype.exe 自身・サインインの画面) では、入力モードを変えず、タスクバーの「あ」も出さない (キーはそのまま通るので)
 #ifdef MELTYPE_RUST_CORE
-    if (!disabled_) modeSubscription_ = RustSubscribe(2,threadMgr_,clientId_,static_cast<ITfCompartmentEventSink*>(this));
+    if (!disabled_) modeSubscription_ = RustSubscribe(2,threadMgr_,clientId_,ServiceInterface<ITfCompartmentEventSink>());
 #else
     ITfCompartmentMgr* compartments = nullptr;
     if (!disabled_ && SUCCEEDED(threadMgr_->QueryInterface(IID_ITfCompartmentMgr, reinterpret_cast<void**>(&compartments)))) {
@@ -391,7 +425,7 @@ STDMETHODIMP TextService::ActivateEx(ITfThreadMgr* threadMgr, TfClientId clientI
             openClose->SetValue(clientId_, &value);
             ITfSource* compartmentSource = nullptr;
             if (SUCCEEDED(openClose->QueryInterface(IID_ITfSource, reinterpret_cast<void**>(&compartmentSource)))) {
-                compartmentSource->AdviseSink(IID_ITfCompartmentEventSink, static_cast<ITfCompartmentEventSink*>(this), &compartmentCookie_);
+                compartmentSource->AdviseSink(IID_ITfCompartmentEventSink, ServiceInterface<ITfCompartmentEventSink>(), &compartmentCookie_);
                 compartmentSource->Release();
             }
             openClose->Release();
@@ -425,7 +459,7 @@ STDMETHODIMP TextService::ActivateEx(ITfThreadMgr* threadMgr, TfClientId clientI
 STDMETHODIMP TextService::Deactivate() {
 #ifdef MELTYPE_RUST_CORE
     RustShutdownCallbacks callbacks={
-        this,static_cast<ITfTextInputProcessorEx*>(this),&focusEpoch_,&shutdownPhase_,
+        this,ServiceInterface<ITfTextInputProcessorEx>(),&focusEpoch_,&shutdownPhase_,
         reinterpret_cast<void**>(&composition_),reinterpret_cast<void**>(&compositionContext_),reinterpret_cast<void**>(&threadMgr_),
         &modeSubscription_,&keySubscription_,&threadSubscription_,
         [](void* p)->unsigned int {return static_cast<TextService*>(p)->disabled_?1u:0u;},
@@ -580,7 +614,7 @@ STDMETHODIMP TextService::OnSetFocus(BOOL foreground) {
 #ifdef MELTYPE_RUST_CORE
 RustFocusCallbacks TextService::FocusCallbacks() {
     return {
-        this,static_cast<ITfTextInputProcessorEx*>(this),&focusEpoch_,
+        this,ServiceInterface<ITfTextInputProcessorEx>(),&focusEpoch_,
         [](void* p)->unsigned int {auto* s=static_cast<TextService*>(p);return (s->composition_?1u:0u)|(s->disabled_?2u:0u)|((s->deactivated_ || s->shutdownPhase_!=0)?4u:0u);},
         [](void* p,int mode)->int {auto* s=static_cast<TextService*>(p);try {if (!mode) return s->CommitNow(true)?1:0;s->CommitAsync(true);return 1;}catch (...) {return 0;}},
         [](void* p,unsigned int op,void* doc) {auto* s=static_cast<TextService*>(p);try {switch (op) {
@@ -599,14 +633,14 @@ void TextService::AdviseTextEditSink(ITfDocumentMgr* documentMgr) {
     UnadviseTextEditSink();
     if (documentMgr == nullptr) return;
 #ifdef MELTYPE_RUST_CORE
-    editSubscription_ = RustSubscribe(3,documentMgr,clientId_,static_cast<ITfTextEditSink*>(this),&editSinkContext_);
+    editSubscription_ = RustSubscribe(3,documentMgr,clientId_,ServiceInterface<ITfTextEditSink>(),&editSinkContext_);
     ownEdit_ = false;
 #else
     ITfContext* context = nullptr;
     if (FAILED(documentMgr->GetTop(&context)) || context == nullptr) return;
     ITfSource* source = nullptr;
     if (SUCCEEDED(context->QueryInterface(IID_ITfSource, reinterpret_cast<void**>(&source)))) {
-        if (SUCCEEDED(source->AdviseSink(IID_ITfTextEditSink, static_cast<ITfTextEditSink*>(this), &editSinkCookie_))) {
+        if (SUCCEEDED(source->AdviseSink(IID_ITfTextEditSink, ServiceInterface<ITfTextEditSink>(), &editSinkCookie_))) {
             editSinkContext_ = context;
             editSinkContext_->AddRef();
         }
@@ -739,7 +773,7 @@ void TextService::UnadviseTextEditSink() {
 STDMETHODIMP TextService::OnEndEdit(ITfContext* context, TfEditCookie ec, ITfEditRecord* record) {
 #ifdef MELTYPE_RUST_CORE
     RustEditCallbacks callbacks = {
-        this,static_cast<ITfTextInputProcessorEx*>(this),
+        this,ServiceInterface<ITfTextInputProcessorEx>(),
         [](void* p) -> int { auto* self=static_cast<TextService*>(p); bool own=self->ownEdit_; self->ownEdit_=false; return own ? 1 : 0; },
         [](void* p,void** context) -> void* { auto* self=static_cast<TextService*>(p); *context=self->compositionContext_; return self->composition_; },
         [](void* p,unsigned int cookie,void* context,int changed) { try { static_cast<TextService*>(p)->QueryMode(cookie,static_cast<ITfContext*>(context),changed!=0); } catch (...) {} },
@@ -800,7 +834,7 @@ STDMETHODIMP TextService::OnEndEdit(ITfContext* context, TfEditCookie ec, ITfEdi
 STDMETHODIMP TextService::OnChange(REFGUID guid) {
 #ifdef MELTYPE_RUST_CORE
     RustOpenChangeCallbacks callbacks={
-        this,static_cast<ITfTextInputProcessorEx*>(this),&modeEpoch_,&shutdownPhase_,
+        this,ServiceInterface<ITfTextInputProcessorEx>(),&modeEpoch_,&shutdownPhase_,
         [](void* p,void** manager)->unsigned int {auto* s=static_cast<TextService*>(p);*manager=s->threadMgr_;return (s->open_?1u:0u)|(s->composition_?2u:0u)|(s->deactivated_?4u:0u);},
         [](void* p,unsigned int op,int value) {auto* s=static_cast<TextService*>(p);try {switch (op) {
             case 0:s->open_=value!=0;s->directEnglishWord_=false;break;
@@ -915,7 +949,7 @@ void TextService::Hello() {
 #ifdef MELTYPE_RUST_CORE
 RustCoreStateCallbacks TextService::CoreCallbacks() {
     return {
-        this,static_cast<ITfTextInputProcessorEx*>(this),&focusEpoch_,
+        this,ServiceInterface<ITfTextInputProcessorEx>(),&focusEpoch_,
         [](void* p,unsigned long long* last)->unsigned int {auto* s=static_cast<TextService*>(p);*last=s->lastHello_;return (s->disabled_?1u:0u)|(s->serverActive_?2u:0u)|(s->deactivated_?4u:0u);},
         [](void* p,unsigned int op,unsigned long long value) {auto* s=static_cast<TextService*>(p);try {switch (op) {
             case 0:s->lastHello_=value;break;
@@ -944,7 +978,7 @@ void TextService::ForgetSecretField() {
 bool TextService::WouldEat(ITfContext* context, UINT vk, LPARAM lParam, wchar_t& ch, bool test) {
 #ifdef MELTYPE_RUST_CORE
     RustKeyCallbacks callbacks = {
-        this,static_cast<ITfTextInputProcessorEx*>(this),
+        this,ServiceInterface<ITfTextInputProcessorEx>(),
         [](void* p,RustKeySnapshot* s) {
             auto* self=static_cast<TextService*>(p);
             RustKeyStale stale={};RustKeyStaleRead(self->keyState_,stale);
@@ -1085,7 +1119,7 @@ bool TextService::WouldEat(ITfContext* context, UINT vk, LPARAM lParam, wchar_t&
 #ifdef MELTYPE_RUST_CORE
 int TextService::ReadSecretForKey(ITfContext* context,UINT vk,bool test) {
     int field=0;
-    int result=RustKeySecret(keyState_,context,vk,test,this,static_cast<ITfTextInputProcessorEx*>(this),
+    int result=RustKeySecret(keyState_,context,vk,test,this,ServiceInterface<ITfTextInputProcessorEx>(),
         [](void* p,void* c,int* field)->int {
             try {auto* self=static_cast<TextService*>(p);int result=self->ReadSecretField(static_cast<ITfContext*>(c));*field=self->privateField_?1:0;return result;}
             catch (...) {*field=0;return 1;}
@@ -1205,7 +1239,7 @@ STDMETHODIMP TextService::OnKeyUp(ITfContext*, WPARAM wParam, LPARAM, BOOL* eate
 #ifdef MELTYPE_RUST_CORE
 HRESULT TextService::DispatchKey(unsigned int kind,ITfContext* context,UINT key,LPARAM message,BOOL* eaten) {
     RustKeyEntry entry={
-        this,static_cast<ITfTextInputProcessorEx*>(this),
+        this,ServiceInterface<ITfTextInputProcessorEx>(),
         [](void* p,void* c,unsigned int key,unsigned long long msg,int test,wchar_t* ch)->int {
             try {return static_cast<TextService*>(p)->WouldEat(static_cast<ITfContext*>(c),key,static_cast<LPARAM>(static_cast<ULONG_PTR>(msg)),*ch,test!=0)?1:0;} catch (...) {return 0;}
         },
@@ -1231,7 +1265,7 @@ void TextService::HandleKey(ITfContext* context, UINT vk, wchar_t ch) {
 #ifdef MELTYPE_RUST_CORE
     struct Owner {TextService* service;JsonValue reply;} owner={this};
     RustKeyEditCallbacks callbacks={
-        &owner,static_cast<ITfTextInputProcessorEx*>(this),
+        &owner,ServiceInterface<ITfTextInputProcessorEx>(),
         [](void* p)->unsigned int {auto* s=static_cast<Owner*>(p)->service;
             return (s->composition_?1u:0u)|(s->open_?2u:0u)|(s->secretChecked_?4u:0u)|(s->secretWhileComposing_?8u:0u)|
                 (s->caretMoved_?16u:0u)|(s->privateField_?32u:0u)|(s->keyFailed_?64u:0u)|(s->consumed_?128u:0u);
@@ -1406,7 +1440,7 @@ void TextService::ToggleInputMode(ITfContext* context) {
 #ifdef MELTYPE_RUST_CORE
 RustModeCallbacks TextService::ModeCallbacks() {
     return {
-        this,static_cast<ITfTextInputProcessorEx*>(this),
+        this,ServiceInterface<ITfTextInputProcessorEx>(),
         [](void* p)->unsigned int {auto* s=static_cast<TextService*>(p);return (s->open_?1u:0u)|(s->codeApp_?2u:0u)|(s->codeEnglish_?4u:0u)|(s->serverActive_?8u:0u);},
         [](void* p)->int {try {return static_cast<TextService*>(p)->ServerReady()?1:0;}catch (...) {return 0;}},
         [](void* p,unsigned int ec,void* c)->int {try {return static_cast<TextService*>(p)->IsSecretField(ec,static_cast<ITfContext*>(c))?1:0;}catch (...) {return 1;}},
@@ -1514,7 +1548,7 @@ std::string TextService::PendingPassed() {
 void TextService::ApplyMode(const JsonValue& reply) {
 #ifdef MELTYPE_RUST_CORE
     RustModeApplyCallbacks callbacks={
-        this,static_cast<ITfTextInputProcessorEx*>(this),
+        this,ServiceInterface<ITfTextInputProcessorEx>(),
         [](void* p)->unsigned int {auto* s=static_cast<TextService*>(p);return (s->codeApp_?2u:0u)|(s->codeEnglish_?4u:0u);},
         [](void* p,unsigned int flags) {auto* s=static_cast<TextService*>(p);s->codeApp_=(flags&2)!=0;s->codeEnglish_=(flags&4)!=0;},
         [](void* p,int english) {auto* s=static_cast<TextService*>(p);TipLog(L"入力モードの表示: %s",english?L"英数 (コードの行)":L"日本語");s->UpdateLangBar();},
@@ -1535,7 +1569,7 @@ void TextService::Reinject(UINT vk) {
 #ifdef MELTYPE_RUST_CORE
     if (vk>=256) return;
     DWORD error=0;
-    int result=RustReinject(keyState_,vk,static_cast<ITfTextInputProcessorEx*>(this),error);
+    int result=RustReinject(keyState_,vk,ServiceInterface<ITfTextInputProcessorEx>(),error);
     if (result==2) TipLog(L"同じキーの送り直しが続くので、やめます");
     else if (result!=1) TipLog(L"キーをアプリに送り直せません: %lu",error);
 #else
@@ -1594,7 +1628,7 @@ bool TextService::Request(const std::string& json, JsonValue& reply, DWORD timeo
 #ifdef MELTYPE_RUST_CORE
     struct RequestOwner {TextService* service;JsonValue* reply;std::string response;} owner{this,&reply};
     RustCoreRequestCallbacks callbacks={
-        &owner,static_cast<ITfTextInputProcessorEx*>(this),&focusEpoch_,
+        &owner,ServiceInterface<ITfTextInputProcessorEx>(),&focusEpoch_,
         [](void* p)->unsigned int {auto* s=static_cast<RequestOwner*>(p)->service;return (s->deactivated_?4u:0u)|(s->ownProcess_?8u:0u);},
         [](void* p,const unsigned char* data,unsigned int length,unsigned int timeout,int optional,const unsigned char** response,unsigned int* count)->int {
             auto* o=static_cast<RequestOwner*>(p);try {
@@ -1674,7 +1708,7 @@ void TextService::Apply(TfEditCookie ec, ITfContext* context, const JsonValue& r
         } catch (...) { return 0; }
     };
     RustApplyReplyCallbacks callbacks={
-        &owner,static_cast<ITfTextInputProcessorEx*>(this),current,write,
+        &owner,ServiceInterface<ITfTextInputProcessorEx>(),current,write,
         [](void* p,unsigned int op,unsigned int cookie,void* context,const char* json,int value) {
             auto* s=static_cast<Owner*>(p)->service;
             try {switch (op) {
@@ -1778,12 +1812,12 @@ bool TextService::WriteCommit(TfEditCookie ec, ITfContext* context, ITfRange* ra
 #else
     if (composition_ == nullptr) {
 #ifdef MELTYPE_RUST_CORE
-        composition_ = RustStartComposition(ec, context, static_cast<ITfCompositionSink*>(this), range);
+        composition_ = RustStartComposition(ec, context, ServiceInterface<ITfCompositionSink>(), range);
         if (composition_) { compositionContext_ = context; compositionContext_->AddRef(); }
 #else
         ITfContextComposition* contextComposition = nullptr;
         if (SUCCEEDED(context->QueryInterface(IID_ITfContextComposition, reinterpret_cast<void**>(&contextComposition)))) {
-            if (SUCCEEDED(contextComposition->StartComposition(ec, range, static_cast<ITfCompositionSink*>(this), &composition_)) && composition_ != nullptr) {
+            if (SUCCEEDED(contextComposition->StartComposition(ec, range, ServiceInterface<ITfCompositionSink>(), &composition_)) && composition_ != nullptr) {
                 compositionContext_ = context;
                 compositionContext_->AddRef();
             }
@@ -1820,7 +1854,7 @@ bool TextService::WriteCommit(TfEditCookie ec, ITfContext* context, ITfRange* ra
 
 #ifdef MELTYPE_RUST_CORE
 RustCompositionSlots TextService::CompositionSlots() {
-    return {static_cast<ITfTextInputProcessorEx*>(this),reinterpret_cast<void**>(&composition_),reinterpret_cast<void**>(&compositionContext_),static_cast<ITfCompositionSink*>(this)};
+    return {ServiceInterface<ITfTextInputProcessorEx>(),reinterpret_cast<void**>(&composition_),reinterpret_cast<void**>(&compositionContext_),ServiceInterface<ITfCompositionSink>()};
 }
 #endif
 
@@ -1835,7 +1869,7 @@ void TextService::ApplyComposition(TfEditCookie ec, ITfContext* context, const J
         if (FAILED(context->GetSelection(ec, TF_DEFAULT_SELECTION, 1, &selection, &fetched)) || fetched == 0) return;
         ITfContextComposition* contextComposition = nullptr;
         if (SUCCEEDED(context->QueryInterface(IID_ITfContextComposition, reinterpret_cast<void**>(&contextComposition)))) {
-            if (SUCCEEDED(contextComposition->StartComposition(ec, selection.range, static_cast<ITfCompositionSink*>(this), &composition_)) &&
+            if (SUCCEEDED(contextComposition->StartComposition(ec, selection.range, ServiceInterface<ITfCompositionSink>(), &composition_)) &&
                 composition_ != nullptr) {
                 compositionContext_ = context;
                 compositionContext_->AddRef();
@@ -1935,7 +1969,7 @@ STDMETHODIMP TextService::OnCompositionTerminated(TfEditCookie ec, ITfCompositio
 #ifdef MELTYPE_RUST_CORE
     TipLog(L"アプリが変換中の文字を確定しました");
     RustTerminationCallbacks callbacks={
-        this,static_cast<ITfTextInputProcessorEx*>(this),reinterpret_cast<void**>(&composition_),reinterpret_cast<void**>(&compositionContext_),&resume_,abandoned_,
+        this,ServiceInterface<ITfTextInputProcessorEx>(),reinterpret_cast<void**>(&composition_),reinterpret_cast<void**>(&compositionContext_),&resume_,abandoned_,
         [](void* p)->unsigned int {auto* s=static_cast<TextService*>(p);return (s->disabled_?1u:0u)|(s->deactivated_?2u:0u)|(s->lastConverting_?4u:0u);},
         [](void* p,unsigned int op) {auto* s=static_cast<TextService*>(p);
             try {switch (op) {
@@ -2019,7 +2053,7 @@ bool TextService::HasResume() const {
 void TextService::ResumeOrCommit(ITfContext* context) {
 #ifdef MELTYPE_RUST_CORE
     RustRecoveryCallbacks callbacks={
-        this,static_cast<ITfTextInputProcessorEx*>(this),reinterpret_cast<void**>(&composition_),reinterpret_cast<void**>(&compositionContext_),&resume_,static_cast<ITfCompositionSink*>(this),
+        this,ServiceInterface<ITfTextInputProcessorEx>(),reinterpret_cast<void**>(&composition_),reinterpret_cast<void**>(&compositionContext_),&resume_,ServiceInterface<ITfCompositionSink>(),
         [](void* p)->void* {return static_cast<TextService*>(p)->editSinkContext_;},
         [](void* p,unsigned int op,int value) {auto* s=static_cast<TextService*>(p);if (op==0) s->ownEdit_=value!=0;else if (op==1) {s->directEnglishWord_=false;s->caretMoved_=true;}},
         [](void* p,const char* json) {try {JsonValue ignored;static_cast<TextService*>(p)->Request(json,ignored);}catch (...) {}},
@@ -2051,7 +2085,7 @@ void TextService::ResumeOrCommit(ITfContext* context) {
             ITfContextComposition* contextComposition = nullptr;
             if (FAILED(context->QueryInterface(IID_ITfContextComposition, reinterpret_cast<void**>(&contextComposition)))) return S_OK;
             if (context == editSinkContext_) ownEdit_ = true;
-            if (SUCCEEDED(contextComposition->StartComposition(ec, range.Get(), static_cast<ITfCompositionSink*>(this), &composition_)) && composition_ != nullptr) {
+            if (SUCCEEDED(contextComposition->StartComposition(ec, range.Get(), ServiceInterface<ITfCompositionSink>(), &composition_)) && composition_ != nullptr) {
                 compositionContext_ = context;
                 compositionContext_->AddRef();
                 SetAttribute(ec, context, range.Get(), atomInput_);
@@ -2095,7 +2129,7 @@ void TextService::CommitAsync(bool keepAppCaret) {
 void TextService::AbandonComposition() {
 #ifdef MELTYPE_RUST_CORE
     RustAbandonCallbacks callbacks={
-        this,static_cast<ITfTextInputProcessorEx*>(this),reinterpret_cast<void**>(&composition_),reinterpret_cast<void**>(&compositionContext_),&abandoned_,
+        this,ServiceInterface<ITfTextInputProcessorEx>(),reinterpret_cast<void**>(&composition_),reinterpret_cast<void**>(&compositionContext_),&abandoned_,
         [](void* p,unsigned int op) {auto* s=static_cast<TextService*>(p);try {switch (op) {
             case 0:s->ResetStaleCommit();break;
             case 1:s->HideCandidates();break;
@@ -2117,7 +2151,7 @@ void TextService::AbandonComposition() {
     if (oldContext && old) {
 #ifdef MELTYPE_RUST_CORE
         if (!abandoned_) abandoned_ = RustAbandonedCreate();
-        RustAbandonedAdd(abandoned_,oldContext.Get(),old.Get(),static_cast<ITfTextInputProcessorEx*>(this),clientId_);
+        RustAbandonedAdd(abandoned_,oldContext.Get(),old.Get(),ServiceInterface<ITfTextInputProcessorEx>(),clientId_);
 #else
         // いくつも溜まらないように (古いものは、アプリが終えたときに下線だけ消える)
         if (abandoned_.size() >= 8) abandoned_.erase(abandoned_.begin());
@@ -2159,7 +2193,7 @@ bool TextService::ForgetAbandoned(ITfComposition* composition) {
 void TextService::EndAbandonedNow() {
 #ifdef MELTYPE_RUST_CORE
     if (!abandoned_) return;
-    HRESULT hr = RustAbandonedEnd(abandoned_,static_cast<ITfTextInputProcessorEx*>(this),clientId_);
+    HRESULT hr = RustAbandonedEnd(abandoned_,ServiceInterface<ITfTextInputProcessorEx>(),clientId_);
     if (FAILED(hr)) TipLog(L"手放した変換中の文字を終えられませんでした: 0x%08X", hr);
 #else
     std::vector<Abandoned> pending;
@@ -2195,7 +2229,7 @@ bool TextService::CommitNow(bool keepAppCaret) {
 #ifdef MELTYPE_RUST_CORE
 RustCommitCallbacks TextService::CommitCallbacks() {
     return {
-        this,static_cast<ITfTextInputProcessorEx*>(this),
+        this,ServiceInterface<ITfTextInputProcessorEx>(),
         [](void* p,void** context,void** sink)->void* {auto* s=static_cast<TextService*>(p);*context=s->compositionContext_;*sink=s->editSinkContext_;return s->composition_;},
         [](void* p,unsigned int op,unsigned int ec,int value) {auto* s=static_cast<TextService*>(p);
             try {switch (op) {

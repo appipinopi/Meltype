@@ -258,6 +258,11 @@ bool RustCoreReady(const RustCoreStateCallbacks&);
 std::wstring RustProcessName();
 void RustCoreHello(const std::wstring&,const RustCoreStateCallbacks&);
 bool RustCoreRequest(const std::string&,DWORD,bool,const RustCoreRequestCallbacks&);
+struct RustServiceCall {
+    unsigned int op;void* a;void* b;void* c;size_t n1;intptr_t n2;
+};
+void* RustCreateServiceCom(void*,HRESULT (__cdecl *)(void*,const RustServiceCall*),void (__cdecl *)(void*));
+void* RustServiceComInterface(void*,REFIID);
 struct RustServiceState;
 RustServiceState* RustCreateServiceState();
 void RustDestroyServiceState(RustServiceState*);

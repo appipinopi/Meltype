@@ -30,6 +30,13 @@ class TextService final : public ITfTextInputProcessorEx,
                           public ITfTextEditSink {
 public:
     TextService();
+    template<class T> T* ServiceInterface() const {
+#ifdef MELTYPE_RUST_CORE
+        return static_cast<T*>(RustServiceComInterface(comEntry_,__uuidof(T)));
+#else
+        return static_cast<T*>(const_cast<TextService*>(this));
+#endif
+    }
 
     // IUnknown
     STDMETHODIMP QueryInterface(REFIID riid, void** ppv) override;
@@ -151,7 +158,7 @@ private:
 #ifdef MELTYPE_RUST_CORE
     // First member: freed after UI/data members; pins the shell until then.
     RustServiceStateStorage state_;
-    LONG& refs_ = state_.value->refs;
+    void* comEntry_ = nullptr; // Borrowed from the Rust COM owner that deletes this adapter.
     ITfThreadMgr*& threadMgr_ = state_.value->manager;
     TfClientId& clientId_ = state_.value->client;
     void*& threadSubscription_ = state_.value->thread_subscription;

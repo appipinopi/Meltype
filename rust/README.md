@@ -191,16 +191,18 @@ Windows TSFの入力モード変更通知の制御もRustへ移しました。�
 
 Windows TSFのコア接続判定・hello・要求制御をRustへ移しました。接続済みなら問い合わせず、未接続では最後のhelloから2秒を超えたときに再試行します。hello時刻を先に記録し、応答のactive／検知／コード判定を正規化してから公開します。要求では終了状態を確認し、自身のプロセスの場合のthread ID挿入、待ち時間・任意要求の指定、通信とJSON受渡しの順序、解析失敗の通知をRustで制御します。終了／再起動で世代が変わった応答は反映しません。`tsf_core_link_smoke.py` はx64/x86各23ケースで時間境界・失敗・Unicode・指定値の転送・終了／世代差替え・所有者保持を確認します。実シェルの時刻／状態コールバックABIと公開キー入口から本番ワーカーへの経路も回帰試験に含めます。C++のCOM入口・状態格納・データ受渡し／UIアダプター、実アプリと各OSの入力確認は残っています。
 
-Windows TSFの基本状態40項目（モード・接続・時刻・世代・参照数・編集／プライバシーフラグ、COM／購読／キー状態のスロットなど）をRustが確保・解放する領域へ移しました。C++側は当面の参照ビューを持ち、既存の処理順序を維持します。接続前に版・サイズ・アラインメントと全フィールドの位置を照合します。状態の所有者はUI／データメンバーより後に破棄され、領域の解放までシェルDLLを保持します。クラス生成の例外はHRESULTへ変換します。`tsf_service_state_smoke.py` はx64/x86各23ケースで配置・元の初期値・64bit値・独立した領域・4スレッドの生成／解放などを確認します。実シェルでも例外時の後片付け、COM所有者、公開入力／起動終了後の領域数ゼロを確認します。COM入口・データ受渡しなどはC++に残り、各OSの実アプリ検証も未完了です。
+Windows TSFの基本状態40項目（モード・接続・時刻・世代・編集／プライバシーフラグ、COM／購読／キー状態のスロットなど）をRustが確保・解放する領域へ移しました。C++側は当面の参照ビューを持ち、既存の処理順序を維持します。接続前に版・サイズ・アラインメントと全フィールドの位置を照合します。状態の所有者はUI／データメンバーより後に破棄され、領域の解放までシェルDLLを保持します。クラス生成の例外はHRESULTへ変換します。`tsf_service_state_smoke.py` はx64/x86各23ケースで配置・元の初期値・64bit値・独立した領域・4スレッドの生成／解放などを確認します。実シェルでも例外時の後片付け、COM所有者、公開入力／起動終了後の領域数ゼロを確認します。データ受渡し・処理アダプターなどはC++に残り、各OSの実アプリ検証も未完了です。
 
 ## ライセンス
 
 元コード・ローマ字表の著作権表記とGPL-3.0-or-laterを維持します。辞書の出典と個別ライセンスは元の各辞書ヘッダー、LICENSE、THIRD-PARTY-NOTICES.mdを参照してください。
 
-Windows Rust preview builds now obtain the host executable name in Rust, shared with startup self-process detection. UTF-16 is preserved, including unpaired code units; the module-path buffer grows to the Windows limit rather than truncating at MAX_PATH. The C++ shell only receives the resulting name. COM entry points and data adapters still remain in C++.
+Windows Rust preview builds now obtain the host executable name in Rust, shared with startup self-process detection. UTF-16 is preserved, including unpaired code units; the module-path buffer grows to the Windows limit rather than truncating at MAX_PATH. The C++ shell only receives the resulting name. Data/operation adapters still remain in C++.
 
 TSFのセッションIDと通信接続トークンもRustの状態領域が所有します。C++ TextServiceから永続的なstd::stringとPipeClientを取り除き、IDの読み出し・要求送信・明示的切断をRustへ委譲します。状態の破棄時にはRustがIDの領域を解放し、切断し忘れたワーカー接続も破棄します。配置APIは版4へ更新し、新旧のシェルを混在させた場合は接続を拒否します。x64/x86各23ケースでIDのコピー・自己代入・差替え、独立した接続、明示的切断後の再接続、切断せずに破棄した接続の失効も確認します。
 
-言語バーの所有もRust状態へ移し、RustビルドのC++ LangBarButtonラッパーを削除しました。Rustがボタンの差替え、通知、TSFからの取り外しと最終解放を行います。古い参照がタスクバー側に残っても、切離し後はサービスを呼びません。通知中のサービス破棄、古い通知先の解放中の再生成、RemoveItem中の差替え、失敗したQueryInterfaceの部分参照もx64/x86で検証します。COM入口・データ受渡しは引き続きC++に残ります。
+言語バーの所有もRust状態へ移し、RustビルドのC++ LangBarButtonラッパーを削除しました。Rustがボタンの差替え、通知、TSFからの取り外しと最終解放を行います。古い参照がタスクバー側に残っても、切離し後はサービスを呼びません。通知中のサービス破棄、古い通知先の解放中の再生成、RemoveItem中の差替え、失敗したQueryInterfaceの部分参照もx64/x86で検証します。データ受渡し・処理アダプターは引き続きC++に残ります。
 
 候補ウィンドウのトークンと選択コールバックもRust状態が所有し、RustビルドのC++ CandidateWindowラッパーを削除しました。C++は一時的なJSONの受渡しのみを行い、生成／差替え／表示／非表示／破棄はRustに委譲します。状態破棄時はトークンを先に切り離します。クリック中の自己破棄、COMの表示位置問合せ中の破棄、候補ウィンドウの独立性、古いHWNDやトークンの失効をx64/x86で確認します。描画・候補選別・予測クリック・UTF-16文節位置の既存試験も維持します。
+
+Windows TSFのCOM入口もRustへ移しました。ITfTextInputProcessor(Ex)、スレッド通知、キー通知、変換終了、表示属性、入力モード変更、編集通知の7種類のSDK vtableがRust DLLにあり、IUnknownの識別と参照管理を共有します。通知中はネイティブ参照でサービスを保持し、最後のReleaseでC++アダプターを破棄します。C++側の起動／購読／変換／編集セッションもRustのインターフェースをOSへ渡します。x64/x86各9件でCOM識別、vtableの所属、WPARAM／LPARAM・フラグ・cookie、通知中の最終呼出し元参照の解放、STA外からの処理拒否などを確認します。本番の入力試験もRustの公開vtable経由です。C++の処理・データアダプターはまだ残っており、Windows全体が純Rustになったわけではありません。

@@ -46,6 +46,15 @@ int wmain() {
     assert(RustServiceStateLiveCount()==0 && g_locks==0);
     auto* first=new TextService();auto* second=new TextService();
     assert(first->IsOpen() && second->IsOpen());
+    for (const IID* iid : {&IID_IUnknown,&IID_ITfTextInputProcessor,&IID_ITfTextInputProcessorEx,&IID_ITfThreadMgrEventSink,&IID_ITfKeyEventSink,&IID_ITfCompositionSink,&IID_ITfDisplayAttributeProvider,&IID_ITfCompartmentEventSink,&IID_ITfTextEditSink}) {
+        IUnknown* value=nullptr;assert(first->QueryInterface(*iid,reinterpret_cast<void**>(&value))==S_OK && value);
+        auto** table=*reinterpret_cast<void***>(value);HMODULE native=nullptr;
+        assert(GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,reinterpret_cast<LPCWSTR>(table[0]),&native));
+        wchar_t path[32768]={};assert(GetModuleFileNameW(native,path,ARRAYSIZE(path)));
+        const auto* file=wcsrchr(path,L'\\');assert(file && _wcsicmp(file+1,L"meltype_native.dll")==0);
+        IUnknown* identity=nullptr;assert(value->QueryInterface(IID_IUnknown,reinterpret_cast<void**>(&identity))==S_OK);
+        assert(identity==first->ServiceInterface<IUnknown>());identity->Release();value->Release();
+    }
     assert(RustServiceStateLiveCount()==2 && g_locks==2);
     first->AddRef();first->Release();assert(RustServiceStateLiveCount()==2);
     first->Release();assert(RustServiceStateLiveCount()==1 && g_locks==1);
