@@ -48,6 +48,8 @@ struct RustServiceState {
     bool consumed;
     const wchar_t* scope_source;
     const wchar_t* pass_reason;
+    char* sid; // Rust-owned; access only through the service API.
+    void* transport; // Rust-owned transport token.
 };
 static_assert(std::is_standard_layout<RustServiceState>::value);
 class RustServiceStateStorage final {

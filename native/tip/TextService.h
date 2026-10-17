@@ -142,6 +142,7 @@ private:
     RustCompositionSlots CompositionSlots();
 #endif
     void ResetStaleCommit();
+    std::string SessionId() const;
     std::string CommitRequest(bool moved) const;
     void UnadviseTextEditSink();
     void UpdateLangBar();
@@ -189,8 +190,6 @@ private:
     bool& consumed_ = state_.value->consumed;
     const wchar_t*& scopeSource_ = state_.value->scope_source;
     const wchar_t*& passReason_ = state_.value->pass_reason;
-    PipeClient pipe_;
-    std::string sid_;
     RustFocusCallbacks FocusCallbacks();
     RustCoreStateCallbacks CoreCallbacks();
     bool ForgetAbandoned(ITfComposition*);

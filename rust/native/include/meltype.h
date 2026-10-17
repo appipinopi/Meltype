@@ -530,6 +530,13 @@ void meltype_tsf_service_state_destroy(void *);
    capacity: version,size,alignment, then private header field offsets. */
 uint32_t meltype_tsf_service_state_layout(uint32_t *output,uint32_t capacity);
 uint32_t meltype_tsf_service_state_live_count(void);
+/* Same TSF thread, no concurrent use. SID is copied; getter borrows until set/
+   destroy. Request returns owned meltype_free text; worker/request are UTF-8.
+   Transport closes on explicit close and on state destruction. */
+int32_t meltype_tsf_service_set_sid(void *state,const char *sid);
+const char *meltype_tsf_service_sid(const void *state);
+char *meltype_tsf_service_request(void *state,const char *worker,const char *request,uint32_t timeout,int32_t optional);
+void meltype_tsf_service_close(void *state);
 /* UTF-16 host executable basename, .exe removed; required capacity includes NUL.
    Null/short output is untouched; zero means acquisition failure. */
 uint32_t meltype_tsf_process_name(uint16_t *out, uint32_t capacity);

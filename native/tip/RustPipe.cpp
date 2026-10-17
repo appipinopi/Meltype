@@ -106,6 +106,10 @@ struct RustApi {
     void (__cdecl *serviceDestroy)(RustServiceState*) = nullptr;
     unsigned int (__cdecl *serviceLayout)(unsigned int*,unsigned int) = nullptr;
     unsigned int (__cdecl *serviceLive)() = nullptr;
+    int (__cdecl *serviceSetSid)(RustServiceState*,const char*) = nullptr;
+    const char* (__cdecl *serviceSid)(const RustServiceState*) = nullptr;
+    char* (__cdecl *serviceRequest)(RustServiceState*,const char*,const char*,unsigned int,int) = nullptr;
+    void (__cdecl *serviceClose)(RustServiceState*) = nullptr;
     unsigned int (__cdecl *processName)(unsigned short*,unsigned int) = nullptr;
     RustApi() {
         wchar_t path[32768];
@@ -209,6 +213,10 @@ struct RustApi {
         serviceDestroy = reinterpret_cast<decltype(serviceDestroy)>(GetProcAddress(module, "meltype_tsf_service_state_destroy"));
         serviceLayout = reinterpret_cast<decltype(serviceLayout)>(GetProcAddress(module, "meltype_tsf_service_state_layout"));
         processName = reinterpret_cast<decltype(processName)>(GetProcAddress(module, "meltype_tsf_process_name"));
+        serviceSetSid = reinterpret_cast<decltype(serviceSetSid)>(GetProcAddress(module, "meltype_tsf_service_set_sid"));
+        serviceSid = reinterpret_cast<decltype(serviceSid)>(GetProcAddress(module, "meltype_tsf_service_sid"));
+        serviceRequest = reinterpret_cast<decltype(serviceRequest)>(GetProcAddress(module, "meltype_tsf_service_request"));
+        serviceClose = reinterpret_cast<decltype(serviceClose)>(GetProcAddress(module, "meltype_tsf_service_close"));
         serviceLive = reinterpret_cast<decltype(serviceLive)>(GetProcAddress(module, "meltype_tsf_service_state_live_count"));
     }
     bool ready() const { return create && destroy && request && freeText; }
@@ -340,8 +348,8 @@ HRESULT RustOpenChanged(REFGUID guid,const RustOpenChangeCallbacks& callbacks) {
 }
 bool RustCoreReady(const RustCoreStateCallbacks& callbacks) {return api().coreReady && api().coreReady(&callbacks)!=0;}
 RustServiceState* RustCreateServiceState() {
-    if (!api().serviceCreate || !api().serviceDestroy || !api().serviceLayout) return nullptr;
-    const unsigned int expected[]={1,static_cast<unsigned int>(sizeof(RustServiceState)),static_cast<unsigned int>(alignof(RustServiceState)),
+    if (!api().serviceCreate || !api().serviceDestroy || !api().serviceLayout || !api().serviceSetSid || !api().serviceSid || !api().serviceRequest || !api().serviceClose) return nullptr;
+    const unsigned int expected[]={2,static_cast<unsigned int>(sizeof(RustServiceState)),static_cast<unsigned int>(alignof(RustServiceState)),
         static_cast<unsigned int>(offsetof(RustServiceState,refs)),
         static_cast<unsigned int>(offsetof(RustServiceState,manager)),
         static_cast<unsigned int>(offsetof(RustServiceState,client)),
@@ -382,6 +390,8 @@ RustServiceState* RustCreateServiceState() {
         static_cast<unsigned int>(offsetof(RustServiceState,consumed)),
         static_cast<unsigned int>(offsetof(RustServiceState,scope_source)),
         static_cast<unsigned int>(offsetof(RustServiceState,pass_reason)),
+        static_cast<unsigned int>(offsetof(RustServiceState,sid)),
+        static_cast<unsigned int>(offsetof(RustServiceState,transport)),
     };
     unsigned int actual[ARRAYSIZE(expected)]={};
     if (api().serviceLayout(actual,ARRAYSIZE(actual))!=ARRAYSIZE(expected) || std::memcmp(actual,expected,sizeof(expected))!=0) return nullptr;
@@ -398,6 +408,22 @@ RustServiceStateStorage::~RustServiceStateStorage() {
     DllRelease();
 }
 
+void RustServiceSetSid(RustServiceState* state,const char* sid) {
+    if (api().serviceSetSid) api().serviceSetSid(state,sid);
+}
+std::string RustServiceSid(const RustServiceState* state) {
+    const char* sid=api().serviceSid?api().serviceSid(state):nullptr;
+    return sid?std::string(sid):std::string{};
+}
+bool RustServiceRequest(RustServiceState* state,const std::string& request,std::string& response,DWORD timeout,bool optional) {
+    response.clear();
+    if (!api().serviceRequest || !api().freeText) return false;
+    char* text=api().serviceRequest(state,api().worker.c_str(),request.c_str(),timeout,optional?1:0);
+    if (!text) return false;
+    try {response.assign(text);}catch (...) {api().freeText(text);throw;}
+    api().freeText(text);return true;
+}
+void RustServiceClose(RustServiceState* state) {if (api().serviceClose) api().serviceClose(state);}
 std::wstring RustProcessName() {
     if (!api().processName) return {};
     const unsigned int capacity=api().processName(nullptr,0);

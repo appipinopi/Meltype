@@ -262,6 +262,10 @@ struct RustServiceState;
 RustServiceState* RustCreateServiceState();
 void RustDestroyServiceState(RustServiceState*);
 unsigned int RustServiceStateLiveCount();
+void RustServiceSetSid(RustServiceState*,const char*);
+std::string RustServiceSid(const RustServiceState*);
+bool RustServiceRequest(RustServiceState*,const std::string&,std::string&,DWORD,bool);
+void RustServiceClose(RustServiceState*);
 #endif
 
 // 文字コードの変換

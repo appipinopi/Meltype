@@ -279,7 +279,7 @@ STDMETHODIMP TextService::ActivateEx(ITfThreadMgr* threadMgr, TfClientId clientI
             ++s->modeEpoch_;
             s->clientId_=client;s->deactivated_=false;s->serverActive_=false;s->directDetection_=false;s->directEnglishWord_=false;
             s->lastHello_=0;s->caretMoved_=false;s->ownEdit_=false;s->secretChecked_=false;s->lastConverting_=false;
-            s->passReason_=nullptr;s->keyFailed_=false;s->consumed_=true;s->ownProcess_=own!=0;s->disabled_=disabled!=0;s->sid_=sid;
+            s->passReason_=nullptr;s->keyFailed_=false;s->consumed_=true;s->ownProcess_=own!=0;s->disabled_=disabled!=0;RustServiceSetSid(s->state_.value,sid);
             TipLog(L"Activate (%s)%s",ProcessName().c_str(),disabled?L" 無効: セキュリティ保護された画面":L"");
         }catch (...) {}},
         [](void* p,unsigned int op,int value,void* document)->void* {auto* s=static_cast<TextService*>(p);try {switch (op) {
@@ -443,7 +443,7 @@ STDMETHODIMP TextService::Deactivate() {
             case 1:s->ClearResume();break;
             case 2:s->ForgetSecretField();break;
             case 3:s->EndAbandonedNow();break;
-            case 4:s->pipe_.Close();break;
+            case 4:RustServiceClose(s->state_.value);break;
             case 5:s->candidates_.reset();break;
             case 6:s->UnadviseTextEditSink();break;
             case 7:{
@@ -466,7 +466,7 @@ STDMETHODIMP TextService::Deactivate() {
             if (s->Request(json,reply) && context && s->compositionContext_==context && s->composition_==target) s->Apply(ec,static_cast<ITfContext*>(context),reply);
         }catch (...) {}},
     };
-    return RustShutdown(clientId_,"{\"sid\":\""+sid_+"\"}",callbacks);
+    return RustShutdown(clientId_,"{\"sid\":\""+SessionId()+"\"}",callbacks);
 #else
     TipLog(L"Deactivate");
     if (composition_ != nullptr && compositionContext_ != nullptr) {
@@ -483,7 +483,7 @@ STDMETHODIMP TextService::Deactivate() {
     }
     if (!disabled_) {
         JsonValue reply;
-        Request("{\"op\":\"close\",\"sid\":\"" + sid_ + "\"}", reply);
+        Request("{\"op\":\"close\",\"sid\":\"" + SessionId() + "\"}", reply);
     }
     // ここから後 (アプリが変換中の文字を確定した通知・あとから動く非同期の編集セッション) は、Meltype.exe につなぎ直さない
     deactivated_ = true;
@@ -724,9 +724,17 @@ int TextService::ReadSecretField(ITfContext* context) {
     return FAILED(hr) ? -1 : secret ? 1 : 0;
 }
 
+std::string TextService::SessionId() const {
+#ifdef MELTYPE_RUST_CORE
+    return RustServiceSid(state_.value);
+#else
+    return sid_;
+#endif
+}
+
 std::string TextService::CommitRequest(bool moved) const {
     // moved: キャレットが動いた (クリック・別の入力欄・アプリが確定した) ので、前に確定した語を確定し直さない
-    return "{\"op\":\"commit\",\"sid\":\"" + sid_ + "\"" + (moved ? ",\"moved\":true" : "") + "}";
+    return "{\"op\":\"commit\",\"sid\":\"" + SessionId() + "\"" + (moved ? ",\"moved\":true" : "") + "}";
 }
 
 void TextService::UnadviseTextEditSink() {
@@ -1284,7 +1292,7 @@ void TextService::HandleKey(ITfContext* context, UINT vk, wchar_t ch) {
             case 3:TipLog(L"Meltype.exe から応答が来ないので、打った文字をそのまま入れました");break;
         }}catch (...) {}},
     };
-    const std::string metadata="{\"sid\":\""+sid_+"\",\"process\":"+JsonString(ProcessName())+"}";
+    const std::string metadata="{\"sid\":\""+SessionId()+"\",\"process\":"+JsonString(ProcessName())+"}";
     RustHandleKey(context,clientId_,keyState_,vk,ch,metadata,callbacks);
 #else
     // 8 = Windows キー (Meltype.exe は Mac の Command と同じく、確定してアプリに渡す)
@@ -1304,7 +1312,7 @@ void TextService::HandleKey(ITfContext* context, UINT vk, wchar_t ch) {
             return S_OK;
         }
         ownEdit_ = true;
-        std::string request = "{\"op\":\"key\",\"sid\":\"" + sid_ + "\",\"vk\":" + std::to_string(vk) + ",\"ch\":" + std::to_string(ch) +
+        std::string request = "{\"op\":\"key\",\"sid\":\"" + SessionId() + "\",\"vk\":" + std::to_string(vk) + ",\"ch\":" + std::to_string(ch) +
                               ",\"mods\":" + std::to_string(mods) + ",\"process\":" + JsonString(ProcessName()) + ",\"code\":true" +
                               std::string(",\"direct\":") + (!open_ ? "true" : "false");
 #ifdef MELTYPE_RUST_CORE
@@ -1390,7 +1398,7 @@ void TextService::HandleKey(ITfContext* context, UINT vk, wchar_t ch) {
 
 void TextService::ToggleInputMode(ITfContext* context) {
 #ifdef MELTYPE_RUST_CORE
-    const std::string metadata="{\"sid\":\""+sid_+"\",\"process\":"+JsonString(ProcessName())+"}";
+    const std::string metadata="{\"sid\":\""+SessionId()+"\",\"process\":"+JsonString(ProcessName())+"}";
     RustToggleMode(context,threadMgr_,keyState_,clientId_,metadata,ModeCallbacks());
 #else
     Microsoft::WRL::ComPtr<ITfContext> focused;
@@ -1434,11 +1442,11 @@ RustModeCallbacks TextService::ModeCallbacks() {
 
 bool TextService::SetCodeLine(ITfContext* context, bool japanese) {
 #ifdef MELTYPE_RUST_CORE
-    const std::string metadata="{\"sid\":\""+sid_+"\",\"process\":"+JsonString(ProcessName())+"}";
+    const std::string metadata="{\"sid\":\""+SessionId()+"\",\"process\":"+JsonString(ProcessName())+"}";
     return RustCodeLine(context,keyState_,clientId_,metadata,ModeCallbacks(),japanese);
 #else
     if (context == nullptr || ContextDisabled(context) || !ServerReady()) return false;
-    std::string request = "{\"op\":\"toggle\",\"sid\":\"" + sid_ + "\",\"process\":" + JsonString(ProcessName()) +
+    std::string request = "{\"op\":\"toggle\",\"sid\":\"" + SessionId() + "\",\"process\":" + JsonString(ProcessName()) +
                           ",\"japanese\":" + (japanese ? "true" : "false") + PendingPassed();
     bool secret = false;
     std::wstring before, after;
@@ -1473,7 +1481,7 @@ void TextService::QueryMode(TfEditCookie ec, ITfContext* context, bool selection
             }catch (...) {return 0;}
         },
     };
-    const std::string metadata="{\"sid\":\""+sid_+"\",\"process\":"+JsonString(ProcessName())+"}";
+    const std::string metadata="{\"sid\":\""+SessionId()+"\",\"process\":"+JsonString(ProcessName())+"}";
     RustQueryMode(context,ec,keyState_,metadata,callbacks,selectionChanged);
 #else
     if (!codeApp_ || !serverActive_ || ContextDisabled(context) || IsSecretField(ec, context)) return;
@@ -1487,7 +1495,7 @@ void TextService::QueryMode(TfEditCookie ec, ITfContext* context, bool selection
     int passed = recent ? static_cast<int>(passedVk_) : selectionChanged ? 0 : -1;
     passedPending_ = false;
     bool control=recent && passedControl_;
-    std::string request = "{\"op\":\"mode\",\"sid\":\"" + sid_ + "\",\"process\":" + JsonString(ProcessName()) +
+    std::string request = "{\"op\":\"mode\",\"sid\":\"" + SessionId() + "\",\"process\":" + JsonString(ProcessName()) +
                           ",\"passed\":" + std::to_string(passed) + (control ? ",\"ctrl\":true" : "") +
                           ",\"before\":" + JsonString(before) + "}";
     JsonValue reply;
@@ -1607,7 +1615,7 @@ bool TextService::Request(const std::string& json, JsonValue& reply, DWORD timeo
         [](void* p,const unsigned char* data,unsigned int length,unsigned int timeout,int optional,const unsigned char** response,unsigned int* count)->int {
             auto* o=static_cast<RequestOwner*>(p);try {
                 std::string request=length?std::string(reinterpret_cast<const char*>(data),length):std::string{};
-                if (!o->service->pipe_.Transact(request,o->response,timeout,optional!=0) || o->response.size()>UINT_MAX) return 0;
+                if (!RustServiceRequest(o->service->state_.value,request,o->response,timeout,optional!=0) || o->response.size()>UINT_MAX) return 0;
                 *response=reinterpret_cast<const unsigned char*>(o->response.data());*count=static_cast<unsigned int>(o->response.size());return 1;
             }catch (...) {return 0;}
         },
@@ -1697,7 +1705,7 @@ void TextService::Apply(TfEditCookie ec, ITfContext* context, const JsonValue& r
             }}catch (...) {s->keyFailed_=true;s->consumed_=false;}
         },
     };
-    const std::string metadata="{\"sid\":\""+sid_+"\",\"direct\":"+(!open_?"true":"false")+"}";
+    const std::string metadata="{\"sid\":\""+SessionId()+"\",\"direct\":"+(!open_?"true":"false")+"}";
     RustApplyReply(ec,context,reply,metadata,callbacks);
 #else
     // 1 つの応答の中の確定は、前の確定の後ろに続けて入れる (クリックで確定したときは、キャレットがもうクリックした所にあるので、
@@ -1954,7 +1962,7 @@ STDMETHODIMP TextService::OnCompositionTerminated(TfEditCookie ec, ITfCompositio
         },
         [](void* p,const char* json) {try {JsonValue ignored;static_cast<TextService*>(p)->Request(json,ignored);}catch (...) {}},
     };
-    return RustCompositionTerminated(ec,composition,"{\"sid\":\""+sid_+"\"}",callbacks);
+    return RustCompositionTerminated(ec,composition,"{\"sid\":\""+SessionId()+"\"}",callbacks);
 #else
     // アプリの側で変換中の文字を確定した (入力欄の外をクリックしたなど)。文字は入力欄に残っているので、
     // Meltype.exe の側も確定したことにする (返ってきた確定の文字は入れない)
@@ -2032,7 +2040,7 @@ void TextService::ResumeOrCommit(ITfContext* context) {
         [](void* p,unsigned int op,int value) {auto* s=static_cast<TextService*>(p);if (op==0) s->ownEdit_=value!=0;else if (op==1) {s->directEnglishWord_=false;s->caretMoved_=true;}},
         [](void* p,const char* json) {try {JsonValue ignored;static_cast<TextService*>(p)->Request(json,ignored);}catch (...) {}},
     };
-    if (RustResumeOrCommit(context,clientId_,atomInput_,"{\"sid\":\""+sid_+"\"}",callbacks)==1) TipLog(L"アプリが確定した打ちかけの文字を、変換中に戻しました");
+    if (RustResumeOrCommit(context,clientId_,atomInput_,"{\"sid\":\""+SessionId()+"\"}",callbacks)==1) TipLog(L"アプリが確定した打ちかけの文字を、変換中に戻しました");
 #else
     if (!resumeRange_) return;
     Microsoft::WRL::ComPtr<ITfRange> range = resumeRange_;
@@ -2085,7 +2093,7 @@ void TextService::ResumeOrCommit(ITfContext* context) {
 
 void TextService::CommitAsync(bool keepAppCaret) {
 #ifdef MELTYPE_RUST_CORE
-    RustCommit(1,nullptr,clientId_,0,"{\"sid\":\""+sid_+"\"}",CommitCallbacks(),keepAppCaret);
+    RustCommit(1,nullptr,clientId_,0,"{\"sid\":\""+SessionId()+"\"}",CommitCallbacks(),keepAppCaret);
 #else
     if (composition_ == nullptr || compositionContext_ == nullptr) return;
     // 非同期の編集セッションは、実行されずに捨てられることもある。参照は ComPtr に持たせ、セッションと一緒に解放する
@@ -2111,7 +2119,7 @@ void TextService::AbandonComposition() {
         }}catch (...) {}},
         [](void* p,const char* json) {try {JsonValue ignored;static_cast<TextService*>(p)->Request(json,ignored);}catch (...) {}},
     };
-    RustAbandonComposition(clientId_,"{\"sid\":\""+sid_+"\"}",callbacks);
+    RustAbandonComposition(clientId_,"{\"sid\":\""+SessionId()+"\"}",callbacks);
 #else
     // 前の入力欄の変換中の文字を、入力欄には触らずに手放す (文字はそのまま残る)。Meltype.exe の側も確定したことにする
     TipLog(L"前の入力欄の変換中の文字を確定できないので、手放します");
@@ -2186,7 +2194,7 @@ void TextService::EndAbandonedNow() {
 
 bool TextService::CommitNow(bool keepAppCaret) {
 #ifdef MELTYPE_RUST_CORE
-    return SUCCEEDED(RustCommit(0,nullptr,clientId_,0,"{\"sid\":\""+sid_+"\"}",CommitCallbacks(),keepAppCaret));
+    return SUCCEEDED(RustCommit(0,nullptr,clientId_,0,"{\"sid\":\""+SessionId()+"\"}",CommitCallbacks(),keepAppCaret));
 #else
     // 同期で確定する (キーをアプリに通す前・別の入力欄に移ったときに、変換中の文字を確定しておくため)
     if (composition_ == nullptr || compositionContext_ == nullptr) return true;
@@ -2225,7 +2233,7 @@ RustCommitCallbacks TextService::CommitCallbacks() {
 
 void TextService::CommitInSession(TfEditCookie ec, ITfContext* context, bool keepAppCaret) {
 #ifdef MELTYPE_RUST_CORE
-    RustCommit(2,context,clientId_,ec,"{\"sid\":\""+sid_+"\"}",CommitCallbacks(),keepAppCaret);
+    RustCommit(2,context,clientId_,ec,"{\"sid\":\""+SessionId()+"\"}",CommitCallbacks(),keepAppCaret);
 #else
     // 編集できるのは、この編集セッションの入力欄にある変換中の文字だけ
     if (composition_ != nullptr && context == compositionContext_) {
@@ -2244,7 +2252,7 @@ void TextService::CommitInSession(TfEditCookie ec, ITfContext* context, bool kee
 
 void TextService::SelectCandidate(int index, bool prediction) {
 #ifdef MELTYPE_RUST_CORE
-    RustSelectCandidate(clientId_,index,prediction,"{\"sid\":\""+sid_+"\"}",CommitCallbacks());
+    RustSelectCandidate(clientId_,index,prediction,"{\"sid\":\""+SessionId()+"\"}",CommitCallbacks());
 #else
     if (compositionContext_ == nullptr) return;
     Microsoft::WRL::ComPtr<ITfContext> context = compositionContext_;
@@ -2255,7 +2263,7 @@ void TextService::SelectCandidate(int index, bool prediction) {
         if (self->composition_ != target.Get() || self->compositionContext_ != context.Get()) return S_OK;
         self->ownEdit_ = true;
         JsonValue reply;
-        if (self->Request("{\"op\":\"select\",\"sid\":\"" + self->sid_ + "\",\"index\":" + std::to_string(index) +
+        if (self->Request("{\"op\":\"select\",\"sid\":\"" + self->SessionId() + "\",\"index\":" + std::to_string(index) +
                               (prediction ? ",\"prediction\":true" : "") + "}",
                           reply)) {
             self->Apply(ec, context.Get(), reply);

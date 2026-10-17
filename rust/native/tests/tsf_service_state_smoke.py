@@ -2,6 +2,10 @@
 # Copyright (C) 2026 appipinopi
 """Native state layout/defaults, independent storage and balanced lifetimes."""
 import ctypes as c
+import json
+import os
+import tempfile
+import time
 from pathlib import Path
 import sys
 import threading
@@ -50,6 +54,8 @@ class State(c.Structure):
         ('consumed',c.c_bool),
         ('scope_source',P),
         ('pass_reason',P),
+        ('sid',P),
+        ('transport',P),
     ]
 class StateTests(unittest.TestCase):
     @classmethod
@@ -61,14 +67,35 @@ class StateTests(unittest.TestCase):
         cls.api.meltype_tsf_service_state_layout.argtypes=[c.POINTER(U32),U32]
         cls.api.meltype_tsf_service_state_layout.restype=U32
         cls.api.meltype_tsf_service_state_live_count.restype=U32
+        cls.api.meltype_tsf_service_set_sid.argtypes=[P,P];cls.api.meltype_tsf_service_set_sid.restype=c.c_int
+        cls.api.meltype_tsf_service_sid.argtypes=[P];cls.api.meltype_tsf_service_sid.restype=P
+        cls.api.meltype_tsf_service_request.argtypes=[P,c.c_char_p,c.c_char_p,U32,c.c_int];cls.api.meltype_tsf_service_request.restype=P
+        cls.api.meltype_tsf_service_close.argtypes=[P];cls.api.meltype_tsf_service_close.restype=None
+        cls.api.meltype_tip_transport_request.argtypes=[P,c.c_char_p,U32,c.c_int];cls.api.meltype_tip_transport_request.restype=P
+        cls.api.meltype_free.argtypes=[P]
+        cls.worker=str(Path(sys.argv[1]).resolve().with_name('meltype-tip-worker.exe')).encode()
+
         size=cls.api.meltype_tsf_service_state_layout(None,0)
         metadata=(U32*size)();cls.api.meltype_tsf_service_state_layout(metadata,size)
-        expected=[1,c.sizeof(State),c.alignment(State)]+[getattr(State,name).offset for name,_ in State._fields_]
+        expected=[2,c.sizeof(State),c.alignment(State)]+[getattr(State,name).offset for name,_ in State._fields_]
         if list(metadata)!=expected:raise AssertionError('State ABI mismatch; do not borrow this allocation')
-    def setUp(self):self.owned=[];self.before=self.live()
+    def setUp(self):
+        self.owned=[];self.before=self.live()
+        self.directory=tempfile.TemporaryDirectory(prefix='meltype-service-state-')
+        self.old_data=os.environ.get('MELTYPE_RUST_DATA_DIR')
+        os.environ['MELTYPE_RUST_DATA_DIR']=self.directory.name
+
     def tearDown(self):
         for data in self.owned:self.api.meltype_tsf_service_state_destroy(data)
         self.assertEqual(self.live(),self.before)
+        if self.old_data is None:os.environ.pop('MELTYPE_RUST_DATA_DIR',None)
+        else:os.environ['MELTYPE_RUST_DATA_DIR']=self.old_data
+        deadline=time.monotonic()+3
+        while True:
+            try:self.directory.cleanup();break
+            except PermissionError:
+                if time.monotonic()>=deadline:raise
+                time.sleep(.02)
     def live(self):return self.api.meltype_tsf_service_state_live_count()
     def create(self):
         data=self.api.meltype_tsf_service_state_create()
@@ -76,7 +103,7 @@ class StateTests(unittest.TestCase):
     def test_layout_matches_all_fields_before_borrowing(self):
         size=self.api.meltype_tsf_service_state_layout(None,0)
         result=(U32*size)();self.assertEqual(self.api.meltype_tsf_service_state_layout(result,size),size)
-        expected=[1,c.sizeof(State),c.alignment(State)]+[getattr(State,name).offset for name,_ in State._fields_]
+        expected=[2,c.sizeof(State),c.alignment(State)]+[getattr(State,name).offset for name,_ in State._fields_]
         self.assertEqual(list(result),expected)
     def test_short_metadata_buffer_is_untouched(self):
         size=self.api.meltype_tsf_service_state_layout(None,0);result=(U32*(size+2))(*([0xaabbccdd]*(size+2)))
@@ -109,5 +136,54 @@ class StateTests(unittest.TestCase):
         for thread in threads:thread.start()
         for thread in threads:thread.join()
         self.assertEqual(errors,[]);self.assertEqual(self.live(),self.before)
+    def test_sid_copy_self_assignment_replace_and_independence(self):
+        first=self.create();second=self.create();address=c.addressof(first)
+        self.assertEqual(c.string_at(self.api.meltype_tsf_service_sid(address)),b'')
+        source=c.create_string_buffer('日本語-session'.encode())
+        self.assertEqual(self.api.meltype_tsf_service_set_sid(address,source),1)
+        source[0]=b'X'
+        borrowed=self.api.meltype_tsf_service_sid(address)
+        self.assertEqual(c.string_at(borrowed),'日本語-session'.encode())
+        self.assertEqual(self.api.meltype_tsf_service_set_sid(address,borrowed),1)
+        self.assertEqual(c.string_at(self.api.meltype_tsf_service_sid(address)),'日本語-session'.encode())
+        self.assertEqual(c.string_at(self.api.meltype_tsf_service_sid(c.addressof(second))),b'')
+        self.assertEqual(self.api.meltype_tsf_service_set_sid(address,c.c_char_p(b'new')),1)
+        self.assertEqual(c.string_at(self.api.meltype_tsf_service_sid(address)),b'new')
+        self.assertEqual(self.api.meltype_tsf_service_set_sid(address,c.c_char_p(b'')),1)
+        self.assertEqual(c.string_at(self.api.meltype_tsf_service_sid(address)),b'')
+    def request(self,state,value):
+        raw=self.api.meltype_tsf_service_request(c.addressof(state),self.worker,json.dumps(value).encode(),5000,1)
+        self.assertTrue(raw)
+        try:return json.loads(c.string_at(raw))
+        finally:self.api.meltype_free(raw)
+    def test_transport_owned_by_state_closes_and_reopens(self):
+        state=self.create();self.assertFalse(state.transport)
+        self.request(state,{'op':'hello','process':'test'})
+        old=state.transport;self.assertTrue(old)
+        self.request(state,{'op':'hello','process':'test'})
+        self.assertEqual(state.transport,old)
+        self.api.meltype_tsf_service_close(c.addressof(state));self.assertFalse(state.transport)
+        self.assertFalse(self.api.meltype_tip_transport_request(old,b'{}',100,1))
+        self.api.meltype_tsf_service_close(c.addressof(state))
+        self.request(state,{'op':'hello','process':'test'})
+        self.assertTrue(state.transport);self.assertNotEqual(state.transport,old)
+    def test_destroy_retires_connection_without_explicit_close(self):
+        first=self.create();second=self.create()
+        self.request(first,{'op':'hello','process':'first'})
+        self.request(second,{'op':'hello','process':'second'})
+        old=first.transport;self.assertNotEqual(old,second.transport)
+        address=c.addressof(first);self.owned.remove(address)
+        self.api.meltype_tsf_service_state_destroy(address)
+        self.assertFalse(self.api.meltype_tip_transport_request(old,b'{}',100,1))
+        self.request(second,{'op':'hello','process':'second'})
+    def test_null_resource_arguments_are_inert(self):
+        state=self.create();address=c.addressof(state)
+        self.assertEqual(self.api.meltype_tsf_service_set_sid(None,c.c_char_p(b'test')),0)
+        self.assertEqual(self.api.meltype_tsf_service_set_sid(address,None),0)
+        self.assertFalse(self.api.meltype_tsf_service_sid(None))
+        self.api.meltype_tsf_service_close(None)
+        for owner,worker,request in [(None,self.worker,b'{}'),(address,None,b'{}'),(address,self.worker,None)]:
+            self.assertFalse(self.api.meltype_tsf_service_request(owner,worker,request,10,1))
+        self.assertFalse(state.transport)
 if __name__=='__main__':unittest.main(argv=[sys.argv[0]],verbosity=2,failfast=True)
 

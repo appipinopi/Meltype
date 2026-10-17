@@ -16,6 +16,11 @@ int wmain() {
     {
         RustServiceStateStorage storage;
         assert(storage.value && RustServiceStateLiveCount()==1 && g_locks==1);
+        assert(RustServiceSid(storage.value).empty());
+        RustServiceSetSid(storage.value,"shell-session");
+        assert(RustServiceSid(storage.value)=="shell-session");
+        RustServiceClose(storage.value);assert(!storage.value->transport);
+        RustServiceClose(storage.value);
         assert(storage.value->refs==1 && storage.value->open && storage.value->consumed);
         assert(!storage.value->manager && !storage.value->composition && !storage.value->deactivated);
         assert(storage.value->client==TF_CLIENTID_NULL && storage.value->atom_input==TF_INVALID_GUIDATOM);

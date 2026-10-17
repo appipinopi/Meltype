@@ -4,7 +4,7 @@
 //! Raw interface/token slots retain their existing TSF-thread ownership policy.
 use std::{
     alloc::{alloc, Layout},
-    ffi::c_void,
+    ffi::{c_char, c_void, CStr, CString},
     mem::{align_of, offset_of, size_of},
     panic::catch_unwind,
     ptr,
@@ -52,6 +52,8 @@ pub struct ServiceState {
     consumed: bool,
     scope_source: *const u16,
     pass_reason: *const u16,
+    sid: *mut c_char,
+    transport: *mut c_void,
 }
 impl Default for ServiceState {
     fn default() -> Self {
@@ -96,7 +98,92 @@ impl Default for ServiceState {
             consumed: true,
             scope_source: ptr::null(),
             pass_reason: ptr::null(),
+            sid: ptr::null_mut(),
+            transport: ptr::null_mut(),
         }
+    }
+}
+impl Drop for ServiceState {
+    fn drop(&mut self) {
+        unsafe {
+            let sid = std::mem::replace(&mut self.sid, ptr::null_mut());
+            if !sid.is_null() {
+                drop(CString::from_raw(sid));
+            }
+            close_transport(self);
+        }
+    }
+}
+unsafe fn close_transport(state: *mut ServiceState) {
+    let handle = ptr::addr_of_mut!((*state).transport).replace(ptr::null_mut());
+    crate::tip_transport::meltype_tip_transport_destroy(handle);
+}
+/// # Safety
+/// Live service state on its TSF thread; sid is a NUL-terminated byte string.
+/// The bytes are copied before replacing old storage, so self-assignment is valid.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_tsf_service_set_sid(
+    state: *mut ServiceState,
+    sid: *const c_char,
+) -> i32 {
+    if state.is_null() || sid.is_null() {
+        return 0;
+    }
+    let owned = CStr::from_ptr(sid).to_owned().into_raw();
+    let old = ptr::addr_of_mut!((*state).sid).replace(owned);
+    if !old.is_null() {
+        drop(CString::from_raw(old));
+    }
+    1
+}
+/// Borrowed until the next set_sid or state destruction; null state returns null.
+/// # Safety
+/// state is null or live on its TSF thread; callers never free the returned bytes.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_tsf_service_sid(state: *const ServiceState) -> *const c_char {
+    if state.is_null() {
+        return ptr::null();
+    }
+    let sid = ptr::addr_of!((*state).sid).read();
+    if sid.is_null() {
+        c"".as_ptr()
+    } else {
+        sid
+    }
+}
+/// # Safety
+/// Live state on its TSF thread with no concurrent request. Worker and request are
+/// borrowed NUL-terminated UTF-8, as for tip_transport_create/request. No COM or
+/// shell callbacks occur. Returned text is owned and freed with meltype_free.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_tsf_service_request(
+    state: *mut ServiceState,
+    worker: *const c_char,
+    request: *const c_char,
+    timeout: u32,
+    optional: i32,
+) -> *mut c_char {
+    if state.is_null() || worker.is_null() || request.is_null() {
+        return ptr::null_mut();
+    }
+    let slot = ptr::addr_of_mut!((*state).transport);
+    let mut handle = slot.read();
+    if handle.is_null() {
+        handle = crate::tip_transport::meltype_tip_transport_create(worker);
+        if handle.is_null() {
+            return ptr::null_mut();
+        }
+        slot.write(handle);
+    }
+    crate::tip_transport::meltype_tip_transport_request(handle, request, timeout, optional)
+}
+/// Detach the transport before stopping its worker. Repeated close is inert.
+/// # Safety
+/// state is null or live on its TSF thread; no concurrent request/destruction.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_tsf_service_close(state: *mut ServiceState) {
+    if !state.is_null() {
+        close_transport(state);
     }
 }
 static LIVE: AtomicU32 = AtomicU32::new(0);
@@ -132,7 +219,7 @@ pub unsafe extern "C" fn meltype_tsf_service_state_destroy(data: *mut ServiceSta
 #[no_mangle]
 pub unsafe extern "C" fn meltype_tsf_service_state_layout(out: *mut u32, capacity: u32) -> u32 {
     let values = [
-        1,
+        2,
         size_of::<ServiceState>() as u32,
         align_of::<ServiceState>() as u32,
         offset_of!(ServiceState, refs) as u32,
@@ -175,6 +262,8 @@ pub unsafe extern "C" fn meltype_tsf_service_state_layout(out: *mut u32, capacit
         offset_of!(ServiceState, consumed) as u32,
         offset_of!(ServiceState, scope_source) as u32,
         offset_of!(ServiceState, pass_reason) as u32,
+        offset_of!(ServiceState, sid) as u32,
+        offset_of!(ServiceState, transport) as u32,
     ];
     if !out.is_null() && capacity as usize >= values.len() {
         ptr::copy_nonoverlapping(values.as_ptr(), out, values.len());
