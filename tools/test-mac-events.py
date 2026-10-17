@@ -92,6 +92,8 @@ swiftSettings: [.define("REAL_CONVERTER")], linkerSettings: [.linkedFramework("I
         (data / 'config.json').write_text(json.dumps({'SpaceAroundEnglish': True, 'LiveConversion': False, 'SigilWordsDirect': False}))
         env = os.environ.copy()
         env['MELTYPE_DATA_DIR'] = str(data)
+        if args.rust_core:
+            env["MELTYPE_RUST_DATA_DIR"] = str(data)
         subprocess.run([str(executable)], env=env, check=True)
 
 

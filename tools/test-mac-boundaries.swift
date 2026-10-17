@@ -16,6 +16,9 @@ var candidatesWindow: IMKCandidates? = nil
 enum BoundaryTests {
     static func main() throws {
         let core = NativeCore.shared
+        if let directory = ProcessInfo.processInfo.environment["MELTYPE_RUST_DATA_DIR"] {
+            precondition(core.dataDirectory == directory, "Rust core ignored private data directory")
+        }
         let cases: [(String, String, Int32?, String?)] = [
             ("e", "\u{0301}\u{0300}", nil, "e"),
             ("ka", "\u{3099}\u{FE0F}", nil, "か"),
@@ -41,7 +44,7 @@ enum BoundaryTests {
             precondition(result.view == nil, "Composition was not cleared")
             precondition(result.commits.count == (expected == nil ? 0 : 1), "Unexpected edits")
             if let expected {
-                precondition(Array(result.commits[0].text.unicodeScalars) == Array(expected.unicodeScalars), "Unexpected committed scalars")
+                precondition(Array(result.commits[0].text.unicodeScalars) == Array(expected.unicodeScalars), "Unexpected committed scalars for \(raw.debugDescription) / \(external.debugDescription): \(result.commits[0].text.debugDescription), expected \(expected.debugDescription)")
                 precondition(result.commits[0].deleteBefore == 0, "Unexpected deletion")
             }
             print("PASS: \(raw.debugDescription) + \(external.debugDescription)")

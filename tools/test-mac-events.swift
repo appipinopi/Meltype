@@ -37,6 +37,9 @@ var candidatesWindow: IMKCandidates? = nil
 @main
 struct EventTests {
  static func main() {
+  if let directory=ProcessInfo.processInfo.environment["MELTYPE_RUST_DATA_DIR"] {
+   precondition(NativeCore.shared.dataDirectory==directory,"Rust core ignored private data directory")
+  }
   let app=NSApplication.shared
   app.setActivationPolicy(.prohibited)
   guard let server=IMKServer(name:"LocalMeltypeBoundaryTests",bundleIdentifier:Bundle.main.bundleIdentifier) else {fatalError("IMKServer creation failed")}
