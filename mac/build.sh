@@ -54,13 +54,13 @@ dotnet publish ../src/Meltype.Mac.Native/Meltype.Mac.Native.csproj -c Release -r
 fi
 
 echo "== 2/3 IME (Swift) をビルド (初回は azooKey の変換エンジンと辞書のダウンロードに時間がかかります)"
-SWIFT_FLAGS=()
-if [[ "${MELTYPE_RUST_CORE:-0}" == 1 ]]; then SWIFT_FLAGS=(-Xswiftc -DMELTYPE_RUST_CORE); fi
-swift build -c release "${SWIFT_FLAGS[@]}"
+SWIFT_FLAGS=(-c release)
+if [[ "${MELTYPE_RUST_CORE:-0}" == 1 ]]; then SWIFT_FLAGS+=(-Xswiftc -DMELTYPE_RUST_CORE); fi
+swift build "${SWIFT_FLAGS[@]}"
 
 echo "== 3/3 Meltype.app を組み立て"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Frameworks"
-BIN="$(swift build -c release "${SWIFT_FLAGS[@]}" --show-bin-path)"
+BIN="$(swift build "${SWIFT_FLAGS[@]}" --show-bin-path)"
 cp "$BIN/MeltypeIME" "$APP/Contents/MacOS/Meltype"
 # 入力ソースの登録をやり直す小さな道具 (#134)。install.sh が入れ替えたあとに呼ぶ。
 cp "$BIN/RegisterInputSource" "$APP/Contents/MacOS/MeltypeRegisterInputSource"
