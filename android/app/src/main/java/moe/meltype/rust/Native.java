@@ -34,4 +34,6 @@ final class Native {
     static native int takeShiftedScalar(long handle, int scalar);
     static native void toggleDirect(long handle);
     static native String toggleInputMode(long handle, Object connection);
+    static native Object createInputView(Object service);
+    static native boolean renderInputView(Object service, String reply);
 }

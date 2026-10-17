@@ -1,0 +1,17 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 appipinopi
+package android.view;
+import android.content.Context;
+import java.util.ArrayList;
+import java.util.List;
+public class ViewGroup extends View {
+    public static class LayoutParams {
+        public int width,height;
+        public LayoutParams(int width,int height){this.width=width;this.height=height;}
+    }
+    public final List<View> children=new ArrayList<>();
+    public ViewGroup(Context context){super(context);}
+    public void addView(View child){children.add(child);}
+    public void addView(View child,LayoutParams params){child.layoutParams=params;addView(child);}
+    public void removeAllViews(){children.clear();}
+}

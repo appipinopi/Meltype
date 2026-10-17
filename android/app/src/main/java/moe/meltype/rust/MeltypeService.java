@@ -10,13 +10,8 @@ import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
-import android.widget.Button;
-import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
 
 /** Android lifecycle and editor bridge; conversion and state live in Rust. */
 public final class MeltypeService extends InputMethodService {
@@ -38,47 +33,34 @@ public final class MeltypeService extends InputMethodService {
     }
     @Override public boolean onEvaluateFullscreenMode() { return false; }
     @Override public View onCreateInputView() {
-        LinearLayout root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL);
-        preview = new TextView(this); preview.setTextSize(20); root.addView(preview);
-        HorizontalScrollView scroll = new HorizontalScrollView(this);
-        candidates = new LinearLayout(this); scroll.addView(candidates); root.addView(scroll);
-        for (String letters : new String[]{"qwertyuiop", "asdfghjkl", "zxcvbnm", "1234567890", "-.,!?@/"}) {
-            LinearLayout row = new LinearLayout(this);
-            for (char letter : letters.toCharArray()) add(row, String.valueOf(letter), () -> {
-                softwareKey(0, Native.takeShiftedScalar(session,letter));
-            });
-            root.addView(row);
-        }
-        LinearLayout actions = new LinearLayout(this);
-        add(actions, "⇧", () -> { Native.toggleShift(session); });
-        add(actions, "あ/A", () -> render(Native.toggleInputMode(session,getCurrentInputConnection())));
-        add(actions, "⌫", () -> softwareKey(8,0));
-        add(actions, "変換/空白", () -> softwareKey(32,32));
-        add(actions, "確定/↵", () -> softwareKey(13,0));
-        add(actions, "取消", () -> softwareKey(27,0));
-        add(actions, "🌐", () -> {
-            if (Build.VERSION.SDK_INT >= 28) switchToNextInputMethod(false);
-            else ((InputMethodManager)getSystemService(INPUT_METHOD_SERVICE)).showInputMethodPicker();
-        });
-        root.addView(actions);
-        LinearLayout tools = new LinearLayout(this);
-        add(tools, "←", () -> softwareKey(0x25,0));
-        add(tools, "→", () -> softwareKey(0x27,0));
-        add(tools, "縮める", () -> apply(key(0x25,0,1)));
-        add(tools, "伸ばす", () -> apply(key(0x27,0,1)));
-        add(tools, "戻す", () -> { if (!privateEditor()) apply(Native.editorUndo(session,getCurrentInputConnection(),privateEditor(),Native.composingText(session))); });
-        add(tools, "再変換", () -> {
-            String reply = Native.editorReconvert(session,getCurrentInputConnection(),privateEditor(),composing());
-            if (reply != null && !apply(reply) && preview != null)
-                preview.setText("読みが見つかりません");
-        });
-        add(tools, "設定", () -> { apply(Native.commit(session)); startActivity(new Intent(this,SettingsActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); });
-        root.addView(tools); render(Native.editorView(session)); return root;
+        View root = (View)Native.createInputView(this);
+        render(Native.editorView(session));
+        return root;
     }
-    private void add(LinearLayout row, String label, Runnable action) {
-        Button button = new Button(this); button.setText(label); button.setMinWidth(0); button.setMinimumWidth(0); button.setPadding(1,1,1,1);
-        button.setOnClickListener(view -> action.run());
-        row.addView(button, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT,1));
+    private View.OnClickListener keyboardCallback(int action, int value) {
+        return view -> {
+            switch (action) {
+                case 0 -> softwareKey(0,Native.takeShiftedScalar(session,value));
+                case 1 -> Native.toggleShift(session);
+                case 2 -> render(Native.toggleInputMode(session,getCurrentInputConnection()));
+                case 3 -> softwareKey(value,value == 32 ? 32 : 0);
+                case 4 -> {
+                    if (Build.VERSION.SDK_INT >= 28) switchToNextInputMethod(false);
+                    else ((InputMethodManager)getSystemService(INPUT_METHOD_SERVICE)).showInputMethodPicker();
+                }
+                case 5 -> apply(key(0x25,0,1));
+                case 6 -> apply(key(0x27,0,1));
+                case 7 -> { if (!privateEditor()) apply(Native.editorUndo(session,getCurrentInputConnection(),privateEditor(),Native.composingText(session))); }
+                case 8 -> {
+                    String reply = Native.editorReconvert(session,getCurrentInputConnection(),privateEditor(),composing());
+                    if (reply != null && !apply(reply) && preview != null) preview.setText("読みが見つかりません");
+                }
+                case 9 -> { apply(Native.commit(session)); startActivity(new Intent(this,SettingsActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); }
+                case 10 -> apply(Native.select(session,value));
+                case 11 -> apply(Native.predict(session,value));
+                default -> { }
+            }
+        };
     }
     private void softwareKey(int vk, int scalar) {
         if (apply(key(vk,scalar,0))) return;
@@ -108,27 +90,5 @@ public final class MeltypeService extends InputMethodService {
         InputConnection connection = getCurrentInputConnection(); if (connection == null) return false;
         return render(Native.applyEditor(session, connection, json, Native.composingText(session)));
     }
-    private boolean render(String json) {
-        try {
-            JSONObject result = new JSONObject(json);
-            JSONObject view = result.optJSONObject("view");
-            if (preview != null) preview.setText(result.getString("composingText"));
-            if (candidates != null) {
-                candidates.removeAllViews();
-                if (view != null) {
-                    JSONArray choices = view.getJSONArray("candidates");
-                    for (int i=0;i<choices.length();i++) {
-                        final int index=i; Button button=new Button(this); button.setText(choices.getString(i));
-                        button.setOnClickListener(v -> apply(Native.select(session,index))); candidates.addView(button);
-                    }
-                    JSONArray predictions = view.optJSONArray("predictions");
-                    if (predictions != null) for (int i=0;i<predictions.length();i++) {
-                        final int index=i; Button button=new Button(this); button.setText(predictions.getString(i));
-                        button.setOnClickListener(v -> apply(Native.predict(session,index))); candidates.addView(button);
-                    }
-                }
-            }
-            return result.getBoolean("consumed");
-        } catch (JSONException error) { return false; }
-    }
+    private boolean render(String json) { return Native.renderInputView(this,json); }
 }
