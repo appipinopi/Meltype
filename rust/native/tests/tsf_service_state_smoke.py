@@ -28,6 +28,8 @@ from tsf_mode_smoke import ModeHost
 SELECT=c.CFUNCTYPE(None,c.c_void_p,c.c_int,c.c_int)
 CORE_NOTICE=c.CFUNCTYPE(None,c.c_void_p,c.c_uint32,c.c_int)
 END=c.CFUNCTYPE(None,c.c_void_p,c.c_uint32)
+KEY_COMMIT=c.CFUNCTYPE(c.c_int,c.c_void_p,c.c_uint32,c.c_int)
+KEY_HANDLE=c.CFUNCTYPE(None,c.c_void_p,c.c_void_p,c.c_uint32,c.c_uint16)
 FOCUS_COMMIT=c.CFUNCTYPE(c.c_int,c.c_void_p,c.c_int)
 REPLY=c.CFUNCTYPE(c.c_int,c.c_void_p,c.c_void_p,c.c_uint32)
 CORE_CLOCK=c.CFUNCTYPE(c.c_uint64,c.c_void_p)
@@ -130,6 +132,12 @@ class StateTests(unittest.TestCase):
         cls.api.meltype_tsf_abandoned_reset.argtypes=[P];cls.api.meltype_tsf_abandoned_reset.restype=None
         cls.api.meltype_tsf_service_input_scope.argtypes=[P,P,P,U32,P,CORE_NOTICE];cls.api.meltype_tsf_service_input_scope.restype=c.c_int
         cls.api.meltype_tsf_service_mode_action.argtypes=[P,P,c.c_char_p,P,U32,U32,c.c_int,P,CORE_NOTICE];cls.api.meltype_tsf_service_mode_action.restype=c.c_int
+        cls.api.meltype_tsf_service_key_secret.argtypes=[P,P,P,U32,c.c_int,P,CORE_NOTICE];cls.api.meltype_tsf_service_key_secret.restype=c.c_int
+        cls.api.meltype_tsf_service_would_eat.argtypes=[P,P,P,c.c_char_p,P,U32,c.c_uint64,c.c_int,P,KEY_COMMIT,CORE_NOTICE,c.POINTER(c.c_uint16)];cls.api.meltype_tsf_service_would_eat.restype=c.c_int
+        cls.api.meltype_tsf_service_key_event.argtypes=[P,P,P,c.c_char_p,U32,P,U32,c.c_uint64,P,KEY_COMMIT,KEY_HANDLE,CORE_NOTICE];cls.api.meltype_tsf_service_key_event.restype=c.c_int
+        cls.api.meltype_tsf_key_cache_clear.argtypes=[P];cls.api.meltype_tsf_key_cache_clear.restype=None
+        cls.api.meltype_tsf_key_passed.argtypes=[P,c.c_int,c.c_int,P];cls.api.meltype_tsf_key_passed.restype=c.c_int
+        user.GetKeyboardState.argtypes=[c.POINTER(c.c_ubyte)];user.SetKeyboardState.argtypes=[c.POINTER(c.c_ubyte)]
         cls.fixture=str(Path(sys.argv[2]).resolve()).encode() if len(sys.argv)>2 else None
 
 
@@ -1665,6 +1673,151 @@ class StateTests(unittest.TestCase):
         for data,lifetime,worker,op in [(None,c.byref(host.context),self.worker,0),(address,None,self.worker,0),
             (address,c.byref(host.context),None,0),(address,c.byref(host.context),self.worker,3)]:
             self.assertEqual(self.api.meltype_tsf_service_mode_action(data,lifetime,worker,c.byref(host.context),7,op,0,None,CORE_NOTICE()),0)
+        self.assertEqual(c.string_at(address,c.sizeof(State)),before);host.verify(self)
+    def keyboard(self,shift=False,control=False):
+        saved=(c.c_ubyte*256)();self.assertTrue(user.GetKeyboardState(saved));self.addCleanup(user.SetKeyboardState,saved)
+        self.set_keyboard(shift,control)
+    def set_keyboard(self,shift=False,control=False):
+        value=(c.c_ubyte*256)()
+        if shift:value[0x10]=value[0xa0]=0x80
+        if control:value[0x11]=value[0xa2]=0x80
+        self.assertTrue(user.SetKeyboardState(value))
+    def key_state(self,state):
+        if not state.keys:state.keys=self.api.meltype_tsf_key_state_create()
+        self.assertTrue(state.keys)
+    def key_secret(self,state,host,key=65,test=True,notice=None,lifetime=None):
+        return self.api.meltype_tsf_service_key_secret(c.addressof(state),lifetime or c.byref(host.context),c.byref(host.context),key,int(test),123,notice or CORE_NOTICE(lambda *_:None))
+    def would_key(self,state,host,key=65,test=True,commit=None,notice=None):
+        ch=c.c_uint16(999)
+        result=self.api.meltype_tsf_service_would_eat(c.addressof(state),c.byref(host.context),(c.byref(host.sink) if hasattr(host,'sink') else None),self.worker,c.byref(host.context),key,0,int(test),123,
+            commit or KEY_COMMIT(lambda *_:0),notice or CORE_NOTICE(lambda *_:None),c.byref(ch))
+        return result,ch.value
+    def key_event(self,state,host,kind,key=65,commit=None,handler=None,lifetime=None):
+        return self.api.meltype_tsf_service_key_event(c.addressof(state),lifetime or c.byref(host.context),(c.byref(host.sink) if hasattr(host,'sink') else None),self.worker,kind,c.byref(host.context),key,0,123,
+            commit or KEY_COMMIT(lambda *_:0),handler or KEY_HANDLE(lambda *_:None),CORE_NOTICE())
+    def test_key_secret_native_test_result_and_private_metadata_are_reused_once(self):
+        state=self.create();host=ModeHost();state.client=17;self.key_state(state);host.values[0].values=[61]
+        try:
+            self.assertEqual(self.key_secret(state,host),0);self.assertTrue(state.private_field);self.assertEqual(len(host.locks),1)
+            host.values[0].values=[31]
+            self.assertEqual(self.key_secret(state,host,test=False),0);self.assertTrue(state.private_field);self.assertEqual(len(host.locks),1)
+            self.assertEqual(self.key_secret(state,host,test=False),1);self.assertFalse(state.private_field);self.assertEqual(len(host.locks),2)
+        finally:self.api.meltype_tsf_key_cache_clear(state.keys);host.verify(self)
+    def test_key_secret_native_refused_read_stays_unconfirmed(self):
+        state=self.create();host=ModeHost();state.client=17;self.key_state(state);host.lock_mode='reject'
+        try:
+            self.assertEqual(self.key_secret(state,host),-1);self.assertEqual(host.value_reads,[]);self.assertFalse(state.secret_checked)
+        finally:self.api.meltype_tsf_key_cache_clear(state.keys);host.verify(self)
+    def test_key_secret_native_delayed_sync_read_is_unknown_and_cannot_run_later(self):
+        state=self.create();host=ModeHost();state.client=17;self.key_state(state);host.lock_mode='async'
+        try:
+            self.assertEqual(self.key_secret(state,host),-1);self.assertIsNotNone(host.pending)
+            self.assertEqual(invoke(host.pending,3,HR,[U32],7),HR(0x80004004).value);self.assertEqual(host.value_reads,[])
+        finally:
+            self.api.meltype_tsf_key_cache_clear(state.keys)
+            if host.pending:release(host.pending);host.pending=None
+            host.verify(self)
+    def test_key_secret_native_owner_survives_private_write_after_notice_release(self):
+        state=self.create();address=c.addressof(state);host=ModeHost();state.client=17;self.key_state(state);host.values[0].values=[61];events=[]
+        dispatch=DISPATCH(lambda *_:0)
+        @self.checked(DESTROY)
+        def destroyed(owner):events.append(('destroy',state.private_field));self.api.meltype_tsf_service_state_destroy(owner)
+        root=self.api.meltype_tsf_service_com_create(address,dispatch,destroyed);self.assertTrue(root);self.owned.remove(address)
+        @self.checked(CORE_NOTICE)
+        def notice(owner,op,value):
+            self.assertEqual((owner,op,value),(123,4,3));events.append('scope');release(root);self.assertEqual(self.live(),self.before+1)
+        try:
+            self.assertEqual(self.key_secret(state,host,test=False,notice=notice,lifetime=root),0)
+            self.assertEqual(events,['scope',('destroy',True)]);host.verify(self)
+        finally:
+            if not events:release(root)
+    def test_would_native_disabled_and_modifier_reset_only_per_key_secret_flags(self):
+        self.keyboard();state=self.create();host=ModeHost();self.key_state(state)
+        for disabled,key in [(True,65),(False,0x10)]:
+            state.disabled=disabled;state.secret_checked=state.secret_composing=True
+            self.assertEqual(self.would_key(state,host,key),(0,0));self.assertFalse(state.secret_checked);self.assertFalse(state.secret_composing)
+        self.assertEqual(host.value_reads,[]);self.assertFalse(state.transport);host.verify(self)
+    def test_would_native_pass_reason_deduplicates_and_success_clears_it(self):
+        self.keyboard();state=self.create();host=ModeHost();state.client=17;self.key_state(state);state.open=False;events=[]
+        notice=CORE_NOTICE(lambda owner,op,value:events.append((op,value)))
+        try:
+            self.assertEqual(self.would_key(state,host,notice=notice),(0,0));self.assertEqual(self.would_key(state,host,notice=notice),(0,0))
+            self.assertEqual(events,[(6,1)]);self.assertEqual(c.wstring_at(state.pass_reason),'英数')
+            state.open=True;state.server_active=True;self.set_keyboard(shift=True)
+            self.assertEqual(self.would_key(state,host,0x20,notice=notice),(1,0x20));self.assertFalse(state.pass_reason);self.assertTrue(state.secret_checked)
+        finally:self.api.meltype_tsf_key_cache_clear(state.keys);host.verify(self)
+    def test_would_native_password_blocks_and_private_input_sets_checked_metadata(self):
+        self.keyboard(shift=True);state=self.create();host=ModeHost();state.client=17;state.server_active=True;self.key_state(state)
+        try:
+            host.values[0].values=[31];self.assertEqual(self.would_key(state,host,0x20),(0,0x20));self.assertFalse(state.secret_checked)
+            self.assertEqual(c.wstring_at(state.pass_reason),'パスワードの入力欄');host.values[0].values=[61]
+            self.assertEqual(self.would_key(state,host,0x20),(1,0x20));self.assertTrue(state.private_field);self.assertTrue(state.secret_checked)
+            self.assertEqual(host.read_count,0)
+        finally:self.api.meltype_tsf_key_cache_clear(state.keys);host.verify(self)
+    def test_would_native_unicode_packet_requests_sync_then_async_keep_caret(self):
+        self.keyboard();state=self.create();host=DeferredHost();self.shutdown_composition(state,host);self.key_state(state);events=[]
+        commit=KEY_COMMIT(lambda owner,mode,keep:events.append((owner,mode,keep)) or 0)
+        try:
+            self.assertEqual(self.would_key(state,host,0xe7,commit=commit),(0,0));self.assertEqual(events,[(123,0,1),(123,1,1)])
+        finally:self.cleanup_shutdown_composition(state,host)
+    def test_would_native_stale_test_actual_pair_counts_once_then_retires_old_input(self):
+        self.keyboard();state=self.create();old=DeferredHost();host=ModeHost();self.shutdown_composition(state,old);self.key_state(state);state.server_active=True;events=[]
+        commit=KEY_COMMIT(lambda owner,mode,keep:events.append((mode,keep)) or 0)
+        try:
+            self.assertEqual(self.would_key(state,host,65,commit=commit)[0],0);self.assertEqual(self.stale_tries(state),1)
+            self.assertEqual(self.would_key(state,host,65,test=False,commit=commit)[0],0);self.assertEqual(self.stale_tries(state),1)
+            self.assertEqual(self.would_key(state,host,66,commit=commit)[0],1)
+            self.assertFalse(state.composition);self.assertTrue(state.abandoned);self.assertEqual(self.stale_tries(state),0)
+            self.assertEqual(events,[(0,1),(1,1),(0,1),(0,1)])
+        finally:
+            self.api.meltype_tsf_key_cache_clear(state.keys);self.cleanup_native_abandoned(state,old);host.verify(self)
+    def test_key_event_native_four_entries_toggle_and_release_consumed_keys(self):
+        self.keyboard();state=self.create();host=ModeHost();self.key_state(state);state.client=17;state.manager=c.addressof(host.context)
+        host.on_write=lambda:self.opened(state,host);events=[]
+        try:
+            handler=KEY_HANDLE(lambda *_:events.append('handle'))
+            self.assertEqual(self.key_event(state,host,0,0x19,handler=handler),1);self.assertTrue(state.open)
+            self.assertEqual(self.key_event(state,host,1,0x19,handler=handler),1);self.assertFalse(state.open)
+            self.assertEqual(self.key_event(state,host,2,0x19),1);self.assertEqual(self.key_event(state,host,3,0x19),1)
+            self.assertEqual(self.key_event(state,host,2,0x19),0);self.assertEqual(events,[]);self.assertFalse(state.transport);host.verify(self)
+        finally:state.manager=None
+    def test_key_event_native_passed_key_marks_caret_and_records_metadata(self):
+        self.keyboard();state=self.create();host=ModeHost();self.key_state(state);state.open=False;state.direct_word=True
+        self.assertEqual(self.key_event(state,host,1,0x25),0);self.assertTrue(state.caret_moved);self.assertTrue(state.direct_word)
+        passed=(c.c_int*2)();self.assertEqual(self.api.meltype_tsf_key_passed(state.keys,0,0,passed),1);self.assertEqual(tuple(passed),(0x25,0));host.verify(self)
+    def test_key_event_native_handle_can_release_last_caller_reference(self):
+        self.keyboard(shift=True);state=self.create();address=c.addressof(state);host=ModeHost();self.key_state(state);state.client=17;state.server_active=True;events=[]
+        dispatch=DISPATCH(lambda *_:0)
+        @self.checked(DESTROY)
+        def destroyed(owner):events.append('destroy');self.api.meltype_tsf_service_state_destroy(owner)
+        root=self.api.meltype_tsf_service_com_create(address,dispatch,destroyed);self.assertTrue(root);self.owned.remove(address)
+        @self.checked(KEY_HANDLE)
+        def handle(owner,context,key,ch):
+            self.assertEqual((owner,context,key,ch),(123,c.addressof(host.context),0x20,0x20));events.append('handle');release(root)
+            self.assertEqual(self.live(),self.before+1)
+        try:
+            self.assertEqual(self.key_event(state,host,1,0x20,handler=handle,lifetime=root),1);self.assertEqual(events,['handle','destroy']);host.verify(self)
+        finally:
+            if not events:release(root)
+    def test_key_secret_native_null_context_is_unknown_and_clears_private_result(self):
+        state=self.create();host=ModeHost();self.key_state(state);state.private_field=True
+        self.assertEqual(self.api.meltype_tsf_service_key_secret(c.addressof(state),c.byref(host.context),None,65,0,None,CORE_NOTICE()),-1)
+        self.assertFalse(state.private_field);self.assertEqual(host.value_reads,[]);host.verify(self)
+    def test_would_native_resumes_host_committed_input_with_composition_sink(self):
+        self.keyboard();state=self.create();host=DeferredHost();host.mode='sync';state.client=17;state.atom_input=11;self.key_state(state)
+        state.resume=self.capture_resume(host)
+        try:
+            self.assertEqual(self.would_key(state,host,65),(1,0));self.assertFalse(state.resume);self.assertTrue(state.composition)
+            self.assertEqual(host.attributes,[(0,3,11)]);self.assertEqual(host.document,units('old'));self.assertFalse(state.transport)
+        finally:self.cleanup_recovered(state,host)
+    def test_key_input_native_invalid_arguments_preserve_state_and_zero_character(self):
+        state=self.create();host=ModeHost();address=c.addressof(state);life=c.byref(host.context);sink=(c.byref(host.sink) if hasattr(host,'sink') else None);before=c.string_at(address,c.sizeof(State));out=c.c_uint16()
+        for data,lifetime,worker in [(None,life,self.worker),(address,None,self.worker),(address,life,None)]:
+            out.value=999
+            self.assertEqual(self.api.meltype_tsf_service_would_eat(data,lifetime,sink,worker,c.byref(host.context),65,0,1,None,KEY_COMMIT(lambda *_:0),CORE_NOTICE(),c.byref(out)),0)
+            self.assertEqual(out.value,0)
+            self.assertEqual(self.api.meltype_tsf_service_key_event(data,lifetime,sink,worker,0,c.byref(host.context),65,0,None,KEY_COMMIT(lambda *_:0),KEY_HANDLE(lambda *_:None),CORE_NOTICE()),0)
+        self.assertEqual(self.api.meltype_tsf_service_key_secret(None,life,c.byref(host.context),65,1,None,CORE_NOTICE()),1)
         self.assertEqual(c.string_at(address,c.sizeof(State)),before);host.verify(self)
 if __name__=='__main__':unittest.main(argv=[sys.argv[0]],verbosity=2,failfast=True)
 

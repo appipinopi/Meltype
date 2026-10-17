@@ -109,9 +109,9 @@ struct Cache {
 #[derive(Clone, Copy, Default)]
 #[repr(C)]
 pub struct Stale {
-    tries: u32,
-    key: u32,
-    time: u64,
+    pub(super) tries: u32,
+    pub(super) key: u32,
+    pub(super) time: u64,
 }
 #[derive(Clone, Copy, Default)]
 #[repr(C)]
@@ -514,13 +514,14 @@ pub unsafe extern "C" fn meltype_tsf_key_passed(
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct Entry {
-    owner: *mut c_void,
-    lifetime: *mut c_void,
-    would: Option<unsafe extern "C" fn(*mut c_void, *mut c_void, u32, u64, i32, *mut u16) -> i32>,
-    mark: Option<unsafe extern "C" fn(*mut c_void, u32, i32)>,
-    composing: Option<unsafe extern "C" fn(*mut c_void) -> i32>,
-    toggle: Option<unsafe extern "C" fn(*mut c_void, *mut c_void)>,
-    handle: Option<unsafe extern "C" fn(*mut c_void, *mut c_void, u32, u16)>,
+    pub(super) owner: *mut c_void,
+    pub(super) lifetime: *mut c_void,
+    pub(super) would:
+        Option<unsafe extern "C" fn(*mut c_void, *mut c_void, u32, u64, i32, *mut u16) -> i32>,
+    pub(super) mark: Option<unsafe extern "C" fn(*mut c_void, u32, i32)>,
+    pub(super) composing: Option<unsafe extern "C" fn(*mut c_void) -> i32>,
+    pub(super) toggle: Option<unsafe extern "C" fn(*mut c_void, *mut c_void)>,
+    pub(super) handle: Option<unsafe extern "C" fn(*mut c_void, *mut c_void, u32, u16)>,
 }
 /// kind: 0=test down,1=down,2=test up,3=up. Return whether the key is consumed.
 /// Callbacks run with no state borrow; owner/context survive reentrant actions.

@@ -78,48 +78,19 @@ void RustUnsubscribe(void*);
 unsigned int RustKeyFlags(UINT,LPARAM,bool);
 bool RustKeyDown(int);
 wchar_t RustKeyChar(UINT,LPARAM);
-struct RustKeySnapshot {
-    void* composition; void* context;
-    int disabled,open,detection,english;
-    unsigned int staleTries,staleVk;
-    unsigned long long staleTime;
-};
-struct RustKeyCallbacks {
-    void* owner; IUnknown* lifetime;
-    void (__cdecl *read)(void*,RustKeySnapshot*);
-    void (__cdecl *update)(void*,unsigned int,unsigned long long,unsigned long long);
-    void (__cdecl *resume)(void*,void*);
-    int (__cdecl *commitNow)(void*,int);
-    void (__cdecl *commitAsync)(void*,int);
-    void (__cdecl *abandon)(void*);
-    int (__cdecl *ready)(void*);
-    int (__cdecl *secret)(void*,unsigned int,void*,int);
-    void (__cdecl *pass)(void*,unsigned int);
-};
-bool RustWouldEat(ITfContext*,UINT,LPARAM,bool,const RustKeyCallbacks&,wchar_t&);
 void* RustKeyStateCreate();
 void RustKeyStateReset(void*);
 void RustKeyStateDestroy(void*);
 void RustKeyCacheClear(void*);
 bool RustIsReinjected(void*,UINT);
-int RustKeySecret(void*,ITfContext*,UINT,bool,void*,IUnknown*,int (__cdecl *)(void*,void*,int*),int&);
 int RustReinject(void*,UINT,IUnknown*,DWORD&,void* = nullptr,unsigned int (__cdecl *)(void*,const INPUT*,unsigned int) = nullptr);
 struct RustKeyStale {unsigned int tries,key;unsigned long long time;};
 struct RustKeyPassed {int key,control;};
-struct RustKeyEntry {
-    void* owner;IUnknown* lifetime;
-    int (__cdecl *would)(void*,void*,unsigned int,unsigned long long,int,wchar_t*);
-    void (__cdecl *mark)(void*,unsigned int,int);
-    int (__cdecl *composing)(void*);
-    void (__cdecl *toggle)(void*,void*);
-    void (__cdecl *handle)(void*,void*,unsigned int,wchar_t);
-};
 void RustKeyForeground(void*,bool);
 void RustKeyStaleRead(void*,RustKeyStale&);
 void RustKeyStaleWrite(void*,unsigned int,unsigned int,unsigned long long);
 void RustKeyStaleClear(void*);
 bool RustKeyPassedRead(void*,bool,bool,RustKeyPassed&);
-bool RustKeyEvent(void*,unsigned int,ITfContext*,UINT,LPARAM,const RustKeyEntry&);
 struct RustKeyEditCallbacks {
     void* owner;IUnknown* lifetime;
     unsigned int (__cdecl *read)(void*);
@@ -185,6 +156,7 @@ int RustServiceResume(RustServiceState*,IUnknown*,ITfCompositionSink*,ITfContext
 int RustServiceAbandon(RustServiceState*,IUnknown*);
 bool RustServiceInputScope(RustServiceState*,IUnknown*,TfEditCookie,ITfContext*);
 bool RustServiceModeAction(RustServiceState*,IUnknown*,ITfContext*,TfEditCookie,unsigned int,int);
+bool RustServiceKeyEvent(RustServiceState*,IUnknown*,ITfCompositionSink*,unsigned int,ITfContext*,UINT,LPARAM,void*,int (__cdecl *)(void*,unsigned int,int),void (__cdecl *)(void*,void*,unsigned int,wchar_t));
 bool RustServiceCore(RustServiceState*,IUnknown*,bool);
 unsigned int RustServiceMode(const RustServiceState*);
 void RustServiceWriteOpen(RustServiceState*,bool);

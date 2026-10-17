@@ -10,6 +10,28 @@
 #include <objbase.h>
 using namespace meltype;
 namespace {
+struct PrivateProfile {
+    std::filesystem::path root,path;
+    PrivateProfile() {
+        wchar_t temporary[MAX_PATH]={},name[MAX_PATH]={};
+        DWORD count=GetTempPathW(ARRAYSIZE(temporary),temporary);
+        assert(count>0 && count<ARRAYSIZE(temporary));
+        root=std::filesystem::weakly_canonical(temporary);
+        assert(GetTempFileNameW(temporary,L"MLK",0,name));
+        path=std::filesystem::weakly_canonical(name);
+        assert(path.parent_path()==root && path.filename().native().rfind(L"MLK",0)==0);
+        assert(DeleteFileW(path.c_str()));
+        assert(std::filesystem::create_directory(path));
+    }
+    ~PrivateProfile() {
+        std::error_code error;
+        auto resolved=std::filesystem::weakly_canonical(path,error);
+        // Verify the final absolute target before recursive cleanup; never
+        // follow a replaced directory outside this exact private temp child.
+        if (!error && resolved==path && path.parent_path()==root && path.filename().native().rfind(L"MLK",0)==0)
+            std::filesystem::remove_all(path,error);
+    }
+};
 void* rangeMethods[25] = {};
 void* contextMethods[17] = {};
 void* compositionMethods[7]={};
@@ -121,8 +143,8 @@ struct Context {
 int wmain() {
     MSG message={};PeekMessageW(&message,nullptr,0,0,PM_NOREMOVE);
     wchar_t executable[32768]={};assert(GetModuleFileNameW(nullptr,executable,ARRAYSIZE(executable)));
-    auto profile=std::filesystem::path(executable).parent_path()/L"key-edit-profile";
-    std::filesystem::create_directories(profile);
+    PrivateProfile isolated;
+    const auto& profile=isolated.path;
     {std::ofstream config(profile/L"config.json");config<<"{\"DetectionLevel\":\"Manual\"}";}
     assert(SetEnvironmentVariableW(L"MELTYPE_RUST_DATA_DIR",profile.c_str()));
     BYTE saved[256]={};assert(GetKeyboardState(saved));BYTE shifted[256]={};shifted[VK_SHIFT]=shifted[VK_LSHIFT]=0x80;assert(SetKeyboardState(shifted));
@@ -171,6 +193,11 @@ int wmain() {
     assert(SetKeyboardState(plain));
     assert(service->ServiceInterface<ITfKeyEventSink>()->OnTestKeyDown(reinterpret_cast<ITfContext*>(&context),'A',0,&eaten)==S_OK && eaten);
     assert(service->ServiceInterface<ITfKeyEventSink>()->OnKeyDown(reinterpret_cast<ITfContext*>(&context),'A',0,&eaten)==S_OK && eaten);
+    if (doc.text!=L"前😀　ああ" || composition.refs!=1) {
+        fprintf(stderr,"Second A mismatch: composition refs=%lu, UTF16:",composition.refs);
+        for (wchar_t unit:doc.text) fprintf(stderr," %04X",static_cast<unsigned int>(unit));
+        fprintf(stderr,"; private profile=%s\n",profile.u8string().c_str());
+    }
     assert(doc.text==L"前😀　ああ" && composition.refs==1);
     doc.selectionStart=doc.selectionEnd=0;
     const int endedBeforePacket=composition.ended;

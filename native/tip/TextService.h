@@ -118,7 +118,9 @@ private:
     ~TextService();
 
     // test: OnTestKeyDown から (入力欄の種類を読んだ結果を、続く OnKeyDown で使うために覚える)
+#ifndef MELTYPE_RUST_CORE
     bool WouldEat(ITfContext* context, UINT vk, LPARAM lParam, wchar_t& ch, bool test);
+#endif
     void ForgetSecretField();
     bool IsReinjected(UINT vk);
     bool ServerReady();
@@ -169,9 +171,10 @@ private:
     void AdviseTextEditSink(ITfDocumentMgr* documentMgr);
     bool IsSecretField(TfEditCookie ec, ITfContext* context);
     // 入力欄の種類を読む読み取りの編集セッション。1 = パスワード欄、0 = 違う、-1 = 読めない (キーの編集セッションの中で読む)
+#ifndef MELTYPE_RUST_CORE
     int ReadSecretField(ITfContext* context);
+#endif
 #ifdef MELTYPE_RUST_CORE
-    int ReadSecretForKey(ITfContext*,UINT,bool);
     HRESULT DispatchKey(unsigned int,ITfContext*,UINT,LPARAM,BOOL*);
     RustCommitCallbacks CommitCallbacks();
 #endif

@@ -6,6 +6,35 @@
 #include <cstdio>
 using namespace meltype;
 namespace {
+struct RustKeySnapshot {
+    void* composition; void* context;
+    int disabled,open,detection,english;
+    unsigned int staleTries,staleVk;
+    unsigned long long staleTime;
+};
+struct RustKeyCallbacks {
+    void* owner; IUnknown* lifetime;
+    void (__cdecl *read)(void*,RustKeySnapshot*);
+    void (__cdecl *update)(void*,unsigned int,unsigned long long,unsigned long long);
+    void (__cdecl *resume)(void*,void*);
+    int (__cdecl *commitNow)(void*,int);
+    void (__cdecl *commitAsync)(void*,int);
+    void (__cdecl *abandon)(void*);
+    int (__cdecl *ready)(void*);
+    int (__cdecl *secret)(void*,unsigned int,void*,int);
+    void (__cdecl *pass)(void*,unsigned int);
+};
+bool RustWouldEat(ITfContext*,UINT,LPARAM,bool,const RustKeyCallbacks&,wchar_t&);
+bool RustWouldEat(ITfContext* context,UINT key,LPARAM message,bool test,const RustKeyCallbacks& callbacks,wchar_t& ch) {
+    using F=int (__cdecl *)(void*,unsigned int,unsigned long long,int,const RustKeyCallbacks*,wchar_t*);
+    auto fn=reinterpret_cast<F>(GetProcAddress(GetModuleHandleW(L"meltype_native.dll"),"meltype_tsf_would_eat"));assert(fn);
+    return fn(context,key,static_cast<ULONG_PTR>(message),test?1:0,&callbacks,&ch)!=0;
+}
+int RustKeySecret(void* token,ITfContext* context,UINT key,bool test,void* owner,IUnknown* lifetime,int (__cdecl *reader)(void*,void*,int*),int& field) {
+    using F=int (__cdecl *)(void*,void*,unsigned int,int,void*,void*,int (__cdecl *)(void*,void*,int*),int*);
+    auto fn=reinterpret_cast<F>(GetProcAddress(GetModuleHandleW(L"meltype_native.dll"),"meltype_tsf_key_secret"));assert(fn);
+    return fn(token,context,key,test?1:0,owner,lifetime,reader,&field);
+}
 void* methods[17] = {};
 struct Context {
     void** table=methods;

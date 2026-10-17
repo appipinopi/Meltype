@@ -10,6 +10,7 @@ mod edited;
 mod exchange;
 mod focus;
 mod input;
+mod key_input;
 mod mode_action;
 mod opened;
 mod owned;

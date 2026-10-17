@@ -54,20 +54,17 @@ struct RustApi {
     unsigned int (__cdecl *keyModifiers)() = nullptr;
     int (__cdecl *keyDown)(int) = nullptr;
     unsigned int (__cdecl *keyChar)(unsigned int,unsigned long long) = nullptr;
-    int (__cdecl *wouldEat)(void*,unsigned int,unsigned long long,int,const RustKeyCallbacks*,wchar_t*) = nullptr;
     void* (__cdecl *keyStateCreate)() = nullptr;
     void (__cdecl *keyStateReset)(void*) = nullptr;
     void (__cdecl *keyStateDestroy)(void*) = nullptr;
     void (__cdecl *keyCacheClear)(void*) = nullptr;
     int (__cdecl *isReinjected)(void*,unsigned int) = nullptr;
-    int (__cdecl *keySecret)(void*,void*,unsigned int,int,void*,void*,int (__cdecl *)(void*,void*,int*),int*) = nullptr;
     int (__cdecl *reinject)(void*,unsigned int,void*,void*,unsigned int (__cdecl *)(void*,const INPUT*,unsigned int),unsigned int*) = nullptr;
     void (__cdecl *keyForeground)(void*,int) = nullptr;
     void (__cdecl *keyStaleRead)(void*,RustKeyStale*) = nullptr;
     void (__cdecl *keyStaleWrite)(void*,unsigned int,unsigned int,unsigned long long) = nullptr;
     void (__cdecl *keyStaleClear)(void*) = nullptr;
     int (__cdecl *keyPassed)(void*,int,int,RustKeyPassed*) = nullptr;
-    int (__cdecl *keyEvent)(void*,unsigned int,void*,unsigned int,unsigned long long,const RustKeyEntry*) = nullptr;
     HRESULT (__cdecl *handleKey)(void*,unsigned int,void*,unsigned int,wchar_t,const char*,const RustKeyEditCallbacks*) = nullptr;
     HRESULT (__cdecl *commit)(unsigned int,void*,unsigned int,unsigned int,const char*,const RustCommitCallbacks*,int) = nullptr;
     HRESULT (__cdecl *selectCandidate)(unsigned int,int,int,const char*,const RustCommitCallbacks*) = nullptr;
@@ -98,6 +95,7 @@ struct RustApi {
     int (__cdecl *serviceAbandon)(RustServiceState*,void*,const char*,void*,void (__cdecl *)(void*)) = nullptr;
     int (__cdecl *serviceInputScope)(RustServiceState*,void*,void*,unsigned int,void*,void (__cdecl *)(void*,unsigned int,int)) = nullptr;
     int (__cdecl *serviceModeAction)(RustServiceState*,void*,const char*,void*,unsigned int,unsigned int,int,void*,void (__cdecl *)(void*,unsigned int,int)) = nullptr;
+    int (__cdecl *serviceKeyEvent)(RustServiceState*,void*,void*,const char*,unsigned int,void*,unsigned int,unsigned long long,void*,int (__cdecl *)(void*,unsigned int,int),void (__cdecl *)(void*,void*,unsigned int,wchar_t),void (__cdecl *)(void*,unsigned int,int)) = nullptr;
     int (__cdecl *serviceCore)(RustServiceState*,const char*,void*,void*,void (__cdecl *)(void*,unsigned int,int),unsigned long long (__cdecl *)(void*),int) = nullptr;
     unsigned int (__cdecl *serviceMode)(const RustServiceState*) = nullptr;
     int (__cdecl *serviceWriteOpen)(RustServiceState*,int) = nullptr;
@@ -164,20 +162,17 @@ struct RustApi {
         keyModifiers = reinterpret_cast<decltype(keyModifiers)>(GetProcAddress(module, "meltype_tsf_key_modifiers"));
         keyDown = reinterpret_cast<decltype(keyDown)>(GetProcAddress(module, "meltype_tsf_key_down"));
         keyChar = reinterpret_cast<decltype(keyChar)>(GetProcAddress(module, "meltype_tsf_key_char"));
-        wouldEat = reinterpret_cast<decltype(wouldEat)>(GetProcAddress(module, "meltype_tsf_would_eat"));
         keyStateCreate = reinterpret_cast<decltype(keyStateCreate)>(GetProcAddress(module, "meltype_tsf_key_state_create"));
         keyStateReset = reinterpret_cast<decltype(keyStateReset)>(GetProcAddress(module, "meltype_tsf_key_state_reset"));
         keyStateDestroy = reinterpret_cast<decltype(keyStateDestroy)>(GetProcAddress(module, "meltype_tsf_key_state_destroy"));
         keyCacheClear = reinterpret_cast<decltype(keyCacheClear)>(GetProcAddress(module, "meltype_tsf_key_cache_clear"));
         isReinjected = reinterpret_cast<decltype(isReinjected)>(GetProcAddress(module, "meltype_tsf_is_reinjected"));
-        keySecret = reinterpret_cast<decltype(keySecret)>(GetProcAddress(module, "meltype_tsf_key_secret"));
         reinject = reinterpret_cast<decltype(reinject)>(GetProcAddress(module, "meltype_tsf_reinject"));
         keyForeground = reinterpret_cast<decltype(keyForeground)>(GetProcAddress(module, "meltype_tsf_key_foreground"));
         keyStaleRead = reinterpret_cast<decltype(keyStaleRead)>(GetProcAddress(module, "meltype_tsf_key_stale_read"));
         keyStaleWrite = reinterpret_cast<decltype(keyStaleWrite)>(GetProcAddress(module, "meltype_tsf_key_stale_write"));
         keyStaleClear = reinterpret_cast<decltype(keyStaleClear)>(GetProcAddress(module, "meltype_tsf_key_stale_clear"));
         keyPassed = reinterpret_cast<decltype(keyPassed)>(GetProcAddress(module, "meltype_tsf_key_passed"));
-        keyEvent = reinterpret_cast<decltype(keyEvent)>(GetProcAddress(module, "meltype_tsf_key_event"));
         handleKey = reinterpret_cast<decltype(handleKey)>(GetProcAddress(module, "meltype_tsf_handle_key"));
         commit = reinterpret_cast<decltype(commit)>(GetProcAddress(module, "meltype_tsf_commit"));
         selectCandidate = reinterpret_cast<decltype(selectCandidate)>(GetProcAddress(module, "meltype_tsf_select_candidate"));
@@ -205,6 +200,7 @@ struct RustApi {
         serviceAbandon = reinterpret_cast<decltype(serviceAbandon)>(GetProcAddress(module,"meltype_tsf_service_abandon"));
         serviceInputScope = reinterpret_cast<decltype(serviceInputScope)>(GetProcAddress(module,"meltype_tsf_service_input_scope"));
         serviceModeAction = reinterpret_cast<decltype(serviceModeAction)>(GetProcAddress(module,"meltype_tsf_service_mode_action"));
+        serviceKeyEvent = reinterpret_cast<decltype(serviceKeyEvent)>(GetProcAddress(module,"meltype_tsf_service_key_event"));
         serviceCore = reinterpret_cast<decltype(serviceCore)>(GetProcAddress(module, "meltype_tsf_service_core"));
         serviceMode = reinterpret_cast<decltype(serviceMode)>(GetProcAddress(module, "meltype_tsf_service_mode"));
         serviceWriteOpen = reinterpret_cast<decltype(serviceWriteOpen)>(GetProcAddress(module, "meltype_tsf_service_write_open"));
@@ -320,7 +316,7 @@ bool RustJsonVisit(const std::string& text,void* owner,RustJsonEmit emit) {
 }
 bool RustCoreReady(const RustCoreStateCallbacks& callbacks) {return api().coreReady && api().coreReady(&callbacks)!=0;}
 RustServiceState* RustCreateServiceState() {
-    if (!api().serviceCreate || !api().serviceDestroy || !api().serviceLayout || !api().serviceCore || !api().serviceInputScope || !api().serviceModeAction || !api().serviceAbandon || !api().serviceTerminated || !api().serviceResume || !api().serviceApplyComposition || !api().serviceWriteCommit || !api().serviceEndComposition || !api().serviceActivate || !api().serviceStop || !api().serviceOpened || !api().serviceEdited || !api().serviceFocus || !api().serviceExchange || !api().serviceMode || !api().serviceWriteOpen || !api().serviceApplyMode || !api().serviceEditSink || !api().serviceInitialize || !api().serviceClearResume || !api().serviceSetSid || !api().serviceSid || !api().serviceClose || !api().serviceCreateBar || !api().serviceUpdateBar || !api().serviceRemoveBar || !api().serviceCreateCandidates || !api().serviceShowCandidates || !api().serviceHideCandidates || !api().serviceDropCandidates) return nullptr;
+    if (!api().serviceCreate || !api().serviceDestroy || !api().serviceLayout || !api().serviceCore || !api().serviceKeyEvent || !api().serviceInputScope || !api().serviceModeAction || !api().serviceAbandon || !api().serviceTerminated || !api().serviceResume || !api().serviceApplyComposition || !api().serviceWriteCommit || !api().serviceEndComposition || !api().serviceActivate || !api().serviceStop || !api().serviceOpened || !api().serviceEdited || !api().serviceFocus || !api().serviceExchange || !api().serviceMode || !api().serviceWriteOpen || !api().serviceApplyMode || !api().serviceEditSink || !api().serviceInitialize || !api().serviceClearResume || !api().serviceSetSid || !api().serviceSid || !api().serviceClose || !api().serviceCreateBar || !api().serviceUpdateBar || !api().serviceRemoveBar || !api().serviceCreateCandidates || !api().serviceShowCandidates || !api().serviceHideCandidates || !api().serviceDropCandidates) return nullptr;
     const unsigned int expected[]={5,static_cast<unsigned int>(sizeof(RustServiceState)),static_cast<unsigned int>(alignof(RustServiceState)),
         static_cast<unsigned int>(offsetof(RustServiceState,refs)),
         static_cast<unsigned int>(offsetof(RustServiceState,manager)),
@@ -442,6 +438,8 @@ static void __cdecl ServiceModeNotice(void*,unsigned int op,int value) {
         case 2:TipLog(L"入力モードの表示: %s",value?L"英数 (コードの行)":L"日本語");break;
         case 3:TipLog(L"コードの行: %s",value?L"日本語にしました":L"英数に戻しました");break;
         case 4:{const wchar_t* source=value==3?L"Windows とアプリ":value==1?L"Windows":value==2?L"アプリ":L"無い";TipLog(L"入力欄の種類を読むところ: %s",source);break;}
+        case 6:{const wchar_t* reasons[]={nullptr,L"英数",L"Ctrl・Alt・Windows キーを押している",L"この入力欄では使わない",L"英語の単語の続き",L"Meltype.exe が使えない",L"パスワードの入力欄"};if (value>0 && value<ARRAYSIZE(reasons)) TipLog(L"キーを通します: %s",reasons[value]);break;}
+        case 7:TipLog(L"アプリが確定した打ちかけの文字を、変換中に戻しました");break;
         case 5:{const wchar_t* step=value==1?L"ITfInputScope":value==2?L"GetInputScopes":value==3?L"VARIANT":L"Rust API";TipLog(L"入力欄の種類を読めないので、パスワード欄として扱います (%s)",step);break;}
     }}catch (...) {}
 }
@@ -450,6 +448,9 @@ bool RustServiceInputScope(RustServiceState* state,IUnknown* lifetime,TfEditCook
 }
 bool RustServiceModeAction(RustServiceState* state,IUnknown* lifetime,ITfContext* context,TfEditCookie cookie,unsigned int op,int value) {
     return api().serviceModeAction && api().serviceModeAction(state,lifetime,api().worker.c_str(),context,cookie,op,value,nullptr,ServiceModeNotice)!=0;
+}
+bool RustServiceKeyEvent(RustServiceState* state,IUnknown* lifetime,ITfCompositionSink* sink,unsigned int kind,ITfContext* context,UINT key,LPARAM message,void* adapter,int (__cdecl *commit)(void*,unsigned int,int),void (__cdecl *handle)(void*,void*,unsigned int,wchar_t)) {
+    return api().serviceKeyEvent && api().serviceKeyEvent(state,lifetime,sink,api().worker.c_str(),kind,context,key,static_cast<ULONG_PTR>(message),adapter,commit,handle,ServiceModeNotice)!=0;
 }
 bool RustServiceCore(RustServiceState* state,IUnknown* lifetime,bool hello) {
     return api().serviceCore && api().serviceCore(state,api().worker.c_str(),lifetime,nullptr,ServiceCoreNotice,nullptr,hello?1:0)!=0;
@@ -562,19 +563,11 @@ unsigned int RustKeyFlags(UINT key,LPARAM message,bool state) {
 }
 bool RustKeyDown(int key) {return api().keyDown && api().keyDown(key)!=0;}
 wchar_t RustKeyChar(UINT key,LPARAM message) {return api().keyChar ? static_cast<wchar_t>(api().keyChar(key,static_cast<ULONG_PTR>(message))) : 0;}
-bool RustWouldEat(ITfContext* context,UINT key,LPARAM message,bool test,const RustKeyCallbacks& callbacks,wchar_t& ch) {
-    ch=0;
-    return api().wouldEat && api().wouldEat(context,key,static_cast<ULONG_PTR>(message),test?1:0,&callbacks,&ch)!=0;
-}
-void* RustKeyStateCreate() {return api().keyStateCreate && api().keyStateReset && api().keyStateDestroy && api().keyCacheClear && api().isReinjected && api().keySecret && api().reinject && api().keyForeground && api().keyStaleRead && api().keyStaleWrite && api().keyStaleClear && api().keyPassed && api().keyEvent && api().handleKey && api().commit && api().selectCandidate && api().applyReply && api().jsonVisit && api().jsonQuote && api().coreReady && api().coreHello && api().processName ? api().keyStateCreate() : nullptr;}
+void* RustKeyStateCreate() {return api().keyStateCreate && api().keyStateReset && api().keyStateDestroy && api().keyCacheClear && api().isReinjected && api().reinject && api().keyForeground && api().keyStaleRead && api().keyStaleWrite && api().keyStaleClear && api().keyPassed && api().handleKey && api().commit && api().selectCandidate && api().applyReply && api().jsonVisit && api().jsonQuote && api().coreReady && api().coreHello && api().processName ? api().keyStateCreate() : nullptr;}
 void RustKeyStateReset(void* state) {if (api().keyStateReset) api().keyStateReset(state);}
 void RustKeyStateDestroy(void* state) {if (api().keyStateDestroy) api().keyStateDestroy(state);}
 void RustKeyCacheClear(void* state) {if (api().keyCacheClear) api().keyCacheClear(state);}
 bool RustIsReinjected(void* state,UINT key) {return api().isReinjected && api().isReinjected(state,key)!=0;}
-int RustKeySecret(void* state,ITfContext* context,UINT key,bool test,void* owner,IUnknown* lifetime,int (__cdecl *reader)(void*,void*,int*),int& privateField) {
-    privateField=0;
-    return api().keySecret ? api().keySecret(state,context,key,test?1:0,owner,lifetime,reader,&privateField) : 1;
-}
 int RustReinject(void* state,UINT key,IUnknown* lifetime,DWORD& error,void* owner,unsigned int (__cdecl *sender)(void*,const INPUT*,unsigned int)) {
     error=0;
     unsigned int code=0;
@@ -587,9 +580,7 @@ void RustKeyStaleRead(void* state,RustKeyStale& out) {out={};if (api().keyStaleR
 void RustKeyStaleWrite(void* state,unsigned int tries,unsigned int key,unsigned long long time) {if (api().keyStaleWrite) api().keyStaleWrite(state,tries,key,time);}
 void RustKeyStaleClear(void* state) {if (api().keyStaleClear) api().keyStaleClear(state);}
 bool RustKeyPassedRead(void* state,bool mode,bool changed,RustKeyPassed& out) {out={};return api().keyPassed && api().keyPassed(state,mode?1:0,changed?1:0,&out)!=0;}
-bool RustKeyEvent(void* state,unsigned int kind,ITfContext* context,UINT key,LPARAM message,const RustKeyEntry& entry) {
-    return api().keyEvent && api().keyEvent(state,kind,context,key,static_cast<ULONG_PTR>(message),&entry)!=0;
-}
+
 HRESULT RustHandleKey(ITfContext* context,TfClientId client,void* token,UINT key,wchar_t ch,const std::string& metadata,const RustKeyEditCallbacks& callbacks) {
     return api().handleKey?api().handleKey(context,client,token,key,ch,metadata.c_str(),&callbacks):E_FAIL;
 }

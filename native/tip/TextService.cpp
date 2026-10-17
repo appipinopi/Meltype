@@ -661,6 +661,7 @@ bool TextService::IsSecretField(TfEditCookie ec, ITfContext* context) {
 #endif
 }
 
+#ifndef MELTYPE_RUST_CORE
 int TextService::ReadSecretField(ITfContext* context) {
     // キーごとに読み直す (同じ入力欄のまま、アプリが入力欄の種類をパスワードに変えることがあるので)。
     // キーを受け取る前に分かれば、パスワード欄のキーは受け取らずにアプリへそのまま渡せる (送り直さずに済む)
@@ -672,6 +673,7 @@ int TextService::ReadSecretField(ITfContext* context) {
     return FAILED(hr) ? -1 : secret ? 1 : 0;
 }
 
+#endif
 std::string TextService::SessionId() const {
 #ifdef MELTYPE_RUST_CORE
     return RustServiceSid(state_.value);
@@ -873,42 +875,8 @@ void TextService::ForgetSecretField() {
 #endif
 }
 
+#ifndef MELTYPE_RUST_CORE
 bool TextService::WouldEat(ITfContext* context, UINT vk, LPARAM lParam, wchar_t& ch, bool test) {
-#ifdef MELTYPE_RUST_CORE
-    RustKeyCallbacks callbacks = {
-        this,ServiceInterface<ITfTextInputProcessorEx>(),
-        [](void* p,RustKeySnapshot* s) {
-            auto* self=static_cast<TextService*>(p);
-            RustKeyStale stale={};RustKeyStaleRead(self->keyState_,stale);
-            *s={self->composition_,self->compositionContext_,self->disabled_,self->open_,self->directDetection_,self->directEnglishWord_,
-                stale.tries,stale.key,stale.time};
-        },
-        [](void* p,unsigned int op,unsigned long long a,unsigned long long b) {
-            auto* self=static_cast<TextService*>(p);
-            switch (op) {
-                case 0:self->secretChecked_=false;self->secretWhileComposing_=false;break;
-                case 1:self->secretWhileComposing_=true;break;
-                case 2:self->directEnglishWord_=false;break;
-                case 3:RustKeyStaleWrite(self->keyState_,static_cast<unsigned int>(a>>32),static_cast<unsigned int>(a),b);break;
-                case 4:self->secretChecked_=a!=0;break;
-            }
-        },
-        [](void* p,void* c) {try {static_cast<TextService*>(p)->ResumeOrCommit(static_cast<ITfContext*>(c));} catch (...) {}},
-        [](void* p,int keep)->int {try {return static_cast<TextService*>(p)->CommitNow(keep!=0)?1:0;} catch (...) {return 0;}},
-        [](void* p,int keep) {try {static_cast<TextService*>(p)->CommitAsync(keep!=0);} catch (...) {}},
-        [](void* p) {try {static_cast<TextService*>(p)->AbandonComposition();} catch (...) {}},
-        [](void* p)->int {try {return static_cast<TextService*>(p)->ServerReady()?1:0;} catch (...) {return 0;}},
-        [](void* p,unsigned int key,void* c,int test)->int {try {return static_cast<TextService*>(p)->ReadSecretForKey(static_cast<ITfContext*>(c),key,test!=0);} catch (...) {return 1;}},
-        [](void* p,unsigned int code) {
-            auto* self=static_cast<TextService*>(p);
-            static const wchar_t* reasons[]={nullptr,L"英数",L"Ctrl・Alt・Windows キーを押している",L"この入力欄では使わない",L"英語の単語の続き",L"Meltype.exe が使えない",L"パスワードの入力欄"};
-            const wchar_t* reason=code<ARRAYSIZE(reasons)?reasons[code]:nullptr;
-            if (reason && self->passReason_!=reason) TipLog(L"キーを通します: %s",reason);
-            self->passReason_=reason;
-        },
-    };
-    return RustWouldEat(context,vk,lParam,test,callbacks,ch);
-#else
     ch = 0;
     secretChecked_ = false;
     secretWhileComposing_ = false;
@@ -1011,19 +979,6 @@ bool TextService::WouldEat(ITfContext* context, UINT vk, LPARAM lParam, wchar_t&
     secretChecked_ = secret == 0;
     passReason_ = nullptr;
     return true;
-#endif
-}
-
-#ifdef MELTYPE_RUST_CORE
-int TextService::ReadSecretForKey(ITfContext* context,UINT vk,bool test) {
-    int field=0;
-    int result=RustKeySecret(keyState_,context,vk,test,this,ServiceInterface<ITfTextInputProcessorEx>(),
-        [](void* p,void* c,int* field)->int {
-            try {auto* self=static_cast<TextService*>(p);int result=self->ReadSecretField(static_cast<ITfContext*>(c));*field=self->privateField_?1:0;return result;}
-            catch (...) {*field=0;return 1;}
-        },field);
-    privateField_=field!=0;
-    return result;
 }
 #endif
 
@@ -1136,17 +1091,12 @@ STDMETHODIMP TextService::OnKeyUp(ITfContext*, WPARAM wParam, LPARAM, BOOL* eate
 
 #ifdef MELTYPE_RUST_CORE
 HRESULT TextService::DispatchKey(unsigned int kind,ITfContext* context,UINT key,LPARAM message,BOOL* eaten) {
-    RustKeyEntry entry={
-        this,ServiceInterface<ITfTextInputProcessorEx>(),
-        [](void* p,void* c,unsigned int key,unsigned long long msg,int test,wchar_t* ch)->int {
-            try {return static_cast<TextService*>(p)->WouldEat(static_cast<ITfContext*>(c),key,static_cast<LPARAM>(static_cast<ULONG_PTR>(msg)),*ch,test!=0)?1:0;} catch (...) {return 0;}
-        },
-        [](void* p,unsigned int,int mark) {auto* self=static_cast<TextService*>(p);if (mark==1) self->directEnglishWord_=false;self->caretMoved_=true;},
-        [](void* p)->int {return static_cast<TextService*>(p)->composition_?1:0;},
-        [](void* p,void* c) {try {static_cast<TextService*>(p)->ToggleInputMode(static_cast<ITfContext*>(c));}catch (...) {}},
-        [](void* p,void* c,unsigned int key,wchar_t ch) {try {static_cast<TextService*>(p)->HandleKey(static_cast<ITfContext*>(c),key,ch);}catch (...) {}},
-    };
-    *eaten=RustKeyEvent(keyState_,kind,context,key,message,entry)?TRUE:FALSE;
+    *eaten=RustServiceKeyEvent(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),ServiceInterface<ITfCompositionSink>(),kind,context,key,message,this,
+        [](void* p,unsigned int mode,int keep)->int {try {
+            auto* s=static_cast<TextService*>(p);if (mode==0) return s->CommitNow(keep!=0)?1:0;
+            s->CommitAsync(keep!=0);return 1;
+        }catch (...) {return 0;}},
+        [](void* p,void* context,unsigned int key,wchar_t ch) {try {static_cast<TextService*>(p)->HandleKey(static_cast<ITfContext*>(context),key,ch);}catch (...) {}})?TRUE:FALSE;
     return S_OK;
 }
 #endif

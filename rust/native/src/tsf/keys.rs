@@ -89,30 +89,30 @@ pub unsafe extern "C" fn meltype_tsf_key_char(vk: u32, message: u64) -> u32 {
 #[repr(C)]
 #[derive(Default)]
 pub struct Snapshot {
-    composition: *mut c_void,
-    context: *mut c_void,
-    disabled: i32,
-    open: i32,
-    detection: i32,
-    english: i32,
-    stale_tries: u32,
-    stale_vk: u32,
-    stale_time: u64,
+    pub(super) composition: *mut c_void,
+    pub(super) context: *mut c_void,
+    pub(super) disabled: i32,
+    pub(super) open: i32,
+    pub(super) detection: i32,
+    pub(super) english: i32,
+    pub(super) stale_tries: u32,
+    pub(super) stale_vk: u32,
+    pub(super) stale_time: u64,
 }
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct Callbacks {
-    owner: *mut c_void,
-    lifetime: *mut c_void,
-    read: Option<unsafe extern "C" fn(*mut c_void, *mut Snapshot)>,
-    update: Option<unsafe extern "C" fn(*mut c_void, u32, u64, u64)>,
-    resume: Option<unsafe extern "C" fn(*mut c_void, *mut c_void)>,
-    commit_now: Option<unsafe extern "C" fn(*mut c_void, i32) -> i32>,
-    commit_async: Option<unsafe extern "C" fn(*mut c_void, i32)>,
-    abandon: Option<unsafe extern "C" fn(*mut c_void)>,
-    ready: Option<unsafe extern "C" fn(*mut c_void) -> i32>,
-    secret: Option<unsafe extern "C" fn(*mut c_void, u32, *mut c_void, i32) -> i32>,
-    pass: Option<unsafe extern "C" fn(*mut c_void, u32)>,
+    pub(super) owner: *mut c_void,
+    pub(super) lifetime: *mut c_void,
+    pub(super) read: Option<unsafe extern "C" fn(*mut c_void, *mut Snapshot)>,
+    pub(super) update: Option<unsafe extern "C" fn(*mut c_void, u32, u64, u64)>,
+    pub(super) resume: Option<unsafe extern "C" fn(*mut c_void, *mut c_void)>,
+    pub(super) commit_now: Option<unsafe extern "C" fn(*mut c_void, i32) -> i32>,
+    pub(super) commit_async: Option<unsafe extern "C" fn(*mut c_void, i32)>,
+    pub(super) abandon: Option<unsafe extern "C" fn(*mut c_void)>,
+    pub(super) ready: Option<unsafe extern "C" fn(*mut c_void) -> i32>,
+    pub(super) secret: Option<unsafe extern "C" fn(*mut c_void, u32, *mut c_void, i32) -> i32>,
+    pub(super) pass: Option<unsafe extern "C" fn(*mut c_void, u32)>,
 }
 /// Decide whether Meltype receives a key, with the upstream key/focus/privacy
 /// order. update operations: 0 reset per-key secret flags; 1 secret while

@@ -550,6 +550,13 @@ void meltype_tsf_service_clear_resume(void *state);
 /* TSF-thread edit subscription replacement. Lifetime pins the service/state;
    document and edit sink are borrowed SDK interfaces. Null document detaches.
    Reentrant replacement/end invalidates and cleans up a late subscription. */
+/* Native key acceptance/cache/event state. Commit mode0=sync,1=async, with keep
+   caret. Handle receives a borrowed context/key/UTF-16 character. Notice follows
+   mode-action codes plus op6=changed pass reason,op7=resumed. Lifetime pins adapters/code.
+   Sync reads left pending remain unconfirmed (-1) and cannot execute later. */
+int32_t meltype_tsf_service_key_secret(void *state,void *lifetime,void *context,uint32_t key,int32_t test,void *adapter,void (*notice)(void *,uint32_t,int32_t));
+int32_t meltype_tsf_service_would_eat(void *state,void *lifetime,void *sink,const char *worker,void *context,uint32_t key,uint64_t message,int32_t test,void *adapter,int32_t (*commit)(void *,uint32_t,int32_t),void (*notice)(void *,uint32_t,int32_t),uint16_t *out);
+int32_t meltype_tsf_service_key_event(void *state,void *lifetime,void *sink,const char *worker,uint32_t kind,void *context,uint32_t key,uint64_t message,void *adapter,int32_t (*commit)(void *,uint32_t,int32_t),void (*handle)(void *,void *,uint32_t,uint16_t),void (*notice)(void *,uint32_t,int32_t));
 /* Service mode actions op0=toggle,op1=code line(value Japanese),op2=query(cookie,
    value selection-changed). Notice 0=hello,1=invalid JSON,2=English display,
    3=code-line Japanese,4=scope source,5=scope unreadable reason. Query retains
