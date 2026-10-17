@@ -13,6 +13,7 @@ import unittest
 sys.path.insert(0,str(Path(__file__).resolve().parent))
 from tsf_com_smoke import Guid, HR, invoke, release
 from tsf_startup_smoke import StartupHost
+from tsf_subscriptions_smoke import SubscriptionHost
 from tsf_candidate_smoke import windows, user
 from tsf_candidate_view_smoke import GeometryHost
 from tsf_abandoned_smoke import DeferredHost
@@ -71,6 +72,7 @@ class State(c.Structure):
         ('transport',P),
         ('langbar',P),
         ('candidates',P),
+        ('edit_epoch',c.c_uint64),
     ]
 class StateTests(unittest.TestCase):
     @classmethod
@@ -90,6 +92,7 @@ class StateTests(unittest.TestCase):
         cls.api.meltype_tsf_service_close.argtypes=[P];cls.api.meltype_tsf_service_close.restype=None
         cls.api.meltype_tsf_service_initialize.argtypes=[P,U32,c.c_int,c.c_int,c.c_char_p];cls.api.meltype_tsf_service_initialize.restype=c.c_int
         cls.api.meltype_tsf_service_clear_resume.argtypes=[P];cls.api.meltype_tsf_service_clear_resume.restype=None
+        cls.api.meltype_tsf_service_edit_sink.argtypes=[P,P,P,P];cls.api.meltype_tsf_service_edit_sink.restype=HR
         cls.api.meltype_tsf_key_state_create.restype=P
         cls.api.meltype_tsf_key_stale_write.argtypes=[P,U32,U32,c.c_uint64]
         cls.api.meltype_tsf_key_stale_read.argtypes=[P,c.POINTER(Stale)]
@@ -114,7 +117,7 @@ class StateTests(unittest.TestCase):
 
         size=cls.api.meltype_tsf_service_state_layout(None,0)
         metadata=(U32*size)();cls.api.meltype_tsf_service_state_layout(metadata,size)
-        expected=[4,c.sizeof(State),c.alignment(State)]+[getattr(State,name).offset for name,_ in State._fields_]
+        expected=[5,c.sizeof(State),c.alignment(State)]+[getattr(State,name).offset for name,_ in State._fields_]
         if list(metadata)!=expected:raise AssertionError('State ABI mismatch; do not borrow this allocation')
     @classmethod
     def tearDownClass(cls):cls.ole.CoUninitialize()
@@ -142,7 +145,7 @@ class StateTests(unittest.TestCase):
     def test_layout_matches_all_fields_before_borrowing(self):
         size=self.api.meltype_tsf_service_state_layout(None,0)
         result=(U32*size)();self.assertEqual(self.api.meltype_tsf_service_state_layout(result,size),size)
-        expected=[4,c.sizeof(State),c.alignment(State)]+[getattr(State,name).offset for name,_ in State._fields_]
+        expected=[5,c.sizeof(State),c.alignment(State)]+[getattr(State,name).offset for name,_ in State._fields_]
         self.assertEqual(list(result),expected)
     def test_short_metadata_buffer_is_untouched(self):
         size=self.api.meltype_tsf_service_state_layout(None,0);result=(U32*(size+2))(*([0xaabbccdd]*(size+2)))
@@ -452,5 +455,79 @@ class StateTests(unittest.TestCase):
         # A scheduled edit still pins its COM inputs until the host cancels it.
         self.assertGreater(abandoned_host.context_refs,1)
         abandoned_host.cancel();abandoned_host.verify(self)
+    def edit_sink(self,state,host,document=True):
+        return self.api.meltype_tsf_service_edit_sink(c.addressof(state),c.byref(host.document_manager) if document else None,c.byref(host.context),c.byref(host.sink) if document else None)
+    def test_edit_sink_owns_source_context_and_resets_only_nonnull_bind(self):
+        state=self.create();host=SubscriptionHost();state.client=17;state.own_edit=True
+        try:
+            self.assertEqual(self.edit_sink(state,host),0);self.assertTrue(state.edit_subscription)
+            self.assertEqual(state.edit_context,c.addressof(host.context));self.assertFalse(state.own_edit)
+            state.own_edit=True;self.assertEqual(self.edit_sink(state,host,False),0)
+            self.assertFalse(state.edit_subscription);self.assertFalse(state.edit_context);self.assertTrue(state.own_edit)
+        finally:self.edit_sink(state,host,False)
+        host.verify(self)
+    def test_edit_sink_reentrant_unadvise_preserves_new_binding(self):
+        state=self.create();first=SubscriptionHost();second=SubscriptionHost();state.client=17
+        self.edit_sink(state,first);old=state.edit_subscription
+        first.sources[0].on_unadvise=lambda:self.edit_sink(state,second)
+        try:
+            self.assertEqual(self.edit_sink(state,first),0)
+            self.assertNotEqual(state.edit_subscription,old);self.assertEqual(state.edit_context,c.addressof(second.context))
+            self.assertFalse(first.sources[0].registrations);self.assertEqual(len(second.sources[0].registrations),1)
+        finally:self.edit_sink(state,second,False)
+        first.verify(self);second.verify(self)
+    def test_edit_sink_reentrant_advise_discards_late_old_registration(self):
+        state=self.create();first=SubscriptionHost();second=SubscriptionHost();state.client=17
+        original=first.sources[0].advise
+        def advise(this,iid,sink,cookie):
+            result=original(this,iid,sink,cookie);self.edit_sink(state,second);return result
+        first.bind(first.sources[0].table,3,HR,[c.POINTER(Guid),P,c.POINTER(U32)],advise)
+        try:
+            self.assertEqual(self.edit_sink(state,first),0)
+            self.assertEqual(state.edit_context,c.addressof(second.context));self.assertFalse(first.sources[0].registrations)
+            self.assertEqual(len(second.sources[0].registrations),1)
+        finally:self.edit_sink(state,second,False)
+        first.verify(self);second.verify(self)
+    def test_edit_sink_focus_epoch_or_shutdown_during_advise_retires_late_token(self):
+        for kind in ['focus','shutdown']:
+            with self.subTest(kind=kind):
+                state=self.create();host=SubscriptionHost();state.client=17;original=host.sources[0].advise
+                def advise(this,iid,sink,cookie):
+                    result=original(this,iid,sink,cookie)
+                    if kind=='focus':state.focus_epoch+=1
+                    else:state.shutdown_phase=1;state.deactivated=True
+                    return result
+                host.bind(host.sources[0].table,3,HR,[c.POINTER(Guid),P,c.POINTER(U32)],advise)
+                self.assertEqual(self.edit_sink(state,host),0)
+                self.assertFalse(state.edit_subscription);self.assertFalse(state.edit_context);host.verify(self)
+    def test_edit_sink_partial_failures_release_all_references(self):
+        for kind in ['top','source','advise']:
+            with self.subTest(kind=kind):
+                state=self.create();host=SubscriptionHost();state.client=17;state.own_edit=True
+                if kind=='top':host.fail_top=host.partial_top=True
+                elif kind=='source':host.fail_source=host.partial_source=True
+                else:host.sources[0].fail=host.sources[0].partial=True
+                self.assertEqual(self.edit_sink(state,host),0)
+                self.assertFalse(state.edit_subscription);self.assertFalse(state.edit_context);self.assertFalse(state.own_edit)
+                host.verify(self)
+    def test_edit_sink_reentrant_detach_keeps_slots_empty(self):
+        state=self.create();host=SubscriptionHost();state.client=17;state.edit_epoch=0xffffffffffffffff
+        self.edit_sink(state,host);self.assertEqual(state.edit_epoch,0)
+        def detached():
+            self.assertFalse(state.edit_subscription);self.assertFalse(state.edit_context)
+            self.edit_sink(state,host,False)
+        host.sources[0].on_unadvise=detached
+        self.assertEqual(self.edit_sink(state,host,False),0)
+        self.assertFalse(state.edit_subscription);self.assertFalse(state.edit_context);host.verify(self)
+    def test_edit_sink_invalid_arguments_preserve_existing_binding(self):
+        state=self.create();host=SubscriptionHost();state.client=17;self.edit_sink(state,host)
+        old=state.edit_subscription
+        try:
+            for owner,document,lifetime,sink in [(None,None,c.byref(host.context),None),(c.addressof(state),None,None,None),
+                (c.addressof(state),c.byref(host.document_manager),c.byref(host.context),None)]:
+                self.assertEqual(self.api.meltype_tsf_service_edit_sink(owner,document,lifetime,sink),HR(0x80070057).value)
+                self.assertEqual(state.edit_subscription,old)
+        finally:self.edit_sink(state,host,False)
+        host.verify(self)
 if __name__=='__main__':unittest.main(argv=[sys.argv[0]],verbosity=2,failfast=True)
 

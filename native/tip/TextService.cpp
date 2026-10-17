@@ -621,12 +621,11 @@ RustFocusCallbacks TextService::FocusCallbacks() {
 #endif
 
 void TextService::AdviseTextEditSink(ITfDocumentMgr* documentMgr) {
+#ifdef MELTYPE_RUST_CORE
+    RustServiceEditSink(state_.value,documentMgr,ServiceInterface<ITfTextInputProcessorEx>(),ServiceInterface<ITfTextEditSink>());
+#else
     UnadviseTextEditSink();
     if (documentMgr == nullptr) return;
-#ifdef MELTYPE_RUST_CORE
-    editSubscription_ = RustSubscribe(3,documentMgr,clientId_,ServiceInterface<ITfTextEditSink>(),&editSinkContext_);
-    ownEdit_ = false;
-#else
     ITfContext* context = nullptr;
     if (FAILED(documentMgr->GetTop(&context)) || context == nullptr) return;
     ITfSource* source = nullptr;
@@ -744,10 +743,7 @@ std::string TextService::CommitRequest(bool moved) const {
 
 void TextService::UnadviseTextEditSink() {
 #ifdef MELTYPE_RUST_CORE
-    void* subscription = editSubscription_; editSubscription_ = nullptr;
-    ITfContext* context = editSinkContext_; editSinkContext_ = nullptr;
-    RustUnsubscribe(subscription);
-    if (context) context->Release();
+    RustServiceEditSink(state_.value,nullptr,ServiceInterface<ITfTextInputProcessorEx>(),nullptr);
 #else
     if (editSinkContext_ == nullptr) return;
     ITfSource* source = nullptr;

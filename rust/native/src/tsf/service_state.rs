@@ -3,7 +3,7 @@
 //! Rust-owned TSF state storage. Temporary C++ aliases use a checked C layout.
 //! Raw COM/subscription slots retain their TSF lifecycle ownership policy.
 //! Key/resume/abandoned state, SID, transport and UI tokens are freed by Drop.
-use super::{abandoned, candidates, fields, key_state, langbar, recovery};
+use super::{abandoned, candidates, fields, key_state, langbar, recovery, subscriptions};
 use std::{
     alloc::{alloc, Layout},
     ffi::{c_char, c_void, CStr, CString},
@@ -13,8 +13,11 @@ use std::{
     sync::atomic::{AtomicU32, Ordering},
 };
 use windows::{
-    core::{IUnknown, Interface},
-    Win32::UI::TextServices::{ITfLangBarItem, ITfLangBarItemMgr},
+    core::{IUnknown, Interface, HRESULT},
+    Win32::{
+        Foundation::{E_INVALIDARG, S_OK},
+        UI::TextServices::{ITfLangBarItem, ITfLangBarItemMgr},
+    },
 };
 #[repr(C)]
 pub struct ServiceState {
@@ -62,6 +65,7 @@ pub struct ServiceState {
     transport: *mut c_void,
     langbar: *mut c_void,
     candidates: *mut c_void,
+    edit_epoch: u64,
 }
 impl Default for ServiceState {
     fn default() -> Self {
@@ -110,6 +114,7 @@ impl Default for ServiceState {
             transport: ptr::null_mut(),
             langbar: ptr::null_mut(),
             candidates: ptr::null_mut(),
+            edit_epoch: 0,
         }
     }
 }
@@ -138,6 +143,64 @@ impl Drop for ServiceState {
             close_transport(self);
         }
     }
+}
+unsafe fn release_interface(raw: *mut c_void) {
+    if !raw.is_null() {
+        drop(IUnknown::from_raw(raw));
+    }
+}
+/// Own edit-subscription replacement: detach old slots before releasing COM,
+/// retain the service through callbacks, and discard a superseded late token.
+/// Null document unadvises without resetting own-edit, matching upstream.
+/// # Safety
+/// Live state and borrowed lifetime/sink/document SDK interfaces on their TSF
+/// thread. The lifetime reference keeps state alive until this function returns.
+/// No concurrent use. Null document accepts null sink; lifetime is required.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_tsf_service_edit_sink(
+    state: *mut ServiceState,
+    document: *mut c_void,
+    lifetime: *mut c_void,
+    sink: *mut c_void,
+) -> HRESULT {
+    if state.is_null() || lifetime.is_null() || (!document.is_null() && sink.is_null()) {
+        return E_INVALIDARG;
+    }
+    let epoch = (*state).edit_epoch.wrapping_add(1);
+    (*state).edit_epoch = epoch;
+    let focus_epoch = (*state).focus_epoch;
+    let _owner = IUnknown::from_raw_borrowed(&lifetime).cloned().unwrap();
+    if (*state).edit_epoch != epoch || (*state).focus_epoch != focus_epoch {
+        return S_OK;
+    }
+    let old = ptr::addr_of_mut!((*state).edit_subscription).replace(ptr::null_mut());
+    let old_context = ptr::addr_of_mut!((*state).edit_context).replace(ptr::null_mut());
+    subscriptions::meltype_tsf_unsubscribe(old);
+    release_interface(old_context);
+    if (*state).edit_epoch != epoch
+        || (*state).focus_epoch != focus_epoch
+        || document.is_null()
+        || (*state).shutdown_phase != 0
+        || (*state).deactivated
+    {
+        return S_OK;
+    }
+    let client = (*state).client;
+    let mut context = ptr::null_mut();
+    let token = subscriptions::meltype_tsf_subscribe(3, document, client, sink, &mut context);
+    if (*state).edit_epoch != epoch
+        || (*state).focus_epoch != focus_epoch
+        || (*state).shutdown_phase != 0
+        || (*state).deactivated
+    {
+        subscriptions::meltype_tsf_unsubscribe(token);
+        release_interface(context);
+        return S_OK;
+    }
+    (*state).edit_subscription = token;
+    (*state).edit_context = context;
+    (*state).own_edit = false;
+    S_OK
 }
 /// Set upstream reactivation defaults, preserving the fields that upstream does
 /// not reset (including open/code/private/scope/caret policy and existing tokens).
@@ -433,7 +496,7 @@ pub unsafe extern "C" fn meltype_tsf_service_state_destroy(data: *mut ServiceSta
 #[no_mangle]
 pub unsafe extern "C" fn meltype_tsf_service_state_layout(out: *mut u32, capacity: u32) -> u32 {
     let values = [
-        4,
+        5,
         size_of::<ServiceState>() as u32,
         align_of::<ServiceState>() as u32,
         offset_of!(ServiceState, refs) as u32,
@@ -480,6 +543,7 @@ pub unsafe extern "C" fn meltype_tsf_service_state_layout(out: *mut u32, capacit
         offset_of!(ServiceState, transport) as u32,
         offset_of!(ServiceState, langbar) as u32,
         offset_of!(ServiceState, candidates) as u32,
+        offset_of!(ServiceState, edit_epoch) as u32,
     ];
     if !out.is_null() && capacity as usize >= values.len() {
         ptr::copy_nonoverlapping(values.as_ptr(), out, values.len());

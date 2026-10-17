@@ -547,6 +547,10 @@ uint32_t meltype_tsf_service_state_live_count(void);
    State destruction also owns cleanup of key/resume/abandoned tokens. */
 int32_t meltype_tsf_service_initialize(void *state,uint32_t client,int32_t disabled,int32_t own,const char *sid);
 void meltype_tsf_service_clear_resume(void *state);
+/* TSF-thread edit subscription replacement. Lifetime pins the service/state;
+   document and edit sink are borrowed SDK interfaces. Null document detaches.
+   Reentrant replacement/end invalidates and cleans up a late subscription. */
+int32_t meltype_tsf_service_edit_sink(void *state,void *document,void *lifetime,void *sink);
 int32_t meltype_tsf_service_set_sid(void *state,const char *sid);
 const char *meltype_tsf_service_sid(const void *state);
 char *meltype_tsf_service_request(void *state,const char *worker,const char *request,uint32_t timeout,int32_t optional);

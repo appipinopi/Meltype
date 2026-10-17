@@ -101,6 +101,7 @@ struct RustApi {
     void* (__cdecl *serviceComInterface)(void*,const GUID*) = nullptr;
     int (__cdecl *serviceInitialize)(RustServiceState*,unsigned int,int,int,const char*) = nullptr;
     void (__cdecl *serviceClearResume)(RustServiceState*) = nullptr;
+    HRESULT (__cdecl *serviceEditSink)(RustServiceState*,void*,void*,void*) = nullptr;
     int (__cdecl *serviceSetSid)(RustServiceState*,const char*) = nullptr;
     const char* (__cdecl *serviceSid)(const RustServiceState*) = nullptr;
     char* (__cdecl *serviceRequest)(RustServiceState*,const char*,const char*,unsigned int,int) = nullptr;
@@ -207,6 +208,7 @@ struct RustApi {
         serviceLayout = reinterpret_cast<decltype(serviceLayout)>(GetProcAddress(module, "meltype_tsf_service_state_layout"));
         processName = reinterpret_cast<decltype(processName)>(GetProcAddress(module, "meltype_tsf_process_name"));
         serviceInitialize = reinterpret_cast<decltype(serviceInitialize)>(GetProcAddress(module, "meltype_tsf_service_initialize"));
+        serviceEditSink = reinterpret_cast<decltype(serviceEditSink)>(GetProcAddress(module, "meltype_tsf_service_edit_sink"));
         serviceClearResume = reinterpret_cast<decltype(serviceClearResume)>(GetProcAddress(module, "meltype_tsf_service_clear_resume"));
         serviceSetSid = reinterpret_cast<decltype(serviceSetSid)>(GetProcAddress(module, "meltype_tsf_service_set_sid"));
         serviceSid = reinterpret_cast<decltype(serviceSid)>(GetProcAddress(module, "meltype_tsf_service_sid"));
@@ -352,8 +354,8 @@ HRESULT RustOpenChanged(REFGUID guid,const RustOpenChangeCallbacks& callbacks) {
 }
 bool RustCoreReady(const RustCoreStateCallbacks& callbacks) {return api().coreReady && api().coreReady(&callbacks)!=0;}
 RustServiceState* RustCreateServiceState() {
-    if (!api().serviceCreate || !api().serviceDestroy || !api().serviceLayout || !api().serviceInitialize || !api().serviceClearResume || !api().serviceSetSid || !api().serviceSid || !api().serviceRequest || !api().serviceClose || !api().serviceCreateBar || !api().serviceUpdateBar || !api().serviceRemoveBar || !api().serviceCreateCandidates || !api().serviceShowCandidates || !api().serviceHideCandidates || !api().serviceDropCandidates) return nullptr;
-    const unsigned int expected[]={4,static_cast<unsigned int>(sizeof(RustServiceState)),static_cast<unsigned int>(alignof(RustServiceState)),
+    if (!api().serviceCreate || !api().serviceDestroy || !api().serviceLayout || !api().serviceEditSink || !api().serviceInitialize || !api().serviceClearResume || !api().serviceSetSid || !api().serviceSid || !api().serviceRequest || !api().serviceClose || !api().serviceCreateBar || !api().serviceUpdateBar || !api().serviceRemoveBar || !api().serviceCreateCandidates || !api().serviceShowCandidates || !api().serviceHideCandidates || !api().serviceDropCandidates) return nullptr;
+    const unsigned int expected[]={5,static_cast<unsigned int>(sizeof(RustServiceState)),static_cast<unsigned int>(alignof(RustServiceState)),
         static_cast<unsigned int>(offsetof(RustServiceState,refs)),
         static_cast<unsigned int>(offsetof(RustServiceState,manager)),
         static_cast<unsigned int>(offsetof(RustServiceState,client)),
@@ -398,6 +400,7 @@ RustServiceState* RustCreateServiceState() {
         static_cast<unsigned int>(offsetof(RustServiceState,transport)),
         static_cast<unsigned int>(offsetof(RustServiceState,langbar)),
         static_cast<unsigned int>(offsetof(RustServiceState,candidates)),
+        static_cast<unsigned int>(offsetof(RustServiceState,edit_epoch)),
     };
     unsigned int actual[ARRAYSIZE(expected)]={};
     if (api().serviceLayout(actual,ARRAYSIZE(actual))!=ARRAYSIZE(expected) || std::memcmp(actual,expected,sizeof(expected))!=0) return nullptr;
@@ -418,6 +421,9 @@ void* RustCreateServiceCom(void* owner,HRESULT (__cdecl *dispatch)(void*,const R
     return api().serviceComCreate && api().serviceComInterface?api().serviceComCreate(owner,dispatch,destroy):nullptr;
 }
 void* RustServiceComInterface(void* root,REFIID iid) {return api().serviceComInterface?api().serviceComInterface(root,&iid):nullptr;}
+HRESULT RustServiceEditSink(RustServiceState* state,ITfDocumentMgr* document,IUnknown* lifetime,ITfTextEditSink* sink) {
+    return api().serviceEditSink?api().serviceEditSink(state,document,lifetime,sink):E_NOINTERFACE;
+}
 void RustServiceInitialize(RustServiceState* state,unsigned int client,int disabled,int own,const char* sid) {
     if (api().serviceInitialize) api().serviceInitialize(state,client,disabled,own,sid);
 }
