@@ -9,6 +9,18 @@
 #include <fstream>
 #include <objbase.h>
 using namespace meltype;
+#ifdef MELTYPE_TEST_NATIVE_OWNER
+// Thin test holder; the production owner/state/COM object is entirely Rust.
+class FixtureService {
+    IUnknown* root=nullptr;
+public:
+    FixtureService() {assert(RustCreateNativeService(IID_ITfTextInputProcessorEx,reinterpret_cast<void**>(&root))==S_OK && root);}
+    template<class T> T* ServiceInterface() const {return static_cast<T*>(RustServiceComInterface(root,__uuidof(T)));}
+    void Release() {assert(root->Release()==0);delete this;}
+};
+#else
+using FixtureService=TextService;
+#endif
 namespace {
 struct PrivateProfile {
     std::filesystem::path root,path;
@@ -163,7 +175,7 @@ int wmain() {
     Document doc={L"前😀",3,3};Range selected(&doc,3,3,false);Context context={contextMethods,&selected};
     Composition composition;Manager manager={managerMethods,1,&composition};context.manager=&manager;
     doc.context=reinterpret_cast<ITfContext*>(&context);
-    auto* service=new TextService();BOOL eaten=FALSE;
+    auto* service=new FixtureService();BOOL eaten=FALSE;
     // A cold worker may miss the bounded initial hello under host load. Passing
     // the key through then is valid; establish readiness before edit assertions.
     // Deadline/backoff behavior is covered separately by transport fixtures.
@@ -279,11 +291,17 @@ int wmain() {
     threadMethods[7]=reinterpret_cast<void*>(ThreadManager::Focus);
     ThreadManager thread;auto* threadInterface=reinterpret_cast<ITfThreadMgr*>(&thread);
     assert(service->ServiceInterface<ITfTextInputProcessorEx>()->ActivateEx(threadInterface,17,TF_TMAE_SECUREMODE)==S_OK);
-    assert(!service->IsOpen() && thread.refs==2);
+    assert(thread.refs==2);
+#ifndef MELTYPE_TEST_NATIVE_OWNER
+    assert(!service->IsOpen());
+#endif
     assert(service->ServiceInterface<ITfTextInputProcessorEx>()->Deactivate()==S_OK && thread.refs==1 && g_locks==1);
     assert(service->ServiceInterface<ITfTextInputProcessorEx>()->Activate(threadInterface,17)==S_OK);
-    assert(service->IsOpen() && thread.refs==2);
-    assert(service->ServiceInterface<ITfCompartmentEventSink>()->OnChange(GUID_COMPARTMENT_KEYBOARD_OPENCLOSE)==S_OK && service->IsOpen() && thread.refs==2);
+    assert(thread.refs==2);
+    assert(service->ServiceInterface<ITfCompartmentEventSink>()->OnChange(GUID_COMPARTMENT_KEYBOARD_OPENCLOSE)==S_OK && thread.refs==2);
+#ifndef MELTYPE_TEST_NATIVE_OWNER
+    assert(service->IsOpen());
+#endif
     assert(service->ServiceInterface<ITfTextInputProcessorEx>()->Deactivate()==S_OK && thread.refs==1 && g_locks==1);
     assert(thread.focusQueries==2);
     service->Release();assert(g_locks==0 && RustServiceStateLiveCount()==0);assert(SetKeyboardState(saved));

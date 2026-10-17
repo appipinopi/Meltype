@@ -73,6 +73,7 @@ struct RustApi {
     void (__cdecl *serviceDestroy)(RustServiceState*) = nullptr;
     unsigned int (__cdecl *serviceLayout)(unsigned int*,unsigned int) = nullptr;
     unsigned int (__cdecl *serviceLive)() = nullptr;
+    HRESULT (__cdecl *serviceObjectCreate)(const char*,const GUID*,void**,void*,void (__cdecl *)(void*,unsigned int,int),void (__cdecl *)(void*,unsigned int,int),void (__cdecl *)(void*,unsigned int,int),void (__cdecl *)(void*,unsigned int,int),void (__cdecl *)(int)) = nullptr;
     HRESULT (__cdecl *serviceRoute)(RustServiceState*,void*,const char*,const RustServiceCall*,void*,void (__cdecl *)(void*,unsigned int,int),void (__cdecl *)(void*,unsigned int,int),void (__cdecl *)(void*,unsigned int,int),void (__cdecl *)(void*,unsigned int,int)) = nullptr;
     void* (__cdecl *serviceComCreate)(void*,HRESULT (__cdecl *)(void*,const RustServiceCall*),void (__cdecl *)(void*)) = nullptr;
     void* (__cdecl *serviceComInterface)(void*,const GUID*) = nullptr;
@@ -216,6 +217,7 @@ struct RustApi {
         serviceShowCandidates = reinterpret_cast<decltype(serviceShowCandidates)>(GetProcAddress(module, "meltype_tsf_service_show_candidates"));
         serviceHideCandidates = reinterpret_cast<decltype(serviceHideCandidates)>(GetProcAddress(module, "meltype_tsf_service_hide_candidates"));
         serviceDropCandidates = reinterpret_cast<decltype(serviceDropCandidates)>(GetProcAddress(module, "meltype_tsf_service_drop_candidates"));
+        serviceObjectCreate = reinterpret_cast<decltype(serviceObjectCreate)>(GetProcAddress(module,"meltype_tsf_service_object_create"));
         serviceRoute = reinterpret_cast<decltype(serviceRoute)>(GetProcAddress(module,"meltype_tsf_service_route"));
         serviceComCreate = reinterpret_cast<decltype(serviceComCreate)>(GetProcAddress(module, "meltype_tsf_service_com_create"));
         serviceComInterface = reinterpret_cast<decltype(serviceComInterface)>(GetProcAddress(module, "meltype_tsf_service_com_interface"));
@@ -230,13 +232,7 @@ std::string ViewJson(const JsonValue&);
 HRESULT __cdecl CreateTextService(const GUID* iid, void** out) {
     if (!iid || !out) return E_INVALIDARG;
     *out=nullptr;
-    try {
-        auto* service = new (std::nothrow) TextService();
-        if (!service) return E_OUTOFMEMORY;
-        HRESULT result = service->QueryInterface(*iid, out);
-        service->Release();return result;
-    }catch (const std::bad_alloc&) {return E_OUTOFMEMORY;}
-    catch (...) {return E_FAIL;}
+    return RustCreateNativeService(*iid,out);
 }
 void __cdecl LockShell(int lock) { if (lock) DllAddRef(); else DllRelease(); }
 }
@@ -475,6 +471,13 @@ static void __cdecl ServiceKeyNotice(void*,unsigned int op,int value) {
     }}catch (...) {}
 }
 
+HRESULT RustCreateNativeService(REFIID iid,void** out) {
+    if (!out) return E_INVALIDARG;
+    *out=nullptr;
+    return api().serviceObjectCreate?api().serviceObjectCreate(api().worker.c_str(),&iid,out,nullptr,ServiceNotificationNotice,ServiceKeyNotice,
+        [](void*,unsigned int op,int value){try {if(op==0) TipLog(L"Activate (%s)%s",RustProcessName().c_str(),value?L" 無効: セキュリティ保護された画面":L"");else ServiceCoreNotice(nullptr,op-1,value);}catch(...){}},
+        [](void*,unsigned int op,int value){try {if(op==0) TipLog(L"手放した変換中の文字を終えられませんでした: 0x%08X",static_cast<unsigned int>(value));else if(op==1) TipLog(L"応答を読めません");}catch(...){}},LockShell):E_FAIL;
+}
 HRESULT RustRouteService(RustServiceState* state,IUnknown* root,const RustServiceCall* call) {
     return api().serviceRoute?api().serviceRoute(state,root,api().worker.c_str(),call,nullptr,ServiceNotificationNotice,ServiceKeyNotice,
         [](void*,unsigned int op,int value){try {if(op==0) TipLog(L"Activate (%s)%s",RustProcessName().c_str(),value?L" 無効: セキュリティ保護された画面":L"");else ServiceCoreNotice(nullptr,op-1,value);}catch(...){}},

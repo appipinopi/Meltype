@@ -17,6 +17,7 @@ mod key_input;
 mod key_work;
 mod mode_action;
 mod notifications;
+mod object;
 mod opened;
 mod owned;
 mod recovered;

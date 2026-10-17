@@ -18,7 +18,7 @@ from tsf_candidate_smoke import windows, user
 from tsf_candidate_view_smoke import GeometryHost
 from tsf_abandoned_smoke import DeferredHost
 from tsf_fields_smoke import CompartmentHost,OPEN
-from tsf_service_com_smoke import DISPATCH,DESTROY,Call
+from tsf_service_com_smoke import DISPATCH,DESTROY,Call,IDS
 from tsf_edit_events_smoke import EventHost,QUERY
 from tsf_open_change_smoke import Host as OpenHost
 from tsf_shutdown_smoke import REQUEST as SHUTDOWN_REQUEST
@@ -26,6 +26,7 @@ from tsf_composition_owner_smoke import OwnerHost
 from tsf_range_smoke import units
 from tsf_mode_smoke import ModeHost
 from tsf_key_state_smoke import SENDER
+OBJECT_LOCK=c.CFUNCTYPE(None,c.c_int)
 SELECT=c.CFUNCTYPE(None,c.c_void_p,c.c_int,c.c_int)
 CORE_NOTICE=c.CFUNCTYPE(None,c.c_void_p,c.c_uint32,c.c_int)
 END=c.CFUNCTYPE(None,c.c_void_p,c.c_uint32)
@@ -145,6 +146,7 @@ class StateTests(unittest.TestCase):
         cls.api.meltype_tsf_service_opened_native.argtypes=[P,P,P,c.c_char_p,P,P,CORE_NOTICE];cls.api.meltype_tsf_service_opened_native.restype=HR
         cls.api.meltype_tsf_service_activate_native.argtypes=[P,P,c.c_char_p,P,U32,U32,P,P,CORE_NOTICE,CORE_NOTICE,CATEGORY];cls.api.meltype_tsf_service_activate_native.restype=HR
         cls.api.meltype_tsf_service_route.argtypes=[P,P,c.c_char_p,P,P,CORE_NOTICE,CORE_NOTICE,CORE_NOTICE,CORE_NOTICE];cls.api.meltype_tsf_service_route.restype=HR
+        cls.api.meltype_tsf_service_object_create.argtypes=[c.c_char_p,P,c.POINTER(P),P,CORE_NOTICE,CORE_NOTICE,CORE_NOTICE,CORE_NOTICE,OBJECT_LOCK];cls.api.meltype_tsf_service_object_create.restype=HR
         cls.api.meltype_tsf_service_key_secret.argtypes=[P,P,P,U32,c.c_int,P,CORE_NOTICE];cls.api.meltype_tsf_service_key_secret.restype=c.c_int
         cls.api.meltype_tsf_service_would_eat.argtypes=[P,P,P,c.c_char_p,P,U32,c.c_uint64,c.c_int,P,KEY_COMMIT,CORE_NOTICE,c.POINTER(c.c_uint16)];cls.api.meltype_tsf_service_would_eat.restype=c.c_int
         cls.api.meltype_tsf_service_key_event.argtypes=[P,P,P,c.c_char_p,U32,P,U32,c.c_uint64,P,KEY_COMMIT,KEY_HANDLE,CORE_NOTICE];cls.api.meltype_tsf_service_key_event.restype=c.c_int
@@ -2523,5 +2525,48 @@ class StateTests(unittest.TestCase):
         for data,life,worker,value in [(None,root,self.worker,c.byref(call)),(addr,None,self.worker,c.byref(call)),(addr,root,None,c.byref(call)),(addr,root,self.worker,None)]:
             self.assertEqual(self.api.meltype_tsf_service_route(data,life,worker,value,None,CORE_NOTICE(),CORE_NOTICE(),CORE_NOTICE(),CORE_NOTICE()),HR(0x80070057).value)
         self.assertEqual(c.string_at(addr,c.sizeof(State)),before)
+    def create_native_object(self,iid=None,worker=None,lock=None,notice=None):
+        out=P(999);iid=iid or IDS[2];lock=lock or OBJECT_LOCK();notice=notice or CORE_NOTICE()
+        self.callbacks.extend([lock,notice])
+        status=self.api.meltype_tsf_service_object_create(worker or self.worker,c.byref(iid),c.byref(out),123,CORE_NOTICE(),CORE_NOTICE(),notice,CORE_NOTICE(),lock)
+        return status,out.value
+    def test_object_native_owns_state_and_balances_shell_pin_on_final_release(self):
+        events=[]
+        @self.checked(OBJECT_LOCK)
+        def lock(value):events.append((value,self.live()))
+        status,root=self.create_native_object(lock=lock)
+        self.assertEqual(status,0);self.assertTrue(root);self.assertEqual(events,[(1,self.before+1)])
+        self.assertEqual(invoke(root,1,U32,[]),2);self.assertEqual(release(root),1);self.assertEqual(self.live(),self.before+1)
+        self.assertEqual(release(root),0);self.assertEqual(events,[(1,self.before+1),(0,self.before)]);self.assertEqual(self.live(),self.before)
+    def test_object_native_all_interfaces_share_identity_and_no_extra_owner_refs(self):
+        status,root=self.create_native_object();self.assertEqual(status,0)
+        try:
+            for iid in IDS:
+                out=P();self.assertEqual(invoke(root,0,HR,[P,P],c.byref(iid),c.byref(out)),0)
+                identity=P();self.assertEqual(invoke(out,0,HR,[P,P],c.byref(IDS[0]),c.byref(identity)),0)
+                self.assertEqual(identity.value,root);release(identity);release(out)
+        finally:self.assertEqual(release(root),0)
+    def test_object_native_unsupported_iid_releases_state_and_pin(self):
+        events=[];iid=Guid.parse('00000000-0000-0000-0000-000000000001')
+        status,root=self.create_native_object(iid=iid,lock=OBJECT_LOCK(lambda value:events.append(value)))
+        self.assertEqual(status,HR(0x80004002).value);self.assertFalse(root);self.assertEqual(events,[1,0]);self.assertEqual(self.live(),self.before)
+    def test_object_native_secure_public_activation_and_shutdown_balance_state(self):
+        events=[];host=StartupHost();status,root=self.create_native_object(notice=CORE_NOTICE(lambda owner,op,value:events.append((owner,op,value))))
+        self.assertEqual(status,0)
+        try:
+            self.assertEqual(invoke(root,5,HR,[P,U32,U32],c.byref(host.context),17,2),0)
+            self.assertEqual(events,[(123,0,1)]);self.assertGreater(host.context_refs,1)
+            self.assertEqual(invoke(root,4,HR,[]),0);self.assertEqual(invoke(root,4,HR,[]),0);host.clear_bars();host.verify(self)
+        finally:release(root)
+        self.assertEqual(self.live(),self.before)
+    def test_object_native_copies_worker_and_invalid_arguments_clear_out(self):
+        path=c.create_string_buffer(self.worker);status,root=self.create_native_object(worker=path);self.assertEqual(status,0);path.value=b'destroyed'
+        try:self.assertEqual(invoke(root,4,HR,[]),0)
+        finally:release(root)
+        out=P(123);lock=OBJECT_LOCK()
+        for worker,iid in [(None,c.byref(IDS[0])),(self.worker,None)]:
+            self.assertEqual(self.api.meltype_tsf_service_object_create(worker,iid,c.byref(out),None,CORE_NOTICE(),CORE_NOTICE(),CORE_NOTICE(),CORE_NOTICE(),lock),HR(0x80070057).value);self.assertFalse(out.value)
+        self.assertEqual(self.api.meltype_tsf_service_object_create(self.worker,c.byref(IDS[0]),None,None,CORE_NOTICE(),CORE_NOTICE(),CORE_NOTICE(),CORE_NOTICE(),lock),HR(0x80070057).value)
+        self.assertEqual(self.live(),self.before)
 if __name__=='__main__':unittest.main(argv=[sys.argv[0]],verbosity=2,failfast=True)
 

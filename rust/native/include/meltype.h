@@ -613,6 +613,13 @@ int32_t meltype_tsf_service_activate_native(void *state,void *lifetime,const cha
    follow mode,key,activation,shutdown codes and survive UI/pending work. Unknown
    op=E_NOTIMPL, invalid/null key output=E_INVALIDARG. */
 int32_t meltype_tsf_service_route(void *state,void *root,const char *worker,const void *call,void *adapter,void (*mode_notice)(void *,uint32_t,int32_t),void (*key_notice)(void *,uint32_t,int32_t),void (*activation_notice)(void *,uint32_t,int32_t),void (*shutdown_notice)(void *,uint32_t,int32_t));
+/* Create a native-owned service interface. iid/out follow QueryInterface ABI;
+   worker trusted absolute UTF8 and copied. Called on its TSF thread. Optional
+   lock(1)/lock(0) pins external callback code until state/UI/transport teardown.
+   Adapter/notices remain valid until final Release; callbacks never unwind.
+   Failure clears out and balances state/pin. OS must Deactivate active service
+   subscriptions before final Release. Returns HRESULT and one owned interface. */
+int32_t meltype_tsf_service_object_create(const char *worker,const void *iid,void **out,void *adapter,void (*mode_notice)(void *,uint32_t,int32_t),void (*key_notice)(void *,uint32_t,int32_t),void (*activation_notice)(void *,uint32_t,int32_t),void (*shutdown_notice)(void *,uint32_t,int32_t),void (*lock)(int32_t));
 /* Service mode actions op0=toggle,op1=code line(value Japanese),op2=query(cookie,
    value selection-changed). Notice 0=hello,1=invalid JSON,2=English display,
    3=code-line Japanese,4=scope source,5=scope unreadable reason. Query retains
