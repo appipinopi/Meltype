@@ -4,6 +4,7 @@
 //! Sessions use opaque integer tokens. Stale handles fail without dereferencing
 //! freed memory. Returned strings use malloc/free, including Swift callbacks.
 use meltype_core::{session::Clause, Session};
+pub mod json_bridge;
 pub mod tip;
 #[cfg(windows)]
 pub mod tip_transport;

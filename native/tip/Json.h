@@ -2,6 +2,7 @@
 // Copyright (C) 2026 lnkiai
 //
 // Meltype.exe から返ってくる JSON を読むための小さなパーサー (外部のライブラリに頼らない)。
+// Rustプレビューでは解析と文字列化をRustへ委譲し、この値形式へ受け渡す。
 
 #pragma once
 

@@ -13,6 +13,16 @@ extern "C" {
 typedef char *(*meltype_clauses_callback)(const char *, const char *);
 typedef char *(*meltype_candidates_callback)(const char *);
 typedef int32_t (*meltype_word_callback)(const char *);
+/* Synchronous JSON value events: 0 null,1 bool(number),2 number,3 UTF16 string,
+   4/5 array begin/end,6/7/8 object begin/key/end. Text is borrowed only during
+   callback. Callback/code/owner stay valid and never throw; return zero to stop.
+   Invalid input emits no events. Depth and UTF16 escape semantics match TSF.
+   input is readable for length bytes. Returns 1 success,0 failure/cancel. */
+typedef int32_t (*meltype_json_emit)(void *,uint32_t,double,const uint16_t *,uint32_t);
+int32_t meltype_json_visit(const uint8_t *,uint32_t,void *,meltype_json_emit);
+/* Read length UTF16 units; null permitted for empty input. UTF8 quoted JSON
+   result belongs to meltype_free. Null result means invalid input/allocation. */
+char *meltype_json_quote(const uint16_t *,uint32_t);
 int32_t meltype_init(meltype_clauses_callback, meltype_candidates_callback, meltype_word_callback);
 int32_t meltype_init_mozc(const char *, const char *);
 void *meltype_create(void);

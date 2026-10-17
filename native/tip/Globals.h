@@ -230,6 +230,9 @@ struct RustStartupCallbacks {
     void* (__cdecl *category)(void*);
 };
 HRESULT RustStartup(ITfThreadMgr*,TfClientId,DWORD,const RustStartupCallbacks&);
+using RustJsonEmit=int (__cdecl *)(void*,unsigned int,double,const unsigned short*,unsigned int);
+bool RustJsonVisit(const std::string&,void*,RustJsonEmit);
+std::string RustJsonQuote(const std::wstring&);
 #endif
 
 // 文字コードの変換
