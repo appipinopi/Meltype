@@ -6,6 +6,8 @@ final class Native {
     static native long create(String directory);
     static native String control(long handle,String request);
     static native String settingsPage(long handle,int page);
+    static native String settingsDocument(long handle,Object context,Object uri,String operation);
+    static native String settingsRestore(long handle,long token,boolean accept);
     static native String settingsAction(long handle,String action,String fields);
     static native String predict(long handle,int index);
     static native void destroy(long handle);

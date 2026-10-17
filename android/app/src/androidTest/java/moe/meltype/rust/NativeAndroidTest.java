@@ -5,6 +5,8 @@ package moe.meltype.rust;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
+import android.content.ContextWrapper;
+import android.net.Uri;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.text.Editable;
@@ -256,13 +258,41 @@ public final class NativeAndroidTest {
             press(root,"a");assertEquals("",service.editor.text.toString());assertEquals(3,Native.editorFlags(profile.session));assertEquals(1,service.editor.reads);
         }
     });}
+    @Test public void rustDocumentTransferUsesRealContentResolverAndRestoreConfirmation() throws Throwable {ui(()->{
+        try(Profile profile=new Profile()) {
+            File cache=new File(profile.root,"document-cache");assertTrue(cache.mkdir());
+            Context transferContext=new ContextWrapper(context()) {@Override public File getCacheDir(){return cache;}};
+            File dictionary=new File(profile.root,"dictionary.txt"),backup=new File(profile.root,"backup.json");
+            String seed=Native.control(profile.session,"{\"op\":\"dictionary_set\",\"reading\":\"めるたいぷ\",\"word\":\"Meltype😀\"}");assertFalse(seed,seed.contains("\"error\":"));
+            JSONObject result=new JSONObject(Native.settingsDocument(profile.session,transferContext,Uri.fromFile(dictionary),"dictionary_export"));
+            assertFalse(result.toString(),result.has("error"));assertTrue(new String(java.nio.file.Files.readAllBytes(dictionary.toPath()),StandardCharsets.UTF_16).contains("Meltype😀"));
+            result=new JSONObject(Native.settingsDocument(profile.session,transferContext,Uri.fromFile(backup),"backup_create"));assertFalse(result.toString(),result.has("error"));
+            Native.control(profile.session,"{\"op\":\"dictionary_remove\",\"reading\":\"めるたいぷ\"}");
+            result=new JSONObject(Native.settingsDocument(profile.session,transferContext,Uri.fromFile(dictionary),"dictionary_import"));assertEquals(result.toString(),1,result.getInt("page"));
+            assertTrue(new JSONObject(Native.control(profile.session,"{\"op\":\"dictionary_list\"}")).has("めるたいぷ"));
+            Native.control(profile.session,"{\"op\":\"dictionary_remove\",\"reading\":\"めるたいぷ\"}");
+            result=new JSONObject(Native.settingsDocument(profile.session,transferContext,Uri.fromFile(backup),"backup_restore"));long first=result.getJSONObject("confirm").getLong("token");
+            assertFalse(new JSONObject(Native.control(profile.session,"{\"op\":\"dictionary_list\"}")).has("めるたいぷ"));
+            assertEquals(1,cache.list().length);assertFalse(new JSONObject(Native.settingsRestore(profile.session,first,false)).has("error"));assertEquals(0,cache.list().length);
+            result=new JSONObject(Native.settingsDocument(profile.session,transferContext,Uri.fromFile(backup),"backup_restore"));long second=result.getJSONObject("confirm").getLong("token");
+            assertTrue(new JSONObject(Native.settingsRestore(profile.session,first,true)).has("error"));
+            assertFalse(new JSONObject(Native.settingsRestore(profile.session,second,true)).has("error"));
+            assertTrue(new JSONObject(Native.control(profile.session,"{\"op\":\"dictionary_list\"}")).has("めるたいぷ"));assertEquals(0,cache.list().length);
+            assertTrue(new JSONObject(Native.settingsRestore(profile.session,second,true)).has("error"));
+            result=new JSONObject(Native.settingsDocument(profile.session,transferContext,Uri.fromFile(new File(profile.root,"missing")),"dictionary_import"));assertTrue(result.has("error"));assertEquals(0,cache.list().length);
+            try(FileOutputStream out=new FileOutputStream(dictionary)){out.write("invalid backup".getBytes(StandardCharsets.UTF_8));}
+            result=new JSONObject(Native.settingsDocument(profile.session,transferContext,Uri.fromFile(dictionary),"backup_restore"));assertTrue(result.has("error"));assertEquals(0,cache.list().length);
+            result=new JSONObject(Native.settingsDocument(profile.session,transferContext,Uri.fromFile(backup),"backup_restore"));assertTrue(result.has("confirm"));
+            Native.destroy(profile.session);assertEquals(0,cache.list().length);
+        }
+    });}
     @Test public void settingsWidgetsDispatchRustPagesAndPersistEdits() throws Throwable {ui(()->{
         try(Profile profile=new Profile()) {
             SettingsHarness settings=new SettingsHarness(profile.session);
             for(int page=0;page<6;page++){settings.show(page);assertTrue(settings.body.getChildCount()>0);}
             settings.show(0);int toggles=0;
             for(int i=0;i<settings.body.getChildCount();i++)if(settings.body.getChildAt(i) instanceof Switch toggle) {
-                toggles++;if("予測候補".contentEquals(toggle.getText())){toggle.setChecked(true);assertTrue(toggle.performClick());}
+                toggles++;if("予測候補".contentEquals(toggle.getText())){toggle.setChecked(true);toggle.performClick();assertFalse("framework switch toggled off",toggle.isChecked());}
             }
             assertEquals(13,toggles);assertFalse(new JSONObject(Native.control(profile.session,"{\"op\":\"settings_get\"}")).getBoolean("PredictiveCandidates"));
             settings.field("定型文の開始記号").setText(";");settings.press("開始記号を保存");

@@ -7,6 +7,7 @@ use jni::{
     JNIEnv,
 };
 mod actions;
+mod documents;
 mod editor_jni;
 mod input_view;
 mod service_state;
@@ -84,6 +85,7 @@ pub extern "system" fn Java_moe_meltype_rust_Native_create(
     };
     let handle = unsafe { meltype_create_at(directory.as_ptr()) as jlong };
     service_state::create(handle);
+    documents::create(handle);
     handle
 }
 #[no_mangle]
@@ -121,6 +123,7 @@ pub extern "system" fn Java_moe_meltype_rust_Native_destroy(
     handle: jlong,
 ) {
     service_state::destroy(handle);
+    documents::destroy(handle);
     meltype_destroy(handle as *mut c_void);
 }
 #[no_mangle]

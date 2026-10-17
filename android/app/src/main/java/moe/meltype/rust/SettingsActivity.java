@@ -8,8 +8,6 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.widget.*;
 import org.json.*;
-import java.io.*;
-import java.nio.file.Files;
 
 /** Generic Android widgets/document bridge; page definitions and actions live in Rust. */
 public final class SettingsActivity extends Activity {
@@ -44,13 +42,6 @@ public final class SettingsActivity extends Activity {
     }
     @Override protected void onSaveInstanceState(Bundle state) { state.putString("documentOperation",documentOperation); super.onSaveInstanceState(state); }
     @Override public void onDestroy() { Native.destroy(session); super.onDestroy(); }
-    private JSONObject request(String op,String... fields) throws JSONException {
-        JSONObject value = new JSONObject().put("op",op);
-        for (int i=0;i<fields.length;i+=2) value.put(fields[i],fields[i+1]);
-        JSONObject result = new JSONObject(Native.control(session,value.toString()));
-        if (result.has("error")) throw new JSONException(result.getString("error"));
-        return result;
-    }
     private void action(RunnableChecked action) {
         try { action.run(); status.setText("完了"); }
         catch (Exception error) { status.setText("エラー: " + error.getMessage()); }
@@ -91,40 +82,17 @@ public final class SettingsActivity extends Activity {
         if (code != DOCUMENT || result != RESULT_OK || data == null || data.getData() == null || documentOperation == null) return;
         String operation = documentOperation; documentOperation = null;
         action(() -> {
-            File temporary = File.createTempFile("meltype-document-",".tmp",getCacheDir());
-            boolean retained = false;
-            try {
-                boolean output = operation.equals("dictionary_export") || operation.equals("backup_create");
-                if (!output) {
-                    try (InputStream in = getContentResolver().openInputStream(data.getData()); OutputStream out = new FileOutputStream(temporary)) {
-                        if (in == null) throw new IOException("ファイルを開けません");
-                        byte[] buffer = new byte[8192]; int count; long total = 0;
-                        while ((count = in.read(buffer)) != -1) {
-                            total += count; if (total > 32L*1024*1024) throw new IOException("上限は32 MiBです");
-                            out.write(buffer,0,count);
-                        }
-                    }
-                }
-                if (operation.equals("backup_restore")) {
-                    JSONObject report = request("backup_inspect","path",temporary.getAbsolutePath());
-                    new AlertDialog.Builder(this).setTitle("バックアップを復元").setMessage(report.toString(2))
-                        .setNegativeButton("キャンセル",(dialog,which) -> temporary.delete())
-                        .setOnCancelListener(dialog -> temporary.delete())
-                        .setPositiveButton("復元",(dialog,which) -> action(() -> {
-                            try { request("backup_restore","path",temporary.getAbsolutePath()); }
-                            finally { temporary.delete(); }
-                        })).show();
-                    retained = true;
-                    return;
-                }
-                request(operation,"path",temporary.getAbsolutePath());
-                if (output) try (OutputStream out = getContentResolver().openOutputStream(data.getData(),"wt")) {
-                    if (out == null) throw new IOException("保存先を開けません"); Files.copy(temporary.toPath(),out);
-                }
-                if (operation.equals("dictionary_import")) show(1);
-            } finally {
-                if (!retained) temporary.delete();
+            JSONObject reply = checked(Native.settingsDocument(session,this,data.getData(),operation));
+            if (reply.has("confirm")) {
+                JSONObject confirm = reply.getJSONObject("confirm"); long token = confirm.getLong("token");
+                try {
+                    new AlertDialog.Builder(this).setTitle(confirm.getString("title")).setMessage(confirm.getString("message"))
+                        .setNegativeButton("キャンセル",(dialog,which) -> Native.settingsRestore(session,token,false))
+                        .setOnCancelListener(dialog -> Native.settingsRestore(session,token,false))
+                        .setPositiveButton("復元",(dialog,which) -> action(() -> checked(Native.settingsRestore(session,token,true)))).show();
+                } catch (Exception error) { Native.settingsRestore(session,token,false); throw error; }
             }
+            if (reply.has("page")) show(reply.getInt("page"));
         });
     }
 }

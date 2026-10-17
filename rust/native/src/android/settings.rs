@@ -7,7 +7,7 @@ use serde_json::{json, Value};
 
 type Result<T> = std::result::Result<T, String>;
 
-fn request(handle: jlong, value: Value) -> Result<Value> {
+pub(super) fn request(handle: jlong, value: Value) -> Result<Value> {
     let input = CString::new(value.to_string()).map_err(|e| e.to_string())?;
     let output = unsafe { take(meltype_control(handle as *mut c_void, input.as_ptr())) }
         .ok_or("設定を読み込めません")?;
@@ -305,7 +305,7 @@ fn request_control(handle: jlong, input: Value, page: Option<i32>) -> Result<Val
         None => json!({}),
     })
 }
-fn reply(env: &mut JNIEnv, result: Result<Value>) -> jstring {
+pub(super) fn reply(env: &mut JNIEnv, result: Result<Value>) -> jstring {
     let value = result.unwrap_or_else(|error| json!({"error":error}));
     env.new_string(value.to_string())
         .map_or(std::ptr::null_mut(), JString::into_raw)
