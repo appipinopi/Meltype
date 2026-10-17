@@ -24,3 +24,11 @@ UTF-16 deletion lengths, marked/selected caret choice, missing expected strings,
 Hangul, NUL and compatibility-character distinctions. The existing controlled
 IMK event/boundary tools accept --rust-core to exercise product Rust paths; their
 explicit source lists include the new bridge files for legacy builds as well.
+
+Rust's macOS-specific handle-key ABI also preserves upstream external-scalar
+semantics: invalid scalars leave composition unchanged; combining marks commit
+without automatic spacing (Latin accents preserve unchosen ASCII raw text), and
+supplementary scalars commit before the original event passes through. Other
+frontends keep their full-scalar input path. Existing Swift/IMK boundary tests
+check this actual production entry point. A portable ABI fixture reproduces the
+eight original Swift external-text cases without registering an input source.

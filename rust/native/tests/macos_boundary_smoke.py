@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 appipinopi
+"""The original Swift boundary fixtures, exercised through actual Rust C ABI."""
+import ctypes as c
+import json
+from pathlib import Path
+import sys
+import tempfile
+api=c.CDLL(str(Path(sys.argv[1]).resolve()))
+api.meltype_create_at.argtypes=[c.c_char_p];api.meltype_create_at.restype=c.c_void_p
+api.meltype_macos_handle_key.argtypes=[c.c_void_p,c.c_int,c.c_int,c.c_int,c.c_char_p,c.c_char_p];api.meltype_macos_handle_key.restype=c.c_void_p
+api.meltype_commit.argtypes=[c.c_void_p];api.meltype_commit.restype=c.c_void_p
+api.meltype_free.argtypes=[c.c_void_p];api.meltype_destroy.argtypes=[c.c_void_p]
+def result(pointer):
+    assert pointer
+    try:return json.loads(c.string_at(pointer))
+    finally:api.meltype_free(pointer)
+with tempfile.TemporaryDirectory(prefix="meltype-macos-boundary-") as directory:
+    Path(directory,"config.json").write_text('{"SpaceAroundEnglish":true,"SigilWordsDirect":false}',encoding="utf-8")
+    for raw,first,mode,expected in [("e",0x301,None,"e"),("ka",0x3099,None,"か"),("ka",0xe0100,None,"か"),("e",0x301,0x75,"え"),("ka",None,None,"か "),("ka",None,None,"か "),("@kuraido",0x301,None,"@kuraido"),("",0x301,None,None)]:
+        handle=api.meltype_create_at(directory.encode())
+        try:
+            for ch in raw:result(api.meltype_macos_handle_key(handle,ord(ch.upper()) if ch.isascii() and ch.isalpha() else 7,ord(ch),0,None,b"world"))
+            if mode:result(api.meltype_macos_handle_key(handle,mode,0,0,None,None))
+            actual=result(api.meltype_macos_handle_key(handle,7,first,0,None,None) if first else api.meltype_commit(handle))
+            print(json.dumps({"raw":raw,"first":first,"expected":expected,"actual":actual},ensure_ascii=True))
+            assert actual["view"] is None
+            assert [edit["text"] for edit in actual["commits"]] == ([] if expected is None else [expected])
+        finally:api.meltype_destroy(handle)
+print("8 macOS external-text boundary ABI fixtures passed")

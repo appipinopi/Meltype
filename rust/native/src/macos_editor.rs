@@ -112,6 +112,31 @@ pub unsafe extern "C" fn meltype_macos_expected_equal(
     };
     i32::from(actual.nfd().eq(expected.nfd()))
 }
+/// Legacy macOS scalar boundary; other frontends retain full scalar input.
+/// # Safety
+/// before/after, if non-null, are valid NUL-terminated UTF-8 for this call.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_macos_handle_key(
+    handle: *mut std::ffi::c_void,
+    vk: i32,
+    ch: i32,
+    modifiers: i32,
+    before: *const std::ffi::c_char,
+    after: *const std::ffi::c_char,
+) -> *mut std::ffi::c_char {
+    let Some(scalar) = u32::try_from(ch).ok().and_then(char::from_u32) else {
+        return super::run(handle, |s| s.result(false));
+    };
+    if unicode_normalization::char::is_combining_mark(scalar) {
+        return super::run(handle, |s| {
+            s.commit_external((0x300..=0x36f).contains(&ch), true)
+        });
+    }
+    if ch > 0xffff {
+        return super::run(handle, |s| s.commit_external(false, false));
+    }
+    super::meltype_handle_key(handle, vk, ch, modifiers, before, after)
+}
 #[cfg(test)]
 mod tests {
     use super::*;

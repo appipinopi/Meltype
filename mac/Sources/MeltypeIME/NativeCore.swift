@@ -132,7 +132,11 @@ final class NativeCore {
         initFunction = symbol("meltype_init", as: InitFunction.self)
         createFunction = symbol("meltype_create", as: CreateFunction.self)
         destroyFunction = symbol("meltype_destroy", as: DestroyFunction.self)
+#if MELTYPE_RUST_CORE
+        handleKeyFunction = symbol("meltype_macos_handle_key", as: HandleKeyFunction.self)
+#else
         handleKeyFunction = symbol("meltype_handle_key", as: HandleKeyFunction.self)
+#endif
         commitFunction = symbol("meltype_commit", as: CommitFunction.self)
         selectFunction = symbol("meltype_select_candidate", as: SelectFunction.self)
         setDirectFunction = symbol("meltype_set_direct", as: SetDirectFunction.self)

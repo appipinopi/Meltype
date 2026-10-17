@@ -741,7 +741,44 @@ impl Session {
         self.can_delete = can_delete;
         result
     }
+    /// Preserve the legacy macOS C ABI's external-scalar boundary. Combining
+    /// marks attach to committed text; the OS receives the original event once.
+    pub fn commit_external(&mut self, latin: bool, preserve_text: bool) -> SessionResult {
+        let raw_latin = latin
+            && !self.is_converting()
+            && self.reconversion_origin.is_none()
+            && !self.uses_kana()
+            && matches!(self.function_key, 0 | 0x79)
+            && !self.raw.is_empty()
+            && self.raw.bytes().all(|b| b.is_ascii_alphabetic());
+        let mut result = if raw_latin {
+            let text = self.raw.clone();
+            self.reset();
+            SessionResult {
+                consumed: false,
+                commits: vec![TextEdit {
+                    delete_before: 0,
+                    text,
+                    expect: None,
+                }],
+                view: None,
+                selection_expect: None,
+            }
+        } else {
+            self.commit_with_spacing(!preserve_text && self.settings.boolean("SpaceAroundEnglish"))
+        };
+        self.before.clear();
+        self.after.clear();
+        self.correctable.clear();
+        self.last_commit = None;
+        self.sigil = Default::default();
+        result.consumed = false;
+        result
+    }
     pub fn commit(&mut self) -> SessionResult {
+        self.commit_with_spacing(self.settings.boolean("SpaceAroundEnglish"))
+    }
+    fn commit_with_spacing(&mut self, space_around: bool) -> SessionResult {
         let mut text = self.display(true);
         if self.selected_prediction >= 0 {
             if let Some(prediction) = self.predictions().get(self.selected_prediction as usize) {
@@ -787,8 +824,8 @@ impl Session {
             }
             self.learn(changes);
         }
-        if self.settings.boolean("SpaceAroundEnglish") {
-            text = space_english(&text);
+        if space_around {
+            text = space_english(&text, &self.before, &self.after);
         }
         let english =
             !text.trim().is_empty() && text.trim().bytes().all(|b| b.is_ascii_alphabetic());
@@ -1557,21 +1594,54 @@ impl Session {
     }
 }
 
-fn space_english(text: &str) -> String {
-    let mut out = String::new();
+fn space_english(text: &str, before: &str, after: &str) -> String {
+    let japanese = |c: char| matches!(c,'\u{3040}'..='\u{30ff}'|'\u{3400}'..='\u{4dbf}'|'\u{4e00}'..='\u{9fff}'|'\u{f900}'..='\u{faff}');
+    let word_char = |c: char| c.is_ascii_alphanumeric() || "_-+#.'@".contains(c);
     let chars: Vec<_> = text.chars().collect();
-    for (i, c) in chars.iter().copied().enumerate() {
-        if i > 0 {
-            let previous = chars[i - 1];
-            if (previous.is_ascii_alphabetic()
-                && (crate::linguistics::kana(c) || crate::linguistics::kanji(c)))
-                || ((crate::linguistics::kana(previous) || crate::linguistics::kanji(previous))
-                    && c.is_ascii_alphabetic())
-            {
-                out.push(' ');
-            }
-        }
-        out.push(c);
+    if chars.is_empty() {
+        return String::new();
     }
-    out
+    let previous = before.chars().next_back().unwrap_or('\0');
+    let next = after.chars().next().unwrap_or('\0');
+    let mut output = String::new();
+    if japanese(chars[0]) && previous.is_ascii_alphabetic() {
+        output.push(' ');
+    }
+    let mut index = 0;
+    while index < chars.len() {
+        if !word_char(chars[index]) {
+            output.push(chars[index]);
+            index += 1;
+            continue;
+        }
+        let mut end = index;
+        while end < chars.len() && word_char(chars[end]) {
+            end += 1;
+        }
+        let mut stop = end;
+        while stop > index && ".'-@_".contains(chars[stop - 1]) {
+            stop -= 1;
+        }
+        let word = &chars[index..stop];
+        let left = if index > 0 {
+            chars[index - 1]
+        } else {
+            previous
+        };
+        let right = chars.get(stop).copied().unwrap_or(next);
+        let english = word.iter().any(char::is_ascii_alphabetic);
+        if english && japanese(left) && !output.ends_with(' ') {
+            output.push(' ');
+        }
+        output.extend(word);
+        if english && japanese(right) {
+            output.push(' ');
+        }
+        output.extend(&chars[stop..end]);
+        index = end;
+    }
+    if japanese(*chars.last().unwrap()) && next.is_ascii_alphabetic() {
+        output.push(' ');
+    }
+    output
 }
