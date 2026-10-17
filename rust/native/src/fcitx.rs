@@ -55,6 +55,30 @@ pub extern "C" fn meltype_fcitx_modifiers(state: u32) -> i32 {
         | (i32::from(state & 8 != 0) << 2)
         | (i32::from(state & 64 != 0) << 3)
 }
+/// Mode-key plan: bit 0 means mode switch, bit 1 means direct/English target,
+/// bits 8..15 contain the conversion role key (zero when already in direct mode).
+/// The caller preserves commit -> editor application -> mode update ordering.
+#[no_mangle]
+pub extern "C" fn meltype_fcitx_mode(symbol: u32, direct: i32) -> u32 {
+    let direct = direct != 0;
+    let toggle = matches!(symbol, 0xff28..=0xff2a);
+    let english = matches!(symbol, 0xff22 | 0xff30);
+    let role = if direct {
+        0
+    } else {
+        match symbol {
+            0xff23 => 0x1c,
+            0xff22 => 0x1d,
+            0xff27 => 0x15,
+            _ => 0,
+        }
+    };
+    let switch = toggle || english || matches!(symbol, 0xff23 | 0xff27);
+    if !switch {
+        return 0;
+    }
+    1 | (u32::from(english || toggle && !direct) << 1) | (role << 8)
+}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -107,6 +131,33 @@ mod tests {
                 meltype_fcitx_modifiers(source | 2 | 16 | (1 << 26) | (1 << 31)),
                 mask as i32
             );
+        }
+    }
+    #[test]
+    fn japanese_mode_and_role_plans_preserve_direct_and_commit_policy() {
+        for direct in [0, 1] {
+            for symbol in [0xff28, 0xff29, 0xff2a] {
+                assert_eq!(
+                    meltype_fcitx_mode(symbol, direct),
+                    if direct == 0 { 3 } else { 1 }
+                );
+            }
+            assert_eq!(meltype_fcitx_mode(0xff30, direct), 3);
+            assert_eq!(
+                meltype_fcitx_mode(0xff22, direct),
+                3 | if direct == 0 { 0x1d << 8 } else { 0 }
+            );
+            assert_eq!(
+                meltype_fcitx_mode(0xff23, direct),
+                1 | if direct == 0 { 0x1c << 8 } else { 0 }
+            );
+            assert_eq!(
+                meltype_fcitx_mode(0xff27, direct),
+                1 | if direct == 0 { 0x15 << 8 } else { 0 }
+            );
+            for ordinary in [0, 0xff21, 0xff24, 0xff25, 0xff26, 0xff2f, 0x61, 0x100304b] {
+                assert_eq!(meltype_fcitx_mode(ordinary, direct), 0);
+            }
         }
     }
 }

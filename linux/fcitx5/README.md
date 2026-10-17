@@ -2,9 +2,9 @@
 
 The default `MELTYPE_RUST_CORE=ON` build requires the Rust native library,
 including `meltype_json_visit_utf8`, `meltype_fcitx_key` and
-`meltype_fcitx_modifiers`. JSON bytes, escapes and numbers are parsed
+`meltype_fcitx_modifiers` and `meltype_fcitx_mode`. JSON bytes, escapes and numbers are parsed
 in Rust. The C++ event adapter receives copied UTF-8 values for the existing
-fcitx5 widgets; it does not parse JSON. Keycode/modifier translation also runs in Rust. The SDK supplies Unicode
+fcitx5 widgets; it does not parse JSON. Keycode/modifier translation and Japanese mode/role decisions also run in Rust. The SDK supplies Unicode
 key-symbol conversion and raw modifier bits. Input-context ownership, mode policy,
 editor application and widget integration still contain C++ and remain migration
 work. This is not a standalone Rust fcitx5 addon yet.
@@ -47,6 +47,13 @@ and runs the standalone ABI test against its release Rust library.
 The SDK key test compares the original virtual-key policy for 131,076 key
 symbols and 512 modifier combinations through the real Rust ABI. It preserves
 the former fcitx policy (including ignoring lock bits and Super2), independently
-of the IBus frontend’s mapping. Japanese mode/role keys are still handled by the
-C++ adapter before ordinary key translation. See the [SDK modifier definitions](https://github.com/fcitx/fcitx5/blob/master/src/lib/fcitx-utils/keysym.h)
+of the IBus frontend’s mapping. Japanese mode/role decisions run before ordinary key translation. Rust returns
+a plan for the role key and target mode; the adapter keeps the existing commit,
+editor application and mode-update order. State and framework operations still
+contain C++. See the [SDK modifier definitions](https://github.com/fcitx/fcitx5/blob/master/src/lib/fcitx-utils/keysym.h)
 and [raw flag accessor](https://github.com/fcitx/fcitx5/blob/master/src/lib/fcitx-utils/flags.h).
+
+The key test also compares both Japanese/direct mode states for every symbol
+(262,152 mode/role cases). A focused Rust fcitx ABI workflow builds both adapter
+variants and runs the JSON/key/mode comparisons alongside the full-platform
+workflow. Neither comparison registers an input method nor operates a daemon.

@@ -67,9 +67,11 @@
 - [x] 復元確認を作成日時・対象種類・件数／容量と上書き説明へ変更（共通backup_previewは復元と同じパス／base64検証、内部データは非表示。previewの無変更、不正／対象外ファイル、統合state内の対象種類をfeatures試験で確認）
 - [ ] 読みやすい復元確認のAndroid実行と画像確認（1c47eddの画像で内部データ表示を確認したため修正。新しい表示のSDKコンパイルとローカル試験は通過、Android画像は未確認）
 - [x] fcitx5の標準構成のJSON解析をRust ABIへ移行（UTF-8イベントで値を受け渡し。旧NativeAOT用は明示的な互換オプションへ分離。WSLで旧解析／実コア応答217件、Unicode・NUL・不正入力・取消・重複キーを確認。既存Windows互換ABIは変更なし）
-- [ ] fcitx5のRust／旧互換構成のSDK結合ビルド確認（CIに両ビルドとrelease ABI比較を追加。ローカルは標準C++の受渡し試験のみ。fcitx5のキー・モード・状態・入力欄・ウィジェット連携はC++に残り、実入力と完全Rust化は未完了）
+- [x] fcitx5のJSON版Rust／旧互換構成のSDK結合ビルド確認（21aa5f6のUbuntu CIで両ビルドとrelease JSON ABI比較が成功。キー／モードの後続版は別途検証待ち。状態・入力欄・ウィジェット連携と完全Rust化、実入力は未完了）
 - [x] fcitx5の通常キー／修飾キー変換をRust ABIへ移行（特殊キー・ASCII・句読点・Unicode、Shift／Ctrl／Alt／Super。旧fcitxのCaps／Num・Super2／Repeat無視を維持。Rust単体試験は通過。SDKからのUnicode変換、日本語モードキーやウィジェット連携はC++に残る）
 - [ ] fcitx5 SDK／旧実装とのキー比較（131,076シンボルと512修飾状態を実Rust ABIで比較する試験を追加。Rust／旧互換アドオンのSDKビルドと合わせてCIで検証。現時点で成功は未確認）
+- [x] fcitx5の日本語モード／役割キー判定をRustへ移行（変換・無変換・ひらがな／カタカナ・半角／全角・英数。現在の直接入力状態から役割キーと切替先を返す。確定→応答反映→モード更新の既存順序を維持。Rust単体試験は通過）
+- [ ] fcitx5のSDKキー比較に262,152モード／役割状態を追加して検証（独立したRust fcitx ABI CIも追加。キー／モード版のSDK結果は未確認。状態・編集・ウィジェット連携のC++は残る）
 - [x] Windows TSFの配布DLLをRust単体へ移行（COMのDLL入口・workerパス取得・ログ・登録API・解放判定をRust化。C++ソースを製品へリンクせず、MSVCリンカー／Windows SDKで元のアイコンと版情報を結合。COM子オブジェクト・遅延編集・候補ウィンドウの寿命をDLLの解放判定へ反映。旧C++は上流参照／互換SDK試験用に保持。単体DLL試験10件・SDK試験14種類を各アーキテクチャで確認し、入力からDLL再読込みまでを各3回追加確認。実アプリへのIME登録・操作と全UIの一致確認は未完了。以下の記録は段階ごとの経緯）
 - [x] Windowsの配布用TSF DLLをDll.cpp＋最小RustDll.cppだけでリンク（TextService.cpp／RustPipe.cpp／Json.cppは互換SDK試験用に分離。リンクマップで旧オブジェクト不在を検査。配布DLLをLoadLibrary／DllGetClassObject／CreateInstanceから使う入力・確定・終了／再起動・解放試験をx64/x86で確認。DLL入口・読込・ログのC++は残り、完全なRust単体DLL化と実アプリ確認は未完了）
 - [x] Windows TSFクラスファクトリーの生成先をRust所有サービスへ変更（状態・workerパス・COM root・参照寿命をRustで確保／破棄し、本番生成時にC++ TextServiceを作らない。状態試験x64/x86各240件で全インターフェースの同一性、未対応IID失敗時の解放、最終参照解放とDLL保持、公開起動／終了を確認。Rust所有者を使う入力／ライフサイクル試験をCIへ追加。C++互換所有者は比較用に残り、DLL入口／読込／ログ等と実アプリ確認は未完了）

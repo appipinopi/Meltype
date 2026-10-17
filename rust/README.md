@@ -328,3 +328,5 @@ fcitx5の標準Rust構成ではJSON文字列の解析をRustの `meltype_json_vi
 3172f5fのAPI 35・x86_64エミュレーターで `OK (12 tests)` を確認しました（[実行記録](https://github.com/appipinopi/Meltype/actions/runs/39034991787)）。実KeyEvent／Editableを使うサービス経路の入力・確定・表示再生成・非公開欄・getter内の欄切替が成功しています。IMEを登録／有効化した他アプリ入力や物理端末の証明ではありません。
 
 fcitx5の通常キーコードと修飾キーの変換をRustの `meltype_fcitx_key`／`meltype_fcitx_modifiers` へ移しました。SDKからUnicodeと生の修飾状態を受け取り、従来の特殊キー・句読点・修飾ビットを維持します。旧NativeAOT構成の変換は互換ヘッダーへ分離しています。Rust単体試験とClippyは通過。SDKを使って元の変換と131,076シンボル・512修飾状態を比較する試験を追加しましたが、SDK比較と結合ビルドの成功は確認待ちです。日本語モードキー・状態・入力欄・ウィジェットのC++はまだ残ります。
+
+fcitx5の日本語モード／役割キー判定もRustへ移しました。現在の英数状態から変換・無変換・ひらがな／カタカナの役割とモード切替先を決め、確定→応答反映→モード更新の順序は維持します。Rust単体試験が通過し、SDK比較へ262,152モード状態を追加しました。独立したRust fcitx ABI CIを追加し、全OS検証と並行して結合確認を進めます。JSON版21aa5f6のUbuntu CIではRust／旧互換両ビルドとrelease ABI比較が成功しています。後続キー／モード版のSDK成功は未確認で、状態とOS編集・表示のC++は残っています。

@@ -6,6 +6,17 @@
 #include <fcitx-utils/keysym.h>
 #include <utility>
 namespace meltype_fcitx {
+// Former keyEvent's Japanese role/mode conditions, retained for comparison.
+inline uint32_t modePlan(fcitx::KeySym sym,bool direct) {
+    uint32_t role=0;
+    if(!direct && (sym==FcitxKey_Henkan||sym==FcitxKey_Muhenkan||sym==FcitxKey_Hiragana_Katakana))
+        role=sym==FcitxKey_Henkan?0x1c:sym==FcitxKey_Muhenkan?0x1d:0x15;
+    if(sym!=FcitxKey_Zenkaku_Hankaku && sym!=FcitxKey_Hankaku && sym!=FcitxKey_Zenkaku && sym!=FcitxKey_Eisu_toggle
+        && sym!=FcitxKey_Hiragana_Katakana && sym!=FcitxKey_Muhenkan && sym!=FcitxKey_Henkan)return 0;
+    const bool toDirect=sym==FcitxKey_Eisu_toggle||sym==FcitxKey_Muhenkan
+        ||((sym==FcitxKey_Zenkaku_Hankaku||sym==FcitxKey_Hankaku||sym==FcitxKey_Zenkaku)&&!direct);
+    return 1u|(toDirect?2u:0u)|(role<<8);
+}
 constexpr int OtherCharacterKey = 0x07;
 
 int specialKey(fcitx::KeySym sym) {

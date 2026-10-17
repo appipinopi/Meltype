@@ -55,6 +55,7 @@ struct Native {
     meltype_fcitx::JsonVisit visitJson = nullptr;
     uint64_t (*mapKey)(uint32_t,uint32_t) = nullptr;
     int (*mapModifiers)(uint32_t) = nullptr;
+    uint32_t (*modePlan)(uint32_t,int) = nullptr;
 #endif
     int (*initMozc)(const char *, const char *) = nullptr;
     void *(*create)() = nullptr;
@@ -92,7 +93,8 @@ struct Native {
         visitJson = reinterpret_cast<decltype(visitJson)>(sym("meltype_json_visit_utf8"));
         mapKey = reinterpret_cast<decltype(mapKey)>(sym("meltype_fcitx_key"));
         mapModifiers = reinterpret_cast<decltype(mapModifiers)>(sym("meltype_fcitx_modifiers"));
-        if (!visitJson || !mapKey || !mapModifiers) {
+        modePlan = reinterpret_cast<decltype(modePlan)>(sym("meltype_fcitx_mode"));
+        if (!visitJson || !mapKey || !mapModifiers || !modePlan) {
             FCITX_ERROR() << "Meltype: Rust fcitx JSON/key ABI is missing";
             return false;
         }
@@ -199,10 +201,15 @@ public:
         syncCanDelete(ic, state->session());
         const auto key = event.key();
         const auto sym = key.sym();
+#ifdef MELTYPE_RUST_CORE
+        const auto modePlan = native_.modePlan(sym,state->direct?1:0);
+#else
+        const auto modePlan = meltype_fcitx::modePlan(sym,state->direct);
+#endif
         // 入力中の 変換・無変換・ひらがな/カタカナ: 設定で役割を分けていれば、本体が変換ボックスで処理する (#199)
-        if (native_.roleKey && !state->direct &&
-            (sym == FcitxKey_Henkan || sym == FcitxKey_Muhenkan || sym == FcitxKey_Hiragana_Katakana)) {
-            int vk = sym == FcitxKey_Henkan ? 0x1C : sym == FcitxKey_Muhenkan ? 0x1D : 0x15;
+        const int roleKey = static_cast<int>((modePlan>>8)&0xffu);
+        if (native_.roleKey && roleKey != 0) {
+            const int vk = roleKey;
             auto handled = native_.take(native_.roleKey(state->session(), vk));
             Json result;
             if (!handled.empty() && native_.readJson(handled, result)) {
@@ -212,10 +219,8 @@ public:
             }
         }
         // 半角/全角: 英数 (直接入力) ⇔ 日本語。英数・ひらがなのキーでも切り替える (JIS キーボード)。
-        if (sym == FcitxKey_Zenkaku_Hankaku || sym == FcitxKey_Hankaku || sym == FcitxKey_Zenkaku || sym == FcitxKey_Eisu_toggle ||
-            sym == FcitxKey_Hiragana_Katakana || sym == FcitxKey_Muhenkan || sym == FcitxKey_Henkan) {
-            bool toDirect = sym == FcitxKey_Eisu_toggle || sym == FcitxKey_Muhenkan ||
-                            ((sym == FcitxKey_Zenkaku_Hankaku || sym == FcitxKey_Hankaku || sym == FcitxKey_Zenkaku) && !state->direct);
+        if (modePlan & 1u) {
+            const bool toDirect = (modePlan & 2u) != 0;
             apply(ic, native_.take(native_.commit(state->session())));
             state->direct = toDirect;
             native_.setDirect(state->session(), toDirect ? 1 : 0);
