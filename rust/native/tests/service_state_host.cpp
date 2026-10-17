@@ -19,6 +19,15 @@ int wmain() {
         assert(RustServiceSid(storage.value).empty());
         RustServiceSetSid(storage.value,"shell-session");
         assert(RustServiceSid(storage.value)=="shell-session");
+        int toggles=0;
+        auto* bar=RustServiceCreateBar(storage.value,&toggles,
+            [](void*)->int {return 0;},[](void* p) {++*static_cast<int*>(p);});
+        assert(bar && storage.value->langbar==bar && g_locks==1);
+        bar->AddRef();RustServiceUpdateBar(storage.value);
+        RustServiceRemoveBar(storage.value,nullptr);assert(!storage.value->langbar);
+        auto* button=static_cast<ITfLangBarItemButton*>(bar);
+        assert(button->OnClick(TF_LBI_CLK_LEFT,POINT{},nullptr)==S_OK && toggles==0);
+        assert(bar->Release()==0);
         RustServiceClose(storage.value);assert(!storage.value->transport);
         RustServiceClose(storage.value);
         assert(storage.value->refs==1 && storage.value->open && storage.value->consumed);

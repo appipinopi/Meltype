@@ -537,6 +537,12 @@ int32_t meltype_tsf_service_set_sid(void *state,const char *sid);
 const char *meltype_tsf_service_sid(const void *state);
 char *meltype_tsf_service_request(void *state,const char *worker,const char *request,uint32_t timeout,int32_t optional);
 void meltype_tsf_service_close(void *state);
+/* TSF-thread service owns returned bar; borrowed until replacement/removal.
+   Keep state/context alive across create (old sink release may reenter).
+   Remove detaches before querying the optional borrowed TSF manager. */
+void *meltype_tsf_service_create_langbar(void *state,void *owner,int32_t (*read)(void *),void (*toggle)(void *));
+void meltype_tsf_service_update_langbar(void *state);
+void meltype_tsf_service_remove_langbar(void *state,void *manager);
 /* UTF-16 host executable basename, .exe removed; required capacity includes NUL.
    Null/short output is untouched; zero means acquisition failure. */
 uint32_t meltype_tsf_process_name(uint16_t *out, uint32_t capacity);

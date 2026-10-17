@@ -21,9 +21,6 @@ struct RustApi {
     void (__cdecl *freeText)(void*) = nullptr;
     void* (__cdecl *displayAttribute)(const GUID*) = nullptr;
     void* (__cdecl *displayAttributeEnum)() = nullptr;
-    void* (__cdecl *langbar)(void*, int (__cdecl *)(void*), void (__cdecl *)(void*)) = nullptr;
-    void (__cdecl *langbarUpdate)(void*) = nullptr;
-    void (__cdecl *langbarDetach)(void*) = nullptr;
     void* (__cdecl *candidateCreate)(void*, void (__cdecl *)(void*,int,int)) = nullptr;
     int (__cdecl *candidateShow)(void*,const char*,const RECT*) = nullptr;
     int (__cdecl *candidateShowTsf)(void*,void*,void*,unsigned int,const char*) = nullptr;
@@ -110,6 +107,9 @@ struct RustApi {
     const char* (__cdecl *serviceSid)(const RustServiceState*) = nullptr;
     char* (__cdecl *serviceRequest)(RustServiceState*,const char*,const char*,unsigned int,int) = nullptr;
     void (__cdecl *serviceClose)(RustServiceState*) = nullptr;
+    void* (__cdecl *serviceCreateBar)(RustServiceState*,void*,int (__cdecl *)(void*),void (__cdecl *)(void*)) = nullptr;
+    void (__cdecl *serviceUpdateBar)(RustServiceState*) = nullptr;
+    void (__cdecl *serviceRemoveBar)(RustServiceState*,void*) = nullptr;
     unsigned int (__cdecl *processName)(unsigned short*,unsigned int) = nullptr;
     RustApi() {
         wchar_t path[32768];
@@ -128,9 +128,6 @@ struct RustApi {
         freeText = reinterpret_cast<decltype(freeText)>(GetProcAddress(module, "meltype_free"));
         displayAttribute = reinterpret_cast<decltype(displayAttribute)>(GetProcAddress(module, "meltype_tsf_create_display_attribute"));
         displayAttributeEnum = reinterpret_cast<decltype(displayAttributeEnum)>(GetProcAddress(module, "meltype_tsf_create_display_attribute_enum"));
-        langbar = reinterpret_cast<decltype(langbar)>(GetProcAddress(module, "meltype_tsf_create_langbar"));
-        langbarUpdate = reinterpret_cast<decltype(langbarUpdate)>(GetProcAddress(module, "meltype_tsf_langbar_update"));
-        langbarDetach = reinterpret_cast<decltype(langbarDetach)>(GetProcAddress(module, "meltype_tsf_langbar_detach"));
         candidateCreate = reinterpret_cast<decltype(candidateCreate)>(GetProcAddress(module, "meltype_tsf_candidate_create"));
         candidateShow = reinterpret_cast<decltype(candidateShow)>(GetProcAddress(module, "meltype_tsf_candidate_show"));
         candidateShowTsf = reinterpret_cast<decltype(candidateShowTsf)>(GetProcAddress(module, "meltype_tsf_candidate_show_tsf"));
@@ -217,6 +214,9 @@ struct RustApi {
         serviceSid = reinterpret_cast<decltype(serviceSid)>(GetProcAddress(module, "meltype_tsf_service_sid"));
         serviceRequest = reinterpret_cast<decltype(serviceRequest)>(GetProcAddress(module, "meltype_tsf_service_request"));
         serviceClose = reinterpret_cast<decltype(serviceClose)>(GetProcAddress(module, "meltype_tsf_service_close"));
+        serviceCreateBar = reinterpret_cast<decltype(serviceCreateBar)>(GetProcAddress(module, "meltype_tsf_service_create_langbar"));
+        serviceUpdateBar = reinterpret_cast<decltype(serviceUpdateBar)>(GetProcAddress(module, "meltype_tsf_service_update_langbar"));
+        serviceRemoveBar = reinterpret_cast<decltype(serviceRemoveBar)>(GetProcAddress(module, "meltype_tsf_service_remove_langbar"));
         serviceLive = reinterpret_cast<decltype(serviceLive)>(GetProcAddress(module, "meltype_tsf_service_state_live_count"));
     }
     bool ready() const { return create && destroy && request && freeText; }
@@ -348,8 +348,8 @@ HRESULT RustOpenChanged(REFGUID guid,const RustOpenChangeCallbacks& callbacks) {
 }
 bool RustCoreReady(const RustCoreStateCallbacks& callbacks) {return api().coreReady && api().coreReady(&callbacks)!=0;}
 RustServiceState* RustCreateServiceState() {
-    if (!api().serviceCreate || !api().serviceDestroy || !api().serviceLayout || !api().serviceSetSid || !api().serviceSid || !api().serviceRequest || !api().serviceClose) return nullptr;
-    const unsigned int expected[]={2,static_cast<unsigned int>(sizeof(RustServiceState)),static_cast<unsigned int>(alignof(RustServiceState)),
+    if (!api().serviceCreate || !api().serviceDestroy || !api().serviceLayout || !api().serviceSetSid || !api().serviceSid || !api().serviceRequest || !api().serviceClose || !api().serviceCreateBar || !api().serviceUpdateBar || !api().serviceRemoveBar) return nullptr;
+    const unsigned int expected[]={3,static_cast<unsigned int>(sizeof(RustServiceState)),static_cast<unsigned int>(alignof(RustServiceState)),
         static_cast<unsigned int>(offsetof(RustServiceState,refs)),
         static_cast<unsigned int>(offsetof(RustServiceState,manager)),
         static_cast<unsigned int>(offsetof(RustServiceState,client)),
@@ -392,6 +392,7 @@ RustServiceState* RustCreateServiceState() {
         static_cast<unsigned int>(offsetof(RustServiceState,pass_reason)),
         static_cast<unsigned int>(offsetof(RustServiceState,sid)),
         static_cast<unsigned int>(offsetof(RustServiceState,transport)),
+        static_cast<unsigned int>(offsetof(RustServiceState,langbar)),
     };
     unsigned int actual[ARRAYSIZE(expected)]={};
     if (api().serviceLayout(actual,ARRAYSIZE(actual))!=ARRAYSIZE(expected) || std::memcmp(actual,expected,sizeof(expected))!=0) return nullptr;
@@ -424,6 +425,11 @@ bool RustServiceRequest(RustServiceState* state,const std::string& request,std::
     api().freeText(text);return true;
 }
 void RustServiceClose(RustServiceState* state) {if (api().serviceClose) api().serviceClose(state);}
+ITfLangBarItem* RustServiceCreateBar(RustServiceState* state,void* owner,int (__cdecl *read)(void*),void (__cdecl *toggle)(void*)) {
+    return api().serviceCreateBar?static_cast<ITfLangBarItem*>(api().serviceCreateBar(state,owner,read,toggle)):nullptr;
+}
+void RustServiceUpdateBar(RustServiceState* state) {if (api().serviceUpdateBar) api().serviceUpdateBar(state);}
+void RustServiceRemoveBar(RustServiceState* state,IUnknown* manager) {if (api().serviceRemoveBar) api().serviceRemoveBar(state,manager);}
 std::wstring RustProcessName() {
     if (!api().processName) return {};
     const unsigned int capacity=api().processName(nullptr,0);
@@ -581,24 +587,6 @@ ITfDisplayAttributeInfo* CreateDisplayAttributeInfo(REFGUID guid) {
 IEnumTfDisplayAttributeInfo* CreateDisplayAttributeEnum() {
     return api().displayAttributeEnum ? static_cast<IEnumTfDisplayAttributeInfo*>(api().displayAttributeEnum()) : nullptr;
 }
-namespace {
-int __cdecl ReadMode(void* service) { return static_cast<TextService*>(service)->IsOpen() ? 1 : 0; }
-void __cdecl ToggleMode(void* service) { static_cast<TextService*>(service)->ToggleInputMode(nullptr); }
-}
-LangBarButton::LangBarButton(TextService* service) {
-    DllAddRef();
-    if (api().langbar && api().langbarUpdate && api().langbarDetach) {
-        item_ = static_cast<ITfLangBarItemButton*>(api().langbar(service, ReadMode, ToggleMode));
-    }
-}
-LangBarButton::~LangBarButton() {
-    Detach();
-    if (item_) item_->Release();
-    DllRelease();
-}
-void LangBarButton::Update() { if (item_) api().langbarUpdate(item_); }
-void LangBarButton::Detach() { if (item_) api().langbarDetach(item_); }
-ULONG LangBarButton::Release() { delete this; return 0; }
 struct CandidateWindow::Impl {
     SelectHandler callback;
     void* handle = nullptr;

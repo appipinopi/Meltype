@@ -306,7 +306,9 @@ private:
 #endif
 
     std::unique_ptr<CandidateWindow> candidates_;
+#ifndef MELTYPE_RUST_CORE
     LangBarButton* langBar_ = nullptr;
+#endif
 };
 
 // ITfEditSession を関数で作る

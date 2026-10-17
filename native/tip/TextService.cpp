@@ -290,14 +290,9 @@ STDMETHODIMP TextService::ActivateEx(ITfThreadMgr* threadMgr, TfClientId clientI
                 if (epoch==s->focusEpoch_ && s->shutdownPhase_==0) s->candidates_.swap(created);
                 break;
             }
-            case 2:{
-                auto epoch=s->focusEpoch_;auto* created=new LangBarButton(s);
-                if (epoch!=s->focusEpoch_ || s->shutdownPhase_!=0) {created->Detach();created->Release();return nullptr;}
-                auto* old=s->langBar_;s->langBar_=created;
-                if (old) {old->Detach();old->Release();}
-                if (epoch!=s->focusEpoch_ || s->shutdownPhase_!=0 || s->langBar_!=created) return nullptr;
-                return created->Item();
-            }
+            case 2:return RustServiceCreateBar(s->state_.value,s,
+                [](void* p)->int {return static_cast<TextService*>(p)->IsOpen()?1:0;},
+                [](void* p) {try {static_cast<TextService*>(p)->ToggleInputMode(nullptr);}catch (...) {}});
             case 3:s->AdviseTextEditSink(static_cast<ITfDocumentMgr*>(document));break;
             case 4:s->Hello();break;
         }}catch (...) {}return nullptr;},
@@ -446,18 +441,7 @@ STDMETHODIMP TextService::Deactivate() {
             case 4:RustServiceClose(s->state_.value);break;
             case 5:s->candidates_.reset();break;
             case 6:s->UnadviseTextEditSink();break;
-            case 7:{
-                auto* bar=s->langBar_;s->langBar_=nullptr;
-                if (!bar) break;
-                bar->Detach();
-                ITfLangBarItemMgr* items=nullptr;
-                if (manager) {
-                    HRESULT hr=static_cast<IUnknown*>(manager)->QueryInterface(IID_ITfLangBarItemMgr,reinterpret_cast<void**>(&items));
-                    if (SUCCEEDED(hr) && items && bar->Item()) items->RemoveItem(bar->Item());
-                }
-                if (items) items->Release();
-                bar->Release();break;
-            }
+            case 7:RustServiceRemoveBar(s->state_.value,static_cast<IUnknown*>(manager));break;
             case 8:s->clientId_=TF_CLIENTID_NULL;break;
             case 9:s->EndComposition(ec);break;
         }}catch (...) {}},
@@ -874,7 +858,11 @@ void TextService::SetOpen(bool open) {
 }
 
 void TextService::UpdateLangBar() {
+#ifdef MELTYPE_RUST_CORE
+    RustServiceUpdateBar(state_.value);
+#else
     if (langBar_ != nullptr) langBar_->Update();
+#endif
 }
 
 // ---- キー ----

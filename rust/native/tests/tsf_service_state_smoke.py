@@ -10,6 +10,13 @@ from pathlib import Path
 import sys
 import threading
 import unittest
+sys.path.insert(0,str(Path(__file__).resolve().parent))
+from tsf_com_smoke import Guid, HR, invoke, release
+from tsf_startup_smoke import StartupHost
+READ=c.CFUNCTYPE(c.c_int,c.c_void_p)
+TOGGLE=c.CFUNCTYPE(None,c.c_void_p)
+class Point(c.Structure):
+    _fields_=[('x',HR),('y',HR)]
 P=c.c_void_p
 U32=c.c_uint32
 class State(c.Structure):
@@ -56,6 +63,7 @@ class State(c.Structure):
         ('pass_reason',P),
         ('sid',P),
         ('transport',P),
+        ('langbar',P),
     ]
 class StateTests(unittest.TestCase):
     @classmethod
@@ -73,14 +81,17 @@ class StateTests(unittest.TestCase):
         cls.api.meltype_tsf_service_close.argtypes=[P];cls.api.meltype_tsf_service_close.restype=None
         cls.api.meltype_tip_transport_request.argtypes=[P,c.c_char_p,U32,c.c_int];cls.api.meltype_tip_transport_request.restype=P
         cls.api.meltype_free.argtypes=[P]
+        cls.api.meltype_tsf_service_create_langbar.argtypes=[P,P,READ,TOGGLE];cls.api.meltype_tsf_service_create_langbar.restype=P
+        cls.api.meltype_tsf_service_remove_langbar.argtypes=[P,P];cls.api.meltype_tsf_service_remove_langbar.restype=None
+        cls.api.meltype_tsf_service_update_langbar.argtypes=[P];cls.api.meltype_tsf_service_update_langbar.restype=None
         cls.worker=str(Path(sys.argv[1]).resolve().with_name('meltype-tip-worker.exe')).encode()
 
         size=cls.api.meltype_tsf_service_state_layout(None,0)
         metadata=(U32*size)();cls.api.meltype_tsf_service_state_layout(metadata,size)
-        expected=[2,c.sizeof(State),c.alignment(State)]+[getattr(State,name).offset for name,_ in State._fields_]
+        expected=[3,c.sizeof(State),c.alignment(State)]+[getattr(State,name).offset for name,_ in State._fields_]
         if list(metadata)!=expected:raise AssertionError('State ABI mismatch; do not borrow this allocation')
     def setUp(self):
-        self.owned=[];self.before=self.live()
+        self.owned=[];self.callbacks=[];self.before=self.live()
         self.directory=tempfile.TemporaryDirectory(prefix='meltype-service-state-')
         self.old_data=os.environ.get('MELTYPE_RUST_DATA_DIR')
         os.environ['MELTYPE_RUST_DATA_DIR']=self.directory.name
@@ -103,7 +114,7 @@ class StateTests(unittest.TestCase):
     def test_layout_matches_all_fields_before_borrowing(self):
         size=self.api.meltype_tsf_service_state_layout(None,0)
         result=(U32*size)();self.assertEqual(self.api.meltype_tsf_service_state_layout(result,size),size)
-        expected=[2,c.sizeof(State),c.alignment(State)]+[getattr(State,name).offset for name,_ in State._fields_]
+        expected=[3,c.sizeof(State),c.alignment(State)]+[getattr(State,name).offset for name,_ in State._fields_]
         self.assertEqual(list(result),expected)
     def test_short_metadata_buffer_is_untouched(self):
         size=self.api.meltype_tsf_service_state_layout(None,0);result=(U32*(size+2))(*([0xaabbccdd]*(size+2)))
@@ -185,5 +196,99 @@ class StateTests(unittest.TestCase):
         for owner,worker,request in [(None,self.worker,b'{}'),(address,None,b'{}'),(address,self.worker,None)]:
             self.assertFalse(self.api.meltype_tsf_service_request(owner,worker,request,10,1))
         self.assertFalse(state.transport)
+    def create_bar(self,state,mode=None):
+        mode=mode if mode is not None else [False]
+        @READ
+        def read(owner):return int(mode[0])
+        @TOGGLE
+        def toggle(owner):mode[0]=not mode[0]
+        self.callbacks.extend([read,toggle])
+        bar=self.api.meltype_tsf_service_create_langbar(c.addressof(state),123,read,toggle)
+        self.assertTrue(bar);return bar,mode
+    def bar_text(self,bar):
+        text=P();self.assertEqual(invoke(bar,11,HR,[c.POINTER(P)],c.byref(text)),0)
+        allocator=c.WinDLL('oleaut32');allocator.SysFreeString.argtypes=[P]
+        try:return c.wstring_at(text)
+        finally:allocator.SysFreeString(text)
+    def click_bar(self,bar):self.assertEqual(invoke(bar,7,HR,[HR,Point,P],0,Point(),None),0)
+    def test_bar_replacement_detaches_retained_old_reference(self):
+        state=self.create();old,mode=self.create_bar(state)
+        invoke(old,1,U32,[]);self.assertEqual(self.bar_text(old),'A')
+        current,_=self.create_bar(state,[True]);self.assertEqual(state.langbar,current)
+        self.click_bar(old);self.assertFalse(mode[0]);self.assertEqual(self.bar_text(old),'あ')
+        self.assertEqual(release(old),0)
+        self.api.meltype_tsf_service_remove_langbar(c.addressof(state),None)
+        self.assertFalse(state.langbar)
+        self.api.meltype_tsf_service_remove_langbar(c.addressof(state),None)
+    def test_bar_destruction_detaches_context_from_retained_button(self):
+        state=self.create();bar,mode=self.create_bar(state);invoke(bar,1,U32,[])
+        address=c.addressof(state);self.owned.remove(address)
+        self.api.meltype_tsf_service_state_destroy(address)
+        self.click_bar(bar);self.assertFalse(mode[0]);self.assertEqual(self.bar_text(bar),'あ')
+        self.assertEqual(release(bar),0)
+    def test_bar_manager_removal_preserves_reentrant_new_bar(self):
+        state=self.create();old,mode=self.create_bar(state);invoke(old,1,U32,[])
+        host=StartupHost();removed=[];replacement=[]
+        def remove(_,bar):
+            removed.append(bar);self.assertFalse(state.langbar)
+            self.click_bar(bar);self.assertFalse(mode[0])
+            replacement.append(self.create_bar(state,[True])[0]);return 0
+        host.bind(host.bar_manager_table,6,HR,[P],remove)
+        self.api.meltype_tsf_service_remove_langbar(c.addressof(state),c.addressof(host.context))
+        self.assertEqual(removed,[old]);self.assertEqual(state.langbar,replacement[0])
+        self.assertEqual(host.bar_manager_refs,1);self.assertEqual(release(old),0)
+    def test_bar_failed_manager_query_releases_partial_reference(self):
+        state=self.create();self.create_bar(state)
+        host=StartupHost();host.fail_bar_query=host.partial_bar_query=True
+        self.api.meltype_tsf_service_remove_langbar(c.addressof(state),c.addressof(host.context))
+        self.assertFalse(state.langbar);self.assertEqual(host.bar_manager_refs,1)
+    def advise_bar(self,bar,on_update=None,on_drop=None):
+        refs=[1];events=[]
+        class Sink(c.Structure):_fields_=[('table',c.POINTER(P))]
+        @c.WINFUNCTYPE(HR,P,c.POINTER(Guid),c.POINTER(P))
+        def query(_,iid,out):refs[0]+=1;out[0]=c.addressof(sink);return 0
+        @c.WINFUNCTYPE(U32,P)
+        def add(_):refs[0]+=1;return refs[0]
+        @c.WINFUNCTYPE(U32,P)
+        def drop(_):
+            refs[0]-=1
+            if on_drop:on_drop(refs[0])
+            return refs[0]
+        @c.WINFUNCTYPE(HR,P,U32)
+        def update(_,flags):
+            events.append(flags)
+            if on_update:on_update()
+            return 0
+        table=(P*4)(*[c.cast(fn,P).value for fn in [query,add,drop,update]])
+        sink=Sink(table);self.callbacks.extend([query,add,drop,update,table,sink])
+        source=P();source_id=Guid.parse('4ea48a35-60ae-446f-8fd6-e6a8d82459f7')
+        sink_id=Guid.parse('57dbe1a0-de25-11d2-afdd-00105a2799b5')
+        self.assertEqual(invoke(bar,0,HR,[c.POINTER(Guid),c.POINTER(P)],c.byref(source_id),c.byref(source)),0)
+        cookie=U32()
+        self.assertEqual(invoke(source,3,HR,[c.POINTER(Guid),P,c.POINTER(U32)],c.byref(sink_id),c.byref(sink),c.byref(cookie)),0)
+        release(source);return refs,events
+    def test_bar_update_survives_service_destruction_in_notification(self):
+        state=self.create();bar,_=self.create_bar(state);address=c.addressof(state)
+        def destroy():
+            self.owned.remove(address);self.api.meltype_tsf_service_state_destroy(address)
+        refs,events=self.advise_bar(bar,on_update=destroy)
+        self.api.meltype_tsf_service_update_langbar(address)
+        self.assertEqual(events,[7]);self.assertEqual(refs,[1]);self.assertEqual(self.live(),self.before)
+    def test_bar_create_detects_reentrant_replacement_from_sink_release(self):
+        state=self.create();old,_=self.create_bar(state);replacement=[]
+        def released(refs):
+            if refs==1:replacement.append(self.create_bar(state,[True])[0])
+        refs,_=self.advise_bar(old,on_drop=released)
+        read=READ(lambda _:0);toggle=TOGGLE(lambda _:None);self.callbacks.extend([read,toggle])
+        result=self.api.meltype_tsf_service_create_langbar(c.addressof(state),123,read,toggle)
+        self.assertFalse(result);self.assertEqual(len(replacement),1)
+        self.assertEqual(state.langbar,replacement[0]);self.assertEqual(refs,[1])
+    def test_bar_stopping_and_null_state_are_inert(self):
+        state=self.create();state.shutdown_phase=1
+        read=READ(lambda _:0);toggle=TOGGLE(lambda _:None)
+        self.assertFalse(self.api.meltype_tsf_service_create_langbar(c.addressof(state),None,read,toggle))
+        self.assertFalse(self.api.meltype_tsf_service_create_langbar(None,None,read,toggle))
+        self.api.meltype_tsf_service_update_langbar(None);self.api.meltype_tsf_service_remove_langbar(None,None)
+        self.assertFalse(state.langbar)
 if __name__=='__main__':unittest.main(argv=[sys.argv[0]],verbosity=2,failfast=True)
 

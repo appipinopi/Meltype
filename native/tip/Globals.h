@@ -266,6 +266,9 @@ void RustServiceSetSid(RustServiceState*,const char*);
 std::string RustServiceSid(const RustServiceState*);
 bool RustServiceRequest(RustServiceState*,const std::string&,std::string&,DWORD,bool);
 void RustServiceClose(RustServiceState*);
+ITfLangBarItem* RustServiceCreateBar(RustServiceState*,void*,int (__cdecl *)(void*),void (__cdecl *)(void*));
+void RustServiceUpdateBar(RustServiceState*);
+void RustServiceRemoveBar(RustServiceState*,IUnknown*);
 #endif
 
 // 文字コードの変換

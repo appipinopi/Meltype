@@ -2,6 +2,7 @@
 // Copyright (C) 2026 lnkiai, appipinopi
 //! Rust-owned TSF state storage. Temporary C++ aliases use a checked C layout.
 //! Raw interface/token slots retain their existing TSF-thread ownership policy.
+use super::{fields, langbar};
 use std::{
     alloc::{alloc, Layout},
     ffi::{c_char, c_void, CStr, CString},
@@ -9,6 +10,10 @@ use std::{
     panic::catch_unwind,
     ptr,
     sync::atomic::{AtomicU32, Ordering},
+};
+use windows::{
+    core::{IUnknown, Interface},
+    Win32::UI::TextServices::{ITfLangBarItem, ITfLangBarItemMgr},
 };
 #[repr(C)]
 pub struct ServiceState {
@@ -54,6 +59,7 @@ pub struct ServiceState {
     pass_reason: *const u16,
     sid: *mut c_char,
     transport: *mut c_void,
+    langbar: *mut c_void,
 }
 impl Default for ServiceState {
     fn default() -> Self {
@@ -100,17 +106,91 @@ impl Default for ServiceState {
             pass_reason: ptr::null(),
             sid: ptr::null_mut(),
             transport: ptr::null_mut(),
+            langbar: ptr::null_mut(),
         }
     }
 }
 impl Drop for ServiceState {
     fn drop(&mut self) {
         unsafe {
+            self.shutdown_phase = 2;
+            self.deactivated = true;
+            retire_bar(ptr::addr_of_mut!(self.langbar).replace(ptr::null_mut()));
             let sid = std::mem::replace(&mut self.sid, ptr::null_mut());
             if !sid.is_null() {
                 drop(CString::from_raw(sid));
             }
             close_transport(self);
+        }
+    }
+}
+unsafe fn retire_bar(raw: *mut c_void) {
+    if !raw.is_null() {
+        langbar::meltype_tsf_langbar_detach(raw);
+        drop(IUnknown::from_raw(raw));
+    }
+}
+/// Replace the owned bar and return a borrowed ITfLangBarItem. Publish the new
+/// slot before detaching/releasing the old bar, whose sink release may reenter.
+/// # Safety
+/// Live state and callback context on their TSF thread for this entire call and
+/// until removal/destruction. Caller retains the service across reentrant sink
+/// releases. Callback signatures follow create_langbar and never unwind.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_tsf_service_create_langbar(
+    state: *mut ServiceState,
+    owner: *mut c_void,
+    read: Option<unsafe extern "C" fn(*mut c_void) -> i32>,
+    toggle: Option<unsafe extern "C" fn(*mut c_void)>,
+) -> *mut c_void {
+    if state.is_null() || (*state).shutdown_phase != 0 {
+        return ptr::null_mut();
+    }
+    let epoch = (*state).focus_epoch;
+    let created = langbar::meltype_tsf_create_langbar(owner, read, toggle);
+    let previous = ptr::addr_of_mut!((*state).langbar).replace(created);
+    retire_bar(previous);
+    if (*state).shutdown_phase == 0 && (*state).focus_epoch == epoch && (*state).langbar == created
+    {
+        created
+    } else {
+        ptr::null_mut()
+    }
+}
+/// # Safety
+/// State is null or live on its TSF thread at entry. A local COM reference keeps
+/// the bar alive if its notification destroys the service. No state access follows.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_tsf_service_update_langbar(state: *mut ServiceState) {
+    if state.is_null() {
+        return;
+    }
+    let raw = ptr::addr_of!((*state).langbar).read();
+    if let Some(bar) = IUnknown::from_raw_borrowed(&raw).cloned() {
+        langbar::meltype_tsf_langbar_update(bar.as_raw());
+    }
+}
+/// Detach the callback context and slot before querying/removing from TSF.
+/// # Safety
+/// State is null or live on its TSF thread at entry. Manager is null or borrowed
+/// IUnknown kept alive for the call. Reentrant replacement is left untouched.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_tsf_service_remove_langbar(
+    state: *mut ServiceState,
+    manager: *mut c_void,
+) {
+    if state.is_null() {
+        return;
+    }
+    let raw = ptr::addr_of_mut!((*state).langbar).replace(ptr::null_mut());
+    if raw.is_null() {
+        return;
+    }
+    langbar::meltype_tsf_langbar_detach(raw);
+    let bar = ITfLangBarItem::from_raw(raw);
+    if let Some(manager) = IUnknown::from_raw_borrowed(&manager) {
+        if let Some(items) = fields::query::<ITfLangBarItemMgr>(manager) {
+            let _ = items.RemoveItem(&bar);
         }
     }
 }
@@ -219,7 +299,7 @@ pub unsafe extern "C" fn meltype_tsf_service_state_destroy(data: *mut ServiceSta
 #[no_mangle]
 pub unsafe extern "C" fn meltype_tsf_service_state_layout(out: *mut u32, capacity: u32) -> u32 {
     let values = [
-        2,
+        3,
         size_of::<ServiceState>() as u32,
         align_of::<ServiceState>() as u32,
         offset_of!(ServiceState, refs) as u32,
@@ -264,6 +344,7 @@ pub unsafe extern "C" fn meltype_tsf_service_state_layout(out: *mut u32, capacit
         offset_of!(ServiceState, pass_reason) as u32,
         offset_of!(ServiceState, sid) as u32,
         offset_of!(ServiceState, transport) as u32,
+        offset_of!(ServiceState, langbar) as u32,
     ];
     if !out.is_null() && capacity as usize >= values.len() {
         ptr::copy_nonoverlapping(values.as_ptr(), out, values.len());
