@@ -38,7 +38,7 @@ int main(int argc,char **argv) {
         auto deletion=reinterpret_cast<int (*)(const uint8_t *,uint32_t,uint32_t,const uint8_t *,uint32_t,int)>(dlsym(library,"meltype_fcitx_delete_count"));
         check(context&&deletion,"text ABI missing");
         size_t textCases=0;
-        for(const std::string input:{std::string("abcdef"),std::string("先前😀後かな"),std::string("a\0b",3),std::string(70,'a')}) {
+        for(const std::string &input:{std::string("abcdef"),std::string("先前😀後かな"),std::string("a\0b",3),std::string(70,'a')}) {
             for(size_t cursor=0;cursor<=charLength(input);cursor++) {
                 for(uint32_t limit:{0U,1U,2U,20U,100U}) {
                     uint32_t offsets[3]={123,123,123};
@@ -47,7 +47,7 @@ int main(int argc,char **argv) {
                     check(offsets[0]==byteOffset(input,start)&&offsets[1]==byteOffset(input,cursor)&&offsets[2]==byteOffset(input,cursor+20),"legacy context offset mismatch");
                     textCases++;
                 }
-                for(const std::string expected:{std::string("a"),std::string("bc"),std::string("前😀"),std::string("かな"),std::string("a\0b",3)}) {
+                for(const std::string &expected:{std::string("a"),std::string("bc"),std::string("前😀"),std::string("かな"),std::string("a\0b",3)}) {
                     for(int remove:{1,2,3,4}) {
                         const auto start=cursor>charLength(expected)?cursor-charLength(expected):0;
                         const auto before=input.substr(byteOffset(input,start),byteOffset(input,cursor)-byteOffset(input,start));

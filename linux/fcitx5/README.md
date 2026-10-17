@@ -81,5 +81,7 @@ suffix and its UTF-16 deletion length, returning a character count for the SDK.
 Invalid UTF-8/cursors are rejected, and failed range queries leave output
 untouched. The old helpers live only in the explicit legacy build and reference
 tests. The standalone comparison covers Japanese, supplementary characters,
-embedded NUL, window limits and expected-text mismatches. SDK editor callbacks
+embedded NUL, window limits and expected-text mismatches: 2,225 comparisons
+passed locally on WSL with the actual Rust library. A range-loop copy warning
+in the test was fixed before that successful run. SDK editor callbacks
 and widgets remain C++ and still need migration.
