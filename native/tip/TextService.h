@@ -138,6 +138,7 @@ private:
     HRESULT DispatchKey(unsigned int,ITfContext*,UINT,LPARAM,BOOL*);
     RustModeCallbacks ModeCallbacks();
     RustCommitCallbacks CommitCallbacks();
+    RustCompositionSlots CompositionSlots();
 #endif
     void ResetStaleCommit();
     std::string CommitRequest(bool moved) const;

@@ -340,6 +340,23 @@ typedef struct MeltypeTsfApplyReplyCallbacks {
    Empty view clears preedit text only if active; inactive replies preserve it.
    Owner/context/composition/range refs survive reentrant callbacks. */
 int32_t meltype_tsf_apply_reply(void *context, uint32_t cookie, const char *reply, const char *metadata, const MeltypeTsfApplyReplyCallbacks *callbacks);
+typedef struct MeltypeTsfCompositionSlots {
+    void *lifetime;
+    void **composition,**context;
+    void *sink;
+} MeltypeTsfCompositionSlots;
+/* TSF thread only. Distinct slots hold service-owned COM references and must
+   remain writable while lifetime IUnknown is retained. Notifications may replace
+   or clear slots using the same ownership convention. sink is a borrowed
+   ITfCompositionSink. New composition/context references transfer into slots.
+   Apply result: 0 start failed,1 update attempted,-1 invalid. Write flags:
+   written=1,ending attempted=2; -1 invalid. End: 0 absent,1 attempted,-1 invalid.
+   Ending clears only the captured pair, preserving replacement input even in
+   the same context. Commit writing never ends a replacement created mid-write.
+   View JSON and UTF-16 text/range are borrowed until return. */
+int32_t meltype_tsf_apply_owned_composition(void *context, uint32_t cookie, const char *view, uint32_t input_atom, uint32_t converted_atom, uint32_t target_atom, const MeltypeTsfCompositionSlots *slots);
+int32_t meltype_tsf_write_owned_commit(void *context, void *range, uint32_t cookie, const uint16_t *text, uint32_t length, int32_t preserve_caret, const MeltypeTsfCompositionSlots *slots);
+int32_t meltype_tsf_end_owned_composition(uint32_t cookie, const MeltypeTsfCompositionSlots *slots);
 #endif
 #ifdef __cplusplus
 }

@@ -10,6 +10,35 @@ use std::{
 };
 use windows::{core::Interface, Win32::UI::TextServices::*};
 type Surrounding = unsafe extern "C" fn(*mut c_void, *const u16, u32, *const u16, u32);
+pub(super) unsafe fn composition_range(composition: &ITfComposition) -> Option<ITfRange> {
+    let mut raw = ptr::null_mut();
+    let status = (Interface::vtable(composition).GetRange)(composition.as_raw(), &mut raw);
+    let range = if raw.is_null() {
+        None
+    } else {
+        Some(ITfRange::from_raw(raw))
+    };
+    if status.is_ok() {
+        range
+    } else {
+        None
+    }
+}
+pub(super) unsafe fn attribute_property(context: &ITfContext) -> Option<ITfProperty> {
+    let mut raw = ptr::null_mut();
+    let status =
+        (Interface::vtable(context).GetProperty)(context.as_raw(), &GUID_PROP_ATTRIBUTE, &mut raw);
+    let property = if raw.is_null() {
+        None
+    } else {
+        Some(ITfProperty::from_raw(raw))
+    };
+    if status.is_ok() {
+        property
+    } else {
+        None
+    }
+}
 pub(super) unsafe fn selection(context: &ITfContext, cookie: u32) -> Option<ITfRange> {
     let mut value = [TF_SELECTION::default()];
     let mut fetched = 0;
@@ -165,7 +194,7 @@ pub unsafe extern "C" fn meltype_tsf_write_range(
         let Some(range) = ITfRange::from_raw_borrowed(&range) else {
             return false;
         };
-        if let Ok(attribute) = context.GetProperty(&GUID_PROP_ATTRIBUTE) {
+        if let Some(attribute) = attribute_property(context) {
             let _ = attribute.Clear(cookie, range);
         }
         let text = if length == 0 {

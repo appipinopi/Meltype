@@ -20,7 +20,7 @@ unsafe fn attribute(context: &ITfContext, range: &ITfRange, cookie: u32, atom: u
     if atom == 0 {
         return;
     }
-    if let Ok(property) = context.GetProperty(&GUID_PROP_ATTRIBUTE) {
+    if let Some(property) = ranges::attribute_property(context) {
         let value = VARIANT::from(atom as i32);
         let _ = property.SetValue(cookie, range, &value);
     }
@@ -100,7 +100,7 @@ pub unsafe extern "C" fn meltype_tsf_update_composition(
         if view.converting && !lengths.is_empty() && lengths.iter().sum::<usize>() != text.len() {
             return false;
         }
-        let Ok(range) = composition.GetRange() else {
+        let Some(range) = ranges::composition_range(&composition) else {
             return false;
         };
         if range.SetText(cookie, 0, &text).is_err() {
@@ -157,8 +157,8 @@ pub unsafe extern "C" fn meltype_tsf_end_composition(
         };
         let composition = composition.clone();
         let context = ITfContext::from_raw_borrowed(&context).cloned();
-        if let (Some(context), Ok(range)) = (&context, composition.GetRange()) {
-            if let Ok(property) = context.GetProperty(&GUID_PROP_ATTRIBUTE) {
+        if let (Some(context), Some(range)) = (&context, ranges::composition_range(&composition)) {
+            if let Some(property) = ranges::attribute_property(context) {
                 let _ = property.Clear(cookie, &range);
             }
         }

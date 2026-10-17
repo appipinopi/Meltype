@@ -85,6 +85,9 @@ struct RustApi {
     HRESULT (__cdecl *commit)(unsigned int,void*,unsigned int,unsigned int,const char*,const RustCommitCallbacks*,int) = nullptr;
     HRESULT (__cdecl *selectCandidate)(unsigned int,int,int,const char*,const RustCommitCallbacks*) = nullptr;
     int (__cdecl *applyReply)(void*,unsigned int,const char*,const char*,const RustApplyReplyCallbacks*) = nullptr;
+    int (__cdecl *applyOwnedComposition)(void*,unsigned int,const char*,unsigned int,unsigned int,unsigned int,const RustCompositionSlots*) = nullptr;
+    int (__cdecl *writeOwnedCommit)(void*,void*,unsigned int,const unsigned short*,unsigned int,int,const RustCompositionSlots*) = nullptr;
+    int (__cdecl *endOwnedComposition)(unsigned int,const RustCompositionSlots*) = nullptr;
     RustApi() {
         wchar_t path[32768];
         const DWORD size = GetModuleFileNameW(g_module, path, ARRAYSIZE(path));
@@ -167,6 +170,9 @@ struct RustApi {
         commit = reinterpret_cast<decltype(commit)>(GetProcAddress(module, "meltype_tsf_commit"));
         selectCandidate = reinterpret_cast<decltype(selectCandidate)>(GetProcAddress(module, "meltype_tsf_select_candidate"));
         applyReply = reinterpret_cast<decltype(applyReply)>(GetProcAddress(module, "meltype_tsf_apply_reply"));
+        applyOwnedComposition = reinterpret_cast<decltype(applyOwnedComposition)>(GetProcAddress(module, "meltype_tsf_apply_owned_composition"));
+        writeOwnedCommit = reinterpret_cast<decltype(writeOwnedCommit)>(GetProcAddress(module, "meltype_tsf_write_owned_commit"));
+        endOwnedComposition = reinterpret_cast<decltype(endOwnedComposition)>(GetProcAddress(module, "meltype_tsf_end_owned_composition"));
     }
     bool ready() const { return create && destroy && request && freeText; }
     // The module stays loaded for the process lifetime. Do not unload Rust
@@ -254,6 +260,16 @@ bool RustUpdateComposition(TfEditCookie cookie,ITfContext* context,ITfCompositio
 void RustEndComposition(TfEditCookie cookie,ITfContext* context,ITfComposition* composition) {
     if (api().endComposition) api().endComposition(context,composition,cookie);
 }
+int RustApplyOwnedComposition(TfEditCookie cookie,ITfContext* context,const JsonValue& view,TfGuidAtom input,TfGuidAtom converted,TfGuidAtom target,const RustCompositionSlots& slots) {
+    const auto json=ViewJson(view);
+    return api().applyOwnedComposition?api().applyOwnedComposition(context,cookie,json.c_str(),input,converted,target,&slots):-1;
+}
+int RustWriteOwnedCommit(TfEditCookie cookie,ITfContext* context,ITfRange* range,const std::wstring& text,bool keep,const RustCompositionSlots& slots) {
+    return api().writeOwnedCommit?api().writeOwnedCommit(context,range,cookie,reinterpret_cast<const unsigned short*>(text.data()),static_cast<unsigned int>(text.size()),keep?1:0,&slots):-1;
+}
+int RustEndOwnedComposition(TfEditCookie cookie,const RustCompositionSlots& slots) {
+    return api().endOwnedComposition?api().endOwnedComposition(cookie,&slots):-1;
+}
 void RustSetAttribute(TfEditCookie cookie,ITfContext* context,ITfRange* range,TfGuidAtom atom) {
     if (api().setAttribute) api().setAttribute(context,range,cookie,atom);
 }
@@ -327,7 +343,7 @@ bool RustWouldEat(ITfContext* context,UINT key,LPARAM message,bool test,const Ru
     ch=0;
     return api().wouldEat && api().wouldEat(context,key,static_cast<ULONG_PTR>(message),test?1:0,&callbacks,&ch)!=0;
 }
-void* RustKeyStateCreate() {return api().keyStateCreate && api().keyStateReset && api().keyStateDestroy && api().keyCacheClear && api().isReinjected && api().keySecret && api().reinject && api().keyForeground && api().keyStaleRead && api().keyStaleWrite && api().keyStaleClear && api().keyPassed && api().keyEvent && api().toggleMode && api().codeLine && api().queryMode && api().applyMode && api().handleKey && api().commit && api().selectCandidate && api().applyReply ? api().keyStateCreate() : nullptr;}
+void* RustKeyStateCreate() {return api().keyStateCreate && api().keyStateReset && api().keyStateDestroy && api().keyCacheClear && api().isReinjected && api().keySecret && api().reinject && api().keyForeground && api().keyStaleRead && api().keyStaleWrite && api().keyStaleClear && api().keyPassed && api().keyEvent && api().toggleMode && api().codeLine && api().queryMode && api().applyMode && api().handleKey && api().commit && api().selectCandidate && api().applyReply && api().applyOwnedComposition && api().writeOwnedCommit && api().endOwnedComposition ? api().keyStateCreate() : nullptr;}
 void RustKeyStateReset(void* state) {if (api().keyStateReset) api().keyStateReset(state);}
 void RustKeyStateDestroy(void* state) {if (api().keyStateDestroy) api().keyStateDestroy(state);}
 void RustKeyCacheClear(void* state) {if (api().keyCacheClear) api().keyCacheClear(state);}

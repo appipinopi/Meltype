@@ -180,6 +180,10 @@ struct RustApplyReplyCallbacks {
     void (__cdecl *action)(void*,unsigned int,unsigned int,void*,const char*,int);
 };
 bool RustApplyReply(TfEditCookie,ITfContext*,const JsonValue&,const std::string&,const RustApplyReplyCallbacks&);
+struct RustCompositionSlots {IUnknown* lifetime;void** composition;void** context;ITfCompositionSink* sink;};
+int RustApplyOwnedComposition(TfEditCookie,ITfContext*,const JsonValue&,TfGuidAtom,TfGuidAtom,TfGuidAtom,const RustCompositionSlots&);
+int RustWriteOwnedCommit(TfEditCookie,ITfContext*,ITfRange*,const std::wstring&,bool,const RustCompositionSlots&);
+int RustEndOwnedComposition(TfEditCookie,const RustCompositionSlots&);
 #endif
 
 // 文字コードの変換
