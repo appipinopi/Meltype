@@ -125,7 +125,7 @@ int wmain() {
     assert(service->OnChange(GUID_COMPARTMENT_KEYBOARD_OPENCLOSE)==S_OK);
     struct ModeState {TextService* service;void* manager;bool open=true;int commits=0,refreshes=0,logs=0;unsigned long long epoch=0;unsigned int phase=0;} state{service,thread};
     RustOpenChangeCallbacks callbacks={
-        &state,static_cast<ITfTextInputProcessorEx*>(service),&state.epoch,&state.phase,
+        &state,service->ServiceInterface<ITfTextInputProcessorEx>(),&state.epoch,&state.phase,
         [](void* p,void** manager)->unsigned int {auto* s=static_cast<ModeState*>(p);*manager=s->manager;return (s->open?1u:0u)|2u;},
         [](void* p,unsigned int op,int value) {auto* s=static_cast<ModeState*>(p);switch (op) {
             case 0:s->open=value!=0;break;

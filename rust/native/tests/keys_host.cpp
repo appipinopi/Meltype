@@ -57,9 +57,9 @@ int wmain() {
     assert(stale.tries==0 && stale.key==0 && stale.time==0x123456789abcdef0ULL);
     int reads=0,privateField=0;
     auto reader=[](void* p,void*,int* field)->int {++*static_cast<int*>(p);*field=1;return -1;};
-    assert(RustKeySecret(keyState,context,65,true,&reads,static_cast<ITfTextInputProcessorEx*>(service),reader,privateField)==-1);
+    assert(RustKeySecret(keyState,context,65,true,&reads,service->ServiceInterface<ITfTextInputProcessorEx>(),reader,privateField)==-1);
     assert(privateField==1 && reads==1 && document.refs==2);
-    assert(RustKeySecret(keyState,context,65,false,&reads,static_cast<ITfTextInputProcessorEx*>(service),reader,privateField)==-1);
+    assert(RustKeySecret(keyState,context,65,false,&reads,service->ServiceInterface<ITfTextInputProcessorEx>(),reader,privateField)==-1);
     assert(privateField==1 && reads==1 && document.refs==1);
     DWORD error=0;
     auto sender=[](void*,const INPUT* inputs,unsigned int count)->unsigned int {
@@ -68,16 +68,16 @@ int wmain() {
         assert(inputs[1].ki.dwFlags==KEYEVENTF_KEYUP && inputs[0].ki.dwExtraInfo==0x4d4c5450);
         return 2;  // Controlled transport: no key is injected.
     };
-    assert(RustReinject(keyState,65,static_cast<ITfTextInputProcessorEx*>(service),error,nullptr,sender)==1 && error==0);
+    assert(RustReinject(keyState,65,service->ServiceInterface<ITfTextInputProcessorEx>(),error,nullptr,sender)==1 && error==0);
     LPARAM extra=SetMessageExtraInfo(0x4d4c5450);
     assert(RustIsReinjected(keyState,65) && !RustIsReinjected(keyState,65));
     SetMessageExtraInfo(extra);
     auto failure=[](void*,const INPUT*,unsigned int)->unsigned int {SetLastError(ERROR_ACCESS_DENIED);return 0;};
-    assert(RustReinject(keyState,66,static_cast<ITfTextInputProcessorEx*>(service),error,nullptr,failure)==0 && error==ERROR_ACCESS_DENIED);
+    assert(RustReinject(keyState,66,service->ServiceInterface<ITfTextInputProcessorEx>(),error,nullptr,failure)==0 && error==ERROR_ACCESS_DENIED);
     RustKeyStateReset(keyState);RustKeyStateDestroy(keyState);
     State state{service};state.snapshot.open=1;
     RustKeyCallbacks callbacks={
-        &state,static_cast<ITfTextInputProcessorEx*>(service),
+        &state,service->ServiceInterface<ITfTextInputProcessorEx>(),
         [](void* p,RustKeySnapshot* out) {*out=static_cast<State*>(p)->snapshot;},
         [](void* p,unsigned int op,unsigned long long a,unsigned long long) {
             auto* s=static_cast<State*>(p);

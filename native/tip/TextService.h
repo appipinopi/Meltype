@@ -21,13 +21,22 @@ namespace meltype {
 
 class LangBarButton;
 
-class TextService final : public ITfTextInputProcessorEx,
+#ifdef MELTYPE_RUST_CORE
+#define MELTYPE_SERVICE_OVERRIDE
+#else
+#define MELTYPE_SERVICE_OVERRIDE override
+#endif
+class TextService final
+#ifndef MELTYPE_RUST_CORE
+                        : public ITfTextInputProcessorEx,
                           public ITfThreadMgrEventSink,
                           public ITfKeyEventSink,
                           public ITfCompositionSink,
                           public ITfDisplayAttributeProvider,
                           public ITfCompartmentEventSink,
-                          public ITfTextEditSink {
+                          public ITfTextEditSink
+#endif
+{
 public:
     TextService();
     template<class T> T* ServiceInterface() const {
@@ -39,45 +48,58 @@ public:
     }
 
     // IUnknown
-    STDMETHODIMP QueryInterface(REFIID riid, void** ppv) override;
-    STDMETHODIMP_(ULONG) AddRef() override;
-    STDMETHODIMP_(ULONG) Release() override;
+    STDMETHODIMP QueryInterface(REFIID riid, void** ppv) MELTYPE_SERVICE_OVERRIDE;
+    STDMETHODIMP_(ULONG) AddRef() MELTYPE_SERVICE_OVERRIDE;
+    STDMETHODIMP_(ULONG) Release() MELTYPE_SERVICE_OVERRIDE;
 
     // ITfTextInputProcessor(Ex)
-    STDMETHODIMP Activate(ITfThreadMgr* threadMgr, TfClientId clientId) override;
-    STDMETHODIMP ActivateEx(ITfThreadMgr* threadMgr, TfClientId clientId, DWORD flags) override;
-    STDMETHODIMP Deactivate() override;
+    STDMETHODIMP Activate(ITfThreadMgr* threadMgr, TfClientId clientId) MELTYPE_SERVICE_OVERRIDE;
+    STDMETHODIMP ActivateEx(ITfThreadMgr* threadMgr, TfClientId clientId, DWORD flags) MELTYPE_SERVICE_OVERRIDE;
+    STDMETHODIMP Deactivate() MELTYPE_SERVICE_OVERRIDE;
 
     // ITfThreadMgrEventSink
-    STDMETHODIMP OnInitDocumentMgr(ITfDocumentMgr*) override { return S_OK; }
-    STDMETHODIMP OnUninitDocumentMgr(ITfDocumentMgr*) override { return S_OK; }
-    STDMETHODIMP OnSetFocus(ITfDocumentMgr* focus, ITfDocumentMgr* previous) override;
-    STDMETHODIMP OnPushContext(ITfContext*) override { return S_OK; }
-    STDMETHODIMP OnPopContext(ITfContext*) override { return S_OK; }
+#ifndef MELTYPE_RUST_CORE
+    STDMETHODIMP OnInitDocumentMgr(ITfDocumentMgr*) MELTYPE_SERVICE_OVERRIDE { return S_OK; }
+#endif
+#ifndef MELTYPE_RUST_CORE
+    STDMETHODIMP OnUninitDocumentMgr(ITfDocumentMgr*) MELTYPE_SERVICE_OVERRIDE { return S_OK; }
+#endif
+    STDMETHODIMP OnSetFocus(ITfDocumentMgr* focus, ITfDocumentMgr* previous) MELTYPE_SERVICE_OVERRIDE;
+#ifndef MELTYPE_RUST_CORE
+    STDMETHODIMP OnPushContext(ITfContext*) MELTYPE_SERVICE_OVERRIDE { return S_OK; }
+#endif
+#ifndef MELTYPE_RUST_CORE
+    STDMETHODIMP OnPopContext(ITfContext*) MELTYPE_SERVICE_OVERRIDE { return S_OK; }
+#endif
 
     // ITfKeyEventSink
-    STDMETHODIMP OnSetFocus(BOOL foreground) override;
-    STDMETHODIMP OnTestKeyDown(ITfContext* context, WPARAM wParam, LPARAM lParam, BOOL* eaten) override;
-    STDMETHODIMP OnKeyDown(ITfContext* context, WPARAM wParam, LPARAM lParam, BOOL* eaten) override;
-    STDMETHODIMP OnTestKeyUp(ITfContext* context, WPARAM wParam, LPARAM lParam, BOOL* eaten) override;
-    STDMETHODIMP OnKeyUp(ITfContext* context, WPARAM wParam, LPARAM lParam, BOOL* eaten) override;
-    STDMETHODIMP OnPreservedKey(ITfContext*, REFGUID, BOOL* eaten) override {
+    STDMETHODIMP OnSetFocus(BOOL foreground) MELTYPE_SERVICE_OVERRIDE;
+    STDMETHODIMP OnTestKeyDown(ITfContext* context, WPARAM wParam, LPARAM lParam, BOOL* eaten) MELTYPE_SERVICE_OVERRIDE;
+    STDMETHODIMP OnKeyDown(ITfContext* context, WPARAM wParam, LPARAM lParam, BOOL* eaten) MELTYPE_SERVICE_OVERRIDE;
+    STDMETHODIMP OnTestKeyUp(ITfContext* context, WPARAM wParam, LPARAM lParam, BOOL* eaten) MELTYPE_SERVICE_OVERRIDE;
+    STDMETHODIMP OnKeyUp(ITfContext* context, WPARAM wParam, LPARAM lParam, BOOL* eaten) MELTYPE_SERVICE_OVERRIDE;
+#ifndef MELTYPE_RUST_CORE
+    STDMETHODIMP OnPreservedKey(ITfContext*, REFGUID, BOOL* eaten) MELTYPE_SERVICE_OVERRIDE {
         *eaten = FALSE;
         return S_OK;
     }
+#endif
 
     // ITfCompositionSink
-    STDMETHODIMP OnCompositionTerminated(TfEditCookie ec, ITfComposition* composition) override;
+    STDMETHODIMP OnCompositionTerminated(TfEditCookie ec, ITfComposition* composition) MELTYPE_SERVICE_OVERRIDE;
 
+#ifndef MELTYPE_RUST_CORE
     // ITfDisplayAttributeProvider
-    STDMETHODIMP EnumDisplayAttributeInfo(IEnumTfDisplayAttributeInfo** ppEnum) override;
-    STDMETHODIMP GetDisplayAttributeInfo(REFGUID guid, ITfDisplayAttributeInfo** ppInfo) override;
+    STDMETHODIMP EnumDisplayAttributeInfo(IEnumTfDisplayAttributeInfo** ppEnum) MELTYPE_SERVICE_OVERRIDE;
+    STDMETHODIMP GetDisplayAttributeInfo(REFGUID guid, ITfDisplayAttributeInfo** ppInfo) MELTYPE_SERVICE_OVERRIDE;
+
+#endif
 
     // ITfCompartmentEventSink
-    STDMETHODIMP OnChange(REFGUID guid) override;
+    STDMETHODIMP OnChange(REFGUID guid) MELTYPE_SERVICE_OVERRIDE;
 
     // ITfTextEditSink
-    STDMETHODIMP OnEndEdit(ITfContext* context, TfEditCookie ec, ITfEditRecord* record) override;
+    STDMETHODIMP OnEndEdit(ITfContext* context, TfEditCookie ec, ITfEditRecord* record) MELTYPE_SERVICE_OVERRIDE;
 
     // 入力モード (日本語 = 開いている / 英数 = 閉じている)。タスクバーのボタンから使う。
     // コードエディターのコードの行では、IME は開いたまま、次に打つキーが英数のままアプリに通るので「A」と出す
@@ -318,6 +340,8 @@ private:
     LangBarButton* langBar_ = nullptr;
 #endif
 };
+
+#undef MELTYPE_SERVICE_OVERRIDE
 
 // ITfEditSession を関数で作る
 HRESULT RunEditSession(ITfContext* context, TfClientId clientId, DWORD flags, std::function<HRESULT(TfEditCookie)> action);

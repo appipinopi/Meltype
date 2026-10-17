@@ -18,7 +18,7 @@ int wmain() {
     methods[1]=reinterpret_cast<void*>(Context::Add);methods[2]=reinterpret_cast<void*>(Context::Release);
     Context context;State state{new TextService(),&context,{}};
     RustApplyReplyCallbacks callbacks={
-        &state,static_cast<ITfTextInputProcessorEx*>(state.service),
+        &state,state.service->ServiceInterface<ITfTextInputProcessorEx>(),
         [](void*)->void* {return nullptr;},
         [](void*,void*,const unsigned short*,unsigned int)->int {assert(false);return 0;},
         [](void* p,unsigned int op,unsigned int cookie,void* context,const char* json,int value) {

@@ -43,7 +43,7 @@ int wmain() {
     assert(service->OnEndEdit(context,7,nullptr)==S_OK && record.reads==2);
     State state{service,context};
     RustEditCallbacks callbacks = {
-        &state,static_cast<ITfTextInputProcessorEx*>(service),
+        &state,service->ServiceInterface<ITfTextInputProcessorEx>(),
         [](void* p)->int {auto* s=static_cast<State*>(p);bool own=s->own;s->own=false;return own?1:0;},
         [](void*,void** context)->void* {*context=nullptr;return nullptr;},
         [](void* p,unsigned int cookie,void* context,int changed) {

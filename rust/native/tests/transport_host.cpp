@@ -30,7 +30,7 @@ int wmain() {
     first.Close();second.Close();
     struct CoreState {TextService* service;unsigned long long epoch=0,last=1000;unsigned int flags=0,published=0;int hellos=0,notices=0;RustCoreStateCallbacks* callbacks=nullptr;} state{new TextService()};
     RustCoreStateCallbacks callbacks={
-        &state,static_cast<ITfTextInputProcessorEx*>(state.service),&state.epoch,
+        &state,state.service->ServiceInterface<ITfTextInputProcessorEx>(),&state.epoch,
         [](void* p,unsigned long long* last)->unsigned int {auto* s=static_cast<CoreState*>(p);*last=s->last;return s->flags;},
         [](void* p,unsigned int op,unsigned long long value) {auto* s=static_cast<CoreState*>(p);switch (op) {
             case 0:s->last=value;break;

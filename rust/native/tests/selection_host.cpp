@@ -23,7 +23,7 @@ int wmain() {
     methods[1]=reinterpret_cast<void*>(Context::Add);methods[2]=reinterpret_cast<void*>(Context::Release);methods[3]=reinterpret_cast<void*>(Context::Edit);
     Context context;State state{new TextService(),&context};
     RustCommitCallbacks callbacks={
-        &state,static_cast<ITfTextInputProcessorEx*>(state.service),
+        &state,state.service->ServiceInterface<ITfTextInputProcessorEx>(),
         [](void* p,void** context,void** sink)->void* {auto* s=static_cast<State*>(p);*context=s->context;*sink=nullptr;return nullptr;},
         [](void* p,unsigned int op,unsigned int cookie,int value) {assert(op==0 && cookie==7 && value==1);static_cast<State*>(p)->own=true;},
         [](void* p,const char* text,unsigned int cookie,void* context,void* target) {

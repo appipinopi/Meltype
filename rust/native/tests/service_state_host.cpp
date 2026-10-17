@@ -5,6 +5,8 @@
 #include <cassert>
 #include <cstdio>
 using namespace meltype;
+static_assert(!std::is_polymorphic<TextService>::value,"Rust build must not emit C++ service vtables");
+static_assert(!std::is_base_of<IUnknown,TextService>::value,"COM identity belongs only to Rust");
 int wmain() {
     wchar_t executable[32768]={};
     assert(GetModuleFileNameW(nullptr,executable,ARRAYSIZE(executable))>0);

@@ -42,7 +42,7 @@ int wmain() {
     State state{new TextService(),&document};
     void* token=RustKeyStateCreate();assert(token);
     RustModeCallbacks callbacks={
-        &state,static_cast<ITfTextInputProcessorEx*>(state.service),
+        &state,state.service->ServiceInterface<ITfTextInputProcessorEx>(),
         [](void* p)->unsigned int {return static_cast<State*>(p)->flags;},
         [](void*)->int {return 1;},
         [](void* p,unsigned int cookie,void* context)->int {

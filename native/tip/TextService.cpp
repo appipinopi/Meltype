@@ -2379,6 +2379,7 @@ void TextService::ShowCandidates(TfEditCookie ec, ITfContext* context, const Jso
 
 // ---- 下線の種類 ----
 
+#ifndef MELTYPE_RUST_CORE
 STDMETHODIMP TextService::EnumDisplayAttributeInfo(IEnumTfDisplayAttributeInfo** ppEnum) {
     if (ppEnum == nullptr) return E_INVALIDARG;
     *ppEnum = CreateDisplayAttributeEnum();
@@ -2390,5 +2391,7 @@ STDMETHODIMP TextService::GetDisplayAttributeInfo(REFGUID guid, ITfDisplayAttrib
     *ppInfo = CreateDisplayAttributeInfo(guid);
     return *ppInfo ? S_OK : E_INVALIDARG;
 }
+
+#endif
 
 }  // namespace meltype

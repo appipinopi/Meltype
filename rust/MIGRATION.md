@@ -39,6 +39,7 @@
 - [ ] OS連携のRust化
 - [x] Linux IBusのPythonランタイムをRust実行ファイルへ移植（キー受信・確定・文節表示・候補・意味・予測・モード切替・周辺文字照合・プライバシー）
 - [ ] Windows TSF、macOS InputMethodKit、fcitx5、Androidの残りの接続処理のRust化
+- [x] RustビルドのC++ TextServiceからCOM継承とvtable生成を除去（IUnknown非継承・非ポリモーフィックのコンパイル時検査。試験用の所有参照もRust入口へ統一し、C++の重複表示属性／無処理通知入口を除外。処理・JSON受渡しアダプターと実アプリ検証は残る）
 - [x] Windows TSFのCOM入口7種類とIUnknown識別・参照管理をRust化（x64/x86各9件のCOM試験。全公開vtableのRust DLL所属と共通IUnknown、ポインター幅のキー情報・起動フラグ・cookie、通知中の呼出し元参照解放、STA制約を確認。C++の起動／通知購読／変換／編集の所有参照もRust入口へ接続。本番ワーカーの公開入力経路とサービスの例外／解放も実シェルで確認。C++処理・データアダプターと実アプリ検証は残る）
 - [x] Windows TSFの候補ウィンドウ所有と選択コールバックをRust化し、RustビルドのC++ CandidateWindowラッパーを除去（版4の配置照合。クリック／COM位置取得中のサービス破棄、非表示／再表示・差替え・独立したウィンドウ、古いHWND／トークンの失効を含む状態試験x64/x86各23ケース。C++処理・JSONデータ受渡し・実アプリ確認は残る）
 - [x] Windows TSFの言語バー所有をRust化し、RustビルドのC++ LangBarButtonラッパーを除去（版3の配置照合。保持された旧ボタンの切離し、サービス破棄中の通知、通知先の解放／RemoveItem中の再生成、部分COM参照の後片付けを含む状態試験x64/x86各17ケース。C++処理・データ受渡し・実アプリ確認は残る）
