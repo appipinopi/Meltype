@@ -53,11 +53,11 @@ WidgetHostはSDKと同じメソッド形のテスト用ウィジェットをJVM�
 
 ## Androidフレームワーク上の検証（追加、実行結果はCIで確認）
 
-`NativeAndroidTest` は実際のAndroidウィジェット、Editable／BaseInputConnection、KeyEventを使う11テストです。キーボードの構造と候補クリック、変換→確定→Undo、UTF-16削除と選択保護、非公開欄、直接入力への代替、入力欄切替時の世代保護を確認します。IMEの登録・有効化や、他アプリへの入力は行いません。矢印イベントはテスト用InputConnectionが受け取ります。
+`NativeAndroidTest` は実際のAndroidウィジェット、Editable／BaseInputConnection、KeyEventを使う12テストです。キーボードの構造と候補クリック、変換→確定→Undo、UTF-16削除と選択保護、非公開欄、直接入力への代替、入力欄切替時の世代保護を確認します。IMEの登録・有効化や、他アプリへの入力は行いません。矢印イベントはテスト用InputConnectionが受け取ります。
 
 CIはAPI 35 x86_64の専用AVDを一時フォルダーに作り、明示した `emulator-5580` だけにアプリとテストAPKをインストールします。同じシリアルが使用中なら中止します。AVDと起動したエミュレータープロセスは終了時に片付けます。`android/tests/run-emulator.sh` はLinuxのAndroid SDK／KVMと、組み立て済みの両APKがあるCI向けです。通常の端末には使用しません。
 
-実行方法は `gradle -p android assembleDebug assembleDebugAndroidTest lintDebug --no-daemon`、続いて `bash android/tests/run-emulator.sh` です。SDKにはemulatorと `system-images;android-35;google_apis;x86_64` が必要です。`dist/android-emulator/` にJUnitの実行記録、エミュレーター／logcat、Android自身で描画した `input-view.png`、SDK・ABI・画像寸法などの記録を保存します。11件の正常終了と7枚のPNG・測定記録を必須とし、0件・スキップ・クラッシュを成功とみなしません。この追加だけでは端末上での成功や元版との全UI一致を証明しません。
+実行方法は `gradle -p android assembleDebug assembleDebugAndroidTest lintDebug --no-daemon`、続いて `bash android/tests/run-emulator.sh` です。SDKにはemulatorと `system-images;android-35;google_apis;x86_64` が必要です。`dist/android-emulator/` にJUnitの実行記録、エミュレーター／logcat、Android自身で描画した `input-view.png`、SDK・ABI・画像寸法などの記録を保存します。12件の正常終了と7枚のPNG・測定記録を必須とし、0件・スキップ・クラッシュを成功とみなしません。この追加だけでは端末上での成功や元版との全UI一致を証明しません。
 
 テスト基盤は [AndroidJUnitRunner](https://developer.android.com/training/testing/instrumented-tests/androidx-test-libraries/runner) と [adbによる実行](https://developer.android.com/studio/test/command-line) に従います。
 
@@ -90,3 +90,7 @@ Android設定の6ページ（入力設定・辞書・定型文・学習・プロ
 e78c73fのRust製設定ページ描画はAPI 35・x86_64で `OK (9 tests)` を確認しました（[実行記録](https://github.com/appipinopi/Meltype/actions/runs/39033563984)）。取得したsettings-page.pngも目視し、13個のスイッチ・説明・開始記号入力と保存ボタンを確認済みです。Activity枠と実ダイアログ操作は後続変更のため、その成功を含むものではありません。
 
 設定イベントの入力値取得→操作→結果反映（編集・ファイル選択・確認・ページ再描画）と完了／エラー表示をRustへ集約しました。SettingsActivityとSettingsPageからJSON解析と操作分岐を削除し、OS／リスナー通知を転送する形にしています。存在しないページの指定は現在のフォームを残してエラーを表示します。SettingsUiHostで初期画面・切替、スイッチ保存、定型文の保存／編集、辞書入出力、確認後の復元、エラー表示・破棄済み状態を実JNI経由で確認しました。既存11件目にも実Activityの保存／編集ボタン→Rust操作、辞書の失敗表示と保存を追加しました。この集約版のAndroid実行結果はまだ未確認です。
+
+e27d3f6の設定Activity枠はAPI 35・x86_64で `OK (10 tests)` を確認しました（[実行記録](https://github.com/appipinopi/Meltype/actions/runs/39033829017)）。取得したsettings-activity.pngも目視し、タイトル・ページ選択・本文と余白を確認しました。実Activityの確認ボタン操作と最新のイベント集約は後続変更のため、この結果には含みません。
+
+入力サービスの開始・ハードウェアキー・終了・選択通知・ビュー再生成とクリック通知の処理もRust／JNIへ移しました。JavaはOSコールバックとスーパークラスへの未処理キー転送を行います。キーごとにInputConnectionを一度だけ取得し、イベント／接続／EditorInfo取得中に入力欄の世代が変わった場合は古い操作を止めます。ServiceHostでハード／ソフト入力、終了確定・選択解除・表示再生成、非公開欄、接続なし／取得例外、取得中の欄切替と破棄を確認しました。12件目は実KeyEvent／Editableでこの経路を検証しますが、OSのIME登録・有効化や他アプリへの入力は行いません。この追加のAndroid実行は未確認です。

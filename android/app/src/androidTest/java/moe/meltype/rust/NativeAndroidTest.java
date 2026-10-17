@@ -18,6 +18,8 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.inputmethod.BaseInputConnection;
+import android.view.inputmethod.InputConnection;
+import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Switch;
@@ -44,6 +46,36 @@ import static org.junit.Assert.*;
 /** Runs on Android's real framework, without registering or activating an IME. */
 @RunWith(AndroidJUnit4.class)
 public final class NativeAndroidTest {
+    public static final class ServiceFrame extends ContextThemeWrapper {
+        LinearLayout candidates;TextView preview;Editor editor=new Editor();EditorInfo info=new EditorInfo();long session;
+        int connections;Runnable onConnection,onInfo;
+        ServiceFrame(long session){super(context(),android.R.style.Theme_Material_Light_NoActionBar);this.session=session;info.inputType=1;}
+        public InputConnection getCurrentInputConnection(){connections++;if(onConnection!=null){Runnable next=onConnection;onConnection=null;next.run();}return editor;}
+        public EditorInfo getCurrentInputEditorInfo(){if(onInfo!=null){Runnable next=onInfo;onInfo=null;next.run();}return info;}
+        private View.OnClickListener keyboardCallback(int action,int value){return view->Native.serviceClick(session,this,action,value);}
+        void fresh(){editor=new Editor();info=new EditorInfo();info.inputType=1;Native.serviceStart(session,this,info);}
+        boolean key(char scalar){int key=KeyEvent.KEYCODE_A+scalar-'a';return Native.serviceKey(session,this,key,new KeyEvent(KeyEvent.ACTION_DOWN,key));}
+    }
+    @Test public void rustServiceEventsUseFrameworkKeysAndSingleEditorSnapshot()throws Throwable {ui(()->{
+        try(Profile profile=new Profile()) {
+            ServiceFrame service=new ServiceFrame(profile.session);service.fresh();
+            LinearLayout root=(LinearLayout)Native.serviceView(profile.session,service);assertNotNull(root);
+            int before=service.connections;for(char key:"nihongo".toCharArray())assertTrue(service.key(key));assertEquals(7,service.connections-before);
+            assertTrue((Native.editorFlags(profile.session)&4)!=0);
+            before=service.connections;assertFalse(Native.serviceKey(profile.session,service,KeyEvent.KEYCODE_SHIFT_LEFT,new KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_SHIFT_LEFT)));assertEquals(before,service.connections);
+            Native.serviceFinish(profile.session,service);assertEquals("にほんご",service.editor.text.toString());assertEquals("",service.preview.getText().toString());
+            service.fresh();for(char key:"kana".toCharArray())assertTrue(service.key(key));
+            root=(LinearLayout)Native.serviceView(profile.session,service);assertNotNull(root);assertEquals("かな",service.preview.getText().toString());
+            Native.serviceSelection(profile.session,service,0,0,-1);assertEquals(0,Native.editorFlags(profile.session)&4);assertEquals("",service.preview.getText().toString());
+            service.fresh();press(root,"n");press(root,"i");service.info.imeOptions=6;press(root,"確定/↵");assertEquals("に",service.editor.text.toString());press(root,"確定/↵");assertTrue(service.editor.actions.contains(6));
+            service.fresh();service.info.inputType=0x81;Native.serviceStart(profile.session,service,service.info);assertFalse(service.key('a'));assertEquals(0,service.editor.reads);
+            service.fresh();service.onConnection=()->{service.info.inputType=0x81;Native.serviceStart(profile.session,service,service.info);};assertTrue(service.key('a'));assertEquals("",service.editor.text.toString());assertEquals(3,Native.editorFlags(profile.session));
+            service.fresh();service.onInfo=()->{service.info.inputType=0x81;Native.serviceStart(profile.session,service,service.info);};before=service.connections;press(root,"a");assertEquals(before,service.connections);assertEquals("",service.editor.text.toString());
+            service.fresh();service.editor.onRead=()->{service.info.inputType=0x81;Native.serviceStart(profile.session,service,service.info);};assertTrue(service.key('a'));assertEquals("",service.editor.text.toString());assertEquals(3,Native.editorFlags(profile.session));
+            service.fresh();assertTrue(service.key('a'));service.onConnection=()->{service.info.inputType=0x81;Native.serviceStart(profile.session,service,service.info);};Native.serviceFinish(profile.session,service);assertEquals(3,Native.editorFlags(profile.session));
+            Native.destroy(profile.session);before=service.connections;assertFalse(service.key('a'));assertEquals(before,service.connections);assertNull(Native.serviceView(profile.session,service));
+        }
+    });}
     private static void idle(Instrumentation instrumentation,UiAutomation automation)throws Exception {
         instrumentation.waitForIdleSync();automation.waitForIdle(100,10000);
     }

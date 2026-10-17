@@ -12,6 +12,7 @@ mod dialogs;
 mod documents;
 mod editor_jni;
 mod input_view;
+mod service_events;
 mod service_state;
 mod settings;
 mod settings_ui;

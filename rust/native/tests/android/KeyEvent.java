@@ -4,5 +4,8 @@
 package android.view;
 public final class KeyEvent {
     public final int action,keyCode;
+    public int scalar,meta;
+    public int getUnicodeChar(){return scalar;}
+    public int getMetaState(){return meta;}
     public KeyEvent(int action,int keyCode){this.action=action;this.keyCode=keyCode;}
 }

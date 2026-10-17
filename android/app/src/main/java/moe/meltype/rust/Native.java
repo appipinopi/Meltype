@@ -7,6 +7,12 @@ final class Native {
     static native String control(long handle,String request);
     static native String showSettingsConfirmation(long handle,Object activity,String confirmation);
     static native String completeSettingsConfirmation(long handle,String payload,boolean accept);
+    static native void serviceStart(long handle,Object service,Object info);
+    static native boolean serviceKey(long handle,Object service,int key,Object event);
+    static native void serviceFinish(long handle,Object service);
+    static native void serviceSelection(long handle,Object service,int start,int end,int composingEnd);
+    static native void serviceClick(long handle,Object service,int action,int value);
+    static native Object serviceView(long handle,Object service);
     static native String settingsUiShow(long handle,Object activity,int page);
     static native String settingsUiAction(long handle,Object activity,String operation);
     static native String settingsUiResult(long handle,Object activity,int code,int result,Object data);

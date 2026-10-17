@@ -4,7 +4,7 @@
 //! contracts; no registry lock or borrowed Rust state crosses editor callbacks.
 use super::*;
 type Result<T> = jni::errors::Result<T>;
-fn native<'a>(
+pub(super) fn native<'a>(
     env: &mut JNIEnv<'a>,
     name: &str,
     signature: &str,
@@ -12,7 +12,7 @@ fn native<'a>(
 ) -> Result<jni::objects::JValueOwned<'a>> {
     env.call_static_method("moe/meltype/rust/Native", name, signature, args)
 }
-fn render(env: &mut JNIEnv, service: &JObject, reply: &JObject) -> Result<bool> {
+pub(super) fn render(env: &mut JNIEnv, service: &JObject, reply: &JObject) -> Result<bool> {
     native(
         env,
         "renderInputView",
@@ -26,7 +26,7 @@ fn core_reply<'a>(env: &mut JNIEnv<'a>, pointer: *mut c_char) -> Result<JString<
         .unwrap_or_else(|| "{\"consumed\":false,\"commits\":[],\"view\":null}".into());
     env.new_string(text)
 }
-fn apply(
+pub(super) fn apply(
     env: &mut JNIEnv,
     handle: jlong,
     service: &JObject,
@@ -158,7 +158,7 @@ fn settings(env: &mut JNIEnv, service: &JObject) -> Result<()> {
     )?;
     Ok(())
 }
-fn dispatch(
+pub(super) fn dispatch(
     env: &mut JNIEnv,
     handle: jlong,
     service: &JObject,

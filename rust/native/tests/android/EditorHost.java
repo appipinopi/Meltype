@@ -8,7 +8,7 @@ import java.util.List;
 
 /** Actual JVM/JNI calls with a controlled InputConnection-shaped editor. */
 public final class EditorHost {
-    public static final class Editor {
+    public static final class Editor implements android.view.inputmethod.InputConnection {
         String before="",selected="",pending="",after="";
         boolean reject,throwsCommit,throwsRead,unsupported;
         boolean throwsFinish;
