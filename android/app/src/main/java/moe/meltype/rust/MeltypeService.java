@@ -76,7 +76,7 @@ public final class MeltypeService extends InputMethodService {
         add(tools, "→", () -> softwareKey(0x27,0));
         add(tools, "縮める", () -> apply(key(0x25,0,1)));
         add(tools, "伸ばす", () -> apply(key(0x27,0,1)));
-        add(tools, "戻す", () -> { if (!privateEditor) apply(Native.undo(session,beforeCursor())); });
+        add(tools, "戻す", () -> { if (!privateEditor) apply(Native.editorUndo(session,getCurrentInputConnection(),privateEditor,composing ? composingText : "")); });
         add(tools, "再変換", () -> {
             InputConnection connection = getCurrentInputConnection();
             if (connection == null || privateEditor || composing) return;
@@ -96,42 +96,18 @@ public final class MeltypeService extends InputMethodService {
     private void softwareKey(int vk, int scalar) {
         if (apply(key(vk,scalar,0))) return;
         InputConnection connection = getCurrentInputConnection(); if (connection == null) return;
-        if (scalar > 0) connection.commitText(new String(Character.toChars(scalar)),1);
-        else if (vk == 8) connection.deleteSurroundingTextInCodePoints(1,0);
-        else if (vk == 0x25 || vk == 0x27) {
-            int key = vk == 0x25 ? KeyEvent.KEYCODE_DPAD_LEFT : KeyEvent.KEYCODE_DPAD_RIGHT;
-            connection.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN,key));
-            connection.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_UP,key));
-        }
-        else if (vk == 13) {
-            EditorInfo info = getCurrentInputEditorInfo();
-            int action = info.imeOptions & EditorInfo.IME_MASK_ACTION;
-            if (action != EditorInfo.IME_ACTION_NONE && action != EditorInfo.IME_ACTION_UNSPECIFIED && (info.imeOptions & EditorInfo.IME_FLAG_NO_ENTER_ACTION) == 0) connection.performEditorAction(action);
-            else connection.commitText("\n",1);
-        }
+        EditorInfo info = getCurrentInputEditorInfo();
+        Native.softwareFallback(connection,vk,scalar,info == null ? 0 : info.imeOptions);
     }
     @Override public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (Native.isModifierKey(keyCode)) return super.onKeyDown(keyCode,event);
-        InputConnection connection = getCurrentInputConnection();
-        Native.canDelete(session, connection != null && !privateEditor && connection.getTextBeforeCursor(0,0) != null);
-        CharSequence after = connection == null || privateEditor ? "" : connection.getTextAfterCursor(4000,0);
-        String reply = Native.androidKey(session, keyCode, event.getUnicodeChar(), event.getMetaState(),
-                beforeCursor(), after == null ? "" : after.toString());
+        String reply = Native.editorKey(session,getCurrentInputConnection(),keyCode,event.getUnicodeChar(),
+                event.getMetaState(),true,privateEditor,composing ? composingText : "");
         return apply(reply) || super.onKeyDown(keyCode,event);
     }
-    private String beforeCursor() {
-        InputConnection connection = getCurrentInputConnection();
-        if (connection == null || privateEditor) return "";
-        CharSequence value = connection.getTextBeforeCursor(4000,0);
-        String text = value == null ? "" : value.toString();
-        if (composing && text.endsWith(composingText)) return text.substring(0,text.length()-composingText.length());
-        return text;
-    }
     private String key(int vk, int scalar, int modifiers) {
-        InputConnection connection = getCurrentInputConnection();
-        Native.canDelete(session, connection != null && !privateEditor && connection.getTextBeforeCursor(0,0) != null);
-        CharSequence after = connection == null || privateEditor ? "" : connection.getTextAfterCursor(4000,0);
-        return Native.keyContext(session,vk,scalar,modifiers,beforeCursor(),after == null ? "" : after.toString());
+        return Native.editorKey(session,getCurrentInputConnection(),vk,scalar,modifiers,false,
+                privateEditor,composing ? composingText : "");
     }
     @Override public void onUpdateSelection(int oldStart,int oldEnd,int newStart,int newEnd,int candidatesStart,int candidatesEnd) {
         super.onUpdateSelection(oldStart,oldEnd,newStart,newEnd,candidatesStart,candidatesEnd);

@@ -21,4 +21,7 @@ final class Native {
     static native int startInput(long handle, int inputType, int imeOptions);
     static native boolean isModifierKey(int keyCode);
     static native String androidKey(long handle, int keyCode, int scalar, int metaState, String before, String after);
+    static native String editorKey(long handle, Object connection, int key, int scalar, int modifiers, boolean hardware, boolean privateInput, String composingText);
+    static native String editorUndo(long handle, Object connection, boolean privateInput, String composingText);
+    static native boolean softwareFallback(Object connection, int key, int scalar, int imeOptions);
 }

@@ -8,6 +8,19 @@ struct Connection<'a, 'b, 'c> {
     object: &'a JObject<'c>,
 }
 impl Connection<'_, '_, '_> {
+    fn surrounding(&mut self, method: &str, count: i32) -> Result<Option<Vec<u16>>> {
+        let text = self
+            .env
+            .call_method(
+                self.object,
+                method,
+                "(II)Ljava/lang/CharSequence;",
+                &[JValue::Int(count), JValue::Int(0)],
+            )
+            .and_then(|v| v.l())
+            .map_err(|_| EditorError)?;
+        self.units(text)
+    }
     // Read charAt rather than converting a Java string through UTF-8: a lone
     // surrogate must not compare equal to a replacement character.
     fn units(&mut self, text: JObject<'_>) -> Result<Option<Vec<u16>>> {
@@ -68,17 +81,7 @@ impl Editor for Connection<'_, '_, '_> {
         self.units(text)
     }
     fn before(&mut self, count: i32) -> Result<Option<Vec<u16>>> {
-        let text = self
-            .env
-            .call_method(
-                self.object,
-                "getTextBeforeCursor",
-                "(II)Ljava/lang/CharSequence;",
-                &[JValue::Int(count), JValue::Int(0)],
-            )
-            .and_then(|v| v.l())
-            .map_err(|_| EditorError)?;
-        self.units(text)
+        self.surrounding("getTextBeforeCursor", count)
     }
     fn begin(&mut self) -> Result<()> {
         // Android permits false for a valid non-nesting implementation.
@@ -108,6 +111,164 @@ impl Editor for Connection<'_, '_, '_> {
         self.clear_exception();
         self.boolean("finishComposingText", "()Z", &[])
     }
+}
+fn context_snapshot(
+    env: &mut JNIEnv,
+    object: &JObject,
+    private: bool,
+    pending: JString,
+) -> (String, String, bool) {
+    // Private fields never invoke any surrounding-text method.
+    if private || object.is_null() {
+        return (String::new(), String::new(), false);
+    }
+    let mut editor = Connection { env, object };
+    let result = (|| -> Result<_> {
+        let can_delete = editor.before(0)?.is_some();
+        let after = editor
+            .surrounding("getTextAfterCursor", 4000)?
+            .unwrap_or_default();
+        let mut before = editor.before(4000)?.unwrap_or_default();
+        let pending = editor.units(pending.into())?.unwrap_or_default();
+        if before.ends_with(&pending) {
+            before.truncate(before.len() - pending.len());
+        }
+        Ok((
+            String::from_utf16_lossy(&before),
+            String::from_utf16_lossy(&after),
+            can_delete,
+        ))
+    })();
+    editor.clear_exception();
+    result.unwrap_or_else(|_| (String::new(), String::new(), false))
+}
+#[no_mangle]
+pub extern "system" fn Java_moe_meltype_rust_Native_editorKey(
+    mut env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    connection: JObject,
+    key: jint,
+    scalar: jint,
+    modifiers: jint,
+    hardware: jboolean,
+    private: jboolean,
+    pending: JString,
+) -> jstring {
+    if hardware != 0 && crate::android_input::modifier_key(key) {
+        return java_result(&mut env, std::ptr::null_mut());
+    }
+    let (before, after, can_delete) =
+        context_snapshot(&mut env, &connection, private != 0, pending);
+    meltype_set_can_delete(handle as *mut c_void, i32::from(can_delete));
+    let (vk, modifiers) = if hardware != 0 {
+        (
+            crate::android_input::virtual_key(key),
+            crate::android_input::modifiers(modifiers),
+        )
+    } else {
+        (key, modifiers)
+    };
+    let before = CString::new(before).ok();
+    let after = CString::new(after).ok();
+    let result = unsafe {
+        meltype_handle_key(
+            handle as *mut c_void,
+            vk,
+            scalar,
+            modifiers,
+            before.as_ref().map_or(std::ptr::null(), |v| v.as_ptr()),
+            after.as_ref().map_or(std::ptr::null(), |v| v.as_ptr()),
+        )
+    };
+    java_result(&mut env, result)
+}
+#[no_mangle]
+pub extern "system" fn Java_moe_meltype_rust_Native_editorUndo(
+    mut env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    connection: JObject,
+    private: jboolean,
+    pending: JString,
+) -> jstring {
+    if private != 0 || connection.is_null() {
+        return java_result(&mut env, std::ptr::null_mut());
+    }
+    let (before, _, can_delete) = context_snapshot(&mut env, &connection, false, pending);
+    meltype_set_can_delete(handle as *mut c_void, i32::from(can_delete));
+    let result = CString::new(before)
+        .ok()
+        .map_or(std::ptr::null_mut(), |text| unsafe {
+            meltype_undo_commit(handle as *mut c_void, text.as_ptr())
+        });
+    java_result(&mut env, result)
+}
+#[no_mangle]
+pub extern "system" fn Java_moe_meltype_rust_Native_softwareFallback(
+    mut env: JNIEnv,
+    _class: JClass,
+    connection: JObject,
+    key: jint,
+    scalar: jint,
+    ime_options: jint,
+) -> jboolean {
+    if connection.is_null() {
+        return 0;
+    }
+    let mut editor = Connection {
+        env: &mut env,
+        object: &connection,
+    };
+    let result = (|| -> Result<bool> {
+        if scalar > 0 {
+            let text = char::from_u32(scalar as u32)
+                .ok_or(EditorError)?
+                .to_string();
+            return editor.commit(&text);
+        }
+        match key {
+            8 => editor.boolean(
+                "deleteSurroundingTextInCodePoints",
+                "(II)Z",
+                &[JValue::Int(1), JValue::Int(0)],
+            ),
+            0x25 | 0x27 => {
+                let code = if key == 0x25 { 21 } else { 22 };
+                let mut accepted = true;
+                for action in [0, 1] {
+                    let event = editor
+                        .env
+                        .new_object(
+                            "android/view/KeyEvent",
+                            "(II)V",
+                            &[JValue::Int(action), JValue::Int(code)],
+                        )
+                        .map_err(|_| EditorError)?;
+                    let sent = editor.boolean(
+                        "sendKeyEvent",
+                        "(Landroid/view/KeyEvent;)Z",
+                        &[JValue::Object(&event)],
+                    );
+                    let _ = editor.env.delete_local_ref(event);
+                    // Preserve down/up pairing even when DOWN is refused.
+                    accepted &= sent?;
+                }
+                Ok(accepted)
+            }
+            13 => {
+                let action = ime_options & 0xff;
+                if action != 0 && action != 1 && ime_options & 0x4000_0000 == 0 {
+                    editor.boolean("performEditorAction", "(I)Z", &[JValue::Int(action)])
+                } else {
+                    editor.commit("\n")
+                }
+            }
+            _ => Ok(false),
+        }
+    })();
+    editor.clear_exception();
+    u8::from(result.unwrap_or(false))
 }
 #[no_mangle]
 pub extern "system" fn Java_moe_meltype_rust_Native_applyEditor(

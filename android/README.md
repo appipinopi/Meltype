@@ -34,3 +34,7 @@ API仕様: [InputMethodService](https://developer.android.com/reference/android/
 `cargo build -p meltype-native --features android-jni-test --locked` と `python rust/native/tests/android_editor_smoke.py target/debug` は、JDK 17以降のJVMで実際のJNIを検証します。専用の入力欄を使い、絵文字・単独サロゲートの照合、選択、順次確定、拒否・例外・部分編集、未確定文字、実コアのローマ字変換と確定を確認します。Android端末への登録・操作を行う試験ではありません。サービスのライフサイクル、キーイベント、ソフトキーボードと管理画面には引き続きJavaが残っています。
 
 入力欄の開始時の判定と外付けキーの変換もRustへ移しました。InputTypeのクラス／バリエーションと学習禁止フラグから、直接入力・非公開入力を決め、前の入力状態と削除権限を解除します。KeyEventの公開キー値・メタ状態はRustで従来の仮想キー／修飾ビットへ変換し、修飾キー単体はコアへ送らず通します。JVM試験は旧Javaマッピングを比較用に残し、実コアに未確定文字がある状態で840ケースの応答一致、秘密欄から通常欄への切替と修飾キーを確認します。キーイベントの受取り自体、入力欄の周辺文字取得、サービスと画面はJavaに残っています。
+
+入力欄の前後4000 UTF-16単位の取得、削除対応の確認、表示中の未確定文字を文脈から取り除く処理、Undo時の周辺文字取得もRust／JNIへ移しました。非公開入力欄と修飾キー単体では取得APIを呼びません。取得が例外になった場合は削除を無効にし、空の文脈として扱います。ソフトキーの直接入力への代替もRustで、Unicode文字の確定、コードポイント単位の削除、左右キーのdown/up、EditorInfoのEnterアクション／改行を呼びます。
+
+ContextHostの実JVM試験は前後文字の受渡し、未確定文字の除外、秘密欄の無取得、取得例外、実コアの入力→確定→Undo、絵文字の入力／削除とEnter動作を確認します。左右キーのJNIコンストラクター／引数確認にはテスト専用のSDKと同じ形のKeyEventクラスを使います。Android端末上の実KeyEvent配信を検証したものではありません。InputMethodServiceのコールバック、ソフトキーボード・候補ボタンと管理画面のJava、端末での実動確認は残ります。
