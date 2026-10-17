@@ -91,6 +91,8 @@ struct RustApi {
     HRESULT (__cdecl *compositionTerminated)(unsigned int,void*,const char*,const RustTerminationCallbacks*) = nullptr;
     int (__cdecl *resumeOrCommit)(void*,unsigned int,unsigned int,const char*,const RustRecoveryCallbacks*) = nullptr;
     int (__cdecl *abandonComposition)(unsigned int,const char*,const RustAbandonCallbacks*) = nullptr;
+    HRESULT (__cdecl *documentFocus)(void*,const RustFocusCallbacks*) = nullptr;
+    HRESULT (__cdecl *foregroundFocus)(int,void*,const RustFocusCallbacks*) = nullptr;
     RustApi() {
         wchar_t path[32768];
         const DWORD size = GetModuleFileNameW(g_module, path, ARRAYSIZE(path));
@@ -179,6 +181,8 @@ struct RustApi {
         compositionTerminated = reinterpret_cast<decltype(compositionTerminated)>(GetProcAddress(module, "meltype_tsf_composition_terminated"));
         resumeOrCommit = reinterpret_cast<decltype(resumeOrCommit)>(GetProcAddress(module, "meltype_tsf_resume_or_commit"));
         abandonComposition = reinterpret_cast<decltype(abandonComposition)>(GetProcAddress(module, "meltype_tsf_abandon_composition"));
+        documentFocus = reinterpret_cast<decltype(documentFocus)>(GetProcAddress(module, "meltype_tsf_document_focus"));
+        foregroundFocus = reinterpret_cast<decltype(foregroundFocus)>(GetProcAddress(module, "meltype_tsf_foreground_focus"));
     }
     bool ready() const { return create && destroy && request && freeText; }
     // The module stays loaded for the process lifetime. Do not unload Rust
@@ -285,6 +289,12 @@ int RustResumeOrCommit(ITfContext* context,TfClientId client,TfGuidAtom atom,con
 int RustAbandonComposition(TfClientId client,const std::string& metadata,const RustAbandonCallbacks& callbacks) {
     return api().abandonComposition?api().abandonComposition(client,metadata.c_str(),&callbacks):-1;
 }
+HRESULT RustDocumentFocus(ITfDocumentMgr* document,const RustFocusCallbacks& callbacks) {
+    return api().documentFocus?api().documentFocus(document,&callbacks):E_NOINTERFACE;
+}
+HRESULT RustForegroundFocus(bool foreground,void* keys,const RustFocusCallbacks& callbacks) {
+    return api().foregroundFocus?api().foregroundFocus(foreground?1:0,keys,&callbacks):E_NOINTERFACE;
+}
 void RustSetAttribute(TfEditCookie cookie,ITfContext* context,ITfRange* range,TfGuidAtom atom) {
     if (api().setAttribute) api().setAttribute(context,range,cookie,atom);
 }
@@ -358,7 +368,7 @@ bool RustWouldEat(ITfContext* context,UINT key,LPARAM message,bool test,const Ru
     ch=0;
     return api().wouldEat && api().wouldEat(context,key,static_cast<ULONG_PTR>(message),test?1:0,&callbacks,&ch)!=0;
 }
-void* RustKeyStateCreate() {return api().keyStateCreate && api().keyStateReset && api().keyStateDestroy && api().keyCacheClear && api().isReinjected && api().keySecret && api().reinject && api().keyForeground && api().keyStaleRead && api().keyStaleWrite && api().keyStaleClear && api().keyPassed && api().keyEvent && api().toggleMode && api().codeLine && api().queryMode && api().applyMode && api().handleKey && api().commit && api().selectCandidate && api().applyReply && api().applyOwnedComposition && api().writeOwnedCommit && api().endOwnedComposition && api().compositionTerminated && api().resumeOrCommit && api().abandonComposition ? api().keyStateCreate() : nullptr;}
+void* RustKeyStateCreate() {return api().keyStateCreate && api().keyStateReset && api().keyStateDestroy && api().keyCacheClear && api().isReinjected && api().keySecret && api().reinject && api().keyForeground && api().keyStaleRead && api().keyStaleWrite && api().keyStaleClear && api().keyPassed && api().keyEvent && api().toggleMode && api().codeLine && api().queryMode && api().applyMode && api().handleKey && api().commit && api().selectCandidate && api().applyReply && api().applyOwnedComposition && api().writeOwnedCommit && api().endOwnedComposition && api().compositionTerminated && api().resumeOrCommit && api().abandonComposition && api().documentFocus && api().foregroundFocus ? api().keyStateCreate() : nullptr;}
 void RustKeyStateReset(void* state) {if (api().keyStateReset) api().keyStateReset(state);}
 void RustKeyStateDestroy(void* state) {if (api().keyStateDestroy) api().keyStateDestroy(state);}
 void RustKeyCacheClear(void* state) {if (api().keyCacheClear) api().keyCacheClear(state);}

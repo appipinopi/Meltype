@@ -186,6 +186,8 @@ private:
     bool ownProcess_ = false;      // Meltype.exe 自身の中で動いている (要求にスレッドを付ける)  // Meltype.exe 自身の中では動かない (自分のサーバーを待って固まるため)
 #ifdef MELTYPE_RUST_CORE
     void* keyState_ = nullptr;
+    unsigned long long focusEpoch_ = 0;
+    RustFocusCallbacks FocusCallbacks();
 #else
     bool eatenDown_[256] = {};
     struct Reinjected {

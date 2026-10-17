@@ -403,6 +403,23 @@ typedef struct MeltypeTsfAbandonCallbacks {
    cleanup; preserves replacement input created during cleanup/UI notifications.
    Returns 1 notified,0 replacement preserved,-1 invalid. Does not insert text. */
 int32_t meltype_tsf_abandon_composition(uint32_t client, const char *metadata, const MeltypeTsfAbandonCallbacks *callbacks);
+typedef struct MeltypeTsfFocusCallbacks {
+    void *owner,*lifetime;
+    uint64_t *epoch;
+    uint32_t (*read)(void *);
+    int32_t (*commit)(void *, int32_t mode);
+    void (*action)(void *, uint32_t operation, void *document);
+} MeltypeTsfFocusCallbacks;
+/* TSF thread, borrowed interfaces; writable epoch/storage/code valid while
+   lifetime is retained. Callbacks never throw. read bits composition=1,
+   disabled=2,deactivated=4. commit 0=sync/1=async, both keep application caret;
+   nonzero return is success. action 0=resume/commit(null context),1=clear direct
+   word/mark moved,2=clear field cache,3=hide,4=advise document,5=hello.
+   Nested document-focus notification supersedes the older transition. */
+int32_t meltype_tsf_document_focus(void *document, const MeltypeTsfFocusCallbacks *callbacks);
+/* Foreground loss hides candidates then forgets consumed keys. Foreground gain
+   is inert. Same owner/callback lifetime contract; key_state is a native token. */
+int32_t meltype_tsf_foreground_focus(int32_t foreground, void *key_state, const MeltypeTsfFocusCallbacks *callbacks);
 #endif
 #ifdef __cplusplus
 }

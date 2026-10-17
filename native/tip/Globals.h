@@ -204,6 +204,14 @@ struct RustAbandonCallbacks {
     void (__cdecl *request)(void*,const char*);
 };
 int RustAbandonComposition(TfClientId,const std::string&,const RustAbandonCallbacks&);
+struct RustFocusCallbacks {
+    void* owner;IUnknown* lifetime;unsigned long long* epoch;
+    unsigned int (__cdecl *read)(void*);
+    int (__cdecl *commit)(void*,int);
+    void (__cdecl *action)(void*,unsigned int,void*);
+};
+HRESULT RustDocumentFocus(ITfDocumentMgr*,const RustFocusCallbacks&);
+HRESULT RustForegroundFocus(bool,void*,const RustFocusCallbacks&);
 #endif
 
 // 文字コードの変換

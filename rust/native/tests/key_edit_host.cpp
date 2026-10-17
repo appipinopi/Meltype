@@ -199,6 +199,18 @@ int wmain() {
     assert(service->OnTestKeyDown(nextDoc.context,'C',0,&eaten)==S_OK && !eaten);
     assert(nextComposition.refs==0 && nextContext.refs==1 && nextDoc.ranges==1 && nextSelected.refs==1);
     assert(doc.ranges==1 && selected.refs==1 && manager.refs==1 && nextManager.refs==1);
+    assert(SetKeyboardState(plain));
+    assert(service->OnTestKeyDown(nextDoc.context,'A',0,&eaten)==S_OK && eaten);
+    assert(service->OnKeyDown(nextDoc.context,'A',0,&eaten)==S_OK && eaten);
+    assert(nextComposition.refs==1);
+    const auto beforeFocus=nextDoc.text;const auto focusCaret=nextDoc.selectionStart;
+    const auto endedBeforeFocus=nextComposition.ended;
+    // Public document-focus notification commits before dropping old field
+    // metadata, without reinserting text or moving the application's caret.
+    assert(service->OnSetFocus(static_cast<ITfDocumentMgr*>(nullptr),nullptr)==S_OK);
+    assert(nextDoc.text==beforeFocus && nextDoc.selectionStart==focusCaret && nextDoc.selectionEnd==focusCaret);
+    assert(nextComposition.refs==0 && nextComposition.ended==endedBeforeFocus+1 && nextContext.refs==1);
+    assert(nextDoc.ranges==1 && nextSelected.refs==1);
     service->Release();assert(g_locks==0);assert(SetKeyboardState(saved));
-    puts("Actual key edit/commit/termination/abandonment: public TSF entry, packaged core, UTF-16 caret, kana preedit, shortcut/packet commit, host-terminated continuation, refused old field and replacement preedit passed");
+    puts("Actual key edit/commit/termination/abandonment/focus: public TSF entry, packaged core, UTF-16 caret, kana preedit, shortcut/packet commit, host-terminated continuation, refused old field, replacement preedit and focus commit passed");
 }
