@@ -17,6 +17,14 @@ int NativeUnloadState() {
     auto test=reinterpret_cast<CanUnload>(GetProcAddress(nativeShell,"DllCanUnloadNow"));assert(test);
     return test()==S_OK?0:1;
 }
+unsigned int NativeLiveCount() {
+    auto count=reinterpret_cast<unsigned int (__cdecl *)()>(GetProcAddress(nativeShell,"meltype_tsf_service_state_live_count"));assert(count);return count();
+}
+void WaitForNativeUnload() {
+    const auto deadline=GetTickCount64()+5000;
+    while (NativeUnloadState()!=0 && GetTickCount64()<deadline) Sleep(1);
+    assert(NativeUnloadState()==0 && "worker OS threads must finish before DLL unload");
+}
 #define g_locks (NativeUnloadState())
 class FixtureService {
     IUnknown* root=nullptr;
@@ -29,9 +37,10 @@ public:
         assert(get(CLSID_TextService,IID_IClassFactory,reinterpret_cast<void**>(&factory))==S_OK && factory);
         assert(factory->CreateInstance(nullptr,IID_ITfTextInputProcessorEx,reinterpret_cast<void**>(&root))==S_OK && root);
         factory->Release();
+        assert(NativeLiveCount()==1);
     }
-    template<class T> T* ServiceInterface() const {return static_cast<T*>(RustServiceComInterface(root,__uuidof(T)));}
-    void Release() {assert(root->Release()==0);delete this;}
+    template<class T> T* ServiceInterface() const {T* value=nullptr;assert(root->QueryInterface(__uuidof(T),reinterpret_cast<void**>(&value))==S_OK && value);value->Release();return value;}
+    void Release() {assert(root->Release()==0);assert(NativeLiveCount()==0);delete this;}
 };
 #else
 using FixtureService=TextService;
@@ -319,8 +328,18 @@ int wmain() {
 #endif
     assert(service->ServiceInterface<ITfTextInputProcessorEx>()->Deactivate()==S_OK && thread.refs==1 && g_locks==1);
     assert(thread.focusQueries==2);
-    service->Release();assert(g_locks==0 && RustServiceStateLiveCount()==0);assert(SetKeyboardState(saved));
+    service->Release();
 #ifdef MELTYPE_TEST_NATIVE_OWNER
+    WaitForNativeUnload();
+#endif
+    assert(g_locks==0 && RustServiceStateLiveCount()==0);assert(SetKeyboardState(saved));
+#ifdef MELTYPE_TEST_NATIVE_OWNER
+    assert(FreeLibrary(nativeShell));nativeShell=nullptr;
+    // A second load must re-register its own window classes after unload.
+    auto* reloaded=new FixtureService();
+    assert(reloaded->ServiceInterface<ITfTextInputProcessorEx>()->ActivateEx(threadInterface,17,TF_TMAE_SECUREMODE)==S_OK);
+    assert(reloaded->ServiceInterface<ITfTextInputProcessorEx>()->Deactivate()==S_OK && thread.refs==1);
+    reloaded->Release();WaitForNativeUnload();assert(g_locks==0);
     assert(FreeLibrary(nativeShell));nativeShell=nullptr;
 #endif
     puts("Actual key edit/commit/termination/abandonment/focus/shutdown/startup: public TSF entry, packaged core, UTF-16 caret, preedit, commits, old field, focus, idempotent shutdown and secure/normal private-manager reactivation passed");

@@ -27,6 +27,35 @@ use windows::{
 };
 const MAX_REQUEST: usize = 65536;
 const MAX_RESPONSE: usize = 1024 * 1024;
+// A detached Rust thread may still execute DLL runtime/Child::wait code after
+// the last service drops. Only the OS thread's signaled handle proves it has
+// finished, including TLS and runtime cleanup (JoinHandle::is_finished does not).
+#[cfg(feature = "tsf-server")]
+static THREADS: Mutex<Vec<std::thread::JoinHandle<()>>> = Mutex::new(Vec::new());
+#[cfg(feature = "tsf-server")]
+fn retire_threads(threads: &mut Vec<std::thread::JoinHandle<()>>) {
+    use windows::Win32::{Foundation::WAIT_OBJECT_0, System::Threading::WaitForSingleObject};
+    threads.retain(|thread| unsafe {
+        WaitForSingleObject(HANDLE(thread.as_raw_handle()), 0) != WAIT_OBJECT_0
+    });
+}
+#[cfg(feature = "tsf-server")]
+pub(crate) fn threads_idle() -> bool {
+    let mut threads = THREADS.lock().unwrap_or_else(|e| e.into_inner());
+    retire_threads(&mut threads);
+    threads.is_empty()
+}
+fn spawn_thread(action: impl FnOnce() + Send + 'static) {
+    let thread = std::thread::spawn(action);
+    #[cfg(feature = "tsf-server")]
+    {
+        let mut threads = THREADS.lock().unwrap_or_else(|e| e.into_inner());
+        retire_threads(&mut threads);
+        threads.push(thread);
+    }
+    #[cfg(not(feature = "tsf-server"))]
+    drop(thread);
+}
 struct Job(HANDLE);
 unsafe impl Send for Job {}
 unsafe impl Sync for Job {}
@@ -128,7 +157,7 @@ impl Worker {
             .take()
             .ok_or_else(|| io::Error::other("worker stdout missing"))?;
         let (sender, output) = mpsc::sync_channel(1);
-        std::thread::spawn(move || loop {
+        spawn_thread(move || loop {
             let result = (|| {
                 let mut size = [0; 4];
                 stdout.read_exact(&mut size)?;
@@ -185,7 +214,7 @@ struct Transport {
 impl Transport {
     fn start(path: PathBuf) -> Arc<Self> {
         let (sender, receiver) = mpsc::sync_channel::<Request>(1);
-        std::thread::spawn(move || {
+        spawn_thread(move || {
             let mut worker: Option<Worker> = None;
             while let Ok(r) = receiver.recv() {
                 if r.cancel.cancelled.load(Ordering::Acquire) || Instant::now() >= r.deadline {

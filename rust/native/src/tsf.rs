@@ -82,12 +82,30 @@ struct Object {
     vtable: *const c_void,
     refs: AtomicU32,
     index: AtomicU32,
+    _module: ModuleLifetime,
+}
+// COM children can outlive the service that returned them. Keep standalone
+// DLL code resident until their final Release and all captured cleanup finish.
+struct ModuleLifetime;
+impl ModuleLifetime {
+    fn new() -> Self {
+        #[cfg(feature = "tsf-server")]
+        server::retain_module();
+        Self
+    }
+}
+impl Drop for ModuleLifetime {
+    fn drop(&mut self) {
+        #[cfg(feature = "tsf-server")]
+        server::release_module();
+    }
 }
 fn object(vtable: *const c_void, index: u32) -> *mut c_void {
     Box::into_raw(Box::new(Object {
         vtable,
         refs: AtomicU32::new(1),
         index: AtomicU32::new(index),
+        _module: ModuleLifetime::new(),
     }))
     .cast()
 }
@@ -277,3 +295,5 @@ pub unsafe extern "C" fn meltype_tsf_create_display_attribute(id: *const GUID) -
 pub extern "C" fn meltype_tsf_create_display_attribute_enum() -> *mut c_void {
     object(ptr::addr_of!(ENUM).cast(), 0)
 }
+#[cfg(feature = "tsf-server")]
+mod server;

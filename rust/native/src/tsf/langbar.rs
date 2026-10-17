@@ -47,6 +47,7 @@ struct Bar {
     refs: AtomicU32,
     owner: ThreadId,
     state: Mutex<State>,
+    _module: super::ModuleLifetime,
 }
 const COOKIE: u32 = 0x4d454c54;
 unsafe fn bar<'a>(this: *mut c_void) -> &'a Bar {
@@ -326,6 +327,7 @@ pub(super) fn create(
         refs: AtomicU32::new(1),
         owner: thread::current().id(),
         state: Mutex::new(State { client, sink: None }),
+        _module: super::ModuleLifetime::new(),
     }))
     .cast()
 }

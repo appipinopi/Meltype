@@ -22,6 +22,7 @@ struct Session {
     context: *mut c_void,
     action: Action,
     destroy: Destroy,
+    _module: super::ModuleLifetime,
 }
 unsafe fn session<'a>(this: *mut c_void) -> &'a Session {
     &*this.cast::<Session>()
@@ -52,11 +53,15 @@ unsafe extern "system" fn release(this: *mut c_void) -> u32 {
     let count = session(this).refs.fetch_sub(1, Ordering::Release) - 1;
     if count == 0 {
         fence(Ordering::Acquire);
-        let value = Box::from_raw(this.cast::<Session>());
-        let (destroy, context) = (value.destroy, value.context);
-        drop(value);
+        let Session {
+            destroy,
+            context,
+            _module: module,
+            ..
+        } = *Box::from_raw(this.cast::<Session>());
         // The destroy callback can release the final pin on the shell's code.
         destroy(context);
+        drop(module);
     }
     count
 }
@@ -106,6 +111,7 @@ pub unsafe extern "C" fn meltype_tsf_request_edit_session(
         context: action_context,
         action,
         destroy,
+        _module: super::ModuleLifetime::new(),
     }));
     let session = ITfEditSession::from_raw(value.cast());
     let Some(context) = ITfContext::from_raw_borrowed(&context) else {

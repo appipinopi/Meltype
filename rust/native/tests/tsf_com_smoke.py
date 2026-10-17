@@ -3,7 +3,7 @@
 """Call actual TSF COM vtables without registering/activating an input method.
 
 Usage: python tsf_com_smoke.py path/to/meltype_native.dll [path/to/MeltypeTip.dll]
-The optional second path also verifies the C++ provider delegates to Rust.
+The optional second path verifies the shipped Rust COM server as well.
 """
 import ctypes as c
 import os
@@ -41,6 +41,7 @@ ENUM = Guid.parse("7cef04d7-cb75-4e80-a7ab-5f5bc7d332de")
 PROVIDER = Guid.parse("fee47777-163c-4769-996a-6e9c50ad8f54")
 FACTORY = Guid.parse("00000001-0000-0000-c000-000000000046")
 SERVICE = Guid.parse("417d801b-a9bd-4c26-bd16-356a825a6998")
+RUST_MODULES = set()
 SPECS = [
     ("c8107d36-2806-4d8f-a183-fd0aeb8ed862", "Meltype: 入力中", 2, 0, 0),
     ("e17aa399-c5eb-42e6-be45-c44f0651f2e2", "Meltype: 変換した文節", 1, 0, 2),
@@ -64,7 +65,8 @@ def assert_rust_vtable(pointer):
     assert kernel.GetModuleHandleExW(6, table[3], c.byref(module))
     path = c.create_unicode_buffer(32768)
     assert kernel.GetModuleFileNameW(module, path, len(path))
-    assert Path(path.value).name.lower() == "meltype_native.dll", path.value
+    actual=Path(path.value).resolve()
+    assert actual in RUST_MODULES if RUST_MODULES else actual.name.lower()=="meltype_native.dll", path.value
 
 def verify_info(pointer, index):
     assert_rust_vtable(pointer)
@@ -347,6 +349,7 @@ def verify_factory(native):
     print("TSF factory: Rust vtable, class/interface rejection, COM identity/refcounts, no aggregation, creation failure and balanced DLL pins passed")
 
 def main():
+    RUST_MODULES.update(Path(p).resolve() for p in sys.argv[1:])
     native = c.CDLL(str(Path(sys.argv[1]).resolve()))
     # Invalid inputs fail before touching any real registration backend.
     native.meltype_tsf_register_server.argtypes=[c.POINTER(c.c_uint16),U32]
@@ -409,10 +412,11 @@ def main():
         pointer = P()
         assert invoke(provider, 4, HR, [c.POINTER(Guid), c.POINTER(P)], c.byref(Guid.parse(SPECS[2][0])), c.byref(pointer)) == 0
         release(provider)
-        # Rust owns this object independently of the C++ text service.
-        assert tip.DllCanUnloadNow() == 0
+        # The standalone DLL must stay resident for the independently held child.
+        assert tip.DllCanUnloadNow() == 1
         verify_info(pointer.value, 2)
         release(pointer)
+        assert tip.DllCanUnloadNow() == 0
     print("TSF COM: three upstream display styles, identities, BSTR ownership, reference counts, partial enumeration, Clone/Reset/Skip and provider delegation passed")
 
 if __name__ == "__main__":

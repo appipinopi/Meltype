@@ -17,7 +17,7 @@ use std::{
     rc::Rc,
     sync::{
         atomic::{AtomicUsize, Ordering},
-        OnceLock,
+        Mutex,
     },
 };
 use windows::{
@@ -67,6 +67,8 @@ struct State {
     scale: f32,
     width: f32,
     meaning_key: String,
+    // Keep code pinned through implicit field drops after DestroyWindow too.
+    _module: super::ModuleLifetime,
 }
 thread_local! { static WINDOWS: RefCell<HashMap<usize, Rc<RefCell<State>>>> = RefCell::new(HashMap::new()); }
 static NEXT: AtomicUsize = AtomicUsize::new(1);
@@ -93,32 +95,55 @@ unsafe fn module() -> HINSTANCE {
     );
     HINSTANCE(value.0)
 }
+static CLASSES: Mutex<bool> = Mutex::new(false);
+static LIVE_WINDOWS: AtomicUsize = AtomicUsize::new(0);
 unsafe fn classes() -> bool {
-    static CLASSES: OnceLock<bool> = OnceLock::new();
-    *CLASSES.get_or_init(|| {
-        for (name, procedure) in [
-            (
-                CLASS,
-                window_proc as unsafe extern "system" fn(HWND, u32, WPARAM, LPARAM) -> LRESULT,
-            ),
-            (MEANING_CLASS, meaning_proc),
-        ] {
-            let class = WNDCLASSEXW {
-                cbSize: std::mem::size_of::<WNDCLASSEXW>() as u32,
-                style: CS_HREDRAW | CS_VREDRAW,
-                lpfnWndProc: Some(procedure),
-                hInstance: module(),
-                hCursor: LoadCursorW(None, IDC_ARROW).unwrap_or_default(),
-                lpszClassName: name,
-                ..Default::default()
-            };
-            if RegisterClassExW(&class) == 0 && GetLastError() != ERROR_CLASS_ALREADY_EXISTS {
-                return false;
-            }
+    let mut registered = CLASSES.lock().unwrap_or_else(|e| e.into_inner());
+    if *registered {
+        return true;
+    }
+    for (name, procedure) in [
+        (
+            CLASS,
+            window_proc as unsafe extern "system" fn(HWND, u32, WPARAM, LPARAM) -> LRESULT,
+        ),
+        (MEANING_CLASS, meaning_proc),
+    ] {
+        let class = WNDCLASSEXW {
+            cbSize: std::mem::size_of::<WNDCLASSEXW>() as u32,
+            style: CS_HREDRAW | CS_VREDRAW,
+            lpfnWndProc: Some(procedure),
+            hInstance: module(),
+            hCursor: LoadCursorW(None, IDC_ARROW).unwrap_or_default(),
+            lpszClassName: name,
+            ..Default::default()
+        };
+        if RegisterClassExW(&class) == 0 && GetLastError() != ERROR_CLASS_ALREADY_EXISTS {
+            return false;
         }
-        true
-    })
+    }
+    *registered = true;
+    true
 }
+// DLL classes retain procedure pointers even after every HWND is destroyed.
+// Unregister before reporting unloadable; a later factory may register again.
+#[cfg(feature = "tsf-server")]
+pub(super) unsafe fn release_classes() -> bool {
+    if LIVE_WINDOWS.load(Ordering::Acquire) != 0 {
+        return false;
+    }
+    let mut registered = CLASSES.lock().unwrap_or_else(|e| e.into_inner());
+    let mut ok = true;
+    for name in [CLASS, MEANING_CLASS] {
+        if UnregisterClassW(name, module()).is_err() && GetLastError() != ERROR_CLASS_DOES_NOT_EXIST
+        {
+            ok = false;
+        }
+    }
+    *registered = false;
+    ok
+}
+
 impl State {
     fn header(&self) -> f32 {
         (if self.view.typed.is_empty() { 0. } else { 22. })
@@ -305,6 +330,7 @@ impl Drop for State {
             if !self.window.is_invalid() {
                 let _ = DestroyWindow(self.window);
             }
+            LIVE_WINDOWS.fetch_sub(1, Ordering::Release);
         }
     }
 }
@@ -447,6 +473,7 @@ pub(super) fn create(
             return ptr::null_mut();
         }
         let id = NEXT.fetch_add(1, Ordering::Relaxed);
+        LIVE_WINDOWS.fetch_add(1, Ordering::Relaxed);
         let state = State {
             _adapter: adapter,
             id,
@@ -464,6 +491,7 @@ pub(super) fn create(
             scale: 1.,
             width: 168.,
             meaning_key: String::new(),
+            _module: super::ModuleLifetime::new(),
         };
         WINDOWS.with(|m| m.borrow_mut().insert(id, Rc::new(RefCell::new(state))));
         id as *mut c_void
