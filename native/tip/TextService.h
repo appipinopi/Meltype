@@ -227,7 +227,6 @@ private:
     const wchar_t*& scopeSource_ = state_.value->scope_source;
     const wchar_t*& passReason_ = state_.value->pass_reason;
     RustFocusCallbacks FocusCallbacks();
-    RustCoreStateCallbacks CoreCallbacks();
     bool ForgetAbandoned(ITfComposition*);
     void EndAbandonedNow();
 #else
@@ -276,7 +275,6 @@ private:
     unsigned long long modeEpoch_ = 0;
     unsigned int shutdownPhase_ = 0;
     RustFocusCallbacks FocusCallbacks();
-    RustCoreStateCallbacks CoreCallbacks();
 #else
     bool eatenDown_[256] = {};
     struct Reinjected {

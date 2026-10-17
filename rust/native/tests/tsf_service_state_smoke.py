@@ -20,6 +20,8 @@ from tsf_abandoned_smoke import DeferredHost
 from tsf_fields_smoke import CompartmentHost,OPEN
 from tsf_service_com_smoke import DISPATCH,DESTROY
 SELECT=c.CFUNCTYPE(None,c.c_void_p,c.c_int,c.c_int)
+CORE_NOTICE=c.CFUNCTYPE(None,c.c_void_p,c.c_uint32,c.c_int)
+CORE_CLOCK=c.CFUNCTYPE(c.c_uint64,c.c_void_p)
 NOTICE=c.CFUNCTYPE(None,c.c_void_p,c.c_int)
 READ=c.CFUNCTYPE(c.c_int,c.c_void_p)
 TOGGLE=c.CFUNCTYPE(None,c.c_void_p)
@@ -100,6 +102,9 @@ class StateTests(unittest.TestCase):
         cls.api.meltype_tsf_service_write_open.argtypes=[P,c.c_int];cls.api.meltype_tsf_service_write_open.restype=c.c_int
         cls.api.meltype_tsf_service_apply_mode.argtypes=[P,U32,P,P,NOTICE];cls.api.meltype_tsf_service_apply_mode.restype=c.c_int
         cls.api.meltype_tsf_service_com_create.argtypes=[P,DISPATCH,DESTROY];cls.api.meltype_tsf_service_com_create.restype=P
+        cls.api.meltype_tsf_service_core.argtypes=[P,c.c_char_p,P,P,CORE_NOTICE,CORE_CLOCK,c.c_int];cls.api.meltype_tsf_service_core.restype=c.c_int
+        cls.fixture=str(Path(sys.argv[2]).resolve()).encode() if len(sys.argv)>2 else None
+
 
         cls.api.meltype_tsf_key_state_create.restype=P
         cls.api.meltype_tsf_key_stale_write.argtypes=[P,U32,U32,c.c_uint64]
@@ -612,5 +617,80 @@ class StateTests(unittest.TestCase):
         self.assertEqual(self.api.meltype_tsf_service_mode(None),0)
         self.assertEqual(self.api.meltype_tsf_service_write_open(None,1),0)
         self.assertEqual(self.api.meltype_tsf_service_write_open(address,1),0)
+    def core(self,state,host,explicit=False,clock=None,notice=None,worker=None):
+        clock=clock or CORE_CLOCK(lambda _:3000)
+        notice=notice or CORE_NOTICE(lambda *_:None)
+        return self.api.meltype_tsf_service_core(c.addressof(state),worker or self.worker,c.byref(host.context),123,notice,clock,int(explicit))
+    def test_core_readiness_strict_retry_boundary_and_active_short_path(self):
+        state=self.create();host=SubscriptionHost();now=[2000];times=[];events=[]
+        clock=CORE_CLOCK(lambda owner:times.append(owner) or now[0]);notice=CORE_NOTICE(lambda owner,op,value:events.append((owner,op,value)))
+        self.assertEqual(self.core(state,host,clock=clock,notice=notice),0);self.assertFalse(state.transport)
+        now[0]=2001
+        self.assertEqual(self.core(state,host,clock=clock,notice=notice),1)
+        self.assertTrue(state.server_active);self.assertEqual(state.last_hello,2001)
+        self.assertEqual(events,[(123,0,1)]);before=len(times)
+        self.assertEqual(self.core(state,host,clock=clock,notice=notice),1);self.assertEqual(len(times),before)
+        host.verify(self)
+    def test_core_disabled_and_ended_service_do_not_read_clock_or_start_worker(self):
+        state=self.create();host=SubscriptionHost();calls=[];clock=CORE_CLOCK(lambda _:calls.append(1) or 4000)
+        for field in ['disabled','deactivated']:
+            setattr(state,field,True)
+            self.assertEqual(self.core(state,host,clock=clock),0);self.assertEqual(self.core(state,host,explicit=True,clock=clock),0)
+            setattr(state,field,False)
+        self.assertEqual(calls,[]);self.assertFalse(state.transport);host.verify(self)
+    def fixture_core(self,state,host,reply,notice=None):
+        if not self.fixture:self.skipTest('Pass the private framed transport fixture executable')
+        root=Path(self.directory.name);response=root/'hello-reply.json';request=root/'hello-request.json'
+        response.write_text(reply,encoding='utf-8')
+        changes={'MELTYPE_TEST_HELLO_REPLY_FILE':str(response),'MELTYPE_TEST_HELLO_REQUEST_FILE':str(request)}
+        previous={name:os.environ.get(name) for name in changes}
+        try:
+            os.environ.update(changes)
+            self.api.meltype_tsf_service_close(c.addressof(state))
+            result=self.core(state,host,explicit=True,notice=notice,worker=self.fixture)
+        finally:
+            for name,value in previous.items():
+                if value is None:os.environ.pop(name,None)
+                else:os.environ[name]=value
+        return result,json.loads(request.read_text(encoding='utf-8'))
+    def test_core_hello_native_process_thread_metadata_and_state_publication(self):
+        state=self.create();host=SubscriptionHost();state.own_process=True;state.direct_word=True;events=[]
+        notice=CORE_NOTICE(lambda owner,op,value:events.append((op,value,state.server_active,state.direct_detection,state.code_app,state.direct_word)))
+        result,request=self.fixture_core(state,host,'{"active":true,"directDetection":true,"code":true}',notice)
+        self.assertEqual(result,1);self.assertEqual(request['op'],'hello')
+        kernel=c.WinDLL('kernel32');self.assertEqual(request['tid'],kernel.GetCurrentThreadId())
+        self.assertEqual(request['process'].lower(),'python');self.assertEqual(state.last_hello,3000)
+        self.assertEqual(events,[(0,1,True,True,True,False)]);host.verify(self)
+    def test_core_inactive_and_non_boolean_fields_are_normalized(self):
+        state=self.create();host=SubscriptionHost()
+        for reply in ['{"active":false,"code":true,"directDetection":true}','{"active":1,"code":true}',
+                      '{"active":true,"code":"true","directDetection":1}']:
+            state.direct_word=True
+            result,_=self.fixture_core(state,host,reply)
+            expected=json.loads(reply);active=expected.get('active') is True
+            self.assertEqual(result,int(active));self.assertEqual(state.server_active,active)
+            self.assertEqual(state.code_app,active and expected.get('code') is True)
+            self.assertEqual(state.direct_detection,active and expected.get('directDetection') is True);self.assertFalse(state.direct_word)
+        host.verify(self)
+    def test_core_invalid_json_reports_error_then_inactive(self):
+        state=self.create();host=SubscriptionHost();events=[]
+        notice=CORE_NOTICE(lambda owner,op,value:events.append((op,value)))
+        result,_=self.fixture_core(state,host,'not-json',notice)
+        self.assertEqual(result,0);self.assertEqual(events,[(1,0),(0,0)])
+        self.assertFalse(state.server_active);host.verify(self)
+    def test_core_reentrant_notice_supersedes_return_and_keeps_new_state(self):
+        state=self.create();host=SubscriptionHost()
+        def changed(owner,op,value):
+            state.focus_epoch+=1;state.server_active=False;state.code_app=False
+        notice=CORE_NOTICE(changed)
+        result,_=self.fixture_core(state,host,'{"active":true,"code":true}',notice)
+        # Notification runs after publication; return value remains the hello result,
+        # while the nested generation/state change is preserved.
+        self.assertEqual(result,1);self.assertFalse(state.server_active);self.assertFalse(state.code_app);host.verify(self)
+    def test_core_null_arguments_do_not_mutate_state_or_start_transport(self):
+        state=self.create();address=c.addressof(state);before=c.string_at(address,c.sizeof(State))
+        for data,worker,lifetime in [(None,self.worker,None),(address,None,None),(address,self.worker,None)]:
+            self.assertEqual(self.api.meltype_tsf_service_core(data,worker,lifetime,None,CORE_NOTICE(),CORE_CLOCK(),0),0)
+        self.assertEqual(c.string_at(address,c.sizeof(State)),before)
 if __name__=='__main__':unittest.main(argv=[sys.argv[0]],verbosity=2,failfast=True)
 

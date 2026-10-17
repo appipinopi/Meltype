@@ -13,14 +13,14 @@ use windows::{
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct StateCallbacks {
-    owner: *mut c_void,
-    lifetime: *mut c_void,
-    epoch: *const u64,
-    read: unsafe extern "C" fn(*mut c_void, *mut u64) -> u32,
-    update: unsafe extern "C" fn(*mut c_void, u32, u64),
-    hello: unsafe extern "C" fn(*mut c_void),
-    request: unsafe extern "C" fn(*mut c_void, *const c_char, *mut u32) -> i32,
-    clock: Option<unsafe extern "C" fn(*mut c_void) -> u64>,
+    pub(super) owner: *mut c_void,
+    pub(super) lifetime: *mut c_void,
+    pub(super) epoch: *const u64,
+    pub(super) read: unsafe extern "C" fn(*mut c_void, *mut u64) -> u32,
+    pub(super) update: unsafe extern "C" fn(*mut c_void, u32, u64),
+    pub(super) hello: unsafe extern "C" fn(*mut c_void),
+    pub(super) request: unsafe extern "C" fn(*mut c_void, *const c_char, *mut u32) -> i32,
+    pub(super) clock: Option<unsafe extern "C" fn(*mut c_void) -> u64>,
 }
 unsafe fn snapshot(c: &StateCallbacks, epoch: u64) -> Option<(u32, u64)> {
     if c.epoch.read() != epoch {

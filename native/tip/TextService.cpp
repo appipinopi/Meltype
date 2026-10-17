@@ -910,7 +910,7 @@ bool TextService::ContextDisabled(ITfContext* context) {
 
 bool TextService::ServerReady() {
 #ifdef MELTYPE_RUST_CORE
-    return RustCoreReady(CoreCallbacks());
+    return RustServiceCore(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),false);
 #else
     if (disabled_) return false;
     if (!serverActive_ && GetTickCount64() - lastHello_ > 2000) Hello();
@@ -920,7 +920,7 @@ bool TextService::ServerReady() {
 
 void TextService::Hello() {
 #ifdef MELTYPE_RUST_CORE
-    RustCoreHello(ProcessName(),CoreCallbacks());
+    RustServiceCore(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),true);
 #else
     lastHello_ = GetTickCount64();
     JsonValue reply;
@@ -933,25 +933,6 @@ void TextService::Hello() {
 #endif
 }
 
-#ifdef MELTYPE_RUST_CORE
-RustCoreStateCallbacks TextService::CoreCallbacks() {
-    return {
-        this,ServiceInterface<ITfTextInputProcessorEx>(),&focusEpoch_,
-        [](void* p,unsigned long long* last)->unsigned int {auto* s=static_cast<TextService*>(p);*last=s->lastHello_;return (s->disabled_?1u:0u)|(s->serverActive_?2u:0u)|(s->deactivated_?4u:0u);},
-        [](void* p,unsigned int op,unsigned long long value) {auto* s=static_cast<TextService*>(p);try {switch (op) {
-            case 0:s->lastHello_=value;break;
-            case 1:s->serverActive_=(value&1)!=0;s->directDetection_=(value&2)!=0;s->codeApp_=(value&4)!=0;s->directEnglishWord_=false;break;
-            case 2:TipLog(L"Meltype.exe: %s",value?L"つながりました":L"使えません (動いていない・モードが Meltype IME でない)");break;
-        }}catch (...) {}},
-        [](void* p) {try {static_cast<TextService*>(p)->Hello();}catch (...) {}},
-        [](void* p,const char* json,unsigned int* flags)->int {try {JsonValue reply;
-            if (!static_cast<TextService*>(p)->Request(json,reply)) return 0;
-            *flags=(reply[L"active"].Bool()?1u:0u)|(reply[L"directDetection"].Bool()?2u:0u)|(reply[L"code"].Bool()?4u:0u);return 1;
-        }catch (...) {return 0;}},
-        nullptr,
-    };
-}
-#endif
 
 void TextService::ForgetSecretField() {
 #ifdef MELTYPE_RUST_CORE

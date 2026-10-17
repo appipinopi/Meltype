@@ -270,6 +270,7 @@ unsigned int RustServiceStateLiveCount();
 void RustServiceSetSid(RustServiceState*,const char*);
 void RustServiceInitialize(RustServiceState*,unsigned int,int,int,const char*);
 void RustServiceClearResume(RustServiceState*);
+bool RustServiceCore(RustServiceState*,IUnknown*,bool);
 unsigned int RustServiceMode(const RustServiceState*);
 void RustServiceWriteOpen(RustServiceState*,bool);
 void RustServiceApplyMode(RustServiceState*,unsigned int,IUnknown*,void*,void (__cdecl *)(void*,int));

@@ -28,6 +28,18 @@ fn main() {
         let mut bytes = vec![0; u32::from_le_bytes(size) as usize];
         input.read_exact(&mut bytes).unwrap();
         let text = String::from_utf8(bytes).unwrap();
+        if let Some(reply_file) = std::env::var_os("MELTYPE_TEST_HELLO_REPLY_FILE") {
+            if let Some(request_file) = std::env::var_os("MELTYPE_TEST_HELLO_REQUEST_FILE") {
+                std::fs::write(request_file, &text).unwrap();
+            }
+            let response = std::fs::read(reply_file).unwrap();
+            output
+                .write_all(&(response.len() as u32).to_le_bytes())
+                .unwrap();
+            output.write_all(&response).unwrap();
+            output.flush().unwrap();
+            continue;
+        }
         let parts = text.split('|').collect::<Vec<_>>();
         serial += 1;
         if parts[0] == "exit" {

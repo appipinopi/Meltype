@@ -45,6 +45,9 @@ fn module_path_with(mut read: impl FnMut(&mut [u16]) -> usize) -> Vec<u16> {
         path.resize((path.len() * 2).min(32768), 0);
     }
 }
+pub(super) fn name() -> Vec<u16> {
+    display_name(&module_path()).to_vec()
+}
 pub(super) fn own_process() -> bool {
     let path = module_path();
     is_own_name(filename(&path))
