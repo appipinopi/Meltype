@@ -249,6 +249,27 @@ typedef struct MeltypeTsfModeCallbacks {
    never read surrounding text or send toggle requests. */
 int32_t meltype_tsf_toggle_mode(void *context, void *thread_manager, void *key_state, uint32_t client, const char *metadata, const MeltypeTsfModeCallbacks *callbacks);
 int32_t meltype_tsf_code_line(void *context, void *key_state, uint32_t client, const char *metadata, const MeltypeTsfModeCallbacks *callbacks, int32_t japanese);
+typedef struct MeltypeTsfModeQueryCallbacks {
+    void *owner,*lifetime;
+    uint32_t (*read)(void *); /* code application=2, server active=8 */
+    int32_t (*secret)(void *, uint32_t cookie, void *context);
+    int32_t (*request)(void *, const char *json, uint32_t timeout_ms, int32_t optional);
+} MeltypeTsfModeQueryCallbacks;
+/* Uses an existing read cookie; no new edit lock or server hello. Same lifetime,
+   metadata and callback safety requirements as toggle_mode. Request receives
+   100ms/optional=1 and must apply a successfully parsed reply. */
+int32_t meltype_tsf_query_mode(void *context, uint32_t cookie, void *key_state, const char *metadata, const MeltypeTsfModeQueryCallbacks *callbacks, int32_t selection_changed);
+typedef struct MeltypeTsfModeApplyCallbacks {
+    void *owner,*lifetime;
+    uint32_t (*read)(void *);
+    void (*write)(void *, uint32_t flags);
+    void (*notify)(void *, int32_t english);
+} MeltypeTsfModeApplyCallbacks;
+/* Reply bits active=1,code=2,English=4. Read/write bits code application=2,
+   code English=4. On the TSF thread, with valid non-throwing callbacks. Pins the
+   IUnknown owner, publishes both fields before notification, and notifies only
+   when English changes. write must publish state without notifying. */
+int32_t meltype_tsf_apply_mode(uint32_t reply, const MeltypeTsfModeApplyCallbacks *callbacks);
 #endif
 #ifdef __cplusplus
 }

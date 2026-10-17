@@ -1213,7 +1213,7 @@ void TextService::ToggleInputMode(ITfContext* context) {
 RustModeCallbacks TextService::ModeCallbacks() {
     return {
         this,static_cast<ITfTextInputProcessorEx*>(this),
-        [](void* p)->unsigned int {auto* s=static_cast<TextService*>(p);return (s->open_?1u:0u)|(s->codeApp_?2u:0u)|(s->codeEnglish_?4u:0u);},
+        [](void* p)->unsigned int {auto* s=static_cast<TextService*>(p);return (s->open_?1u:0u)|(s->codeApp_?2u:0u)|(s->codeEnglish_?4u:0u)|(s->serverActive_?8u:0u);},
         [](void* p)->int {try {return static_cast<TextService*>(p)->ServerReady()?1:0;}catch (...) {return 0;}},
         [](void* p,unsigned int ec,void* c)->int {try {return static_cast<TextService*>(p)->IsSecretField(ec,static_cast<ITfContext*>(c))?1:0;}catch (...) {return 1;}},
         [](void* p,int open) {try {static_cast<TextService*>(p)->SetOpen(open!=0);}catch (...) {}},
@@ -1260,23 +1260,31 @@ bool TextService::SetCodeLine(ITfContext* context, bool japanese) {
 }
 
 void TextService::QueryMode(TfEditCookie ec, ITfContext* context, bool selectionChanged) {
+#ifdef MELTYPE_RUST_CORE
+    const auto mode=ModeCallbacks();
+    RustModeQueryCallbacks callbacks={
+        mode.owner,mode.lifetime,mode.read,mode.secret,
+        [](void* p,const char* text,unsigned int timeout,int optional)->int {
+            try {auto* s=static_cast<TextService*>(p);JsonValue reply;
+                if (!s->Request(text,reply,timeout,optional!=0)) return 0;
+                s->ApplyMode(reply);return 1;
+            }catch (...) {return 0;}
+        },
+    };
+    const std::string metadata="{\"sid\":\""+sid_+"\",\"process\":"+JsonString(ProcessName())+"}";
+    RustQueryMode(context,ec,keyState_,metadata,callbacks,selectionChanged);
+#else
     if (!codeApp_ || !serverActive_ || ContextDisabled(context) || IsSecretField(ec, context)) return;
     std::wstring before, after;
     SurroundingText(ec, context, before, after);
     // passed: キャレットを動かしたキー (少し前にアプリに通したキー)。無ければ、キャレットが動いたなら 0 (クリックなど)、文字が変わっただけなら -1。
     // 改行の後の自動のインデントなど、キーに続くアプリの編集でも通知が来るので、通したキーは少しの間覚えておく。
     // ただし、マウスのボタンを押しているあいだに選択が変わったら、キーの直後でもクリックとして伝える
-#ifdef MELTYPE_RUST_CORE
-    RustKeyPassed info={};RustKeyPassedRead(keyState_,true,selectionChanged,info);
-    int passed=info.key;
-    bool control=info.control!=0;
-#else
     bool clicked = selectionChanged && ((GetAsyncKeyState(VK_LBUTTON) | GetAsyncKeyState(VK_RBUTTON)) & 0x8000) != 0;
     bool recent = !clicked && GetTickCount64() - passedTime_ < 500;
     int passed = recent ? static_cast<int>(passedVk_) : selectionChanged ? 0 : -1;
     passedPending_ = false;
     bool control=recent && passedControl_;
-#endif
     std::string request = "{\"op\":\"mode\",\"sid\":\"" + sid_ + "\",\"process\":" + JsonString(ProcessName()) +
                           ",\"passed\":" + std::to_string(passed) + (control ? ",\"ctrl\":true" : "") +
                           ",\"before\":" + JsonString(before) + "}";
@@ -1285,6 +1293,7 @@ void TextService::QueryMode(TfEditCookie ec, ITfContext* context, bool selection
     if (Request(request, reply, 100, true)) {
         ApplyMode(reply);
     }
+#endif
 }
 
 #ifndef MELTYPE_RUST_CORE
@@ -1309,6 +1318,15 @@ std::string TextService::PendingPassed() {
 }
 
 void TextService::ApplyMode(const JsonValue& reply) {
+#ifdef MELTYPE_RUST_CORE
+    RustModeApplyCallbacks callbacks={
+        this,static_cast<ITfTextInputProcessorEx*>(this),
+        [](void* p)->unsigned int {auto* s=static_cast<TextService*>(p);return (s->codeApp_?2u:0u)|(s->codeEnglish_?4u:0u);},
+        [](void* p,unsigned int flags) {auto* s=static_cast<TextService*>(p);s->codeApp_=(flags&2)!=0;s->codeEnglish_=(flags&4)!=0;},
+        [](void* p,int english) {auto* s=static_cast<TextService*>(p);TipLog(L"入力モードの表示: %s",english?L"英数 (コードの行)":L"日本語");s->UpdateLangBar();},
+    };
+    RustApplyMode((reply[L"active"].Bool()?1u:0u)|(reply[L"code"].Bool()?2u:0u)|(reply[L"english"].Bool()?4u:0u),callbacks);
+#else
     bool active = reply[L"active"].Bool();
     codeApp_ = active && reply[L"code"].Bool();
     bool english = codeApp_ && reply[L"english"].Bool();
@@ -1316,6 +1334,7 @@ void TextService::ApplyMode(const JsonValue& reply) {
     codeEnglish_ = english;
     TipLog(L"入力モードの表示: %s", english ? L"英数 (コードの行)" : L"日本語");
     UpdateLangBar();
+#endif
 }
 
 void TextService::Reinject(UINT vk) {

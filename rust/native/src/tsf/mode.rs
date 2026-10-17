@@ -282,3 +282,93 @@ pub unsafe extern "C" fn meltype_tsf_code_line(
         .unwrap_or(false),
     )
 }
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct QueryCallbacks {
+    owner: *mut c_void,
+    lifetime: *mut c_void,
+    read: unsafe extern "C" fn(*mut c_void) -> u32,
+    secret: unsafe extern "C" fn(*mut c_void, u32, *mut c_void) -> i32,
+    request: unsafe extern "C" fn(*mut c_void, *const c_char, u32, i32) -> i32,
+}
+/// Query mode during an existing read edit session; no new lock or hello.
+/// # Safety
+/// Borrowed TSF context, valid read cookie, JSON {sid:string,process:string} and
+/// non-null callback functions on their TSF thread. Callbacks never throw.
+/// read: code application=2, server active=8. request applies a successful reply
+/// and receives timeout=100ms, optional=1. Pins context and owner until return.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_tsf_query_mode(
+    context: *mut c_void,
+    cookie: u32,
+    token: *mut c_void,
+    metadata: *const c_char,
+    callbacks: *const QueryCallbacks,
+    selection_changed: i32,
+) -> i32 {
+    i32::from(catch_unwind(AssertUnwindSafe(|| {
+        let Some(c) = callbacks.as_ref().copied() else { return false; };
+        let Some(_owner) = IUnknown::from_raw_borrowed(&c.lifetime).cloned() else { return false; };
+        let flags = (c.read)(c.owner);
+        if flags & (2 | 8) != (2 | 8) { return false; }
+        let Some(context) = ITfContext::from_raw_borrowed(&context).cloned() else { return false; };
+        if fields::meltype_tsf_context_disabled(context.as_raw()) != 0
+            || (c.secret)(c.owner, cookie, context.as_raw()) != 0 { return false; }
+        if metadata.is_null() { return false; }
+        let Ok(metadata) = serde_json::from_slice::<Value>(CStr::from_ptr(metadata).to_bytes()) else { return false; };
+        if !metadata["sid"].is_string() || !metadata["process"].is_string() { return false; }
+        let mut before = String::new();
+        ranges::meltype_tsf_read_surrounding(context.as_raw(), cookie, (&mut before as *mut String).cast(), receive_before);
+        let mut passed = key_state::Passed::default();
+        key_state::meltype_tsf_key_passed(token, 1, selection_changed, &mut passed);
+        let mut request = json!({"op":"mode", "sid":metadata["sid"], "process":metadata["process"], "passed":passed.key,"before":before});
+        if passed.control != 0 { request["ctrl"] = json!(true); }
+        let Ok(request) = CString::new(request.to_string()) else { return false; };
+        (c.request)(c.owner, request.as_ptr(), 100, 1) != 0
+    })).unwrap_or(false))
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct ApplyCallbacks {
+    owner: *mut c_void,
+    lifetime: *mut c_void,
+    read: unsafe extern "C" fn(*mut c_void) -> u32,
+    write: unsafe extern "C" fn(*mut c_void, u32),
+    notify: unsafe extern "C" fn(*mut c_void, i32),
+}
+/// Normalize the core mode response, publish both fields before notifying UI.
+/// # Safety
+/// On the TSF thread with non-null function pointers and a borrowed owner
+/// IUnknown. Callbacks never throw. reply bits: active=1,code=2,English=4;
+/// read/write use code application=2,code English=4. write publishes without
+/// notifications; notify runs only when code English changes, with owner pinned.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_tsf_apply_mode(
+    reply: u32,
+    callbacks: *const ApplyCallbacks,
+) -> i32 {
+    i32::from(
+        catch_unwind(AssertUnwindSafe(|| {
+            let Some(c) = callbacks.as_ref().copied() else {
+                return false;
+            };
+            let Some(_owner) = IUnknown::from_raw_borrowed(&c.lifetime).cloned() else {
+                return false;
+            };
+            let previous = (c.read)(c.owner);
+            let code = reply & 3 == 3;
+            let english = code && reply & 4 != 0;
+            (c.write)(
+                c.owner,
+                if code { 2 } else { 0 } | if english { 4 } else { 0 },
+            );
+            if (previous & 4 != 0) != english {
+                (c.notify)(c.owner, i32::from(english));
+            }
+            true
+        }))
+        .unwrap_or(false),
+    )
+}

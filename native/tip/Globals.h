@@ -141,6 +141,20 @@ struct RustModeCallbacks {
 };
 bool RustToggleMode(ITfContext*,ITfThreadMgr*,void*,TfClientId,const std::string&,const RustModeCallbacks&);
 bool RustCodeLine(ITfContext*,void*,TfClientId,const std::string&,const RustModeCallbacks&,bool);
+struct RustModeQueryCallbacks {
+    void* owner;IUnknown* lifetime;
+    unsigned int (__cdecl *read)(void*);
+    int (__cdecl *secret)(void*,unsigned int,void*);
+    int (__cdecl *request)(void*,const char*,unsigned int,int);
+};
+struct RustModeApplyCallbacks {
+    void* owner;IUnknown* lifetime;
+    unsigned int (__cdecl *read)(void*);
+    void (__cdecl *write)(void*,unsigned int);
+    void (__cdecl *notify)(void*,int);
+};
+bool RustQueryMode(ITfContext*,TfEditCookie,void*,const std::string&,const RustModeQueryCallbacks&,bool);
+bool RustApplyMode(unsigned int,const RustModeApplyCallbacks&);
 #endif
 
 // 文字コードの変換
