@@ -84,6 +84,7 @@ struct RustApi {
     HRESULT (__cdecl *handleKey)(void*,unsigned int,void*,unsigned int,wchar_t,const char*,const RustKeyEditCallbacks*) = nullptr;
     HRESULT (__cdecl *commit)(unsigned int,void*,unsigned int,unsigned int,const char*,const RustCommitCallbacks*,int) = nullptr;
     HRESULT (__cdecl *selectCandidate)(unsigned int,int,int,const char*,const RustCommitCallbacks*) = nullptr;
+    int (__cdecl *applyReply)(void*,unsigned int,const char*,const char*,const RustApplyReplyCallbacks*) = nullptr;
     RustApi() {
         wchar_t path[32768];
         const DWORD size = GetModuleFileNameW(g_module, path, ARRAYSIZE(path));
@@ -165,12 +166,14 @@ struct RustApi {
         handleKey = reinterpret_cast<decltype(handleKey)>(GetProcAddress(module, "meltype_tsf_handle_key"));
         commit = reinterpret_cast<decltype(commit)>(GetProcAddress(module, "meltype_tsf_commit"));
         selectCandidate = reinterpret_cast<decltype(selectCandidate)>(GetProcAddress(module, "meltype_tsf_select_candidate"));
+        applyReply = reinterpret_cast<decltype(applyReply)>(GetProcAddress(module, "meltype_tsf_apply_reply"));
     }
     bool ready() const { return create && destroy && request && freeText; }
     // The module stays loaded for the process lifetime. Do not unload Rust
     // thread state under the Windows loader lock during TSF DLL teardown.
 };
 RustApi& api() { static RustApi value; return value; }
+std::string ViewJson(const JsonValue&);
 HRESULT __cdecl CreateTextService(const GUID* iid, void** out) {
     auto* service = new (std::nothrow) TextService();
     if (!service) return E_OUTOFMEMORY;
@@ -254,9 +257,8 @@ void RustEndComposition(TfEditCookie cookie,ITfContext* context,ITfComposition* 
 void RustSetAttribute(TfEditCookie cookie,ITfContext* context,ITfRange* range,TfGuidAtom atom) {
     if (api().setAttribute) api().setAttribute(context,range,cookie,atom);
 }
-bool RustApplyCommits(TfEditCookie cookie,ITfContext* context,const JsonValue& reply,void* owner,
-    void* (__cdecl *current)(void*),int (__cdecl *write)(void*,void*,const unsigned short*,unsigned int)) {
-    if (!api().applyCommits) return false;
+namespace {
+std::string CommitJson(const JsonValue& reply) {
     std::string json = "[";
     const auto& edits = reply[L"commits"].array;
     for (size_t i = 0; i < edits.size(); ++i) {
@@ -265,7 +267,18 @@ bool RustApplyCommits(TfEditCookie cookie,ITfContext* context,const JsonValue& r
         json += "{\"text\":" + JsonString(edit[L"text"].Str()) + ",\"deleteBefore\":" + std::to_string(edit[L"deleteBefore"].Int()) +
             ",\"expect\":" + (edit[L"expect"].type == JsonValue::Type::String ? JsonString(edit[L"expect"].Str()) : "null") + "}";
     }
-    return api().applyCommits(context,cookie,(json+"]").c_str(),owner,current,write) != 0;
+    return json+"]";
+}
+}
+bool RustApplyCommits(TfEditCookie cookie,ITfContext* context,const JsonValue& reply,void* owner,
+    void* (__cdecl *current)(void*),int (__cdecl *write)(void*,void*,const unsigned short*,unsigned int)) {
+    return api().applyCommits && api().applyCommits(context,cookie,CommitJson(reply).c_str(),owner,current,write)!=0;
+}
+bool RustApplyReply(TfEditCookie cookie,ITfContext* context,const JsonValue& reply,const std::string& metadata,const RustApplyReplyCallbacks& callbacks) {
+    if (!api().applyReply) return false;
+    const std::string json=std::string("{\"active\":")+(reply[L"active"].Bool()?"true":"false")+
+        ",\"commits\":"+CommitJson(reply)+",\"view\":"+(reply[L"view"].IsNull()?"null":ViewJson(reply[L"view"]))+"}";
+    return api().applyReply(context,cookie,json.c_str(),metadata.c_str(),&callbacks)!=0;
 }
 void* RustCaptureResume(TfEditCookie cookie,ITfContext* context,ITfComposition* composition) {
     if (!api().captureResume || !api().resumeMatches || !api().tryResume || !api().resumeAttribute || !api().destroyResume) return nullptr;
@@ -314,7 +327,7 @@ bool RustWouldEat(ITfContext* context,UINT key,LPARAM message,bool test,const Ru
     ch=0;
     return api().wouldEat && api().wouldEat(context,key,static_cast<ULONG_PTR>(message),test?1:0,&callbacks,&ch)!=0;
 }
-void* RustKeyStateCreate() {return api().keyStateCreate && api().keyStateReset && api().keyStateDestroy && api().keyCacheClear && api().isReinjected && api().keySecret && api().reinject && api().keyForeground && api().keyStaleRead && api().keyStaleWrite && api().keyStaleClear && api().keyPassed && api().keyEvent && api().toggleMode && api().codeLine && api().queryMode && api().applyMode && api().handleKey && api().commit && api().selectCandidate ? api().keyStateCreate() : nullptr;}
+void* RustKeyStateCreate() {return api().keyStateCreate && api().keyStateReset && api().keyStateDestroy && api().keyCacheClear && api().isReinjected && api().keySecret && api().reinject && api().keyForeground && api().keyStaleRead && api().keyStaleWrite && api().keyStaleClear && api().keyPassed && api().keyEvent && api().toggleMode && api().codeLine && api().queryMode && api().applyMode && api().handleKey && api().commit && api().selectCandidate && api().applyReply ? api().keyStateCreate() : nullptr;}
 void RustKeyStateReset(void* state) {if (api().keyStateReset) api().keyStateReset(state);}
 void RustKeyStateDestroy(void* state) {if (api().keyStateDestroy) api().keyStateDestroy(state);}
 void RustKeyCacheClear(void* state) {if (api().keyCacheClear) api().keyCacheClear(state);}
@@ -430,8 +443,8 @@ void CandidateWindow::Show(const CandidateView& view, const RECT& anchor) {
     api().candidateShow(impl_->handle, json.c_str(), &anchor);
 }
 void CandidateWindow::Hide() { if (impl_->handle) api().candidateHide(impl_->handle); }
-void CandidateWindow::ShowTsf(TfEditCookie cookie,ITfContext* context,ITfComposition* composition,const JsonValue& view) {
-    if (!impl_->handle || !api().candidateShowTsf) return;
+namespace {
+std::string ViewJson(const JsonValue& view) {
     std::string json = "{";
     for (const wchar_t* name : {L"candidates",L"notes",L"predictions",L"clauses"}) {
         json += JsonString(name) + ":[";
@@ -442,6 +455,12 @@ void CandidateWindow::ShowTsf(TfEditCookie cookie,ITfContext* context,ITfComposi
     for (const wchar_t* name : {L"suggestion",L"meaning",L"typed",L"text"}) json += JsonString(name) + ":" + JsonString(view[name].Str()) + ',';
     for (const wchar_t* name : {L"selectedIndex",L"selectedPrediction",L"selectedClause"}) json += JsonString(name) + ":" + std::to_string(view[name].Int()) + ',';
     json += std::string("\"converting\":") + (view[L"converting"].Bool() ? "true}" : "false}");
+    return json;
+}
+}
+void CandidateWindow::ShowTsf(TfEditCookie cookie,ITfContext* context,ITfComposition* composition,const JsonValue& view) {
+    if (!impl_->handle || !api().candidateShowTsf) return;
+    const auto json=ViewJson(view);
     api().candidateShowTsf(impl_->handle,context,composition,cookie,json.c_str());
 }
 bool CandidateWindow::Visible() const { return impl_->handle && api().candidateVisible(impl_->handle) != 0; }

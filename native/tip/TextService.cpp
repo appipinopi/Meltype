@@ -1511,13 +1511,24 @@ void TextService::Apply(TfEditCookie ec, ITfContext* context, const JsonValue& r
                 std::wstring(reinterpret_cast<const wchar_t*>(text),length)) ? 1 : 0;
         } catch (...) { return 0; }
     };
-    if (!RustApplyCommits(ec,context,reply,&owner,current,write)) {
-        JsonValue ignored;
-        Request("{\"op\":\"reset\",\"sid\":\"" + sid_ + "\",\"direct\":" + (!open_ ? "true" : "false") + "}", ignored);
-        keyFailed_ = true;
-        consumed_ = false;
-        return;
-    }
+    RustApplyReplyCallbacks callbacks={
+        &owner,static_cast<ITfTextInputProcessorEx*>(this),current,write,
+        [](void* p,unsigned int op,unsigned int cookie,void* context,const char* json,int value) {
+            auto* s=static_cast<Owner*>(p)->service;
+            try {switch (op) {
+                case 0:s->lastConverting_=value!=0;break;
+                case 1:case 2:{JsonValue view;if (!ParseJson(json,view)) return;
+                    if (op==1) s->ApplyComposition(cookie,static_cast<ITfContext*>(context),view);
+                    else s->ShowCandidates(cookie,static_cast<ITfContext*>(context),view);
+                    break;}
+                case 3:s->EndComposition(cookie);break;
+                case 4:if (s->candidates_) s->candidates_->Hide();break;
+                case 5:{JsonValue ignored;s->Request(json,ignored);s->keyFailed_=true;s->consumed_=false;break;}
+            }}catch (...) {s->keyFailed_=true;s->consumed_=false;}
+        },
+    };
+    const std::string metadata="{\"sid\":\""+sid_+"\",\"direct\":"+(!open_?"true":"false")+"}";
+    RustApplyReply(ec,context,reply,metadata,callbacks);
 #else
     // 1 つの応答の中の確定は、前の確定の後ろに続けて入れる (クリックで確定したときは、キャレットがもうクリックした所にあるので、
     // キャレットの位置に入れると、クリックした所に入ったり、選んでいた文字を上書きしたりする)
@@ -1551,7 +1562,6 @@ void TextService::Apply(TfEditCookie ec, ITfContext* context, const JsonValue& r
         next.Reset();
         if (SUCCEEDED(range->Clone(&next))) next->Collapse(ec, TF_ANCHOR_END);
     }
-#endif
 
     const JsonValue& view = reply[L"view"];
     lastConverting_ = !view.IsNull() && view[L"converting"].Bool();
@@ -1571,6 +1581,7 @@ void TextService::Apply(TfEditCookie ec, ITfContext* context, const JsonValue& r
         }
         if (candidates_) candidates_->Hide();
     }
+#endif
 }
 
 #ifndef MELTYPE_RUST_CORE

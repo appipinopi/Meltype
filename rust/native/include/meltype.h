@@ -325,6 +325,21 @@ int32_t meltype_tsf_commit(uint32_t mode, void *context, uint32_t client, uint32
    request_apply. No caret-policy/end/hide operations. Indices are passed to the
    core unchanged, including negative indices. Missing context is a no-op. */
 int32_t meltype_tsf_select_candidate(uint32_t client, int32_t index, int32_t prediction, const char *metadata, const MeltypeTsfCommitCallbacks *callbacks);
+typedef struct MeltypeTsfApplyReplyCallbacks {
+    void *owner,*lifetime;
+    void *(*current)(void *);
+    int32_t (*write)(void *, void *range, const uint16_t *text, uint32_t length);
+    void (*action)(void *, uint32_t operation, uint32_t cookie, void *context, const char *json, int32_t value);
+} MeltypeTsfApplyReplyCallbacks;
+/* TSF-thread-only live borrowed interfaces, valid READWRITE cookie and non-null
+   callbacks which never throw. reply={active,commits,view}; metadata={sid,direct}.
+   Applies commits first. Guard failure calls action 5 with reset JSON and stops.
+   action: 0 set converting(value),1 update composition(view JSON),2 show
+   candidates(view JSON),3 end composition,4 hide candidates,5 reset core and
+   mark key failed/unconsumed. JSON/range/text are borrowed only during callbacks.
+   Empty view clears preedit text only if active; inactive replies preserve it.
+   Owner/context/composition/range refs survive reentrant callbacks. */
+int32_t meltype_tsf_apply_reply(void *context, uint32_t cookie, const char *reply, const char *metadata, const MeltypeTsfApplyReplyCallbacks *callbacks);
 #endif
 #ifdef __cplusplus
 }

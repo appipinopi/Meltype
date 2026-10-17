@@ -173,6 +173,13 @@ struct RustCommitCallbacks {
 };
 HRESULT RustCommit(unsigned int,ITfContext*,TfClientId,TfEditCookie,const std::string&,const RustCommitCallbacks&,bool);
 HRESULT RustSelectCandidate(TfClientId,int,bool,const std::string&,const RustCommitCallbacks&);
+struct RustApplyReplyCallbacks {
+    void* owner;IUnknown* lifetime;
+    void* (__cdecl *current)(void*);
+    int (__cdecl *write)(void*,void*,const unsigned short*,unsigned int);
+    void (__cdecl *action)(void*,unsigned int,unsigned int,void*,const char*,int);
+};
+bool RustApplyReply(TfEditCookie,ITfContext*,const JsonValue&,const std::string&,const RustApplyReplyCallbacks&);
 #endif
 
 // 文字コードの変換

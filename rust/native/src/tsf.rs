@@ -3,6 +3,7 @@
 //! Windows TSF COM objects. These use the generated Windows SDK vtables,
 //! including system calling conventions on x86, rather than a C++ bridge.
 mod abandoned;
+mod apply_reply;
 mod candidates;
 mod commit_request;
 mod commits;
