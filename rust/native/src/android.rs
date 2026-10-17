@@ -2,10 +2,11 @@
 // Copyright (C) 2026 appipinopi
 use super::*;
 use jni::{
-    objects::{JClass, JString},
+    objects::{JClass, JObject, JString, JValue},
     sys::{jboolean, jint, jlong, jstring},
     JNIEnv,
 };
+mod editor_jni;
 fn java_result(env: &mut JNIEnv, result: *mut c_char) -> jstring {
     let text = unsafe { take(result) }
         .unwrap_or_else(|| "{\"consumed\":false,\"commits\":[],\"view\":null}".into());

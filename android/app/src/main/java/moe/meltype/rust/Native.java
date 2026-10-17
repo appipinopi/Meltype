@@ -17,4 +17,5 @@ final class Native {
     static native void direct(long handle, boolean enabled);
     static native void privateInput(long handle, boolean enabled);
     static native void canDelete(long handle, boolean enabled);
+    static native String applyEditor(long handle, Object connection, String reply, String composingText);
 }

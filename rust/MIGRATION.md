@@ -39,6 +39,7 @@
 - [ ] OS連携のRust化
 - [x] Linux IBusのPythonランタイムをRust実行ファイルへ移植（キー受信・確定・文節表示・候補・意味・予測・モード切替・周辺文字照合・プライバシー）
 - [ ] macOS InputMethodKit、fcitx5、Androidの残りの接続処理のRust化
+- [x] Androidの応答反映をRust／JNIへ移行（InputConnectionの選択／UTF-16照合、削除・確定・未確定文字とバッチ終了。実JVMから拒否・例外・部分編集と実コア入力を確認。Javaのサービス／イベント／画面と端末実機確認は残る）
 - [x] Windows TSFの配布DLLをRust単体へ移行（COMのDLL入口・workerパス取得・ログ・登録API・解放判定をRust化。C++ソースを製品へリンクせず、MSVCリンカー／Windows SDKで元のアイコンと版情報を結合。COM子オブジェクト・遅延編集・候補ウィンドウの寿命をDLLの解放判定へ反映。旧C++は上流参照／互換SDK試験用に保持。単体DLL試験10件・SDK試験14種類を各アーキテクチャで確認し、入力からDLL再読込みまでを各3回追加確認。実アプリへのIME登録・操作と全UIの一致確認は未完了。以下の記録は段階ごとの経緯）
 - [x] Windowsの配布用TSF DLLをDll.cpp＋最小RustDll.cppだけでリンク（TextService.cpp／RustPipe.cpp／Json.cppは互換SDK試験用に分離。リンクマップで旧オブジェクト不在を検査。配布DLLをLoadLibrary／DllGetClassObject／CreateInstanceから使う入力・確定・終了／再起動・解放試験をx64/x86で確認。DLL入口・読込・ログのC++は残り、完全なRust単体DLL化と実アプリ確認は未完了）
 - [x] Windows TSFクラスファクトリーの生成先をRust所有サービスへ変更（状態・workerパス・COM root・参照寿命をRustで確保／破棄し、本番生成時にC++ TextServiceを作らない。状態試験x64/x86各240件で全インターフェースの同一性、未対応IID失敗時の解放、最終参照解放とDLL保持、公開起動／終了を確認。Rust所有者を使う入力／ライフサイクル試験をCIへ追加。C++互換所有者は比較用に残り、DLL入口／読込／ログ等と実アプリ確認は未完了）

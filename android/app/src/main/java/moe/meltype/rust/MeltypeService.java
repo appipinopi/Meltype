@@ -169,61 +169,26 @@ public final class MeltypeService extends InputMethodService {
     private boolean apply(String json) {
         InputConnection connection = getCurrentInputConnection(); if (connection == null) return false;
         try {
-            JSONObject result = new JSONObject(json);
-            if (result.has("selectionExpect")) {
-                CharSequence selected = connection.getSelectedText(0);
-                if (selected == null || !result.getString("selectionExpect").contentEquals(selected)) {
-                    Native.reset(session); return false;
+            JSONObject result = new JSONObject(Native.applyEditor(session, connection, json, composing ? composingText : ""));
+            composing = result.getBoolean("composing");
+            composingText = result.getString("composingText");
+            JSONObject view = result.optJSONObject("view");
+            if (preview != null) preview.setText(composingText);
+            if (candidates != null) {
+                candidates.removeAllViews();
+                if (view != null) {
+                    JSONArray choices = view.getJSONArray("candidates");
+                    for (int i=0;i<choices.length();i++) {
+                        final int index=i; Button button=new Button(this); button.setText(choices.getString(i));
+                        button.setOnClickListener(v -> apply(Native.select(session,index))); candidates.addView(button);
+                    }
+                    JSONArray predictions = view.optJSONArray("predictions");
+                    if (predictions != null) for (int i=0;i<predictions.length();i++) {
+                        final int index=i; Button button=new Button(this); button.setText(predictions.getString(i));
+                        button.setOnClickListener(v -> apply(Native.predict(session,index))); candidates.addView(button);
+                    }
                 }
             }
-            connection.beginBatchEdit();
-            try {
-                JSONArray commits = result.getJSONArray("commits");
-                for (int i=0;i<commits.length();i++) {
-                    JSONObject edit = commits.getJSONObject(i);
-                    int count = edit.optInt("deleteBefore");
-                    if (count > 0) {
-                        String expect = edit.optString("expect", "");
-                        String pending = composing ? composingText : "";
-                        CharSequence actual = connection.getTextBeforeCursor(count + pending.length(),0);
-                        if (expect.length() != count || actual == null || !(expect + pending).contentEquals(actual)) {
-                            Native.reset(session); return false;
-                        }
-                        // Android's cursor follows the composing text. Remove that
-                        // verified span before deleting the committed prefix.
-                        if (!pending.isEmpty() && !connection.setComposingText("",1)
-                                || !connection.deleteSurroundingText(count,0)) {
-                            Native.reset(session); composing = false; composingText = "";
-                            return false;
-                        }
-                        composing = false; composingText = "";
-                    }
-                    if (!edit.getString("text").isEmpty()) connection.commitText(edit.getString("text"),1);
-                }
-                JSONObject view = result.optJSONObject("view");
-                composing = view != null;
-                composingText = view == null ? "" : view.getString("text");
-                if (view == null) { connection.finishComposingText(); if (preview != null) preview.setText(""); }
-                else {
-                    String text = view.getString("text"); connection.setComposingText(text,1);
-                    if (preview != null) preview.setText(text);
-                }
-                if (candidates != null) {
-                    candidates.removeAllViews();
-                    if (view != null) {
-                        JSONArray choices = view.getJSONArray("candidates");
-                        for (int i=0;i<choices.length();i++) {
-                            final int index=i; Button button=new Button(this); button.setText(choices.getString(i));
-                            button.setOnClickListener(v -> apply(Native.select(session,index))); candidates.addView(button);
-                        }
-                        JSONArray predictions = view.optJSONArray("predictions");
-                        if (predictions != null) for (int i=0;i<predictions.length();i++) {
-                            final int index=i; Button button=new Button(this); button.setText(predictions.getString(i));
-                            button.setOnClickListener(v -> apply(Native.predict(session,index))); candidates.addView(button);
-                        }
-                    }
-                }
-            } finally { connection.endBatchEdit(); }
             return result.getBoolean("consumed");
         } catch (JSONException error) { return false; }
     }

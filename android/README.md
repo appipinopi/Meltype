@@ -28,3 +28,7 @@ Windows では `export` の代わりに PowerShell の `$env:ANDROID_NDK_HOME = 
 漢字候補は同梱の補助辞書によるものです。Android版にはMozcのエンジン・辞書を同梱していません。フリック入力、配布署名、Play配布、実機検証は未対応です。CIのdebug APKは開発検証用です。
 
 API仕様: [InputMethodService](https://developer.android.com/reference/android/inputmethodservice/InputMethodService)、[Rust Android targets](https://doc.rust-lang.org/rustc/platform-support/android.html)。
+
+入力欄への応答反映はRustからJNIでInputConnectionを直接呼び出します。選択文字と削除前の文字をUTF-16単位で照合し、未確定文字の置換、確定、バッチ編集の開始・終了をRustで処理します。削除対象と選択範囲が競合する場合や、応答の表示データが不正な場合は書き込みません。編集が途中まで成功した後の失敗や、書込み中の例外ではキーを重ねて送らないようにし、コア状態をリセットします。Androidのバッチは通知をまとめるためのもので、書込みを巻き戻す仕組みではありません。
+
+`cargo build -p meltype-native --features android-jni-test --locked` と `python rust/native/tests/android_editor_smoke.py target/debug` は、JDK 17以降のJVMで実際のJNIを検証します。専用の入力欄を使い、絵文字・単独サロゲートの照合、選択、順次確定、拒否・例外・部分編集、未確定文字、実コアのローマ字変換と確定を確認します。Android端末への登録・操作を行う試験ではありません。サービスのライフサイクル、キーイベント、ソフトキーボードと管理画面には引き続きJavaが残っています。
