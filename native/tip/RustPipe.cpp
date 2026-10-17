@@ -90,6 +90,7 @@ struct RustApi {
     int (__cdecl *endOwnedComposition)(unsigned int,const RustCompositionSlots*) = nullptr;
     HRESULT (__cdecl *compositionTerminated)(unsigned int,void*,const char*,const RustTerminationCallbacks*) = nullptr;
     int (__cdecl *resumeOrCommit)(void*,unsigned int,unsigned int,const char*,const RustRecoveryCallbacks*) = nullptr;
+    int (__cdecl *abandonComposition)(unsigned int,const char*,const RustAbandonCallbacks*) = nullptr;
     RustApi() {
         wchar_t path[32768];
         const DWORD size = GetModuleFileNameW(g_module, path, ARRAYSIZE(path));
@@ -177,6 +178,7 @@ struct RustApi {
         endOwnedComposition = reinterpret_cast<decltype(endOwnedComposition)>(GetProcAddress(module, "meltype_tsf_end_owned_composition"));
         compositionTerminated = reinterpret_cast<decltype(compositionTerminated)>(GetProcAddress(module, "meltype_tsf_composition_terminated"));
         resumeOrCommit = reinterpret_cast<decltype(resumeOrCommit)>(GetProcAddress(module, "meltype_tsf_resume_or_commit"));
+        abandonComposition = reinterpret_cast<decltype(abandonComposition)>(GetProcAddress(module, "meltype_tsf_abandon_composition"));
     }
     bool ready() const { return create && destroy && request && freeText; }
     // The module stays loaded for the process lifetime. Do not unload Rust
@@ -280,6 +282,9 @@ HRESULT RustCompositionTerminated(TfEditCookie cookie,ITfComposition* compositio
 int RustResumeOrCommit(ITfContext* context,TfClientId client,TfGuidAtom atom,const std::string& metadata,const RustRecoveryCallbacks& callbacks) {
     return api().resumeOrCommit?api().resumeOrCommit(context,client,atom,metadata.c_str(),&callbacks):-1;
 }
+int RustAbandonComposition(TfClientId client,const std::string& metadata,const RustAbandonCallbacks& callbacks) {
+    return api().abandonComposition?api().abandonComposition(client,metadata.c_str(),&callbacks):-1;
+}
 void RustSetAttribute(TfEditCookie cookie,ITfContext* context,ITfRange* range,TfGuidAtom atom) {
     if (api().setAttribute) api().setAttribute(context,range,cookie,atom);
 }
@@ -353,7 +358,7 @@ bool RustWouldEat(ITfContext* context,UINT key,LPARAM message,bool test,const Ru
     ch=0;
     return api().wouldEat && api().wouldEat(context,key,static_cast<ULONG_PTR>(message),test?1:0,&callbacks,&ch)!=0;
 }
-void* RustKeyStateCreate() {return api().keyStateCreate && api().keyStateReset && api().keyStateDestroy && api().keyCacheClear && api().isReinjected && api().keySecret && api().reinject && api().keyForeground && api().keyStaleRead && api().keyStaleWrite && api().keyStaleClear && api().keyPassed && api().keyEvent && api().toggleMode && api().codeLine && api().queryMode && api().applyMode && api().handleKey && api().commit && api().selectCandidate && api().applyReply && api().applyOwnedComposition && api().writeOwnedCommit && api().endOwnedComposition && api().compositionTerminated && api().resumeOrCommit ? api().keyStateCreate() : nullptr;}
+void* RustKeyStateCreate() {return api().keyStateCreate && api().keyStateReset && api().keyStateDestroy && api().keyCacheClear && api().isReinjected && api().keySecret && api().reinject && api().keyForeground && api().keyStaleRead && api().keyStaleWrite && api().keyStaleClear && api().keyPassed && api().keyEvent && api().toggleMode && api().codeLine && api().queryMode && api().applyMode && api().handleKey && api().commit && api().selectCandidate && api().applyReply && api().applyOwnedComposition && api().writeOwnedCommit && api().endOwnedComposition && api().compositionTerminated && api().resumeOrCommit && api().abandonComposition ? api().keyStateCreate() : nullptr;}
 void RustKeyStateReset(void* state) {if (api().keyStateReset) api().keyStateReset(state);}
 void RustKeyStateDestroy(void* state) {if (api().keyStateDestroy) api().keyStateDestroy(state);}
 void RustKeyCacheClear(void* state) {if (api().keyCacheClear) api().keyCacheClear(state);}

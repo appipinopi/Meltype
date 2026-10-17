@@ -198,6 +198,12 @@ struct RustRecoveryCallbacks {
     void (__cdecl *request)(void*,const char*);
 };
 int RustResumeOrCommit(ITfContext*,TfClientId,TfGuidAtom,const std::string&,const RustRecoveryCallbacks&);
+struct RustAbandonCallbacks {
+    void* owner;IUnknown* lifetime;void** composition;void** context;void** abandoned;
+    void (__cdecl *update)(void*,unsigned int);
+    void (__cdecl *request)(void*,const char*);
+};
+int RustAbandonComposition(TfClientId,const std::string&,const RustAbandonCallbacks&);
 #endif
 
 // 文字コードの変換

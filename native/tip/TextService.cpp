@@ -1931,6 +1931,18 @@ void TextService::CommitAsync(bool keepAppCaret) {
 }
 
 void TextService::AbandonComposition() {
+#ifdef MELTYPE_RUST_CORE
+    RustAbandonCallbacks callbacks={
+        this,static_cast<ITfTextInputProcessorEx*>(this),reinterpret_cast<void**>(&composition_),reinterpret_cast<void**>(&compositionContext_),&abandoned_,
+        [](void* p,unsigned int op) {auto* s=static_cast<TextService*>(p);try {switch (op) {
+            case 0:s->ResetStaleCommit();break;
+            case 1:if (s->candidates_) s->candidates_->Hide();break;
+            case 2:s->directEnglishWord_=false;s->caretMoved_=true;break;
+        }}catch (...) {}},
+        [](void* p,const char* json) {try {JsonValue ignored;static_cast<TextService*>(p)->Request(json,ignored);}catch (...) {}},
+    };
+    RustAbandonComposition(clientId_,"{\"sid\":\""+sid_+"\"}",callbacks);
+#else
     // 前の入力欄の変換中の文字を、入力欄には触らずに手放す (文字はそのまま残る)。Meltype.exe の側も確定したことにする
     TipLog(L"前の入力欄の変換中の文字を確定できないので、手放します");
     Microsoft::WRL::ComPtr<ITfComposition> old;
@@ -1965,6 +1977,7 @@ void TextService::AbandonComposition() {
     caretMoved_ = true;
     JsonValue reply;
     Request(CommitRequest(true), reply);
+#endif
 }
 
 bool TextService::ForgetAbandoned(ITfComposition* composition) {

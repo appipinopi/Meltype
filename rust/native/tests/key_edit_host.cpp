@@ -55,6 +55,10 @@ struct Range {
 };
 struct Composition {
     void** table=compositionMethods;ULONG refs=0;Range* range=nullptr;ITfCompositionSink* sink=nullptr;int ended=0;
+    static HRESULT STDMETHODCALLTYPE Query(Composition* s,REFIID iid,void** out) {
+        *out=nullptr;if (iid!=IID_IUnknown) return E_NOINTERFACE;
+        Add(s);*out=s;return S_OK;
+    }
     static ULONG STDMETHODCALLTYPE Add(Composition* s) {return ++s->refs;}
     static ULONG STDMETHODCALLTYPE Release(Composition* s) {
         ULONG count=--s->refs;if (!count) {Range::Release(s->range);s->range=nullptr;s->sink->Release();s->sink=nullptr;}return count;
@@ -78,6 +82,7 @@ struct Context {
     Range* selected;
     LONG refs = 1;
     Manager* manager=nullptr;
+    bool rejectEdits=false;
     static ULONG STDMETHODCALLTYPE Add(Context* self) { return ++self->refs; }
     static ULONG STDMETHODCALLTYPE Release(Context* self) { return --self->refs; }
     static HRESULT STDMETHODCALLTYPE Selection(Context* self,TfEditCookie cookie,ULONG,ULONG count,TF_SELECTION* out,ULONG* fetched) {
@@ -89,8 +94,10 @@ struct Context {
         *out=nullptr;if (iid!=IID_ITfContextComposition || !s->manager) return E_NOINTERFACE;
         Manager::Add(s->manager);*out=s->manager;return S_OK;
     }
-    static HRESULT STDMETHODCALLTYPE Edit(Context*,TfClientId client,ITfEditSession* session,DWORD flags,HRESULT* result) {
-        assert(client==TF_CLIENTID_NULL && (flags==3 || flags==7));*result=session->DoEditSession(7);return S_OK;
+    static HRESULT STDMETHODCALLTYPE Edit(Context* s,TfClientId client,ITfEditSession* session,DWORD flags,HRESULT* result) {
+        assert(client==TF_CLIENTID_NULL);
+        if (s->rejectEdits) {*result=E_FAIL;return TF_E_SYNCHRONOUS;}
+        assert(flags==3 || flags==7);*result=session->DoEditSession(7);return S_OK;
     }
     static HRESULT STDMETHODCALLTYPE SetSelection(Context* self,TfEditCookie cookie,ULONG count,const TF_SELECTION* value) {
         assert(cookie==7 && count==1);auto* range=reinterpret_cast<Range*>(value[0].range);
@@ -116,6 +123,7 @@ int wmain() {
     contextMethods[3]=reinterpret_cast<void*>(Context::Edit);contextMethods[5]=reinterpret_cast<void*>(Context::Selection);contextMethods[6]=reinterpret_cast<void*>(Context::SetSelection);
     contextMethods[12]=reinterpret_cast<void*>(Context::Property);contextMethods[13]=reinterpret_cast<void*>(Context::Property);
     compositionMethods[1]=reinterpret_cast<void*>(Composition::Add);compositionMethods[2]=reinterpret_cast<void*>(Composition::Release);
+    compositionMethods[0]=reinterpret_cast<void*>(Composition::Query);
     compositionMethods[3]=reinterpret_cast<void*>(Composition::GetRange);compositionMethods[6]=reinterpret_cast<void*>(Composition::End);
     managerMethods[1]=reinterpret_cast<void*>(Manager::Add);managerMethods[2]=reinterpret_cast<void*>(Manager::Release);managerMethods[3]=reinterpret_cast<void*>(Manager::Start);
     Document doc={L"前😀",3,3};Range selected(&doc,3,3,false);Context context={contextMethods,&selected};
@@ -165,6 +173,32 @@ int wmain() {
     assert(SetKeyboardState(control));
     assert(service->OnTestKeyDown(doc.context,'C',0,&eaten)==S_OK && !eaten);
     assert(doc.ranges==1 && selected.refs==1 && context.refs==1);
+    // A closing field refuses both sync commit and async cleanup. The test/down
+    // pair counts once; the following key releases old input and starts in the
+    // new field. A later old-host termination must preserve the new preedit.
+    assert(SetKeyboardState(plain));
+    assert(service->OnTestKeyDown(doc.context,'A',0,&eaten)==S_OK && eaten);
+    assert(service->OnKeyDown(doc.context,'A',0,&eaten)==S_OK && eaten);
+    const auto abandonedText=doc.text;const int abandonedWrites=doc.writes;
+    Document nextDoc={L"",0,0};Range nextSelected(&nextDoc,0,0,false);
+    Context nextContext={contextMethods,&nextSelected};Composition nextComposition;
+    Manager nextManager={managerMethods,1,&nextComposition};nextContext.manager=&nextManager;
+    nextDoc.context=reinterpret_cast<ITfContext*>(&nextContext);context.rejectEdits=true;
+    assert(service->OnTestKeyDown(nextDoc.context,'A',0,&eaten)==S_OK && !eaten);
+    assert(service->OnKeyDown(nextDoc.context,'A',0,&eaten)==S_OK && !eaten);
+    assert(service->OnTestKeyDown(nextDoc.context,'B',0,&eaten)==S_OK && eaten);
+    assert(service->OnKeyDown(nextDoc.context,'B',0,&eaten)==S_OK && eaten);
+    assert(!nextDoc.text.empty() && nextComposition.refs==1 && composition.refs==1);
+    assert(doc.text==abandonedText && doc.writes==abandonedWrites);
+    const auto nextPreedit=nextDoc.text;
+    Composition::Add(&composition);
+    assert(service->OnCompositionTerminated(7,reinterpret_cast<ITfComposition*>(&composition))==S_OK);
+    Composition::Release(&composition);
+    assert(composition.refs==0 && context.refs==1 && nextComposition.refs==1 && nextDoc.text==nextPreedit);
+    assert(SetKeyboardState(control));
+    assert(service->OnTestKeyDown(nextDoc.context,'C',0,&eaten)==S_OK && !eaten);
+    assert(nextComposition.refs==0 && nextContext.refs==1 && nextDoc.ranges==1 && nextSelected.refs==1);
+    assert(doc.ranges==1 && selected.refs==1 && manager.refs==1 && nextManager.refs==1);
     service->Release();assert(g_locks==0);assert(SetKeyboardState(saved));
-    puts("Actual key edit/commit/termination: public TSF entry, packaged core, UTF-16 caret, kana preedit, shortcut/packet commit, moved caret and host-terminated preedit continuation passed");
+    puts("Actual key edit/commit/termination/abandonment: public TSF entry, packaged core, UTF-16 caret, kana preedit, shortcut/packet commit, host-terminated continuation, refused old field and replacement preedit passed");
 }

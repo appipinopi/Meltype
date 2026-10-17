@@ -390,6 +390,19 @@ typedef struct MeltypeTsfRecoveryCallbacks {
    Publishes owned composition/context before styling, so notifications can
    release that pair and preserve a newly captured recovery token safely. */
 int32_t meltype_tsf_resume_or_commit(void *context, uint32_t client, uint32_t input_atom, const char *metadata, const MeltypeTsfRecoveryCallbacks *callbacks);
+typedef struct MeltypeTsfAbandonCallbacks {
+    void *owner,*lifetime;
+    void **composition,**context,**abandoned;
+    void (*update)(void *, uint32_t operation);
+    void (*request)(void *, const char *json);
+} MeltypeTsfAbandonCallbacks;
+/* TSF thread, distinct writable owned-reference/token slots. Lifetime pins
+   callback storage/code. metadata={sid:string}; callbacks never throw.
+   update 0 resets stale state,1 hides candidates,2 clears direct word/marks moved.
+   request must ignore the commit reply. Detaches both references before old-field
+   cleanup; preserves replacement input created during cleanup/UI notifications.
+   Returns 1 notified,0 replacement preserved,-1 invalid. Does not insert text. */
+int32_t meltype_tsf_abandon_composition(uint32_t client, const char *metadata, const MeltypeTsfAbandonCallbacks *callbacks);
 #endif
 #ifdef __cplusplus
 }
