@@ -269,6 +269,11 @@ void RustServiceClose(RustServiceState*);
 ITfLangBarItem* RustServiceCreateBar(RustServiceState*,void*,int (__cdecl *)(void*),void (__cdecl *)(void*));
 void RustServiceUpdateBar(RustServiceState*);
 void RustServiceRemoveBar(RustServiceState*,IUnknown*);
+void* RustServiceCreateCandidates(RustServiceState*,void*,void (__cdecl *)(void*,int,int));
+struct JsonValue;
+void RustServiceShowCandidates(RustServiceState*,TfEditCookie,ITfContext*,ITfComposition*,const JsonValue&);
+void RustServiceHideCandidates(RustServiceState*);
+void RustServiceDropCandidates(RustServiceState*);
 #endif
 
 // 文字コードの変換

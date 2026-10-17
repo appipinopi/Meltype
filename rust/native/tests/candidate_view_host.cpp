@@ -34,11 +34,15 @@ int wmain() {
     int selected = -1;
     bool prediction = false;
     {
-        CandidateWindow candidate([&](int index,bool predicted) { selected=index; prediction=predicted; });
+        RustServiceStateStorage storage;
+        struct Selection {int* selected;bool* prediction;} selection{&selected,&prediction};
+        assert(RustServiceCreateCandidates(storage.value,&selection,[](void* p,int index,int predicted) {
+            auto* event=static_cast<Selection*>(p);*event->selected=index;*event->prediction=predicted!=0;
+        }));
         JsonValue view;
         assert(ParseJson("{\"predictions\":[\"日本\",\"😀\"],\"selectedPrediction\":1,\"notes\":[\"unused\"],\"meaning\":\"unused\"}",view));
-        candidate.ShowTsf(7,nullptr,nullptr,view);
-        assert(candidate.Visible());
+        RustServiceShowCandidates(storage.value,7,nullptr,nullptr,view);
+        assert(Window());
         HWND window = Window();
         Height(window,8+2*32);
         assert(GetForegroundWindow() == foreground);
@@ -46,12 +50,12 @@ int wmain() {
         SendMessageW(window,WM_LBUTTONUP,0,MAKELPARAM(10,y));
         assert(selected==1 && prediction);
         assert(ParseJson("{\"converting\":true,\"candidates\":[\"日本\"],\"typed\":\"ni\\\"hon\",\"text\":\"日本\",\"meaning\":\"unused\"}",view));
-        candidate.ShowTsf(7,nullptr,nullptr,view);
-        assert(candidate.Visible());
+        RustServiceShowCandidates(storage.value,7,nullptr,nullptr,view);
+        assert(Window());
         Height(Window(),8+22);
         assert(ParseJson("{\"converting\":true,\"candidates\":[\"日本\"],\"typed\":\"日本\",\"text\":\"日本\"}",view));
-        candidate.ShowTsf(7,nullptr,nullptr,view);
-        assert(!candidate.Visible());
+        RustServiceShowCandidates(storage.value,7,nullptr,nullptr,view);
+        assert(!Window());
     }
     assert(Window()==nullptr && g_locks==0);
     CoUninitialize();

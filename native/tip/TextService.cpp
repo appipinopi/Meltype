@@ -284,12 +284,8 @@ STDMETHODIMP TextService::ActivateEx(ITfThreadMgr* threadMgr, TfClientId clientI
         }catch (...) {}},
         [](void* p,unsigned int op,int value,void* document)->void* {auto* s=static_cast<TextService*>(p);try {switch (op) {
             case 0:s->open_=value!=0;break;
-            case 1:{
-                auto epoch=s->focusEpoch_;
-                auto created=std::make_unique<CandidateWindow>([s](int index,bool prediction) {s->SelectCandidate(index,prediction);});
-                if (epoch==s->focusEpoch_ && s->shutdownPhase_==0) s->candidates_.swap(created);
-                break;
-            }
+            case 1:RustServiceCreateCandidates(s->state_.value,s,
+                [](void* p,int index,int prediction) {try {static_cast<TextService*>(p)->SelectCandidate(index,prediction!=0);}catch (...) {}});break;
             case 2:return RustServiceCreateBar(s->state_.value,s,
                 [](void* p)->int {return static_cast<TextService*>(p)->IsOpen()?1:0;},
                 [](void* p) {try {static_cast<TextService*>(p)->ToggleInputMode(nullptr);}catch (...) {}});
@@ -439,7 +435,7 @@ STDMETHODIMP TextService::Deactivate() {
             case 2:s->ForgetSecretField();break;
             case 3:s->EndAbandonedNow();break;
             case 4:RustServiceClose(s->state_.value);break;
-            case 5:s->candidates_.reset();break;
+            case 5:RustServiceDropCandidates(s->state_.value);break;
             case 6:s->UnadviseTextEditSink();break;
             case 7:RustServiceRemoveBar(s->state_.value,static_cast<IUnknown*>(manager));break;
             case 8:s->clientId_=TF_CLIENTID_NULL;break;
@@ -556,7 +552,7 @@ STDMETHODIMP TextService::OnSetFocus(ITfDocumentMgr* focus, ITfDocumentMgr*) {
     directEnglishWord_ = false;
     caretMoved_ = true;
     ForgetSecretField();
-    if (candidates_) candidates_->Hide();
+    HideCandidates();
     AdviseTextEditSink(focus);
     if (!disabled_) Hello();
     return S_OK;
@@ -567,7 +563,7 @@ STDMETHODIMP TextService::OnSetFocus(BOOL foreground) {
 #ifdef MELTYPE_RUST_CORE
     return RustForegroundFocus(foreground!=FALSE,keyState_,FocusCallbacks());
 #else
-    if (!foreground && candidates_) candidates_->Hide();
+    if (!foreground) HideCandidates();
     // キーを受け取らなくなった (スレッドが前面でなくなった・ほかの IME に移った): 受け取ったキーを離したことは届かないかもしれないので忘れる
     // (このスレッドで次に押したキーの、離したことまで受け取らないように)
     if (!foreground) {
@@ -591,7 +587,7 @@ RustFocusCallbacks TextService::FocusCallbacks() {
             case 0:s->ResumeOrCommit(nullptr);break;
             case 1:s->directEnglishWord_=false;s->caretMoved_=true;break;
             case 2:s->ForgetSecretField();break;
-            case 3:if (s->candidates_) s->candidates_->Hide();break;
+            case 3:s->HideCandidates();break;
             case 4:s->AdviseTextEditSink(static_cast<ITfDocumentMgr*>(doc));break;
             case 5:s->Hello();break;
         }}catch (...) {}},
@@ -1257,7 +1253,7 @@ void TextService::HandleKey(ITfContext* context, UINT vk, wchar_t ch) {
             try {switch (op) {
                 case 0:return s->IsSecretField(ec,static_cast<ITfContext*>(c))?1:0;
                 case 1:s->CommitInSession(ec,static_cast<ITfContext*>(c),true);break;
-                case 2:if (s->candidates_) s->candidates_->Hide();s->EndComposition(ec);break;
+                case 2:s->HideCandidates();s->EndComposition(ec);break;
                 case 3:s->ApplyMode(o->reply);break;
                 case 4:s->Apply(ec,static_cast<ITfContext*>(c),o->reply);break;
             }}catch (...) {s->keyFailed_=true;s->consumed_=false;return op==0?1:0;}
@@ -1334,7 +1330,7 @@ void TextService::HandleKey(ITfContext* context, UINT vk, wchar_t ch) {
             // (送り直すと、その間に打った次のキーより後に届いて順番が入れ替わる)
             keyFailed_ = true;
             serverActive_ = false;
-            if (candidates_) candidates_->Hide();
+            HideCandidates();
             EndComposition(ec);
             // Ctrl・Alt・Windows キーとの組み合わせは、文字を入れずにアプリに送り直す
             if (ch >= 0x20 && (mods & (2 | 4 | 8)) == 0) {
@@ -1688,7 +1684,7 @@ void TextService::Apply(TfEditCookie ec, ITfContext* context, const JsonValue& r
                     else s->ShowCandidates(cookie,static_cast<ITfContext*>(context),view);
                     break;}
                 case 3:s->EndComposition(cookie);break;
-                case 4:if (s->candidates_) s->candidates_->Hide();break;
+                case 4:s->HideCandidates();break;
                 case 5:{JsonValue ignored;s->Request(json,ignored);s->keyFailed_=true;s->consumed_=false;break;}
             }}catch (...) {s->keyFailed_=true;s->consumed_=false;}
         },
@@ -1745,7 +1741,7 @@ void TextService::Apply(TfEditCookie ec, ITfContext* context, const JsonValue& r
             }
             EndComposition(ec);
         }
-        if (candidates_) candidates_->Hide();
+        HideCandidates();
     }
 #endif
 }
@@ -1943,7 +1939,7 @@ STDMETHODIMP TextService::OnCompositionTerminated(TfEditCookie ec, ITfCompositio
         [](void* p)->unsigned int {auto* s=static_cast<TextService*>(p);return (s->disabled_?1u:0u)|(s->deactivated_?2u:0u)|(s->lastConverting_?4u:0u);},
         [](void* p,unsigned int op) {auto* s=static_cast<TextService*>(p);
             try {switch (op) {
-                case 0:if (s->candidates_) s->candidates_->Hide();break;
+                case 0:s->HideCandidates();break;
                 case 1:s->ResetStaleCommit();s->lastConverting_=false;break;
                 case 2:s->directEnglishWord_=false;s->caretMoved_=true;break;
             }}catch (...) {}
@@ -1990,7 +1986,7 @@ STDMETHODIMP TextService::OnCompositionTerminated(TfEditCookie ec, ITfCompositio
         compositionContext_->Release();
         compositionContext_ = nullptr;
     }
-    if (candidates_) candidates_->Hide();
+    HideCandidates();
     ResetStaleCommit();
     lastConverting_ = false;
     if (HasResume()) return S_OK;
@@ -2102,7 +2098,7 @@ void TextService::AbandonComposition() {
         this,static_cast<ITfTextInputProcessorEx*>(this),reinterpret_cast<void**>(&composition_),reinterpret_cast<void**>(&compositionContext_),&abandoned_,
         [](void* p,unsigned int op) {auto* s=static_cast<TextService*>(p);try {switch (op) {
             case 0:s->ResetStaleCommit();break;
-            case 1:if (s->candidates_) s->candidates_->Hide();break;
+            case 1:s->HideCandidates();break;
             case 2:s->directEnglishWord_=false;s->caretMoved_=true;break;
         }}catch (...) {}},
         [](void* p,const char* json) {try {JsonValue ignored;static_cast<TextService*>(p)->Request(json,ignored);}catch (...) {}},
@@ -2138,7 +2134,7 @@ void TextService::AbandonComposition() {
 #endif
     }
     ResetStaleCommit();
-    if (candidates_) candidates_->Hide();
+    HideCandidates();
     directEnglishWord_ = false;
     caretMoved_ = true;
     JsonValue reply;
@@ -2206,7 +2202,7 @@ RustCommitCallbacks TextService::CommitCallbacks() {
                 case 0:s->ownEdit_=value!=0;break;
                 case 1:s->keepAppCaret_=value!=0;break;
                 case 2:s->EndComposition(ec);break;
-                case 3:if (s->candidates_) s->candidates_->Hide();break;
+                case 3:s->HideCandidates();break;
                 case 4:s->ownEdit_=false;break;
             }}catch (...) {}
         },
@@ -2234,7 +2230,7 @@ void TextService::CommitInSession(TfEditCookie ec, ITfContext* context, bool kee
         keepAppCaret_ = false;
         EndComposition(ec);
     }
-    if (candidates_) candidates_->Hide();
+    HideCandidates();
 #endif
 }
 
@@ -2263,11 +2259,18 @@ void TextService::SelectCandidate(int index, bool prediction) {
 
 // ---- 候補 ----
 
-void TextService::ShowCandidates(TfEditCookie ec, ITfContext* context, const JsonValue& view) {
-    if (!candidates_) return;
+void TextService::HideCandidates() {
 #ifdef MELTYPE_RUST_CORE
-    candidates_->ShowTsf(ec,context,composition_,view);
+    RustServiceHideCandidates(state_.value);
 #else
+    if (candidates_) candidates_->Hide();
+#endif
+}
+void TextService::ShowCandidates(TfEditCookie ec, ITfContext* context, const JsonValue& view) {
+#ifdef MELTYPE_RUST_CORE
+    RustServiceShowCandidates(state_.value,ec,context,composition_,view);
+#else
+    if (!candidates_) return;
     CandidateView data;
     for (const JsonValue& item : view[L"candidates"].array) data.candidates.push_back(item.Str());
     for (const JsonValue& item : view[L"notes"].array) data.notes.push_back(item.Str());

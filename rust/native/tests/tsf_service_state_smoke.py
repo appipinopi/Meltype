@@ -13,6 +13,9 @@ import unittest
 sys.path.insert(0,str(Path(__file__).resolve().parent))
 from tsf_com_smoke import Guid, HR, invoke, release
 from tsf_startup_smoke import StartupHost
+from tsf_candidate_smoke import windows, user
+from tsf_candidate_view_smoke import GeometryHost
+SELECT=c.CFUNCTYPE(None,c.c_void_p,c.c_int,c.c_int)
 READ=c.CFUNCTYPE(c.c_int,c.c_void_p)
 TOGGLE=c.CFUNCTYPE(None,c.c_void_p)
 class Point(c.Structure):
@@ -64,10 +67,13 @@ class State(c.Structure):
         ('sid',P),
         ('transport',P),
         ('langbar',P),
+        ('candidates',P),
     ]
 class StateTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        cls.ole=c.WinDLL('ole32')
+        if cls.ole.CoInitializeEx(None,2) not in (0,1):raise AssertionError('private COM apartment failed')
         cls.api=c.CDLL(str(Path(sys.argv[1]).resolve()))
         cls.api.meltype_tsf_service_state_create.restype=P
         cls.api.meltype_tsf_service_state_destroy.argtypes=[P]
@@ -84,12 +90,22 @@ class StateTests(unittest.TestCase):
         cls.api.meltype_tsf_service_create_langbar.argtypes=[P,P,READ,TOGGLE];cls.api.meltype_tsf_service_create_langbar.restype=P
         cls.api.meltype_tsf_service_remove_langbar.argtypes=[P,P];cls.api.meltype_tsf_service_remove_langbar.restype=None
         cls.api.meltype_tsf_service_update_langbar.argtypes=[P];cls.api.meltype_tsf_service_update_langbar.restype=None
+        cls.api.meltype_tsf_service_create_candidates.argtypes=[P,P,SELECT];cls.api.meltype_tsf_service_create_candidates.restype=P
+        cls.api.meltype_tsf_service_show_candidates.argtypes=[P,P,P,U32,c.c_char_p];cls.api.meltype_tsf_service_show_candidates.restype=c.c_int
+        for operation in ['hide','drop']:
+            getattr(cls.api,'meltype_tsf_service_'+operation+'_candidates').argtypes=[P]
+            getattr(cls.api,'meltype_tsf_service_'+operation+'_candidates').restype=None
+        cls.api.meltype_tsf_candidate_visible.argtypes=[P];cls.api.meltype_tsf_candidate_visible.restype=c.c_int
+        cls.api.meltype_tsf_start_composition.argtypes=[P,P,P,U32];cls.api.meltype_tsf_start_composition.restype=P
+
         cls.worker=str(Path(sys.argv[1]).resolve().with_name('meltype-tip-worker.exe')).encode()
 
         size=cls.api.meltype_tsf_service_state_layout(None,0)
         metadata=(U32*size)();cls.api.meltype_tsf_service_state_layout(metadata,size)
-        expected=[3,c.sizeof(State),c.alignment(State)]+[getattr(State,name).offset for name,_ in State._fields_]
+        expected=[4,c.sizeof(State),c.alignment(State)]+[getattr(State,name).offset for name,_ in State._fields_]
         if list(metadata)!=expected:raise AssertionError('State ABI mismatch; do not borrow this allocation')
+    @classmethod
+    def tearDownClass(cls):cls.ole.CoUninitialize()
     def setUp(self):
         self.owned=[];self.callbacks=[];self.before=self.live()
         self.directory=tempfile.TemporaryDirectory(prefix='meltype-service-state-')
@@ -114,7 +130,7 @@ class StateTests(unittest.TestCase):
     def test_layout_matches_all_fields_before_borrowing(self):
         size=self.api.meltype_tsf_service_state_layout(None,0)
         result=(U32*size)();self.assertEqual(self.api.meltype_tsf_service_state_layout(result,size),size)
-        expected=[3,c.sizeof(State),c.alignment(State)]+[getattr(State,name).offset for name,_ in State._fields_]
+        expected=[4,c.sizeof(State),c.alignment(State)]+[getattr(State,name).offset for name,_ in State._fields_]
         self.assertEqual(list(result),expected)
     def test_short_metadata_buffer_is_untouched(self):
         size=self.api.meltype_tsf_service_state_layout(None,0);result=(U32*(size+2))(*([0xaabbccdd]*(size+2)))
@@ -290,5 +306,74 @@ class StateTests(unittest.TestCase):
         self.assertFalse(self.api.meltype_tsf_service_create_langbar(None,None,read,toggle))
         self.api.meltype_tsf_service_update_langbar(None);self.api.meltype_tsf_service_remove_langbar(None,None)
         self.assertFalse(state.langbar)
+    def create_candidates(self,state,on_select=None):
+        events=[]
+        @SELECT
+        def select(owner,index,prediction):
+            events.append((owner,index,prediction))
+            if on_select:on_select()
+        self.callbacks.append(select)
+        token=self.api.meltype_tsf_service_create_candidates(c.addressof(state),456,select)
+        self.assertTrue(token);self.assertEqual(state.candidates,token);return token,events
+    def show_candidates(self,state,context=None,composition=None,view=None):
+        view=view or {'predictions':['日本','😀'],'selectedPrediction':1}
+        return self.api.meltype_tsf_service_show_candidates(c.addressof(state),context,composition,7,json.dumps(view,ensure_ascii=False).encode())
+    def candidate_windows(self):return windows('MeltypeRustCandidateWindow')
+    def click_candidate(self,window):
+        scale=user.GetDpiForWindow(window)/96
+        user.SendMessageW(window,0x202,0,(int(52*scale)<<16)|10)
+    def test_candidates_hide_show_drop_and_stale_window(self):
+        state=self.create();token,events=self.create_candidates(state)
+        self.assertEqual(self.show_candidates(state),1);self.assertTrue(self.api.meltype_tsf_candidate_visible(token))
+        window=self.candidate_windows()[0]
+        self.api.meltype_tsf_service_hide_candidates(c.addressof(state))
+        self.assertEqual(state.candidates,token);self.assertFalse(self.api.meltype_tsf_candidate_visible(token))
+        self.assertEqual(self.show_candidates(state),1)
+        self.api.meltype_tsf_service_drop_candidates(c.addressof(state))
+        self.assertFalse(state.candidates);self.assertFalse(self.api.meltype_tsf_candidate_visible(token))
+        user.SendMessageW(window,0x202,0,10|(52<<16));self.assertEqual(events,[])
+        self.api.meltype_tsf_service_drop_candidates(c.addressof(state))
+        self.assertFalse(self.candidate_windows());self.assertEqual(self.show_candidates(state),0)
+    def test_candidates_replacement_retires_old_window(self):
+        state=self.create();old,_=self.create_candidates(state);self.assertEqual(self.show_candidates(state),1)
+        current,_=self.create_candidates(state);self.assertNotEqual(old,current)
+        self.assertFalse(self.api.meltype_tsf_candidate_visible(old));self.assertFalse(self.candidate_windows())
+        self.assertEqual(self.show_candidates(state),1)
+    def test_candidates_click_can_destroy_own_service(self):
+        state=self.create();address=c.addressof(state)
+        def destroy():
+            self.owned.remove(address);self.api.meltype_tsf_service_state_destroy(address)
+        token,events=self.create_candidates(state,destroy);self.assertEqual(self.show_candidates(state),1)
+        self.click_candidate(self.candidate_windows()[0])
+        self.assertEqual(events,[(456,1,1)]);self.assertFalse(self.candidate_windows())
+        self.assertFalse(self.api.meltype_tsf_candidate_visible(token));self.assertEqual(self.live(),self.before)
+    def test_candidates_anchor_callback_can_destroy_service(self):
+        state=self.create();address=c.addressof(state);token,_=self.create_candidates(state)
+        host=GeometryHost()
+        composition=self.api.meltype_tsf_start_composition(c.byref(host.context),c.byref(host.sink),host.original,7)
+        self.assertTrue(composition)
+        def destroy():
+            host.on_extent=None;self.owned.remove(address);self.api.meltype_tsf_service_state_destroy(address)
+        host.on_extent=destroy
+        try:
+            result=self.show_candidates(state,c.byref(host.context),composition,{'converting':True,'candidates':['前','文節'],'clauses':['前','😀','文節','後'],'selectedClause':2})
+            self.assertEqual(result,0);self.assertEqual(self.live(),self.before)
+            self.assertFalse(self.api.meltype_tsf_candidate_visible(token));self.assertFalse(self.candidate_windows())
+        finally:release(composition)
+        host.verify(self)
+    def test_candidates_independent_service_owners(self):
+        first=self.create();second=self.create();old,_=self.create_candidates(first);current,_=self.create_candidates(second)
+        self.assertNotEqual(old,current);self.assertEqual(self.show_candidates(first),1);self.assertEqual(self.show_candidates(second),1)
+        self.assertEqual(len(self.candidate_windows()),2)
+        address=c.addressof(first);self.owned.remove(address);self.api.meltype_tsf_service_state_destroy(address)
+        self.assertFalse(self.api.meltype_tsf_candidate_visible(old));self.assertTrue(self.api.meltype_tsf_candidate_visible(current))
+        self.assertEqual(len(self.candidate_windows()),1)
+    def test_candidates_null_and_stopping_state_are_inert(self):
+        state=self.create();state.shutdown_phase=1;select=SELECT(lambda *_:None)
+        self.assertFalse(self.api.meltype_tsf_service_create_candidates(c.addressof(state),None,select))
+        self.assertFalse(self.api.meltype_tsf_service_create_candidates(None,None,select))
+        self.assertEqual(self.api.meltype_tsf_service_show_candidates(None,None,None,7,b'{}'),0)
+        self.api.meltype_tsf_service_hide_candidates(None);self.api.meltype_tsf_service_drop_candidates(None)
+        self.assertFalse(state.candidates)
 if __name__=='__main__':unittest.main(argv=[sys.argv[0]],verbosity=2,failfast=True)
 

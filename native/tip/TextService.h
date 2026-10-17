@@ -112,6 +112,7 @@ private:
     // range を text で置き換えて確定する (アプリによっては変換中の文字としてでないと入らないので、いったん変換中にする)
     bool WriteCommit(TfEditCookie ec, ITfContext* context, ITfRange* range, const std::wstring& text);
     void ApplyComposition(TfEditCookie ec, ITfContext* context, const JsonValue& view);
+    void HideCandidates();
     void ShowCandidates(TfEditCookie ec, ITfContext* context, const JsonValue& view);
     void EndComposition(TfEditCookie ec);
     void SetAttribute(TfEditCookie ec, ITfContext* context, ITfRange* range, TfGuidAtom atom);
@@ -305,8 +306,8 @@ private:
     bool consumed_ = true;
 #endif
 
-    std::unique_ptr<CandidateWindow> candidates_;
 #ifndef MELTYPE_RUST_CORE
+    std::unique_ptr<CandidateWindow> candidates_;
     LangBarButton* langBar_ = nullptr;
 #endif
 };

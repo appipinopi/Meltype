@@ -213,10 +213,16 @@ BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID) {
         case DLL_PROCESS_ATTACH:
             g_module = instance;
             DisableThreadLibraryCalls(instance);
+
+#ifndef MELTYPE_RUST_CORE
             CandidateWindow::RegisterClasses();
+#endif
             break;
         case DLL_PROCESS_DETACH:
+
+#ifndef MELTYPE_RUST_CORE
             CandidateWindow::UnregisterClasses();
+#endif
             break;
     }
     return TRUE;
@@ -236,7 +242,10 @@ STDAPI DllGetClassObject(REFCLSID clsid, REFIID riid, void** ppv) {
 STDAPI DllCanUnloadNow() {
     if (g_locks > 0) return S_FALSE;
     // このあと DLL が外れると静的変数ごと消えるので、ファクトリーはここで解放する
+
+#ifndef MELTYPE_RUST_CORE
     CandidateWindow::ReleaseFactories();
+#endif
     return S_OK;
 }
 

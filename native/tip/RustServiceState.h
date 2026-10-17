@@ -51,6 +51,7 @@ struct RustServiceState {
     char* sid; // Rust-owned; access only through the service API.
     void* transport; // Rust-owned transport token.
     void* langbar; // Rust-owned COM reference.
+    void* candidates; // Rust-owned thread-local window token.
 };
 static_assert(std::is_standard_layout<RustServiceState>::value);
 class RustServiceStateStorage final {

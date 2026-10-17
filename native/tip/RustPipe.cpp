@@ -21,12 +21,6 @@ struct RustApi {
     void (__cdecl *freeText)(void*) = nullptr;
     void* (__cdecl *displayAttribute)(const GUID*) = nullptr;
     void* (__cdecl *displayAttributeEnum)() = nullptr;
-    void* (__cdecl *candidateCreate)(void*, void (__cdecl *)(void*,int,int)) = nullptr;
-    int (__cdecl *candidateShow)(void*,const char*,const RECT*) = nullptr;
-    int (__cdecl *candidateShowTsf)(void*,void*,void*,unsigned int,const char*) = nullptr;
-    void (__cdecl *candidateHide)(void*) = nullptr;
-    int (__cdecl *candidateVisible)(void*) = nullptr;
-    void (__cdecl *candidateDestroy)(void*) = nullptr;
     HRESULT (__cdecl *classObject)(const GUID*,const GUID*,void**,HRESULT (__cdecl *)(const GUID*,void**),void (__cdecl *)(int)) = nullptr;
     HRESULT (__cdecl *registerServer)(const wchar_t*,unsigned int) = nullptr;
     HRESULT (__cdecl *unregisterServer)() = nullptr;
@@ -110,6 +104,10 @@ struct RustApi {
     void* (__cdecl *serviceCreateBar)(RustServiceState*,void*,int (__cdecl *)(void*),void (__cdecl *)(void*)) = nullptr;
     void (__cdecl *serviceUpdateBar)(RustServiceState*) = nullptr;
     void (__cdecl *serviceRemoveBar)(RustServiceState*,void*) = nullptr;
+    void* (__cdecl *serviceCreateCandidates)(RustServiceState*,void*,void (__cdecl *)(void*,int,int)) = nullptr;
+    int (__cdecl *serviceShowCandidates)(RustServiceState*,void*,void*,unsigned int,const char*) = nullptr;
+    void (__cdecl *serviceHideCandidates)(RustServiceState*) = nullptr;
+    void (__cdecl *serviceDropCandidates)(RustServiceState*) = nullptr;
     unsigned int (__cdecl *processName)(unsigned short*,unsigned int) = nullptr;
     RustApi() {
         wchar_t path[32768];
@@ -128,12 +126,6 @@ struct RustApi {
         freeText = reinterpret_cast<decltype(freeText)>(GetProcAddress(module, "meltype_free"));
         displayAttribute = reinterpret_cast<decltype(displayAttribute)>(GetProcAddress(module, "meltype_tsf_create_display_attribute"));
         displayAttributeEnum = reinterpret_cast<decltype(displayAttributeEnum)>(GetProcAddress(module, "meltype_tsf_create_display_attribute_enum"));
-        candidateCreate = reinterpret_cast<decltype(candidateCreate)>(GetProcAddress(module, "meltype_tsf_candidate_create"));
-        candidateShow = reinterpret_cast<decltype(candidateShow)>(GetProcAddress(module, "meltype_tsf_candidate_show"));
-        candidateShowTsf = reinterpret_cast<decltype(candidateShowTsf)>(GetProcAddress(module, "meltype_tsf_candidate_show_tsf"));
-        candidateHide = reinterpret_cast<decltype(candidateHide)>(GetProcAddress(module, "meltype_tsf_candidate_hide"));
-        candidateVisible = reinterpret_cast<decltype(candidateVisible)>(GetProcAddress(module, "meltype_tsf_candidate_visible"));
-        candidateDestroy = reinterpret_cast<decltype(candidateDestroy)>(GetProcAddress(module, "meltype_tsf_candidate_destroy"));
         classObject = reinterpret_cast<decltype(classObject)>(GetProcAddress(module, "meltype_tsf_get_class_object"));
         registerServer = reinterpret_cast<decltype(registerServer)>(GetProcAddress(module, "meltype_tsf_register_server"));
         unregisterServer = reinterpret_cast<decltype(unregisterServer)>(GetProcAddress(module, "meltype_tsf_unregister_server"));
@@ -217,6 +209,10 @@ struct RustApi {
         serviceCreateBar = reinterpret_cast<decltype(serviceCreateBar)>(GetProcAddress(module, "meltype_tsf_service_create_langbar"));
         serviceUpdateBar = reinterpret_cast<decltype(serviceUpdateBar)>(GetProcAddress(module, "meltype_tsf_service_update_langbar"));
         serviceRemoveBar = reinterpret_cast<decltype(serviceRemoveBar)>(GetProcAddress(module, "meltype_tsf_service_remove_langbar"));
+        serviceCreateCandidates = reinterpret_cast<decltype(serviceCreateCandidates)>(GetProcAddress(module, "meltype_tsf_service_create_candidates"));
+        serviceShowCandidates = reinterpret_cast<decltype(serviceShowCandidates)>(GetProcAddress(module, "meltype_tsf_service_show_candidates"));
+        serviceHideCandidates = reinterpret_cast<decltype(serviceHideCandidates)>(GetProcAddress(module, "meltype_tsf_service_hide_candidates"));
+        serviceDropCandidates = reinterpret_cast<decltype(serviceDropCandidates)>(GetProcAddress(module, "meltype_tsf_service_drop_candidates"));
         serviceLive = reinterpret_cast<decltype(serviceLive)>(GetProcAddress(module, "meltype_tsf_service_state_live_count"));
     }
     bool ready() const { return create && destroy && request && freeText; }
@@ -348,8 +344,8 @@ HRESULT RustOpenChanged(REFGUID guid,const RustOpenChangeCallbacks& callbacks) {
 }
 bool RustCoreReady(const RustCoreStateCallbacks& callbacks) {return api().coreReady && api().coreReady(&callbacks)!=0;}
 RustServiceState* RustCreateServiceState() {
-    if (!api().serviceCreate || !api().serviceDestroy || !api().serviceLayout || !api().serviceSetSid || !api().serviceSid || !api().serviceRequest || !api().serviceClose || !api().serviceCreateBar || !api().serviceUpdateBar || !api().serviceRemoveBar) return nullptr;
-    const unsigned int expected[]={3,static_cast<unsigned int>(sizeof(RustServiceState)),static_cast<unsigned int>(alignof(RustServiceState)),
+    if (!api().serviceCreate || !api().serviceDestroy || !api().serviceLayout || !api().serviceSetSid || !api().serviceSid || !api().serviceRequest || !api().serviceClose || !api().serviceCreateBar || !api().serviceUpdateBar || !api().serviceRemoveBar || !api().serviceCreateCandidates || !api().serviceShowCandidates || !api().serviceHideCandidates || !api().serviceDropCandidates) return nullptr;
+    const unsigned int expected[]={4,static_cast<unsigned int>(sizeof(RustServiceState)),static_cast<unsigned int>(alignof(RustServiceState)),
         static_cast<unsigned int>(offsetof(RustServiceState,refs)),
         static_cast<unsigned int>(offsetof(RustServiceState,manager)),
         static_cast<unsigned int>(offsetof(RustServiceState,client)),
@@ -393,6 +389,7 @@ RustServiceState* RustCreateServiceState() {
         static_cast<unsigned int>(offsetof(RustServiceState,sid)),
         static_cast<unsigned int>(offsetof(RustServiceState,transport)),
         static_cast<unsigned int>(offsetof(RustServiceState,langbar)),
+        static_cast<unsigned int>(offsetof(RustServiceState,candidates)),
     };
     unsigned int actual[ARRAYSIZE(expected)]={};
     if (api().serviceLayout(actual,ARRAYSIZE(actual))!=ARRAYSIZE(expected) || std::memcmp(actual,expected,sizeof(expected))!=0) return nullptr;
@@ -587,40 +584,6 @@ ITfDisplayAttributeInfo* CreateDisplayAttributeInfo(REFGUID guid) {
 IEnumTfDisplayAttributeInfo* CreateDisplayAttributeEnum() {
     return api().displayAttributeEnum ? static_cast<IEnumTfDisplayAttributeInfo*>(api().displayAttributeEnum()) : nullptr;
 }
-struct CandidateWindow::Impl {
-    SelectHandler callback;
-    void* handle = nullptr;
-    static void __cdecl Select(void* context, int index, int prediction) {
-        auto* self = static_cast<Impl*>(context);
-        // A selection can destroy the owner. Copy the callable before entering it.
-        SelectHandler callback = self->callback;
-        if (callback) callback(index, prediction != 0);
-    }
-};
-CandidateWindow::CandidateWindow(SelectHandler callback) : impl_(new Impl()) {
-    impl_->callback = std::move(callback);
-    if (api().candidateCreate && api().candidateShow && api().candidateHide && api().candidateVisible && api().candidateDestroy) {
-        impl_->handle = api().candidateCreate(impl_, Impl::Select);
-    }
-}
-CandidateWindow::~CandidateWindow() {
-    if (impl_->handle) api().candidateDestroy(impl_->handle);
-    delete impl_;
-}
-void CandidateWindow::Show(const CandidateView& view, const RECT& anchor) {
-    if (!impl_->handle) return;
-    auto list = [](const std::vector<std::wstring>& values) {
-        std::string json = "[";
-        for (size_t i = 0; i < values.size(); ++i) { if (i) json += ','; json += JsonString(values[i]); }
-        return json + ']';
-    };
-    std::string json = "{\"candidates\":" + list(view.candidates) + ",\"notes\":" + list(view.notes) +
-        ",\"selected\":" + std::to_string(view.selected) + ",\"suggestion\":" + JsonString(view.suggestion) +
-        ",\"meaning\":" + JsonString(view.meaning) + ",\"prediction\":" + (view.prediction ? "true" : "false") +
-        ",\"typed\":" + JsonString(view.typed) + "}";
-    api().candidateShow(impl_->handle, json.c_str(), &anchor);
-}
-void CandidateWindow::Hide() { if (impl_->handle) api().candidateHide(impl_->handle); }
 namespace {
 std::string ViewJson(const JsonValue& view) {
     std::string json = "{";
@@ -636,15 +599,14 @@ std::string ViewJson(const JsonValue& view) {
     return json;
 }
 }
-void CandidateWindow::ShowTsf(TfEditCookie cookie,ITfContext* context,ITfComposition* composition,const JsonValue& view) {
-    if (!impl_->handle || !api().candidateShowTsf) return;
-    const auto json=ViewJson(view);
-    api().candidateShowTsf(impl_->handle,context,composition,cookie,json.c_str());
+void* RustServiceCreateCandidates(RustServiceState* state,void* owner,void (__cdecl *select)(void*,int,int)) {
+    return api().serviceCreateCandidates?api().serviceCreateCandidates(state,owner,select):nullptr;
 }
-bool CandidateWindow::Visible() const { return impl_->handle && api().candidateVisible(impl_->handle) != 0; }
-// Rust owns its window classes and per-window drawing resources. The Rust DLL
-// stays loaded, so none of its window procedures point into this TSF shell.
-void CandidateWindow::RegisterClasses() {}
-void CandidateWindow::UnregisterClasses() {}
-void CandidateWindow::ReleaseFactories() {}
+void RustServiceShowCandidates(RustServiceState* state,TfEditCookie cookie,ITfContext* context,ITfComposition* composition,const JsonValue& view) {
+    if (!api().serviceShowCandidates) return;
+    const auto json=ViewJson(view);
+    api().serviceShowCandidates(state,context,composition,cookie,json.c_str());
+}
+void RustServiceHideCandidates(RustServiceState* state) {if (api().serviceHideCandidates) api().serviceHideCandidates(state);}
+void RustServiceDropCandidates(RustServiceState* state) {if (api().serviceDropCandidates) api().serviceDropCandidates(state);}
 } // namespace meltype

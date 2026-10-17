@@ -2,7 +2,7 @@
 // Copyright (C) 2026 lnkiai, appipinopi
 //! Rust-owned TSF state storage. Temporary C++ aliases use a checked C layout.
 //! Raw interface/token slots retain their existing TSF-thread ownership policy.
-use super::{fields, langbar};
+use super::{candidates, fields, langbar};
 use std::{
     alloc::{alloc, Layout},
     ffi::{c_char, c_void, CStr, CString},
@@ -60,6 +60,7 @@ pub struct ServiceState {
     sid: *mut c_char,
     transport: *mut c_void,
     langbar: *mut c_void,
+    candidates: *mut c_void,
 }
 impl Default for ServiceState {
     fn default() -> Self {
@@ -107,6 +108,7 @@ impl Default for ServiceState {
             sid: ptr::null_mut(),
             transport: ptr::null_mut(),
             langbar: ptr::null_mut(),
+            candidates: ptr::null_mut(),
         }
     }
 }
@@ -115,6 +117,9 @@ impl Drop for ServiceState {
         unsafe {
             self.shutdown_phase = 2;
             self.deactivated = true;
+            candidates::meltype_tsf_candidate_destroy(
+                ptr::addr_of_mut!(self.candidates).replace(ptr::null_mut()),
+            );
             retire_bar(ptr::addr_of_mut!(self.langbar).replace(ptr::null_mut()));
             let sid = std::mem::replace(&mut self.sid, ptr::null_mut());
             if !sid.is_null() {
@@ -122,6 +127,77 @@ impl Drop for ServiceState {
             }
             close_transport(self);
         }
+    }
+}
+/// # Safety
+/// Live state/context on their TSF thread throughout creation (graphics or
+/// window teardown may reenter). Callback remains live until replacement/drop.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_tsf_service_create_candidates(
+    state: *mut ServiceState,
+    owner: *mut c_void,
+    select: Option<unsafe extern "C" fn(*mut c_void, i32, i32)>,
+) -> *mut c_void {
+    if state.is_null() || (*state).shutdown_phase != 0 {
+        return ptr::null_mut();
+    }
+    let epoch = (*state).focus_epoch;
+    let created = candidates::meltype_tsf_candidate_create(owner, select);
+    if (*state).shutdown_phase != 0 || (*state).focus_epoch != epoch {
+        candidates::meltype_tsf_candidate_destroy(created);
+        return ptr::null_mut();
+    }
+    let old = ptr::addr_of_mut!((*state).candidates).replace(created);
+    candidates::meltype_tsf_candidate_destroy(old);
+    if (*state).shutdown_phase == 0
+        && (*state).focus_epoch == epoch
+        && (*state).candidates == created
+    {
+        created
+    } else {
+        ptr::null_mut()
+    }
+}
+/// # Safety
+/// State is null or live at entry on its TSF thread. Context/composition/json
+/// follow candidate_show_tsf. No state access follows reentrant COM/GUI calls.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_tsf_service_show_candidates(
+    state: *mut ServiceState,
+    context: *mut c_void,
+    composition: *mut c_void,
+    cookie: u32,
+    json: *const c_char,
+) -> i32 {
+    if state.is_null() {
+        return 0;
+    }
+    let handle = ptr::addr_of!((*state).candidates).read();
+    candidates::presentation::meltype_tsf_candidate_show_tsf(
+        handle,
+        context,
+        composition,
+        cookie,
+        json,
+    )
+}
+/// # Safety
+/// State is null or live at entry on its TSF thread. Reentrant window events may
+/// destroy the service; no state access follows the native hide/destroy call.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_tsf_service_hide_candidates(state: *mut ServiceState) {
+    if !state.is_null() {
+        let handle = ptr::addr_of!((*state).candidates).read();
+        candidates::meltype_tsf_candidate_hide(handle);
+    }
+}
+/// # Safety
+/// Same state/thread lifetime contract as service_hide_candidates.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_tsf_service_drop_candidates(state: *mut ServiceState) {
+    if !state.is_null() {
+        let handle = ptr::addr_of_mut!((*state).candidates).replace(ptr::null_mut());
+        candidates::meltype_tsf_candidate_destroy(handle);
     }
 }
 unsafe fn retire_bar(raw: *mut c_void) {
@@ -299,7 +375,7 @@ pub unsafe extern "C" fn meltype_tsf_service_state_destroy(data: *mut ServiceSta
 #[no_mangle]
 pub unsafe extern "C" fn meltype_tsf_service_state_layout(out: *mut u32, capacity: u32) -> u32 {
     let values = [
-        3,
+        4,
         size_of::<ServiceState>() as u32,
         align_of::<ServiceState>() as u32,
         offset_of!(ServiceState, refs) as u32,
@@ -345,6 +421,7 @@ pub unsafe extern "C" fn meltype_tsf_service_state_layout(out: *mut u32, capacit
         offset_of!(ServiceState, sid) as u32,
         offset_of!(ServiceState, transport) as u32,
         offset_of!(ServiceState, langbar) as u32,
+        offset_of!(ServiceState, candidates) as u32,
     ];
     if !out.is_null() && capacity as usize >= values.len() {
         ptr::copy_nonoverlapping(values.as_ptr(), out, values.len());

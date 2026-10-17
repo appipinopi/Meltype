@@ -13,6 +13,7 @@
 
 namespace meltype {
 
+#ifndef MELTYPE_RUST_CORE
 struct CandidateView {
     std::vector<std::wstring> candidates;
     std::vector<std::wstring> notes;  // 候補ごとの注釈 (英訳など)。無ければ空
@@ -35,9 +36,6 @@ public:
 
     // anchor は選んでいる文節の画面上の四角形。その左下に出す (画面からはみ出すなら上)。
     void Show(const CandidateView& view, const RECT& anchor);
-#ifdef MELTYPE_RUST_CORE
-    void ShowTsf(TfEditCookie,ITfContext*,ITfComposition*,const struct JsonValue&);
-#endif
     void Hide();
     bool Visible() const;
 
@@ -51,5 +49,7 @@ public:
 private:
     Impl* impl_;
 };
+
+#endif
 
 }  // namespace meltype

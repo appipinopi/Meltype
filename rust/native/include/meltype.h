@@ -543,6 +543,12 @@ void meltype_tsf_service_close(void *state);
 void *meltype_tsf_service_create_langbar(void *state,void *owner,int32_t (*read)(void *),void (*toggle)(void *));
 void meltype_tsf_service_update_langbar(void *state);
 void meltype_tsf_service_remove_langbar(void *state,void *manager);
+/* Same TSF-thread state/context lifetime as create_langbar. Service owns token.
+   Show/hide/drop snapshot or detach the token before reentrant COM/window calls. */
+void *meltype_tsf_service_create_candidates(void *state,void *owner,void (*select)(void *,int32_t,int32_t));
+int32_t meltype_tsf_service_show_candidates(void *state,void *context,void *composition,uint32_t cookie,const char *json);
+void meltype_tsf_service_hide_candidates(void *state);
+void meltype_tsf_service_drop_candidates(void *state);
 /* UTF-16 host executable basename, .exe removed; required capacity includes NUL.
    Null/short output is untouched; zero means acquisition failure. */
 uint32_t meltype_tsf_process_name(uint16_t *out, uint32_t capacity);

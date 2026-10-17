@@ -4,7 +4,7 @@
 //! Rc ownership keep reentrant click/hide/destroy calls from touching freed state.
 mod graphics;
 mod paint;
-mod presentation;
+pub(super) mod presentation;
 use graphics::*;
 use serde::Deserialize;
 use std::{
