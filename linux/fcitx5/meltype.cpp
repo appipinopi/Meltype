@@ -13,11 +13,13 @@
 #else
 #include "compat/json_reader.hpp"
 #include "compat/key_mapping.hpp"
+#include "compat/text.hpp"
 #endif
 
 #include <cstdint>
 #include <cstdlib>
 #include <memory>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -58,6 +60,8 @@ struct Native {
     uint32_t (*modePlan)(uint32_t,int) = nullptr;
     int (*frontendState)(void *) = nullptr;
     void (*setPreedit)(void *,int) = nullptr;
+    int (*contextOffsets)(const uint8_t *,uint32_t,uint32_t,uint32_t,uint32_t *) = nullptr;
+    int (*deleteCount)(const uint8_t *,uint32_t,uint32_t,const uint8_t *,uint32_t,int) = nullptr;
 #endif
     int (*initMozc)(const char *, const char *) = nullptr;
     void *(*create)() = nullptr;
@@ -101,7 +105,9 @@ struct Native {
         setDirect = reinterpret_cast<decltype(setDirect)>(sym("meltype_fcitx_set_direct"));
         frontendState = reinterpret_cast<decltype(frontendState)>(sym("meltype_fcitx_state"));
         setPreedit = reinterpret_cast<decltype(setPreedit)>(sym("meltype_fcitx_set_preedit"));
-        if (!visitJson || !mapKey || !mapModifiers || !modePlan || !frontendState || !setPreedit) {
+        contextOffsets = reinterpret_cast<decltype(contextOffsets)>(sym("meltype_fcitx_context_offsets"));
+        deleteCount = reinterpret_cast<decltype(deleteCount)>(sym("meltype_fcitx_delete_count"));
+        if (!visitJson || !mapKey || !mapModifiers || !modePlan || !frontendState || !setPreedit || !contextOffsets || !deleteCount) {
             FCITX_ERROR() << "Meltype: Rust fcitx JSON/key ABI is missing";
             return false;
         }
@@ -134,31 +140,6 @@ struct Native {
 };
 
 // ---- キー: fcitx5 のキー → Meltype の本体が使う Windows の仮想キーコード (ibus-engine-meltype と同じ) ----
-
-// UTF-8 の文字列の、文字単位の位置 → バイトの位置
-size_t byteOffset(const std::string &text, size_t chars) {
-    size_t i = 0;
-    while (i < text.size() && chars > 0) {
-        unsigned char c = static_cast<unsigned char>(text[i]);
-        i += c < 0x80 ? 1 : c < 0xE0 ? 2 : c < 0xF0 ? 3 : 4;
-        chars--;
-    }
-    return std::min(i, text.size());
-}
-
-size_t charLength(const std::string &text) {
-    size_t n = 0;
-    for (unsigned char c : text)
-        if ((c & 0xC0) != 0x80) n++;
-    return n;
-}
-
-size_t utf16Length(const std::string &text) {
-    size_t units = 0;
-    for (unsigned char c : text)
-        if ((c & 0xC0) != 0x80) units += c >= 0xF0 ? 2 : 1;
-    return units;
-}
 
 class MeltypeEngine;
 
@@ -317,13 +298,20 @@ private:
     }
 
     // 入力欄のキャレットの前後の文字列 (それぞれ 20 文字まで)。入力欄が対応していなければ false。
-    static bool readSurrounding(fcitx::InputContext *ic, std::string &before, std::string &after, size_t limit = 20) {
+    bool readSurrounding(fcitx::InputContext *ic, std::string &before, std::string &after, size_t limit = 20) {
         if (!ic->capabilityFlags().test(fcitx::CapabilityFlag::SurroundingText) || !ic->surroundingText().isValid()) return false;
         const auto &text = ic->surroundingText().text();
         if (text.empty()) return false;
         size_t cursor = ic->surroundingText().cursor();
+#ifdef MELTYPE_RUST_CORE
+        if(text.size()>std::numeric_limits<uint32_t>::max() || cursor>std::numeric_limits<uint32_t>::max() || limit>std::numeric_limits<uint32_t>::max())return false;
+        uint32_t offsets[3];
+        if(!native_.contextOffsets(reinterpret_cast<const uint8_t *>(text.data()),static_cast<uint32_t>(text.size()),static_cast<uint32_t>(cursor),static_cast<uint32_t>(limit),offsets))return false;
+        const size_t from=offsets[0],at=offsets[1],to=offsets[2];
+#else
         size_t start = cursor > limit ? cursor - limit : 0;
-        size_t from = byteOffset(text, start), at = byteOffset(text, cursor), to = byteOffset(text, cursor + 20);
+        size_t from = meltype_fcitx::byteOffset(text, start), at = meltype_fcitx::byteOffset(text, cursor), to = meltype_fcitx::byteOffset(text, cursor + 20);
+#endif
         before = text.substr(from, at - from);
         after = text.substr(at, to - at);
         return true;
@@ -349,18 +337,30 @@ private:
                 int remove = edit.integer("deleteBefore");
                 if (remove > 0) {
                     const auto expected = edit.str("expect");
+#ifdef MELTYPE_RUST_CORE
+                    int count=0;
+                    if(ic->capabilityFlags().test(fcitx::CapabilityFlag::SurroundingText) && ic->surroundingText().isValid()) {
+                        const auto &text=ic->surroundingText().text();
+                        const auto cursor=ic->surroundingText().cursor();
+                        if(text.size()<=std::numeric_limits<uint32_t>::max() && expected.size()<=std::numeric_limits<uint32_t>::max())
+                            count=native_.deleteCount(reinterpret_cast<const uint8_t *>(text.data()),static_cast<uint32_t>(text.size()),cursor,
+                                reinterpret_cast<const uint8_t *>(expected.data()),static_cast<uint32_t>(expected.size()),remove);
+                    }
+                    const bool matched=count>0;
+#else
                     std::string before, after;
-                    if (expected.empty() || utf16Length(expected) != static_cast<size_t>(remove)
-                        || !readSurrounding(ic, before, after, charLength(expected))
-                        || before.size() < expected.size()
-                        || before.compare(before.size() - expected.size(), expected.size(), expected) != 0) {
+                    const bool matched=!expected.empty() && meltype_fcitx::utf16Length(expected)==static_cast<size_t>(remove)
+                        && readSurrounding(ic,before,after,meltype_fcitx::charLength(expected))
+                        && before.size()>=expected.size() && before.compare(before.size()-expected.size(),expected.size(),expected)==0;
+                    const auto count=static_cast<unsigned int>(meltype_fcitx::charLength(expected));
+#endif
+                    if(!matched) {
                         auto *session = ic->propertyFor(&factory_)->session();
                         if (native_.resetSession) native_.take(native_.resetSession(session));
                         hidePreedit(ic);
                         return;
                     }
                     hidePreedit(ic);
-                    const auto count = static_cast<unsigned int>(charLength(expected));
                     ic->deleteSurroundingText(-static_cast<int>(count), count);
                 } else {
                     ic->inputPanel().reset();

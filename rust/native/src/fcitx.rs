@@ -152,6 +152,97 @@ pub extern "C" fn meltype_fcitx_mode(symbol: u32, direct: i32) -> u32 {
     }
     1 | (u32::from(english || toggle && !direct) << 1) | (role << 8)
 }
+fn offsets(text: &str, cursor: u32, limit: u32) -> Option<[u32; 3]> {
+    if text.is_empty() {
+        return None;
+    }
+    let mut result = [0; 3];
+    let mut found = false;
+    let start = cursor.saturating_sub(limit) as usize;
+    let end = cursor.saturating_add(20) as usize;
+    for (index, byte) in text
+        .char_indices()
+        .map(|(byte, _)| byte)
+        .chain(std::iter::once(text.len()))
+        .enumerate()
+    {
+        if index == start {
+            result[0] = byte as u32;
+        }
+        if index == cursor as usize {
+            result[1] = byte as u32;
+            found = true;
+        }
+        result[2] = byte as u32;
+        if index == end {
+            break;
+        }
+    }
+    found.then_some(result)
+}
+fn deletion(text: &str, cursor: u32, expected: &str, remove: i32) -> i32 {
+    if expected.is_empty() || remove <= 0 || expected.encode_utf16().count() != remove as usize {
+        return 0;
+    }
+    let Some([_, at, _]) = offsets(text, cursor, 0) else {
+        return 0;
+    };
+    if !text[..at as usize].ends_with(expected) {
+        return 0;
+    }
+    i32::try_from(expected.chars().count()).unwrap_or(0)
+}
+/// # Safety
+/// text is readable for length bytes and output is writable for three u32s.
+/// On success write before-start/cursor/after-end byte offsets; after is capped
+/// at 20 characters. Empty/invalid UTF-8 or cursor returns 0 without writes.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_fcitx_context_offsets(
+    text: *const u8,
+    length: u32,
+    cursor: u32,
+    limit: u32,
+    output: *mut u32,
+) -> i32 {
+    if text.is_null() || output.is_null() {
+        return 0;
+    }
+    let Ok(text) = std::str::from_utf8(std::slice::from_raw_parts(text, length as usize)) else {
+        return 0;
+    };
+    let Some(offsets) = offsets(text, cursor, limit) else {
+        return 0;
+    };
+    std::ptr::copy_nonoverlapping(offsets.as_ptr(), output, 3);
+    1
+}
+/// # Safety
+/// Both byte buffers are readable for their stated lengths during this call.
+/// Return a character count only for a valid expected suffix whose UTF-16 length
+/// exactly matches remove. Invalid text/cursor/mismatch returns 0.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_fcitx_delete_count(
+    text: *const u8,
+    length: u32,
+    cursor: u32,
+    expected: *const u8,
+    expected_length: u32,
+    remove: i32,
+) -> i32 {
+    if text.is_null() || expected.is_null() {
+        return 0;
+    }
+    let Ok(text) = std::str::from_utf8(std::slice::from_raw_parts(text, length as usize)) else {
+        return 0;
+    };
+    let Ok(expected) = std::str::from_utf8(std::slice::from_raw_parts(
+        expected,
+        expected_length as usize,
+    )) else {
+        return 0;
+    };
+    deletion(text, cursor, expected, remove)
+}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -275,5 +366,28 @@ mod tests {
         meltype_fcitx_destroy(second);
         assert_eq!(meltype_fcitx_state(second), -1);
         assert_eq!(meltype_fcitx_state(std::ptr::null_mut()), -1);
+    }
+    #[test]
+    fn surrounding_and_deletion_distinguish_utf8_characters_and_utf16_units() {
+        let text = "先前😀後";
+        assert_eq!(offsets(text, 3, 2), Some([3, 10, 13]));
+        assert_eq!(deletion(text, 3, "前😀", 3), 2);
+        assert_eq!(deletion(text, 3, "前😀", 2), 0);
+        assert_eq!(deletion(text, 2, "前😀", 3), 0);
+        assert_eq!(deletion(text, 99, "前😀", 3), 0);
+        assert_eq!(deletion(text, 3, "", 0), 0);
+        assert_eq!(offsets("", 0, 20), None);
+        assert_eq!(offsets(text, 99, 20), None);
+        let long = "あ".repeat(50);
+        assert_eq!(offsets(&long, 25, 2), Some([69, 75, 135]));
+        assert_eq!(offsets(&long, 0, 20), Some([0, 0, 60]));
+        let mut output = [123; 3];
+        assert_eq!(
+            unsafe {
+                meltype_fcitx_context_offsets(b"\xff".as_ptr(), 1, 0, 20, output.as_mut_ptr())
+            },
+            0
+        );
+        assert_eq!(output, [123; 3]);
     }
 }

@@ -67,5 +67,19 @@ contexts. It does not create a daemon or activate an input method.
 
 The [aeddba2 SDK run](https://github.com/appipinopi/Meltype/actions/runs/39036802956)
 passed both adapter builds, 217 JSON projections, 131,076 SDK key symbols, 262,152
-mode/role states and 512 modifier cases on fcitx5 5.1.7. The new state-ownership
-revision still requires its own SDK results.
+mode/role states and 512 modifier cases on fcitx5 5.1.7. The subsequent
+[e377fa1 SDK run](https://github.com/appipinopi/Meltype/actions/runs/39037192682)
+also passed both builds and the independent context/state ABI test. Its
+[four-platform CI](https://github.com/appipinopi/Meltype/actions/runs/39037192728)
+passed Windows, macOS, Linux and Android jobs. These checks do not prove complete
+UI parity or actual desktop input-method activation.
+
+Surrounding-text byte ranges and guarded deletion counts now come from Rust
+(`meltype_fcitx_context_offsets` / `meltype_fcitx_delete_count`). The SDK bridge
+passes UTF-8 text and character cursor positions; Rust verifies the expected
+suffix and its UTF-16 deletion length, returning a character count for the SDK.
+Invalid UTF-8/cursors are rejected, and failed range queries leave output
+untouched. The old helpers live only in the explicit legacy build and reference
+tests. The standalone comparison covers Japanese, supplementary characters,
+embedded NUL, window limits and expected-text mismatches. SDK editor callbacks
+and widgets remain C++ and still need migration.

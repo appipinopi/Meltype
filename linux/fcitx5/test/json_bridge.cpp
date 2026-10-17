@@ -4,6 +4,7 @@
 // real Rust engine replies. No fcitx daemon, user profile or input is touched.
 #include "../rust_json.hpp"
 #include "../compat/json_reader.hpp"
+#include "../compat/text.hpp"
 #include <dlfcn.h>
 #include <fstream>
 #include <iostream>
@@ -33,6 +34,41 @@ int main(int argc,char **argv) {
         check(argc==3,"library and private profile required");
         void *library=dlopen(argv[1],RTLD_NOW|RTLD_LOCAL);check(library!=nullptr,"Rust library load failed");
         auto visit=reinterpret_cast<JsonVisit>(dlsym(library,"meltype_json_visit_utf8"));check(visit!=nullptr,"UTF-8 visitor missing");
+        auto context=reinterpret_cast<int (*)(const uint8_t *,uint32_t,uint32_t,uint32_t,uint32_t *)>(dlsym(library,"meltype_fcitx_context_offsets"));
+        auto deletion=reinterpret_cast<int (*)(const uint8_t *,uint32_t,uint32_t,const uint8_t *,uint32_t,int)>(dlsym(library,"meltype_fcitx_delete_count"));
+        check(context&&deletion,"text ABI missing");
+        size_t textCases=0;
+        for(const std::string input:{std::string("abcdef"),std::string("先前😀後かな"),std::string("a\0b",3),std::string(70,'a')}) {
+            for(size_t cursor=0;cursor<=charLength(input);cursor++) {
+                for(uint32_t limit:{0U,1U,2U,20U,100U}) {
+                    uint32_t offsets[3]={123,123,123};
+                    check(context(reinterpret_cast<const uint8_t *>(input.data()),input.size(),cursor,limit,offsets)==1,"context rejected");
+                    const auto start=cursor>limit?cursor-limit:0;
+                    check(offsets[0]==byteOffset(input,start)&&offsets[1]==byteOffset(input,cursor)&&offsets[2]==byteOffset(input,cursor+20),"legacy context offset mismatch");
+                    textCases++;
+                }
+                for(const std::string expected:{std::string("a"),std::string("bc"),std::string("前😀"),std::string("かな"),std::string("a\0b",3)}) {
+                    for(int remove:{1,2,3,4}) {
+                        const auto start=cursor>charLength(expected)?cursor-charLength(expected):0;
+                        const auto before=input.substr(byteOffset(input,start),byteOffset(input,cursor)-byteOffset(input,start));
+                        const int count=utf16Length(expected)==static_cast<size_t>(remove)&&before.size()>=expected.size()
+                            &&before.compare(before.size()-expected.size(),expected.size(),expected)==0?static_cast<int>(charLength(expected)):0;
+                        check(deletion(reinterpret_cast<const uint8_t *>(input.data()),input.size(),cursor,reinterpret_cast<const uint8_t *>(expected.data()),expected.size(),remove)==count,"legacy deletion guard mismatch");
+                        textCases++;
+                    }
+                }
+            }
+        }
+        uint32_t unchanged[3]={123,123,123};const std::string broken("\xff",1);
+        check(context(reinterpret_cast<const uint8_t *>(broken.data()),broken.size(),0,20,unchanged)==0&&unchanged[0]==123&&unchanged[1]==123&&unchanged[2]==123,"invalid UTF8 must not write offsets");
+        check(context(reinterpret_cast<const uint8_t *>(""),0,0,20,unchanged)==0,"empty surrounding text rejected");
+        check(context(nullptr,0,0,20,unchanged)==0,"null text rejected");
+        check(deletion(reinterpret_cast<const uint8_t *>(broken.data()),broken.size(),1,reinterpret_cast<const uint8_t *>("a"),1,1)==0,"invalid surrounding UTF8 rejected");
+        const std::string valid="かな";
+        check(deletion(reinterpret_cast<const uint8_t *>(valid.data()),valid.size(),2,reinterpret_cast<const uint8_t *>(broken.data()),broken.size(),1)==0,"invalid expected UTF8 rejected");
+        check(deletion(reinterpret_cast<const uint8_t *>(valid.data()),valid.size(),2,reinterpret_cast<const uint8_t *>(""),0,0)==0,"empty expected text rejected");
+        check(context(reinterpret_cast<const uint8_t *>(valid.data()),valid.size(),99,20,unchanged)==0,"invalid cursor rejected");
+        std::cout<<"fcitx Rust text: "<<textCases<<" legacy context/deletion cases, UTF-8/UTF-16/character units and invalid input passed\n";
         size_t count=0;
         auto compare=[&](const std::string &text) {
             Json oldValue,newValue;
