@@ -1856,25 +1856,13 @@ bool TextService::HasResume() const {
 }
 void TextService::ResumeOrCommit(ITfContext* context) {
 #ifdef MELTYPE_RUST_CORE
-    if (!resume_) return;
-    void* state = resume_; resume_ = nullptr;
-    bool resumed = false;
-    if (context && !composition_ && RustResumeMatches(state,context)) {
-        RunEditSession(context,clientId_,TF_ES_SYNC | TF_ES_READWRITE,[&](TfEditCookie ec) {
-            if (composition_) return S_OK;
-            if (context == editSinkContext_) ownEdit_ = true;
-            void* pending = state; state = nullptr;
-            composition_ = RustTryResume(pending,ec,context,static_cast<ITfCompositionSink*>(this));
-            if (composition_) {
-                compositionContext_ = context; compositionContext_->AddRef(); resumed = true;
-                // Adopt before styling: SetValue may synchronously terminate it.
-                RustResumeAttribute(ec,context,composition_,atomInput_);
-            }
-            return S_OK;
-        });
-        ownEdit_ = false;
-    }
-    if (state) RustDestroyResume(state);
+    RustRecoveryCallbacks callbacks={
+        this,static_cast<ITfTextInputProcessorEx*>(this),reinterpret_cast<void**>(&composition_),reinterpret_cast<void**>(&compositionContext_),&resume_,static_cast<ITfCompositionSink*>(this),
+        [](void* p)->void* {return static_cast<TextService*>(p)->editSinkContext_;},
+        [](void* p,unsigned int op,int value) {auto* s=static_cast<TextService*>(p);if (op==0) s->ownEdit_=value!=0;else if (op==1) {s->directEnglishWord_=false;s->caretMoved_=true;}},
+        [](void* p,const char* json) {try {JsonValue ignored;static_cast<TextService*>(p)->Request(json,ignored);}catch (...) {}},
+    };
+    if (RustResumeOrCommit(context,clientId_,atomInput_,"{\"sid\":\""+sid_+"\"}",callbacks)==1) TipLog(L"アプリが確定した打ちかけの文字を、変換中に戻しました");
 #else
     if (!resumeRange_) return;
     Microsoft::WRL::ComPtr<ITfRange> range = resumeRange_;
@@ -1912,7 +1900,7 @@ void TextService::ResumeOrCommit(ITfContext* context) {
         });
         ownEdit_ = false;
     }
-#endif
+
     if (resumed) {
         TipLog(L"アプリが確定した打ちかけの文字を、変換中に戻しました");
         return;
@@ -1922,6 +1910,7 @@ void TextService::ResumeOrCommit(ITfContext* context) {
     caretMoved_ = true;
     JsonValue reply;
     Request(CommitRequest(true), reply);
+#endif
 }
 
 void TextService::CommitAsync(bool keepAppCaret) {

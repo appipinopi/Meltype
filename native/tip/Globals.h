@@ -191,6 +191,13 @@ struct RustTerminationCallbacks {
     void (__cdecl *request)(void*,const char*);
 };
 HRESULT RustCompositionTerminated(TfEditCookie,ITfComposition*,const std::string&,const RustTerminationCallbacks&);
+struct RustRecoveryCallbacks {
+    void* owner;IUnknown* lifetime;void** composition;void** context;void** resume;ITfCompositionSink* sink;
+    void* (__cdecl *editContext)(void*);
+    void (__cdecl *update)(void*,unsigned int,int);
+    void (__cdecl *request)(void*,const char*);
+};
+int RustResumeOrCommit(ITfContext*,TfClientId,TfGuidAtom,const std::string&,const RustRecoveryCallbacks&);
 #endif
 
 // 文字コードの変換

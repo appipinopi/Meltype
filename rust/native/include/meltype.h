@@ -373,6 +373,23 @@ typedef struct MeltypeTsfTerminationCallbacks {
    its reply must not be applied (host already kept the text). Old identities are
    removed from abandoned cleanup without changing current input. */
 int32_t meltype_tsf_composition_terminated(uint32_t cookie, void *composition, const char *metadata, const MeltypeTsfTerminationCallbacks *callbacks);
+typedef struct MeltypeTsfRecoveryCallbacks {
+    void *owner,*lifetime;
+    void **composition,**context,**resume;
+    void *sink;
+    void *(*edit_context)(void *);
+    void (*update)(void *, uint32_t operation, int32_t value);
+    void (*request)(void *, const char *json);
+} MeltypeTsfRecoveryCallbacks;
+/* TSF thread, owned refs/token in distinct writable slots, borrowed context and
+   sink; storage/code survive while lifetime is retained. Callbacks never throw.
+   metadata={sid:string}. update 0 sets own edit(value),1 clear direct word/mark
+   moved. request sends moved commit and must not apply its reply. Returns 0 no
+   token or reentrant replacement,1 resumed,2 fallback requested,-1 invalid.
+   Uses a SYNC READWRITE session; disables incorrectly deferred work on return.
+   Publishes owned composition/context before styling, so notifications can
+   release that pair and preserve a newly captured recovery token safely. */
+int32_t meltype_tsf_resume_or_commit(void *context, uint32_t client, uint32_t input_atom, const char *metadata, const MeltypeTsfRecoveryCallbacks *callbacks);
 #endif
 #ifdef __cplusplus
 }

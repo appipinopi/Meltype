@@ -20,6 +20,7 @@ mod langbar;
 mod mode;
 mod ranges;
 mod recovery;
+mod recovery_control;
 mod registration;
 mod subscriptions;
 mod termination;
