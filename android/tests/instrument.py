@@ -43,7 +43,7 @@ def main() -> None:
     (args.output / "instrumentation.txt").write_text(report, encoding="utf-8")
     print(report, flush=True)
     # Retrieve only this test app's own generated preview/metadata.
-    for name in ("input-view.png", "device.txt"):
+    for name in ("input-view.png", "input-view-narrow.png", "input-view-large-text.png", "device.txt", "label-fit.txt"):
         artifact = subprocess.run([
             *adb, "exec-out", "run-as", "moe.meltype.rust", "cat",
             f"files/instrumentation-artifacts/{name}",
@@ -51,11 +51,13 @@ def main() -> None:
         if artifact.returncode == 0:
             (args.output / name).write_bytes(artifact.stdout)
     result.check_returncode()
-    verify_report(report, 5)
-    if not (args.output / "input-view.png").read_bytes().startswith(b"\x89PNG\r\n\x1a\n"):
-        raise RuntimeError("Android preview PNG is missing or invalid")
-    if not (args.output / "device.txt").is_file():
-        raise RuntimeError("Android runtime metadata is missing")
+    verify_report(report, 6)
+    for name in ("input-view.png", "input-view-narrow.png", "input-view-large-text.png"):
+        if not (args.output / name).read_bytes().startswith(b"\x89PNG\r\n\x1a\n"):
+            raise RuntimeError(f"Android preview PNG is missing or invalid: {name}")
+    for name in ("device.txt", "label-fit.txt"):
+        if not (args.output / name).is_file():
+            raise RuntimeError(f"Android runtime metadata is missing: {name}")
 
 
 if __name__ == "__main__":

@@ -33,6 +33,13 @@ fn add(env: &mut JNIEnv, parent: &JObject, child: &JObject) -> Result<()> {
     )?;
     Ok(())
 }
+fn row<'a>(env: &mut JNIEnv<'a>, context: &JObject) -> Result<JObject<'a>> {
+    let row = widget(env, "android/widget/LinearLayout", context)?;
+    // Keep wrapped-label buttons inside their measured row by disabling the
+    // baseline shift that moves an entire button below its neighbouring cells.
+    env.call_method(&row, "setBaselineAligned", "(Z)V", &[JValue::Bool(0)])?;
+    Ok(row)
+}
 fn button(
     env: &mut JNIEnv,
     context: &JObject,
@@ -99,7 +106,7 @@ fn build<'a>(env: &mut JNIEnv<'a>, service: &JObject) -> Result<JObject<'a>> {
     env.call_method(&preview, "setTextSize", "(F)V", &[JValue::Float(20.)])?;
     add(env, &root, &preview)?;
     let scroll = widget(env, "android/widget/HorizontalScrollView", service)?;
-    let candidates = widget(env, "android/widget/LinearLayout", service)?;
+    let candidates = row(env, service)?;
     add(env, &scroll, &candidates)?;
     add(env, &root, &scroll)?;
     for letters in [
@@ -109,13 +116,13 @@ fn build<'a>(env: &mut JNIEnv<'a>, service: &JObject) -> Result<JObject<'a>> {
         "1234567890",
         "-.,!?@/",
     ] {
-        let row = widget(env, "android/widget/LinearLayout", service)?;
+        let row = row(env, service)?;
         for letter in letters.chars() {
             button(env, service, &row, &letter.to_string(), 0, letter as i32)?;
         }
         add(env, &root, &row)?;
     }
-    let actions = widget(env, "android/widget/LinearLayout", service)?;
+    let actions = row(env, service)?;
     for (label, action, value) in [
         ("⇧", 1, 0),
         ("あ/A", 2, 0),
@@ -128,7 +135,7 @@ fn build<'a>(env: &mut JNIEnv<'a>, service: &JObject) -> Result<JObject<'a>> {
         button(env, service, &actions, label, action, value)?;
     }
     add(env, &root, &actions)?;
-    let tools = widget(env, "android/widget/LinearLayout", service)?;
+    let tools = row(env, service)?;
     for (label, action, value) in [
         ("←", 3, 0x25),
         ("→", 3, 0x27),

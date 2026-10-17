@@ -5,10 +5,6 @@ on:
     paths: ['rust/**', 'android/**', 'Cargo.*', 'dictionaries/**', 'native/tip/**', 'linux/fcitx5/**', '.github/workflows/rust.yml']
 permissions:
   contents: read
-concurrency:
-  group: rust-preview-${{ github.head_ref || github.ref_name }}
-  # Finish the active platform checks while subsequent migration commits queue.
-  cancel-in-progress: false
 jobs:
   desktop:
     strategy:
@@ -16,6 +12,10 @@ jobs:
       matrix:
         os: [windows-latest, ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
+    concurrency:
+      group: rust-preview-${{ github.head_ref || github.ref_name }}-${{ matrix.os }}
+      # Finish each active platform without blocking other platforms.
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
@@ -257,6 +257,9 @@ jobs:
             quality-report.json
   android:
     runs-on: ubuntu-latest
+    concurrency:
+      group: rust-preview-${{ github.head_ref || github.ref_name }}-android
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable

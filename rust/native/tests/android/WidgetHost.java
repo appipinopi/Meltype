@@ -33,11 +33,11 @@ public final class WidgetHost extends Context {
             check(root!=null&&root.children.size()==9&&root.orientation==1,"root hierarchy");
             check(root.children.get(0)==service.preview&&service.preview.textSize==20f,"preview field and size");
             HorizontalScrollView scroll=(HorizontalScrollView)root.children.get(1);
-            check(scroll.children.size()==1&&scroll.children.get(0)==service.candidates&&service.candidates.orientation==0,"candidate scroll and field");
+            check(scroll.children.size()==1&&scroll.children.get(0)==service.candidates&&service.candidates.orientation==0&&!service.candidates.baselineAligned,"candidate scroll and field");
             List<String> expected=new ArrayList<>();
             for(int rowIndex=0;rowIndex<rows.length;rowIndex++) {
                 LinearLayout row=(LinearLayout)root.children.get(rowIndex+2);
-                check(row.orientation==0&&row.children.size()==rows[rowIndex].length(),"letter row");
+                check(row.orientation==0&&!row.baselineAligned&&row.children.size()==rows[rowIndex].length(),"letter row");
                 for(int i=0;i<rows[rowIndex].length();i++) {
                     char letter=rows[rowIndex].charAt(i);checkButton((Button)row.children.get(i),String.valueOf(letter));
                     expected.add("0:"+(int)letter);
@@ -47,7 +47,7 @@ public final class WidgetHost extends Context {
             String[][] actions={{"1:0","2:0","3:8","3:32","3:13","3:27","4:0"},{"3:37","3:39","5:0","6:0","7:0","8:0","9:0"}};
             for(int group=0;group<2;group++) {
                 LinearLayout row=(LinearLayout)root.children.get(7+group);
-                check(row.children.size()==7&&row.orientation==0,"action row");
+                check(row.children.size()==7&&row.orientation==0&&!row.baselineAligned,"action row");
                 for(int i=0;i<7;i++){checkButton((Button)row.children.get(i),labels[group][i]);expected.add(actions[group][i]);}
             }
             check(service.clicks.equals(expected),service.clicks);

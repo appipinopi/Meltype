@@ -4,6 +4,7 @@ package moe.meltype.rust;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.text.Editable;
@@ -50,7 +51,8 @@ public final class NativeAndroidTest {
         private Editor editor;
         private int options;
         private final List<Intent> intents=new ArrayList<>();
-        public Widgets(){super(context(),android.R.style.Theme_Material_Light_NoActionBar);}
+        public Widgets(){this(context());}
+        public Widgets(Context base){super(base,android.R.style.Theme_Material_Light_NoActionBar);}
         private View.OnClickListener keyboardCallback(int action,int value){return view->{
             clicks.add(action+":"+value);
             if(session!=0)Native.keyboardAction(session,this,editor,action,value,options);
@@ -134,7 +136,7 @@ public final class NativeAndroidTest {
         Bitmap image=Bitmap.createBitmap(root.getWidth(),root.getHeight(),Bitmap.Config.ARGB_8888);
         Canvas canvas=new Canvas(image);canvas.drawColor(android.graphics.Color.WHITE);root.draw(canvas);
         int[] pixels=new int[image.getWidth()*image.getHeight()];image.getPixels(pixels,0,image.getWidth(),0,0,image.getWidth(),image.getHeight());
-        int painted=0;for(int pixel:pixels)if((pixel>>>24)!=0)painted++;assertTrue("framework preview contains visible pixels",painted>1000);
+        int painted=0;for(int pixel:pixels)if((pixel>>>24)!=0&&(pixel&0x00ffffff)!=0x00ffffff)painted++;assertTrue("framework preview contains visible widget pixels",painted>1000);
         File artifacts=new File(context().getFilesDir(),"instrumentation-artifacts");assertTrue(artifacts.isDirectory()||artifacts.mkdirs());
         try(FileOutputStream stream=new FileOutputStream(new File(artifacts,"input-view.png"))){assertTrue(image.compress(Bitmap.CompressFormat.PNG,100,stream));}
         image.recycle();
@@ -220,5 +222,42 @@ public final class NativeAndroidTest {
             Native.startInput(profile.session,1,0);service.editor=new Editor();service.editor.onRead=()->Native.startInput(profile.session,0x81,0);
             press(root,"a");assertEquals("",service.editor.text.toString());assertEquals(3,Native.editorFlags(profile.session));assertEquals(1,service.editor.reads);
         }
+    });}
+    @Test public void wrappedLabelsStayWithinRowsAcrossWidthsAndFontScale() throws Throwable {ui(()->{
+        File artifacts=new File(context().getFilesDir(),"instrumentation-artifacts");assertTrue(artifacts.isDirectory()||artifacts.mkdirs());
+        StringBuilder report=new StringBuilder();int wrapped=0;
+        int[] widths={1080,720,1080};float[] scales={1f,1f,1.5f};
+        String[] names={null,"input-view-narrow.png","input-view-large-text.png"};
+        for(int sample=0;sample<widths.length;sample++) {
+            Configuration config=new Configuration(context().getResources().getConfiguration());config.fontScale=scales[sample];
+            Widgets service=new Widgets(context().createConfigurationContext(config));
+            LinearLayout root=(LinearLayout)Native.createInputView(service);assertNotNull(root);
+            root.measure(View.MeasureSpec.makeMeasureSpec(widths[sample],View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(0,View.MeasureSpec.UNSPECIFIED));
+            root.layout(0,0,root.getMeasuredWidth(),root.getMeasuredHeight());
+            report.append("width=").append(widths[sample]).append(" fontScale=").append(scales[sample]).append(" rootHeight=").append(root.getHeight()).append('\n');
+            for(int group=2;group<9;group++) {
+                LinearLayout row=(LinearLayout)root.getChildAt(group);assertFalse(row.isBaselineAligned());
+                for(int i=0;i<row.getChildCount();i++) {
+                    Button button=(Button)row.getChildAt(i);String label=button.getText().toString();
+                    String detail="width="+widths[sample]+" scale="+scales[sample]+" label="+label;
+                    assertTrue(detail+" top="+button.getTop(),button.getTop()>=0);
+                    assertTrue(detail+" bottom="+button.getBottom()+" rowHeight="+row.getHeight(),button.getBottom()<=row.getHeight());
+                    android.text.Layout layout=button.getLayout();assertNotNull(detail,layout);
+                    int available=button.getHeight()-button.getCompoundPaddingTop()-button.getCompoundPaddingBottom();
+                    assertTrue(detail+" textHeight="+layout.getHeight()+" available="+available,layout.getHeight()<=available+1);
+                    assertEquals(detail,0,layout.getEllipsisCount(layout.getLineCount()-1));
+                    assertEquals(detail,layout.getText().length(),layout.getLineEnd(layout.getLineCount()-1));
+                    if(layout.getLineCount()>1)wrapped++;
+                }
+            }
+            if(names[sample]!=null) {
+                Bitmap image=Bitmap.createBitmap(root.getWidth(),root.getHeight(),Bitmap.Config.ARGB_8888);
+                Canvas canvas=new Canvas(image);canvas.drawColor(android.graphics.Color.WHITE);root.draw(canvas);
+                try(FileOutputStream stream=new FileOutputStream(new File(artifacts,names[sample]))){assertTrue(image.compress(Bitmap.CompressFormat.PNG,100,stream));}
+                image.recycle();
+            }
+        }
+        assertTrue("at least one label actually wrapped",wrapped>0);report.append("wrappedLabels=").append(wrapped).append('\n');
+        try(FileOutputStream stream=new FileOutputStream(new File(artifacts,"label-fit.txt"))){stream.write(report.toString().getBytes(StandardCharsets.UTF_8));}
     });}
 }
