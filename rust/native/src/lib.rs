@@ -4,7 +4,9 @@
 //! Sessions use opaque integer tokens. Stale handles fail without dereferencing
 //! freed memory. Returned strings use malloc/free, including Swift callbacks.
 use meltype_core::{session::Clause, Session};
-mod tip;
+pub mod tip;
+#[cfg(windows)]
+pub mod tip_transport;
 #[cfg(windows)]
 mod tsf;
 use std::{

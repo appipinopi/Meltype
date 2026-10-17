@@ -10,7 +10,7 @@ try {
         if ($LASTEXITCODE -ne 0) { throw "rustup failed: $target" }
         # The TSF bridge needs both DLL architectures; the settings UI runs as x64.
         # CI already builds the host workspace before packaging the bridge.
-        $packages = if ($NativeOnly -or $target -eq 'i686-pc-windows-msvc') { @('-p', 'meltype-native') } else { @('--workspace') }
+        $packages = if ($NativeOnly -or $target -eq 'i686-pc-windows-msvc') { @('-p', 'meltype-native', '-p', 'meltype-tip-worker') } else { @('--workspace') }
         cargo build --locked --release @packages --target $target --target-dir "$root/target"
         if ($LASTEXITCODE -ne 0) { throw "cargo failed: $target" }
     }
@@ -19,6 +19,8 @@ try {
         if ($LASTEXITCODE -ne 0) { throw 'TSF build failed' }
         Copy-Item -LiteralPath "$root/target/x86_64-pc-windows-msvc/release/meltype_native.dll" -Destination "$root/native/tip/bin/rust-x64/"
         Copy-Item -LiteralPath "$root/target/i686-pc-windows-msvc/release/meltype_native.dll" -Destination "$root/native/tip/bin/rust-x86/"
+        Copy-Item -LiteralPath "$root/target/x86_64-pc-windows-msvc/release/meltype-tip-worker.exe" -Destination "$root/native/tip/bin/rust-x64/"
+        Copy-Item -LiteralPath "$root/target/i686-pc-windows-msvc/release/meltype-tip-worker.exe" -Destination "$root/native/tip/bin/rust-x86/"
         Copy-Item -LiteralPath "$root/LICENSE", "$root/THIRD-PARTY-NOTICES.md" -Destination "$root/native/tip/bin/rust-x64/"
         Copy-Item -LiteralPath "$root/LICENSE", "$root/THIRD-PARTY-NOTICES.md" -Destination "$root/native/tip/bin/rust-x86/"
     }

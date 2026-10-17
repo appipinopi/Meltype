@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 appipinopi
-// Replaces Pipe.cpp for Rust preview builds. The TSF shell calls Rust inside
-// the client process; no C# daemon or named pipe is required.
+// Replaces Pipe.cpp for Rust preview builds. A private Rust worker owns core
+// sessions; the Rust DLL enforces deadlines and kills timed-out worker trees.
 #include "Pipe.h"
 #include "DisplayAttributes.h"
 #include "LangBar.h"
@@ -13,9 +13,10 @@ namespace meltype {
 namespace {
 struct RustApi {
     HMODULE module = nullptr;
-    void* (__cdecl *create)() = nullptr;
+    std::string worker;
+    void* (__cdecl *create)(const char*) = nullptr;
     void (__cdecl *destroy)(void*) = nullptr;
-    char* (__cdecl *request)(void*, const char*) = nullptr;
+    char* (__cdecl *request)(void*, const char*,unsigned int,int) = nullptr;
     void (__cdecl *freeText)(void*) = nullptr;
     void* (__cdecl *displayAttribute)(const GUID*) = nullptr;
     void* (__cdecl *displayAttributeEnum)() = nullptr;
@@ -86,13 +87,14 @@ struct RustApi {
         if (size == 0 || size >= ARRAYSIZE(path)) return;
         std::wstring directory(path, size);
         directory.resize(directory.find_last_of(L"\\/") + 1);
+        worker=ToUtf8(directory+L"meltype-tip-worker.exe");
         // Absolute path and restricted dependency search: never load from CWD.
         module = LoadLibraryExW((directory + L"meltype_native.dll").c_str(), nullptr,
                                LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32);
         if (!module) return;
-        create = reinterpret_cast<decltype(create)>(GetProcAddress(module, "meltype_tip_create"));
-        destroy = reinterpret_cast<decltype(destroy)>(GetProcAddress(module, "meltype_tip_destroy"));
-        request = reinterpret_cast<decltype(request)>(GetProcAddress(module, "meltype_tip_request"));
+        create = reinterpret_cast<decltype(create)>(GetProcAddress(module, "meltype_tip_transport_create"));
+        destroy = reinterpret_cast<decltype(destroy)>(GetProcAddress(module, "meltype_tip_transport_destroy"));
+        request = reinterpret_cast<decltype(request)>(GetProcAddress(module, "meltype_tip_transport_request"));
         freeText = reinterpret_cast<decltype(freeText)>(GetProcAddress(module, "meltype_free"));
         displayAttribute = reinterpret_cast<decltype(displayAttribute)>(GetProcAddress(module, "meltype_tsf_create_display_attribute"));
         displayAttributeEnum = reinterpret_cast<decltype(displayAttributeEnum)>(GetProcAddress(module, "meltype_tsf_create_display_attribute_enum"));
@@ -342,11 +344,12 @@ bool RustQueryMode(ITfContext* context,TfEditCookie cookie,void* state,const std
 bool RustApplyMode(unsigned int reply,const RustModeApplyCallbacks& callbacks) {
     return api().applyMode && api().applyMode(reply,&callbacks)!=0;
 }
-bool PipeClient::Transact(const std::string& request, std::string& response, DWORD, bool) {
+bool PipeClient::Transact(const std::string& request, std::string& response, DWORD timeout,bool optional) {
+    response.clear();
     if (!api().ready()) return false;
-    if (!rustConnection_) rustConnection_ = api().create();
+    if (!rustConnection_) rustConnection_ = api().create(api().worker.c_str());
     if (!rustConnection_) return false;
-    char* text = api().request(rustConnection_, request.c_str());
+    char* text = api().request(rustConnection_, request.c_str(),timeout,optional?1:0);
     if (!text) return false;
     response.assign(text); api().freeText(text); return true;
 }

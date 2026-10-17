@@ -270,6 +270,14 @@ typedef struct MeltypeTsfModeApplyCallbacks {
    IUnknown owner, publishes both fields before notification, and notifies only
    when English changes. write must publish state without notifying. */
 int32_t meltype_tsf_apply_mode(uint32_t reply, const MeltypeTsfModeApplyCallbacks *callbacks);
+/* Windows-only private process transport. Lazy worker path must be absolute UTF-8.
+   Returned strings use meltype_free. One request at a time per connection;
+   concurrent/busy calls fail immediately. Timed-out/failed workers and their
+   descendants are terminated and their session state is discarded. Mandatory
+   failures back off 3s, optional failures permit immediate reconnection. */
+void *meltype_tip_transport_create(const char *worker_path);
+char *meltype_tip_transport_request(void *transport, const char *request, uint32_t timeout_ms, int32_t optional);
+void meltype_tip_transport_destroy(void *transport);
 #endif
 #ifdef __cplusplus
 }
