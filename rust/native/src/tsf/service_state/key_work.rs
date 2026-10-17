@@ -15,7 +15,7 @@ struct Owner {
     sink: *mut c_void,
     worker: *const c_char,
     adapter: *mut c_void,
-    apply: Apply,
+    apply: Option<Apply>,
     notice: Option<Notice>,
     sender: Option<Sender>,
     reply: RefCell<Option<Vec<u8>>>,
@@ -68,17 +68,7 @@ unsafe extern "C" fn update(data: *mut c_void, op: u32, value: u32) {
             meltype_tsf_service_write_open(s, i32::from(value != 0));
         }
         7 => {
-            let _ = super::commit::from_key(
-                s,
-                o.lifetime,
-                o.worker,
-                1,
-                ptr::null_mut(),
-                0,
-                o.adapter,
-                o.apply,
-                o.notice,
-            );
+            let _ = commit(o, 1, ptr::null_mut(), 0);
         }
         8 => {
             let mut error = 0;
@@ -99,6 +89,16 @@ unsafe extern "C" fn update(data: *mut c_void, op: u32, value: u32) {
         _ => {}
     }
 }
+unsafe fn commit(o: &Owner, mode: u32, context: *mut c_void, cookie: u32) -> HRESULT {
+    match o.apply {
+        Some(apply) => super::commit::from_key(
+            o.state, o.lifetime, o.worker, mode, context, cookie, o.adapter, apply, o.notice,
+        ),
+        None => super::commit::native(
+            o.state, o.lifetime, o.sink, o.worker, mode, context, cookie, 1, o.adapter, o.notice,
+        ),
+    }
+}
 unsafe extern "C" fn edit(data: *mut c_void, op: u32, cookie: u32, context: *mut c_void) -> i32 {
     let o = &*data.cast::<Owner>();
     let s = o.state;
@@ -114,9 +114,7 @@ unsafe extern "C" fn edit(data: *mut c_void, op: u32, cookie: u32, context: *mut
             )
         }
         1 => {
-            let _ = super::commit::from_key(
-                s, o.lifetime, o.worker, 2, context, cookie, o.adapter, o.apply, o.notice,
-            );
+            let _ = commit(o, 2, context, cookie);
         }
         2 => {
             meltype_tsf_service_hide_candidates(s);
@@ -130,14 +128,32 @@ unsafe extern "C" fn edit(data: *mut c_void, op: u32, cookie: u32, context: *mut
             // another reply while this application still borrows its bytes.
             let bytes = o.reply.borrow().clone();
             if let Some(bytes) = bytes {
-                if (o.apply)(
-                    o.adapter,
-                    cookie,
-                    context,
-                    bytes.as_ptr(),
-                    bytes.len() as u32,
-                ) == 0
-                {
+                let applied = match o.apply {
+                    Some(apply) => {
+                        apply(
+                            o.adapter,
+                            cookie,
+                            context,
+                            bytes.as_ptr(),
+                            bytes.len() as u32,
+                        ) != 0
+                    }
+                    None => {
+                        super::apply::meltype_tsf_service_apply_reply(
+                            s,
+                            o.lifetime,
+                            o.sink,
+                            o.worker,
+                            context,
+                            cookie,
+                            bytes.as_ptr(),
+                            bytes.len() as u32,
+                            data,
+                            Some(failed),
+                        ) >= 0
+                    }
+                };
+                if !applied {
                     (*s).key_failed = true;
                     (*s).consumed = false;
                 }
@@ -219,9 +235,28 @@ pub unsafe extern "C" fn meltype_tsf_service_handle_key(
     notice: Option<Notice>,
     sender: Option<Sender>,
 ) -> HRESULT {
-    let Some(apply) = apply else {
+    if apply.is_none() {
         return E_INVALIDARG;
-    };
+    }
+    run(
+        state, lifetime, sink, worker, context, key, ch, adapter, apply, notice, sender,
+    )
+}
+// Native dispatch uses the same policy with service-owned reply application.
+#[allow(clippy::too_many_arguments)]
+pub(super) unsafe fn run(
+    state: *mut ServiceState,
+    lifetime: *mut c_void,
+    sink: *mut c_void,
+    worker: *const c_char,
+    context: *mut c_void,
+    key: u32,
+    ch: u16,
+    adapter: *mut c_void,
+    apply: Option<Apply>,
+    notice: Option<Notice>,
+    sender: Option<Sender>,
+) -> HRESULT {
     if state.is_null() || lifetime.is_null() || worker.is_null() {
         return E_INVALIDARG;
     }

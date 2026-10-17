@@ -13,7 +13,8 @@ struct Owner {
     lifetime: *mut c_void,
     worker: CString,
     adapter: *mut c_void,
-    apply: Apply,
+    apply: Option<Apply>,
+    sink: *mut c_void,
     notice: Option<Notice>,
     key_notice: Option<KeyNotice>,
 }
@@ -54,7 +55,23 @@ unsafe extern "C" fn parsed(data: *mut c_void, bytes: *const u8, length: u32) ->
     if (*s).composition != r.target || (*s).composition_context != r.context {
         return 1;
     }
-    (r.owner.apply)(r.owner.adapter, r.cookie, r.context, bytes, length)
+    match r.owner.apply {
+        Some(apply) => apply(r.owner.adapter, r.cookie, r.context, bytes, length),
+        None => i32::from(
+            super::apply::meltype_tsf_service_apply_reply(
+                s,
+                r.owner.lifetime,
+                r.owner.sink,
+                r.owner.worker.as_ptr(),
+                r.context,
+                r.cookie,
+                bytes,
+                length,
+                data,
+                Some(failed),
+            ) >= 0,
+        ),
+    }
 }
 unsafe extern "C" fn failed(data: *mut c_void) {
     let r = &*data.cast::<Reply>();
@@ -113,7 +130,8 @@ unsafe fn owner(
         lifetime,
         worker: CStr::from_ptr(worker).to_owned(),
         adapter,
-        apply,
+        apply: Some(apply),
+        sink: ptr::null_mut(),
         notice,
         key_notice: None,
     }))
@@ -194,6 +212,46 @@ pub(super) unsafe fn from_key(
         metadata.as_ptr(),
         &callbacks,
         1,
+        Some(o),
+    )
+}
+// Complete native commit path; no shell operation or value callback is retained.
+#[allow(clippy::too_many_arguments)]
+pub(super) unsafe fn native(
+    state: *mut ServiceState,
+    lifetime: *mut c_void,
+    sink: *mut c_void,
+    worker: *const c_char,
+    mode: u32,
+    context: *mut c_void,
+    cookie: u32,
+    keep: i32,
+    adapter: *mut c_void,
+    notice: Option<KeyNotice>,
+) -> HRESULT {
+    if state.is_null() || lifetime.is_null() || worker.is_null() {
+        return E_INVALIDARG;
+    }
+    let o = Rc::new(Owner {
+        state,
+        lifetime,
+        sink,
+        worker: CStr::from_ptr(worker).to_owned(),
+        adapter,
+        apply: None,
+        notice: None,
+        key_notice: notice,
+    });
+    let callbacks = callbacks(&o);
+    let metadata = metadata(state);
+    commit_request::commit(
+        mode,
+        context,
+        (*state).client,
+        cookie,
+        metadata.as_ptr(),
+        &callbacks,
+        keep,
         Some(o),
     )
 }

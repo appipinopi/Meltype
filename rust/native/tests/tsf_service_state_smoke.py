@@ -139,6 +139,7 @@ class StateTests(unittest.TestCase):
         cls.api.meltype_tsf_service_handle_key.argtypes=[P,P,P,c.c_char_p,P,U32,c.c_uint16,P,COMMIT_APPLY,CORE_NOTICE,SENDER];cls.api.meltype_tsf_service_handle_key.restype=HR
         cls.api.meltype_tsf_service_apply_reply.argtypes=[P,P,P,c.c_char_p,P,U32,P,U32,P,TOGGLE];cls.api.meltype_tsf_service_apply_reply.restype=c.c_int
         cls.api.meltype_tsf_service_shutdown.argtypes=[P,P,P,c.c_char_p,P,CORE_NOTICE];cls.api.meltype_tsf_service_shutdown.restype=HR
+        cls.api.meltype_tsf_service_dispatch_key.argtypes=[P,P,P,c.c_char_p,U32,P,U32,c.c_uint64,P,CORE_NOTICE,CORE_NOTICE,SENDER];cls.api.meltype_tsf_service_dispatch_key.restype=c.c_int
         cls.api.meltype_tsf_service_key_secret.argtypes=[P,P,P,U32,c.c_int,P,CORE_NOTICE];cls.api.meltype_tsf_service_key_secret.restype=c.c_int
         cls.api.meltype_tsf_service_would_eat.argtypes=[P,P,P,c.c_char_p,P,U32,c.c_uint64,c.c_int,P,KEY_COMMIT,CORE_NOTICE,c.POINTER(c.c_uint16)];cls.api.meltype_tsf_service_would_eat.restype=c.c_int
         cls.api.meltype_tsf_service_key_event.argtypes=[P,P,P,c.c_char_p,U32,P,U32,c.c_uint64,P,KEY_COMMIT,KEY_HANDLE,CORE_NOTICE];cls.api.meltype_tsf_service_key_event.restype=c.c_int
@@ -2299,5 +2300,81 @@ class StateTests(unittest.TestCase):
         for data,root,worker in [(None,life,self.worker),(address,None,self.worker),(address,life,None)]:
             self.assertEqual(self.api.meltype_tsf_service_shutdown(data,root,c.byref(host.sink),worker,None,CORE_NOTICE()),HR(0x80070057).value)
         self.assertEqual(c.string_at(address,c.sizeof(State)),before);host.verify(self)
+    def dispatch_key(self,state,host,kind=0,key=65,worker=None,mode_notice=None,key_notice=None,sender=None,lifetime=None):
+        return self.api.meltype_tsf_service_dispatch_key(c.addressof(state),lifetime or c.byref(host.context),
+            c.byref(host.sink) if hasattr(host,'sink') else None,worker or self.worker,kind,c.byref(host.context),key,0,123,
+            mode_notice or CORE_NOTICE(),key_notice or CORE_NOTICE(),sender or SENDER(lambda *_:2))
+    def dispatch_host(self):
+        host=ModeHost()
+        def edit(_,client,session,flags,result):
+            self.assertEqual(client,17);self.assertIn(flags,[3,7]);host.locks.append(flags)
+            result[0]=invoke(session,3,HR,[U32],7);return 0
+        host.bind(host.context_table,3,HR,[U32,P,U32,c.POINTER(HR)],edit)
+        return host
+    def test_dispatch_native_all_four_entries_reach_owned_key_edit_and_application(self):
+        self.keyboard();state=self.create();self.key_state(state);state.client=17;state.server_active=True;host=self.dispatch_host();sent=[]
+        def action(worker):
+            self.assertEqual(self.dispatch_key(state,host,0,worker=worker),1)
+            self.assertEqual(self.dispatch_key(state,host,1,worker=worker,sender=SENDER(lambda *_:sent.append(1) or 2)),1)
+            self.assertEqual(self.dispatch_key(state,host,2,worker=worker),1);self.assertEqual(self.dispatch_key(state,host,3,worker=worker),1)
+            self.assertEqual(self.dispatch_key(state,host,2,worker=worker),0);return 1
+        try:
+            _,request=self.fixture_recovery(state,'{"active":true,"consumed":true}',action)
+            self.assertEqual((request['op'],request['vk'],request['ch']),('key',65,97));self.assertTrue(state.consumed);self.assertFalse(state.key_failed);self.assertFalse(state.own_edit);self.assertEqual(sent,[])
+        finally:self.api.meltype_tsf_key_cache_clear(state.keys);host.verify(self)
+    def test_dispatch_native_english_mode_passes_without_transport_or_sender(self):
+        self.keyboard();state=self.create();self.key_state(state);state.open=False;host=self.dispatch_host();events=[];sent=[]
+        self.assertEqual(self.dispatch_key(state,host,mode_notice=CORE_NOTICE(lambda owner,op,value:events.append((owner,op,value))),sender=SENDER(lambda *_:sent.append(1) or 2)),0)
+        self.assertEqual(events,[(123,6,1)]);self.assertEqual(sent,[]);self.assertFalse(state.transport);self.assertEqual(host.locks,[]);host.verify(self)
+    def test_dispatch_native_prior_field_commit_applies_without_shell_callback(self):
+        self.keyboard();state=self.create();self.key_state(state);old=DeferredHost();old.mode='sync';host=self.dispatch_host();self.shutdown_composition(state,old);state.server_active=True
+        try:
+            result,request=self.fixture_recovery(state,'{"active":true,"commits":[{"text":"確定😀"}]}',lambda worker:self.dispatch_key(state,host,worker=worker))
+            self.assertEqual(result,1);self.assertEqual(request['op'],'commit');self.assertEqual(old.document,units('確定😀'));self.assertEqual(old.ended,1);self.assertFalse(state.composition)
+        finally:self.api.meltype_tsf_key_cache_clear(state.keys);self.cleanup_recovered(state,old);host.verify(self)
+    def test_dispatch_native_packet_async_commit_owns_worker_and_applies_after_return(self):
+        self.keyboard();state=self.create();self.key_state(state);host=DeferredHost();self.shutdown_composition(state,host)
+        def action(worker):
+            path=c.create_string_buffer(worker);result=self.dispatch_key(state,host,key=0xe7,worker=path)
+            self.assertEqual(result,0);self.assertEqual(len(host.pending),2);path.value=b'destroyed'
+            session=host.pending.pop(0)
+            try:self.assertEqual(invoke(session,3,HR,[U32],7),HR(0x80004004).value)
+            finally:release(session)
+            host.flush();return result
+        try:
+            _,request=self.fixture_recovery(state,'{"commits":[{"text":"native😀"}]}',action)
+            self.assertEqual(request['op'],'commit');self.assertEqual(host.document,units('native😀'));self.assertEqual(host.ended,1);self.assertFalse(state.composition);self.assertFalse(state.keep_caret)
+        finally:self.cleanup_recovered(state,host)
+    def test_dispatch_native_packet_async_invalid_reply_notice_retains_real_owner(self):
+        self.keyboard();state=self.create();self.key_state(state);host=DeferredHost();self.shutdown_composition(state,host);address=c.addressof(state);events=[];dispatch=DISPATCH(lambda *_:0)
+        @self.checked(DESTROY)
+        def destroyed(owner):events.append(('destroy',state.composition));self.api.meltype_tsf_service_state_destroy(owner)
+        root=self.api.meltype_tsf_service_com_create(address,dispatch,destroyed);self.assertTrue(root);self.owned.remove(address)
+        @self.checked(CORE_NOTICE)
+        def notice(owner,op,value):self.assertEqual((owner,op,value),(123,4,0));events.append('invalid');self.assertEqual(self.live(),self.before+1)
+        def action(worker):
+            self.assertEqual(self.dispatch_key(state,host,key=0xe7,worker=worker,key_notice=notice,lifetime=root),0);release(root)
+            session=host.pending.pop(0)
+            try:self.assertEqual(invoke(session,3,HR,[U32],7),HR(0x80004004).value)
+            finally:release(session)
+            host.flush()
+        self.fixture_recovery(state,'invalid',action)
+        self.assertEqual(events,['invalid',('destroy',None)]);self.assertEqual(host.document,units('old'));host.verify(self)
+    def test_dispatch_native_scope_notice_last_caller_release_pins_complete_key(self):
+        self.keyboard();state=self.create();self.key_state(state);state.client=17;state.server_active=True;host=self.dispatch_host();address=c.addressof(state);events=[];dispatch=DISPATCH(lambda *_:0)
+        @self.checked(DESTROY)
+        def destroyed(owner):events.append(('destroy',state.consumed,state.own_edit));self.api.meltype_tsf_service_state_destroy(owner)
+        root=self.api.meltype_tsf_service_com_create(address,dispatch,destroyed);self.assertTrue(root);self.owned.remove(address)
+        @self.checked(CORE_NOTICE)
+        def notice(owner,op,value):
+            self.assertEqual(owner,123)
+            if op==4:events.append('scope');release(root);self.assertEqual(self.live(),self.before+1)
+        result,request=self.fixture_recovery(state,'{"active":true,"consumed":true}',lambda worker:self.dispatch_key(state,host,1,worker=worker,mode_notice=notice,lifetime=root))
+        self.assertEqual(result,1);self.assertEqual(request['op'],'key');self.assertEqual(events,['scope',('destroy',True,False)]);host.verify(self)
+    def test_dispatch_native_invalid_arguments_preserve_state(self):
+        state=self.create();self.key_state(state);host=self.dispatch_host();address=c.addressof(state);before=c.string_at(address,c.sizeof(State));life=c.byref(host.context);sender=SENDER(lambda *_:2)
+        for data,root,worker in [(None,life,self.worker),(address,None,self.worker),(address,life,None)]:
+            self.assertEqual(self.api.meltype_tsf_service_dispatch_key(data,root,None,worker,0,c.byref(host.context),65,0,None,CORE_NOTICE(),CORE_NOTICE(),sender),0)
+        self.assertEqual(self.dispatch_key(state,host,kind=4),0);self.assertEqual(c.string_at(address,c.sizeof(State)),before);host.verify(self)
 if __name__=='__main__':unittest.main(argv=[sys.argv[0]],verbosity=2,failfast=True)
 

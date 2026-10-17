@@ -585,6 +585,13 @@ int32_t meltype_tsf_service_apply_reply(void *state,void *lifetime,void *sink,co
    Notice op0=abandoned cleanup HRESULT,op1=invalid reply; never unwinds. Pending
    SYNC sessions are invalidated before stack adapters expire. Returns HRESULT. */
 int32_t meltype_tsf_service_shutdown(void *state,void *lifetime,void *sink,const char *worker,void *adapter,void (*notice)(void *,uint32_t,int32_t));
+/* Complete native key dispatch: kind0..3=test-down/down/test-up/up. Live service,
+   root/context/composition sink on its TSF thread; worker trusted absolute UTF8.
+   Root pins state/notice/sender code through reentry. Mode/key notices follow
+   service_key_event/service_handle_key codes and never unwind. Optional sender
+   substitutes SendInput (NULL uses OS). Async commits independently own worker,
+   adapter and notices. No external commit/edit/reply callback is used. */
+int32_t meltype_tsf_service_dispatch_key(void *state,void *lifetime,void *sink,const char *worker,uint32_t kind,void *context,uint32_t key,uint64_t message,void *adapter,void (*mode_notice)(void *,uint32_t,int32_t),void (*key_notice)(void *,uint32_t,int32_t),uint32_t (*sender)(void *,const void *,uint32_t));
 /* Service mode actions op0=toggle,op1=code line(value Japanese),op2=query(cookie,
    value selection-changed). Notice 0=hello,1=invalid JSON,2=English display,
    3=code-line Japanese,4=scope source,5=scope unreadable reason. Query retains

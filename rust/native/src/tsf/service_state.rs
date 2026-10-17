@@ -8,6 +8,7 @@ mod apply;
 mod commit;
 mod core;
 mod deactivate;
+mod dispatch;
 mod edited;
 mod exchange;
 mod focus;

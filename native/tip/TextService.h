@@ -125,7 +125,9 @@ private:
     bool IsReinjected(UINT vk);
     bool ServerReady();
     void Hello();
+#ifndef MELTYPE_RUST_CORE
     void HandleKey(ITfContext* context, UINT vk, wchar_t ch);
+#endif
     // コードの行を日本語にする / 英数に戻すよう Meltype.exe に頼む。そうしたなら true
     bool SetCodeLine(ITfContext* context, bool japanese);
     // キャレットが動いたときに、次に打つキーが英数か Meltype.exe に聞く (コードエディターのとき。編集の通知の中で呼ぶ)

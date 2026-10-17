@@ -1087,12 +1087,7 @@ STDMETHODIMP TextService::OnKeyUp(ITfContext*, WPARAM wParam, LPARAM, BOOL* eate
 
 #ifdef MELTYPE_RUST_CORE
 HRESULT TextService::DispatchKey(unsigned int kind,ITfContext* context,UINT key,LPARAM message,BOOL* eaten) {
-    *eaten=RustServiceKeyEvent(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),ServiceInterface<ITfCompositionSink>(),kind,context,key,message,this,
-        [](void* p,unsigned int mode,int keep)->int {try {
-            auto* s=static_cast<TextService*>(p);if (mode==0) return s->CommitNow(keep!=0)?1:0;
-            s->CommitAsync(keep!=0);return 1;
-        }catch (...) {return 0;}},
-        [](void* p,void* context,unsigned int key,wchar_t ch) {try {static_cast<TextService*>(p)->HandleKey(static_cast<ITfContext*>(context),key,ch);}catch (...) {}})?TRUE:FALSE;
+    *eaten=RustServiceDispatchKey(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),ServiceInterface<ITfCompositionSink>(),kind,context,key,message)?TRUE:FALSE;
     return S_OK;
 }
 #endif
@@ -1105,10 +1100,8 @@ void TextService::ResetStaleCommit() {
 #endif
 }
 
+#ifndef MELTYPE_RUST_CORE
 void TextService::HandleKey(ITfContext* context, UINT vk, wchar_t ch) {
-#ifdef MELTYPE_RUST_CORE
-    RustServiceHandleKey(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),ServiceInterface<ITfCompositionSink>(),context,vk,ch,this,ApplyServiceReply);
-#else
     // 8 = Windows キー (Meltype.exe は Mac の Command と同じく、確定してアプリに渡す)
     int mods = (KeyDown(VK_SHIFT) ? 1 : 0) | (KeyDown(VK_CONTROL) ? 2 : 0) | (KeyDown(VK_MENU) ? 4 : 0) | (KeyDown(VK_LWIN) || KeyDown(VK_RWIN) ? 8 : 0);
     keyFailed_ = false;
@@ -1207,8 +1200,9 @@ void TextService::HandleKey(ITfContext* context, UINT vk, wchar_t ch) {
         TipLog(L"Meltype.exe から応答が来ないので、打った文字をそのまま入れました");
     }
     if ((keyFailed_ && !insertedOnFailure) || (!consumed_ && !insertedDirect)) Reinject(vk);
-#endif
 }
+
+#endif
 
 void TextService::ToggleInputMode(ITfContext* context) {
 #ifdef MELTYPE_RUST_CORE
