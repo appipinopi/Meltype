@@ -5,6 +5,7 @@ final class Native {
     static { System.loadLibrary("meltype_native"); }
     static native long create(String directory);
     static native String control(long handle,String request);
+    static native String createSettingsActivity(Object activity);
     static native String renderSettingsPage(Object bridge,String page);
     static native String settingsValues(Object bridge,String operation);
     static native String editSettingsFields(Object bridge,String edits);

@@ -20,23 +20,17 @@ public final class SettingsActivity extends Activity {
         super.onCreate(state);
         session = Native.create(getFilesDir().getAbsolutePath());
         if (state != null) Native.restoreDocumentPicker(session,state.getString("documentOperation"));
-        ScrollView scroll = new ScrollView(this);
-        LinearLayout root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL);
-        int padding = (int)(16 * getResources().getDisplayMetrics().density);
-        root.setPadding(padding,padding,padding,padding);
-        scroll.addView(root); setContentView(scroll);
-        TextView title = new TextView(this); title.setText("Meltype Rust 設定"); title.setTextSize(24); root.addView(title);
-        status = new TextView(this); root.addView(status);
-        Spinner navigation = new Spinner(this);
-        navigation.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,
-                new String[]{"入力設定","ユーザー辞書","定型文","学習","プロファイル","バックアップ・診断"}));
-        root.addView(navigation);
-        body = new LinearLayout(this); body.setOrientation(LinearLayout.VERTICAL); root.addView(body);
+        try { checked(Native.createSettingsActivity(this)); }
+        catch (JSONException error) { throw new IllegalStateException(error); }
+    }
+    private void settingsFormReady() {
         form = new SettingsPage(this,body,operation -> action(() -> execute(operation,form.values(operation))));
-        navigation.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+    }
+    private android.widget.AdapterView.OnItemSelectedListener settingsNavigationCallback() {
+        return new android.widget.AdapterView.OnItemSelectedListener() {
             public void onNothingSelected(AdapterView<?> parent) {}
             public void onItemSelected(AdapterView<?> parent,android.view.View view,int position,long id) { show(position); }
-        });
+        };
     }
     @Override protected void onSaveInstanceState(Bundle state) { state.putString("documentOperation",Native.pendingDocument(session)); super.onSaveInstanceState(state); }
     @Override public void onDestroy() { Native.destroy(session); super.onDestroy(); }

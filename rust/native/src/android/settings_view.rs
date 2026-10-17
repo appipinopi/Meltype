@@ -41,7 +41,7 @@ fn local<T>(
     env.with_local_frame(capacity, |env| Ok::<_, jni::errors::Error>(action(env)))
         .map_err(|e| e.to_string())?
 }
-fn invoke<'a>(
+pub(super) fn invoke<'a>(
     env: &mut JNIEnv<'a>,
     object: &JObject,
     name: &str,
@@ -56,7 +56,7 @@ fn string(env: &mut JNIEnv, value: JString) -> Result<String> {
         .map(String::from)
         .map_err(|e| e.to_string())
 }
-fn property(env: &mut JNIEnv, view: &JObject, name: &str, text: &str) -> Result<()> {
+pub(super) fn property(env: &mut JNIEnv, view: &JObject, name: &str, text: &str) -> Result<()> {
     let text = env.new_string(text).map_err(|e| e.to_string())?;
     invoke(
         env,

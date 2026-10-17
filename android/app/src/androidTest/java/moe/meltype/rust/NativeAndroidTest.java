@@ -18,6 +18,9 @@ import android.view.inputmethod.BaseInputConnection;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Switch;
+import android.widget.Spinner;
+import android.widget.ScrollView;
+import android.widget.AdapterView;
 import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -38,6 +41,29 @@ import static org.junit.Assert.*;
 /** Runs on Android's real framework, without registering or activating an IME. */
 @RunWith(AndroidJUnit4.class)
 public final class NativeAndroidTest {
+    public static final class ActivityFrame extends ContextThemeWrapper {
+        LinearLayout body;TextView status;View content;SettingsPage form;final long session;
+        boolean ready;int selected=-1;
+        ActivityFrame(long session){super(context(),android.R.style.Theme_Material_Light_NoActionBar);this.session=session;}
+        private void settingsFormReady(){
+            assertNotNull(body);assertNotNull(status);
+            form=new SettingsPage(this,body,operation->{try{
+                JSONObject result=new JSONObject(Native.settingsAction(session,operation.toString(),form.values(operation).toString()));
+                assertFalse(result.toString(),result.has("error"));if(result.has("page"))show(result.getInt("page"));
+            }catch(Exception error){throw new AssertionError(error);}});
+            ready=true;
+        }
+        private void show(int page)throws Exception{form.render(new JSONObject(Native.settingsPage(session,page)));}
+        private AdapterView.OnItemSelectedListener settingsNavigationCallback(){
+            assertTrue(ready);return new AdapterView.OnItemSelectedListener(){
+                public void onNothingSelected(AdapterView<?> parent){}
+                public void onItemSelected(AdapterView<?> parent,View view,int position,long id){
+                    assertTrue(ready);selected=position;try{show(position);}catch(Exception error){throw new AssertionError(error);}
+                }
+            };
+        }
+        public void setContentView(View view){assertTrue(ready);content=view;}
+    }
     public static final class PickerCapture {
         Intent launched;int launches;boolean fail;
         public void startActivityForResult(Intent intent,int code) {
@@ -263,6 +289,27 @@ public final class NativeAndroidTest {
             assertTrue((service.intents.get(0).getFlags()&Intent.FLAG_ACTIVITY_NEW_TASK)!=0);
             Native.startInput(profile.session,1,0);service.editor=new Editor();service.editor.onRead=()->Native.startInput(profile.session,0x81,0);
             press(root,"a");assertEquals("",service.editor.text.toString());assertEquals(3,Native.editorFlags(profile.session));assertEquals(1,service.editor.reads);
+        }
+    });}
+    @Test public void rustSettingsActivityFrameBuildsAndNavigates() throws Throwable {ui(()->{
+        try(Profile profile=new Profile()) {
+            ActivityFrame frame=new ActivityFrame(profile.session);JSONObject reply=new JSONObject(Native.createSettingsActivity(frame));assertFalse(reply.toString(),reply.has("error"));
+            assertTrue(frame.content instanceof ScrollView);LinearLayout root=(LinearLayout)((ScrollView)frame.content).getChildAt(0);
+            assertEquals(4,root.getChildCount());assertEquals(LinearLayout.VERTICAL,root.getOrientation());
+            int padding=(int)(16*frame.getResources().getDisplayMetrics().density);assertEquals(padding,root.getPaddingLeft());assertEquals(padding,root.getPaddingBottom());
+            assertEquals("Meltype Rust 設定",((TextView)root.getChildAt(0)).getText().toString());assertSame(frame.status,root.getChildAt(1));assertSame(frame.body,root.getChildAt(3));
+            Spinner navigation=(Spinner)root.getChildAt(2);assertEquals(6,navigation.getAdapter().getCount());
+            String[] labels={"入力設定","ユーザー辞書","定型文","学習","プロファイル","バックアップ・診断"};
+            for(int page=0;page<6;page++) {
+                assertEquals(labels[page],navigation.getAdapter().getItem(page));
+                navigation.getOnItemSelectedListener().onItemSelected(navigation,null,page,page);
+                assertEquals(page,frame.selected);assertTrue(frame.body.getChildCount()>0);
+            }
+            navigation.getOnItemSelectedListener().onItemSelected(navigation,null,0,0);
+            frame.content.measure(View.MeasureSpec.makeMeasureSpec(1080,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(1920,View.MeasureSpec.EXACTLY));frame.content.layout(0,0,1080,1920);
+            Bitmap image=Bitmap.createBitmap(1080,1920,Bitmap.Config.ARGB_8888);Canvas canvas=new Canvas(image);canvas.drawColor(android.graphics.Color.WHITE);frame.content.draw(canvas);
+            File artifacts=new File(context().getFilesDir(),"instrumentation-artifacts");assertTrue(artifacts.isDirectory()||artifacts.mkdirs());
+            try(FileOutputStream stream=new FileOutputStream(new File(artifacts,"settings-activity.png"))){assertTrue(image.compress(Bitmap.CompressFormat.PNG,100,stream));}finally{image.recycle();}
         }
     });}
     @Test public void rustPickerIntentsAndResultLifecycle() throws Throwable {ui(()->{
