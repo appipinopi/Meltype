@@ -233,7 +233,7 @@ fn string<'a>(value: &'a Value, key: &str) -> Result<&'a str> {
         .and_then(Value::as_str)
         .ok_or_else(|| format!("入力項目がありません: {key}"))
 }
-fn action(handle: jlong, action: Value, fields: Value) -> Result<Value> {
+pub(super) fn action(handle: jlong, action: Value, fields: Value) -> Result<Value> {
     let kind = string(&action, "action")?;
     let (request, page) = match kind {
         "toggle" => {

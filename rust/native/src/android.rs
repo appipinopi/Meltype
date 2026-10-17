@@ -8,6 +8,7 @@ use jni::{
 };
 mod actions;
 mod activity_view;
+mod dialogs;
 mod documents;
 mod editor_jni;
 mod input_view;

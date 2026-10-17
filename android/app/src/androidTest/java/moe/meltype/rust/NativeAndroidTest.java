@@ -3,6 +3,8 @@
 package moe.meltype.rust;
 
 import android.content.Context;
+import android.app.Instrumentation;
+import android.app.UiAutomation;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.content.ContextWrapper;
@@ -14,6 +16,7 @@ import android.text.Selection;
 import android.view.ContextThemeWrapper;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.inputmethod.BaseInputConnection;
 import android.widget.Button;
 import android.widget.EditText;
@@ -41,6 +44,57 @@ import static org.junit.Assert.*;
 /** Runs on Android's real framework, without registering or activating an IME. */
 @RunWith(AndroidJUnit4.class)
 public final class NativeAndroidTest {
+    private static void idle(Instrumentation instrumentation,UiAutomation automation)throws Exception {
+        instrumentation.waitForIdleSync();automation.waitForIdle(100,10000);
+    }
+    private static void clickOwnDialogButton(UiAutomation automation,String label) {
+        AccessibilityNodeInfo root=automation.getRootInActiveWindow();assertNotNull("active test-app dialog",root);
+        assertEquals(context().getPackageName(),String.valueOf(root.getPackageName()));
+        for(AccessibilityNodeInfo node:root.findAccessibilityNodeInfosByText(label)) {
+            if(node.getText()!=null&&node.getPackageName()!=null&&label.contentEquals(node.getText())&&context().getPackageName().contentEquals(node.getPackageName())&&node.isClickable()) {
+                assertTrue("click "+label,node.performAction(AccessibilityNodeInfo.ACTION_CLICK));return;
+            }
+        }
+        throw new AssertionError("missing dialog button: "+label);
+    }
+    private static void captureDialog(UiAutomation automation,String name)throws Exception {
+        AccessibilityNodeInfo root=automation.getRootInActiveWindow();assertNotNull(root);
+        assertEquals(context().getPackageName(),String.valueOf(root.getPackageName()));
+        Bitmap image=automation.takeScreenshot();assertNotNull("dialog screenshot",image);
+        File artifacts=new File(context().getFilesDir(),"instrumentation-artifacts");assertTrue(artifacts.isDirectory()||artifacts.mkdirs());
+        try(FileOutputStream stream=new FileOutputStream(new File(artifacts,name))){assertTrue(image.compress(Bitmap.CompressFormat.PNG,100,stream));}finally{image.recycle();}
+    }
+    @Test public void realSettingsActivityConfirmationButtons()throws Throwable {
+        Instrumentation instrumentation=InstrumentationRegistry.getInstrumentation();UiAutomation automation=instrumentation.getUiAutomation();
+        SettingsActivity activity=(SettingsActivity)instrumentation.startActivitySync(new Intent(context(),SettingsActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        long[] handle={0};
+        try(Profile files=new Profile()) {
+            ui(()->{
+                java.lang.reflect.Field field=SettingsActivity.class.getDeclaredField("session");field.setAccessible(true);handle[0]=field.getLong(activity);assertTrue(handle[0]!=0);
+                JSONObject request=new JSONObject(Native.settingsAction(handle[0],"{\"action\":\"learning_confirm\"}","{}"));
+                assertFalse(new JSONObject(Native.showSettingsConfirmation(handle[0],activity,request.getJSONObject("confirm").toString())).has("error"));
+            });
+            idle(instrumentation,automation);captureDialog(automation,"learning-confirmation.png");
+            String before=Native.control(handle[0],"{\"op\":\"learning_list\"}");clickOwnDialogButton(automation,"キャンセル");idle(instrumentation,automation);assertEquals(before,Native.control(handle[0],"{\"op\":\"learning_list\"}"));
+            ui(()->{JSONObject request=new JSONObject(Native.settingsAction(handle[0],"{\"action\":\"learning_confirm\"}","{}"));assertFalse(new JSONObject(Native.showSettingsConfirmation(handle[0],activity,request.getJSONObject("confirm").toString())).has("error"));});
+            idle(instrumentation,automation);clickOwnDialogButton(automation,"削除");idle(instrumentation,automation);
+            assertEquals(0,new JSONObject(Native.control(handle[0],"{\"op\":\"learning_list\"}")).getJSONObject("languages").length());
+            File backup=new File(files.root,"dialog-backup.json");
+            ui(()->{
+                assertFalse(new JSONObject(Native.control(handle[0],"{\"op\":\"dictionary_set\",\"reading\":\"てすとかくにん\",\"word\":\"Dialog😀\"}")).has("error"));
+                assertFalse(new JSONObject(Native.settingsDocument(handle[0],activity,Uri.fromFile(backup),"backup_create")).has("error"));
+                Native.control(handle[0],"{\"op\":\"dictionary_remove\",\"reading\":\"てすとかくにん\"}");
+                JSONObject staged=new JSONObject(Native.settingsDocument(handle[0],activity,Uri.fromFile(backup),"backup_restore"));
+                assertFalse(new JSONObject(Native.showSettingsConfirmation(handle[0],activity,staged.getJSONObject("confirm").toString())).has("error"));
+            });
+            idle(instrumentation,automation);captureDialog(automation,"restore-confirmation.png");clickOwnDialogButton(automation,"キャンセル");idle(instrumentation,automation);
+            assertFalse(new JSONObject(Native.control(handle[0],"{\"op\":\"dictionary_list\"}")).has("てすとかくにん"));
+            ui(()->{JSONObject staged=new JSONObject(Native.settingsDocument(handle[0],activity,Uri.fromFile(backup),"backup_restore"));assertFalse(new JSONObject(Native.showSettingsConfirmation(handle[0],activity,staged.getJSONObject("confirm").toString())).has("error"));});
+            idle(instrumentation,automation);clickOwnDialogButton(automation,"復元");idle(instrumentation,automation);
+            assertEquals("Dialog😀",new JSONObject(Native.control(handle[0],"{\"op\":\"dictionary_list\"}")).getJSONArray("てすとかくにん").getString(0));
+            Native.control(handle[0],"{\"op\":\"dictionary_remove\",\"reading\":\"てすとかくにん\"}");
+        } finally {ui(activity::finish);instrumentation.waitForIdleSync();}
+    }
     public static final class ActivityFrame extends ContextThemeWrapper {
         LinearLayout body;TextView status;View content;SettingsPage form;final long session;
         boolean ready;int selected=-1;

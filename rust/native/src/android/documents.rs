@@ -423,7 +423,7 @@ fn transfer(
         json!({})
     })
 }
-fn restore(handle: jlong, token: u64, accept: bool) -> Result<Value> {
+pub(super) fn restore(handle: jlong, token: u64, accept: bool) -> Result<Value> {
     let file = {
         let mut states = states().lock().unwrap_or_else(|e| e.into_inner());
         let state = states.get_mut(&handle).filter(|s| s.token == token);

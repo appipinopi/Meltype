@@ -3,7 +3,7 @@
 package moe.meltype.rust;
 
 import android.app.Activity;
-import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.widget.*;
@@ -45,16 +45,15 @@ public final class SettingsActivity extends Activity {
         return result;
     }
     private void execute(JSONObject operation,JSONObject values) throws JSONException {
-        JSONObject result = checked(Native.settingsAction(session,operation.toString(),values.toString()));
+        applyReply(checked(Native.settingsAction(session,operation.toString(),values.toString())));
+    }
+    private void applyReply(JSONObject result) throws JSONException {
         if (result.has("edit")) form.edit(result.getJSONObject("edit"));
         if (result.has("pick")) {
             JSONObject pick = result.getJSONObject("pick"); checked(Native.settingsPick(session,this,pick.getString("operation")));
         }
         if (result.has("confirm")) {
-            JSONObject confirm = result.getJSONObject("confirm");
-            new AlertDialog.Builder(this).setMessage(confirm.getString("message"))
-                .setNegativeButton("キャンセル",null).setPositiveButton(confirm.getString("positive"),
-                    (dialog,which) -> action(() -> execute(confirm.getJSONObject("action"),form.values()))).show();
+            checked(Native.showSettingsConfirmation(session,this,result.getJSONObject("confirm").toString()));
         }
         if (result.has("page")) show(result.getInt("page"));
     }
@@ -64,18 +63,12 @@ public final class SettingsActivity extends Activity {
     }
     @Override protected void onActivityResult(int code,int result,Intent data) {
         super.onActivityResult(code,result,data);
-        action(() -> {
-            JSONObject reply = checked(Native.settingsPickerResult(session,this,code,result,data));
-            if (reply.has("confirm")) {
-                JSONObject confirm = reply.getJSONObject("confirm"); long token = confirm.getLong("token");
-                try {
-                    new AlertDialog.Builder(this).setTitle(confirm.getString("title")).setMessage(confirm.getString("message"))
-                        .setNegativeButton("キャンセル",(dialog,which) -> Native.settingsRestore(session,token,false))
-                        .setOnCancelListener(dialog -> Native.settingsRestore(session,token,false))
-                        .setPositiveButton("復元",(dialog,which) -> action(() -> checked(Native.settingsRestore(session,token,true)))).show();
-                } catch (Exception error) { Native.settingsRestore(session,token,false); throw error; }
-            }
-            if (reply.has("page")) show(reply.getInt("page"));
-        });
+        action(() -> applyReply(checked(Native.settingsPickerResult(session,this,code,result,data))));
+    }
+    private DialogInterface.OnClickListener settingsConfirmationClick(String payload,boolean accept) {
+        return (dialog,which) -> action(() -> applyReply(checked(Native.completeSettingsConfirmation(session,payload,accept))));
+    }
+    private DialogInterface.OnCancelListener settingsConfirmationCancel(String payload) {
+        return dialog -> action(() -> applyReply(checked(Native.completeSettingsConfirmation(session,payload,false))));
     }
 }

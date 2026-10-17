@@ -53,11 +53,11 @@ WidgetHostはSDKと同じメソッド形のテスト用ウィジェットをJVM�
 
 ## Androidフレームワーク上の検証（追加、実行結果はCIで確認）
 
-`NativeAndroidTest` は実際のAndroidウィジェット、Editable／BaseInputConnection、KeyEventを使う10テストです。キーボードの構造と候補クリック、変換→確定→Undo、UTF-16削除と選択保護、非公開欄、直接入力への代替、入力欄切替時の世代保護を確認します。IMEの登録・有効化や、他アプリへの入力は行いません。矢印イベントはテスト用InputConnectionが受け取ります。
+`NativeAndroidTest` は実際のAndroidウィジェット、Editable／BaseInputConnection、KeyEventを使う11テストです。キーボードの構造と候補クリック、変換→確定→Undo、UTF-16削除と選択保護、非公開欄、直接入力への代替、入力欄切替時の世代保護を確認します。IMEの登録・有効化や、他アプリへの入力は行いません。矢印イベントはテスト用InputConnectionが受け取ります。
 
 CIはAPI 35 x86_64の専用AVDを一時フォルダーに作り、明示した `emulator-5580` だけにアプリとテストAPKをインストールします。同じシリアルが使用中なら中止します。AVDと起動したエミュレータープロセスは終了時に片付けます。`android/tests/run-emulator.sh` はLinuxのAndroid SDK／KVMと、組み立て済みの両APKがあるCI向けです。通常の端末には使用しません。
 
-実行方法は `gradle -p android assembleDebug assembleDebugAndroidTest lintDebug --no-daemon`、続いて `bash android/tests/run-emulator.sh` です。SDKにはemulatorと `system-images;android-35;google_apis;x86_64` が必要です。`dist/android-emulator/` にJUnitの実行記録、エミュレーター／logcat、Android自身で描画した `input-view.png`、SDK・ABI・画像寸法などの記録を保存します。10件の正常終了と5枚のPNG・測定記録を必須とし、0件・スキップ・クラッシュを成功とみなしません。この追加だけでは端末上での成功や元版との全UI一致を証明しません。
+実行方法は `gradle -p android assembleDebug assembleDebugAndroidTest lintDebug --no-daemon`、続いて `bash android/tests/run-emulator.sh` です。SDKにはemulatorと `system-images;android-35;google_apis;x86_64` が必要です。`dist/android-emulator/` にJUnitの実行記録、エミュレーター／logcat、Android自身で描画した `input-view.png`、SDK・ABI・画像寸法などの記録を保存します。11件の正常終了と7枚のPNG・測定記録を必須とし、0件・スキップ・クラッシュを成功とみなしません。この追加だけでは端末上での成功や元版との全UI一致を証明しません。
 
 テスト基盤は [AndroidJUnitRunner](https://developer.android.com/training/testing/instrumented-tests/androidx-test-libraries/runner) と [adbによる実行](https://developer.android.com/studio/test/command-line) に従います。
 
@@ -82,3 +82,9 @@ Android設定の6ページ（入力設定・辞書・定型文・学習・プロ
 設定Activityのスクロール、16dp余白、24spタイトル、状況欄、6ページ選択Spinnerと本文もRust／JNIで生成します。本文・状況欄を公開し、フォームを初期化してからリスナーを設定し、画面を接続します。ActivityViewHostでは階層・標準Spinnerリソース・全ラベル、最初の選択時にフォームが準備済みであること、初期化失敗後の再構築と20回の生成を確認しました。10件目のAndroidテストは実フレームワークで組立てと選択通知→6ページ描画を検証し、settings-activity.pngも必須成果物にします。選択通知はテストから呼び、タッチ／OSによるActivity起動の検証ではありません。この追加のAndroid実行と画像確認は未完了です。JavaにはOS／リスナー転送、操作結果の受渡しと確認ダイアログが残ります。
 
 3eeada1のAPI 35・x86_64エミュレーターでは `OK (9 tests)` を確認しました（[実行記録](https://github.com/appipinopi/Meltype/actions/runs/39033167999)）。実Intentを使うファイル選択メタデータ、取消・再生成・結果受取りからの入出力が成功しています。今回のRust製設定ページ／画面枠は後続の変更なので、別途実行結果が必要です。
+
+確認ダイアログの生成と応答の振分けもRust／JNIへ移しました。学習削除のメッセージ・削除／キャンセル、バックアップ復元のタイトル・検査結果・復元／キャンセルを維持し、表示に失敗した復元対象は解放します。Javaはクリック／キャンセル通知を渡し、Rustの結果を既存の画面更新へ送ります。DialogHostで否定・システム取消・肯定・再読込、復元の一度限りの実行、表示失敗時の一時ファイル削除、不正／破棄済みセッションを確認しました。
+
+11件目はCI専用エミュレーター上で実際のSettingsActivityを起動し、UiAutomationでパッケージ名を照合した自アプリの確認ボタンを操作します。学習削除の取消／実行、バックアップ復元の取消／実行と辞書状態を検証し、2枚の確認画面PNGも必須化します。ユーザーの端末・別アプリには操作せず、IMEも登録／有効化しません。この新しい実画面テストと画像確認はまだ未完了です。
+
+e78c73fのRust製設定ページ描画はAPI 35・x86_64で `OK (9 tests)` を確認しました（[実行記録](https://github.com/appipinopi/Meltype/actions/runs/39033563984)）。取得したsettings-page.pngも目視し、13個のスイッチ・説明・開始記号入力と保存ボタンを確認済みです。Activity枠と実ダイアログ操作は後続変更のため、その成功を含むものではありません。
