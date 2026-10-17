@@ -43,6 +43,6 @@ int wmain() {
     };
     state.callbacks=&callbacks;
     assert(RustCoreReady(callbacks) && state.hellos==1 && state.notices==1 && state.last==5000);
-    assert(!state.service && state.flags==2 && g_locks==0);
+    assert(!state.service && state.flags==2 && g_locks==0 && RustServiceStateLiveCount()==0);
     puts("Actual core adapters: packaged worker, conversion/isolation, timeout/optional policy, Unicode hello, clock/state ABI and owner release passed");
 }

@@ -15,6 +15,7 @@
 #include "Globals.h"
 #include "Json.h"
 #include "Pipe.h"
+#include "RustServiceState.h"
 
 namespace meltype {
 
@@ -145,6 +146,56 @@ private:
     void UnadviseTextEditSink();
     void UpdateLangBar();
 
+#ifdef MELTYPE_RUST_CORE
+    // First member: freed after UI/data members; pins the shell until then.
+    RustServiceStateStorage state_;
+    LONG& refs_ = state_.value->refs;
+    ITfThreadMgr*& threadMgr_ = state_.value->manager;
+    TfClientId& clientId_ = state_.value->client;
+    void*& threadSubscription_ = state_.value->thread_subscription;
+    void*& keySubscription_ = state_.value->key_subscription;
+    void*& modeSubscription_ = state_.value->mode_subscription;
+    void*& editSubscription_ = state_.value->edit_subscription;
+    ITfContext*& editSinkContext_ = state_.value->edit_context;
+    ITfComposition*& composition_ = state_.value->composition;
+    ITfContext*& compositionContext_ = state_.value->composition_context;
+    TfGuidAtom& atomInput_ = state_.value->atom_input;
+    TfGuidAtom& atomConverted_ = state_.value->atom_converted;
+    TfGuidAtom& atomTarget_ = state_.value->atom_target;
+    void*& keyState_ = state_.value->keys;
+    void*& resume_ = state_.value->resume;
+    void*& abandoned_ = state_.value->abandoned;
+    ULONGLONG& lastHello_ = state_.value->last_hello;
+    unsigned long long& focusEpoch_ = state_.value->focus_epoch;
+    unsigned long long& modeEpoch_ = state_.value->mode_epoch;
+    unsigned int& shutdownPhase_ = state_.value->shutdown_phase;
+    bool& serverActive_ = state_.value->server_active;
+    bool& directDetection_ = state_.value->direct_detection;
+    bool& directEnglishWord_ = state_.value->direct_word;
+    bool& open_ = state_.value->open;
+    bool& codeApp_ = state_.value->code_app;
+    bool& codeEnglish_ = state_.value->code_english;
+    bool& disabled_ = state_.value->disabled;
+    bool& ownProcess_ = state_.value->own_process;
+    bool& lastConverting_ = state_.value->last_converting;
+    bool& caretMoved_ = state_.value->caret_moved;
+    bool& ownEdit_ = state_.value->own_edit;
+    bool& secretChecked_ = state_.value->secret_checked;
+    bool& secretWhileComposing_ = state_.value->secret_composing;
+    bool& privateField_ = state_.value->private_field;
+    bool& keepAppCaret_ = state_.value->keep_caret;
+    bool& deactivated_ = state_.value->deactivated;
+    bool& keyFailed_ = state_.value->key_failed;
+    bool& consumed_ = state_.value->consumed;
+    const wchar_t*& scopeSource_ = state_.value->scope_source;
+    const wchar_t*& passReason_ = state_.value->pass_reason;
+    PipeClient pipe_;
+    std::string sid_;
+    RustFocusCallbacks FocusCallbacks();
+    RustCoreStateCallbacks CoreCallbacks();
+    bool ForgetAbandoned(ITfComposition*);
+    void EndAbandonedNow();
+#else
     LONG refs_ = 1;
     ITfThreadMgr* threadMgr_ = nullptr;
     TfClientId clientId_ = TF_CLIENTID_NULL;
@@ -253,6 +304,7 @@ private:
     const wchar_t* passReason_ = nullptr;  // 最後にキーを通した理由 (ログに同じ理由を続けて書かない)
     bool keyFailed_ = false;
     bool consumed_ = true;
+#endif
 
     std::unique_ptr<CandidateWindow> candidates_;
     LangBarButton* langBar_ = nullptr;

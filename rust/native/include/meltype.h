@@ -520,6 +520,16 @@ typedef struct MeltypeTsfCoreRequestCallbacks {
    Own-process requests retain the original thread-id byte insertion rule.
    Stale/ended replies are skipped. No borrowed stack survives this call. */
 int32_t meltype_tsf_core_request(const uint8_t *input,uint32_t length,uint32_t timeout,int32_t optional,const MeltypeTsfCoreRequestCallbacks *callbacks);
+/* TSF-thread state allocation with upstream defaults. Opaque except to a shell
+   that first checks layout version,size,alignment and every field offset.
+   Destroy once, on its TSF thread, after aliases/callbacks/UI have ceased and
+   lifecycle cleanup has released owned COM references and Rust tokens. */
+void *meltype_tsf_service_state_create(void);
+void meltype_tsf_service_state_destroy(void *);
+/* Return required u32 count. Write metadata only for nonnull output with enough
+   capacity: version,size,alignment, then private header field offsets. */
+uint32_t meltype_tsf_service_state_layout(uint32_t *output,uint32_t capacity);
+uint32_t meltype_tsf_service_state_live_count(void);
 #endif
 #ifdef __cplusplus
 }

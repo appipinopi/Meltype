@@ -257,6 +257,10 @@ struct RustCoreRequestCallbacks {
 bool RustCoreReady(const RustCoreStateCallbacks&);
 void RustCoreHello(const std::wstring&,const RustCoreStateCallbacks&);
 bool RustCoreRequest(const std::string&,DWORD,bool,const RustCoreRequestCallbacks&);
+struct RustServiceState;
+RustServiceState* RustCreateServiceState();
+void RustDestroyServiceState(RustServiceState*);
+unsigned int RustServiceStateLiveCount();
 #endif
 
 // 文字コードの変換

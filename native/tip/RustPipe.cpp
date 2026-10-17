@@ -8,6 +8,7 @@
 #include "TextService.h"
 #include "CandidateWindow.h"
 #include <new>
+#include <cstring>
 
 namespace meltype {
 namespace {
@@ -101,6 +102,10 @@ struct RustApi {
     int (__cdecl *coreReady)(const RustCoreStateCallbacks*) = nullptr;
     int (__cdecl *coreHello)(const unsigned short*,unsigned int,const RustCoreStateCallbacks*) = nullptr;
     int (__cdecl *coreRequest)(const unsigned char*,unsigned int,unsigned int,int,const RustCoreRequestCallbacks*) = nullptr;
+    RustServiceState* (__cdecl *serviceCreate)() = nullptr;
+    void (__cdecl *serviceDestroy)(RustServiceState*) = nullptr;
+    unsigned int (__cdecl *serviceLayout)(unsigned int*,unsigned int) = nullptr;
+    unsigned int (__cdecl *serviceLive)() = nullptr;
     RustApi() {
         wchar_t path[32768];
         const DWORD size = GetModuleFileNameW(g_module, path, ARRAYSIZE(path));
@@ -199,6 +204,10 @@ struct RustApi {
         coreReady = reinterpret_cast<decltype(coreReady)>(GetProcAddress(module, "meltype_tsf_core_ready"));
         coreHello = reinterpret_cast<decltype(coreHello)>(GetProcAddress(module, "meltype_tsf_core_hello"));
         coreRequest = reinterpret_cast<decltype(coreRequest)>(GetProcAddress(module, "meltype_tsf_core_request"));
+        serviceCreate = reinterpret_cast<decltype(serviceCreate)>(GetProcAddress(module, "meltype_tsf_service_state_create"));
+        serviceDestroy = reinterpret_cast<decltype(serviceDestroy)>(GetProcAddress(module, "meltype_tsf_service_state_destroy"));
+        serviceLayout = reinterpret_cast<decltype(serviceLayout)>(GetProcAddress(module, "meltype_tsf_service_state_layout"));
+        serviceLive = reinterpret_cast<decltype(serviceLive)>(GetProcAddress(module, "meltype_tsf_service_state_live_count"));
     }
     bool ready() const { return create && destroy && request && freeText; }
     // The module stays loaded for the process lifetime. Do not unload Rust
@@ -207,11 +216,15 @@ struct RustApi {
 RustApi& api() { static RustApi value; return value; }
 std::string ViewJson(const JsonValue&);
 HRESULT __cdecl CreateTextService(const GUID* iid, void** out) {
-    auto* service = new (std::nothrow) TextService();
-    if (!service) return E_OUTOFMEMORY;
-    HRESULT result = service->QueryInterface(*iid, out);
-    service->Release();
-    return result;
+    if (!iid || !out) return E_INVALIDARG;
+    *out=nullptr;
+    try {
+        auto* service = new (std::nothrow) TextService();
+        if (!service) return E_OUTOFMEMORY;
+        HRESULT result = service->QueryInterface(*iid, out);
+        service->Release();return result;
+    }catch (const std::bad_alloc&) {return E_OUTOFMEMORY;}
+    catch (...) {return E_FAIL;}
 }
 void __cdecl LockShell(int lock) { if (lock) DllAddRef(); else DllRelease(); }
 }
@@ -324,6 +337,65 @@ HRESULT RustOpenChanged(REFGUID guid,const RustOpenChangeCallbacks& callbacks) {
     return api().openChanged?api().openChanged(&guid,&callbacks):E_NOINTERFACE;
 }
 bool RustCoreReady(const RustCoreStateCallbacks& callbacks) {return api().coreReady && api().coreReady(&callbacks)!=0;}
+RustServiceState* RustCreateServiceState() {
+    if (!api().serviceCreate || !api().serviceDestroy || !api().serviceLayout) return nullptr;
+    const unsigned int expected[]={1,static_cast<unsigned int>(sizeof(RustServiceState)),static_cast<unsigned int>(alignof(RustServiceState)),
+        static_cast<unsigned int>(offsetof(RustServiceState,refs)),
+        static_cast<unsigned int>(offsetof(RustServiceState,manager)),
+        static_cast<unsigned int>(offsetof(RustServiceState,client)),
+        static_cast<unsigned int>(offsetof(RustServiceState,thread_subscription)),
+        static_cast<unsigned int>(offsetof(RustServiceState,key_subscription)),
+        static_cast<unsigned int>(offsetof(RustServiceState,mode_subscription)),
+        static_cast<unsigned int>(offsetof(RustServiceState,edit_subscription)),
+        static_cast<unsigned int>(offsetof(RustServiceState,edit_context)),
+        static_cast<unsigned int>(offsetof(RustServiceState,composition)),
+        static_cast<unsigned int>(offsetof(RustServiceState,composition_context)),
+        static_cast<unsigned int>(offsetof(RustServiceState,atom_input)),
+        static_cast<unsigned int>(offsetof(RustServiceState,atom_converted)),
+        static_cast<unsigned int>(offsetof(RustServiceState,atom_target)),
+        static_cast<unsigned int>(offsetof(RustServiceState,keys)),
+        static_cast<unsigned int>(offsetof(RustServiceState,resume)),
+        static_cast<unsigned int>(offsetof(RustServiceState,abandoned)),
+        static_cast<unsigned int>(offsetof(RustServiceState,last_hello)),
+        static_cast<unsigned int>(offsetof(RustServiceState,focus_epoch)),
+        static_cast<unsigned int>(offsetof(RustServiceState,mode_epoch)),
+        static_cast<unsigned int>(offsetof(RustServiceState,shutdown_phase)),
+        static_cast<unsigned int>(offsetof(RustServiceState,server_active)),
+        static_cast<unsigned int>(offsetof(RustServiceState,direct_detection)),
+        static_cast<unsigned int>(offsetof(RustServiceState,direct_word)),
+        static_cast<unsigned int>(offsetof(RustServiceState,open)),
+        static_cast<unsigned int>(offsetof(RustServiceState,code_app)),
+        static_cast<unsigned int>(offsetof(RustServiceState,code_english)),
+        static_cast<unsigned int>(offsetof(RustServiceState,disabled)),
+        static_cast<unsigned int>(offsetof(RustServiceState,own_process)),
+        static_cast<unsigned int>(offsetof(RustServiceState,last_converting)),
+        static_cast<unsigned int>(offsetof(RustServiceState,caret_moved)),
+        static_cast<unsigned int>(offsetof(RustServiceState,own_edit)),
+        static_cast<unsigned int>(offsetof(RustServiceState,secret_checked)),
+        static_cast<unsigned int>(offsetof(RustServiceState,secret_composing)),
+        static_cast<unsigned int>(offsetof(RustServiceState,private_field)),
+        static_cast<unsigned int>(offsetof(RustServiceState,keep_caret)),
+        static_cast<unsigned int>(offsetof(RustServiceState,deactivated)),
+        static_cast<unsigned int>(offsetof(RustServiceState,key_failed)),
+        static_cast<unsigned int>(offsetof(RustServiceState,consumed)),
+        static_cast<unsigned int>(offsetof(RustServiceState,scope_source)),
+        static_cast<unsigned int>(offsetof(RustServiceState,pass_reason)),
+    };
+    unsigned int actual[ARRAYSIZE(expected)]={};
+    if (api().serviceLayout(actual,ARRAYSIZE(actual))!=ARRAYSIZE(expected) || std::memcmp(actual,expected,sizeof(expected))!=0) return nullptr;
+    return api().serviceCreate();
+}
+void RustDestroyServiceState(RustServiceState* state) {if (api().serviceDestroy) api().serviceDestroy(state);}
+unsigned int RustServiceStateLiveCount() {return api().serviceLive?api().serviceLive():0;}
+RustServiceStateStorage::RustServiceStateStorage():value(RustCreateServiceState()) {
+    if (!value) throw std::bad_alloc();
+    DllAddRef();
+}
+RustServiceStateStorage::~RustServiceStateStorage() {
+    RustDestroyServiceState(value);
+    DllRelease();
+}
+
 void RustCoreHello(const std::wstring& process,const RustCoreStateCallbacks& callbacks) {
     if (api().coreHello && process.size()<=UINT_MAX) api().coreHello(reinterpret_cast<const unsigned short*>(process.data()),static_cast<unsigned int>(process.size()),&callbacks);
 }

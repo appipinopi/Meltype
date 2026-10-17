@@ -250,6 +250,6 @@ int wmain() {
     assert(service->OnChange(GUID_COMPARTMENT_KEYBOARD_OPENCLOSE)==S_OK && service->IsOpen() && thread.refs==2);
     assert(service->Deactivate()==S_OK && thread.refs==1 && g_locks==1);
     assert(thread.focusQueries==2);
-    service->Release();assert(g_locks==0);assert(SetKeyboardState(saved));
+    service->Release();assert(g_locks==0 && RustServiceStateLiveCount()==0);assert(SetKeyboardState(saved));
     puts("Actual key edit/commit/termination/abandonment/focus/shutdown/startup: public TSF entry, packaged core, UTF-16 caret, preedit, commits, old field, focus, idempotent shutdown and secure/normal private-manager reactivation passed");
 }

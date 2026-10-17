@@ -201,7 +201,9 @@ HRESULT RunEditSession(ITfContext* context, TfClientId clientId, DWORD flags, st
 #endif
 
 TextService::TextService() {
+#ifndef MELTYPE_RUST_CORE
     DllAddRef();
+#endif
 #ifdef MELTYPE_RUST_CORE
     keyState_=RustKeyStateCreate();
 #endif
@@ -214,9 +216,11 @@ TextService::~TextService() {
 #endif
     ClearResume();
 #ifdef MELTYPE_RUST_CORE
-    if (abandoned_) RustAbandonedDestroy(abandoned_);
+    void* abandoned=abandoned_;abandoned_=nullptr;RustAbandonedDestroy(abandoned);
 #endif
+#ifndef MELTYPE_RUST_CORE
     DllRelease();
+#endif
 }
 
 STDMETHODIMP TextService::QueryInterface(REFIID riid, void** ppv) {
