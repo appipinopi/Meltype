@@ -25,6 +25,16 @@ endif()
 target_compile_definitions(meltype PRIVATE MELTYPE_DIR="${MELTYPE_DIR}")
 target_link_libraries(meltype PRIVATE Fcitx5::Core Fcitx5::Utils ${CMAKE_DL_LIBS})
 
+option(MELTYPE_RUST_ABI_TESTS "Build standalone SDK/reference ABI tests" OFF)
+if(MELTYPE_RUST_ABI_TESTS)
+    add_executable(testkeymapping test/key_mapping.cpp)
+    set_target_properties(testkeymapping PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
+    if(Fcitx5Core_VERSION VERSION_GREATER_EQUAL 5.1.16)
+        set_target_properties(testkeymapping PROPERTIES CXX_STANDARD 20)
+    endif()
+    target_link_libraries(testkeymapping PRIVATE Fcitx5::Utils ${CMAKE_DL_LIBS})
+endif()
+
 # テスト (fcitx5 のテスト用のフロントエンドでキーを送り、確定した文字を確かめる)。
 #   cmake -S linux/fcitx5 -B build -DBUILD_TESTING=ON && cmake --build build && MELTYPE_DIR=<libMeltypeNative.so の場所> ctest --test-dir build
 option(BUILD_TESTING "テストをビルドする" OFF)

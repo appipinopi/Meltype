@@ -37,14 +37,16 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake libfcitx5core-dev libfcitx5utils-dev libfcitx5config-dev
-          cmake -S linux/fcitx5 -B linux/build/fcitx5-rust -DMELTYPE_RUST_CORE=ON
+          cmake -S linux/fcitx5 -B linux/build/fcitx5-rust -DMELTYPE_RUST_CORE=ON -DMELTYPE_RUST_ABI_TESTS=ON
           cmake --build linux/build/fcitx5-rust --parallel 2
           cmake -S linux/fcitx5 -B linux/build/fcitx5-legacy -DMELTYPE_RUST_CORE=OFF
           cmake --build linux/build/fcitx5-legacy --parallel 2
       - run: cargo build --workspace --release --locked
       - name: fcitx5 Rust JSON ABI and reference/core projection parity
         if: runner.os == 'Linux'
-        run: python3 linux/fcitx5/test/json_bridge.py target/release/libmeltype_native.so
+        run: |
+          python3 linux/fcitx5/test/json_bridge.py target/release/libmeltype_native.so
+          linux/build/fcitx5-rust/testkeymapping "${{ github.workspace }}/target/release/libmeltype_native.so"
       - name: Rust IBus engine through a private daemon and input context
         if: runner.os == 'Linux'
         run: |

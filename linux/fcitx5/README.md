@@ -1,9 +1,11 @@
 # fcitx5 adapter migration
 
 The default `MELTYPE_RUST_CORE=ON` build requires the Rust native library,
-including `meltype_json_visit_utf8`. JSON bytes, escapes and numbers are parsed
+including `meltype_json_visit_utf8`, `meltype_fcitx_key` and
+`meltype_fcitx_modifiers`. JSON bytes, escapes and numbers are parsed
 in Rust. The C++ event adapter receives copied UTF-8 values for the existing
-fcitx5 widgets; it does not parse JSON. Input-context ownership, key/mode policy,
+fcitx5 widgets; it does not parse JSON. Keycode/modifier translation also runs in Rust. The SDK supplies Unicode
+key-symbol conversion and raw modifier bits. Input-context ownership, mode policy,
 editor application and widget integration still contain C++ and remain migration
 work. This is not a standalone Rust fcitx5 addon yet.
 
@@ -11,9 +13,10 @@ Build on Linux with the fcitx5 development packages installed:
 
 ```sh
 cargo build -p meltype-native --release --locked
-cmake -S linux/fcitx5 -B linux/build/fcitx5-rust -DMELTYPE_RUST_CORE=ON
+cmake -S linux/fcitx5 -B linux/build/fcitx5-rust -DMELTYPE_RUST_CORE=ON -DMELTYPE_RUST_ABI_TESTS=ON
 cmake --build linux/build/fcitx5-rust --parallel 2
 python3 linux/fcitx5/test/json_bridge.py target/release/libmeltype_native.so
+linux/build/fcitx5-rust/testkeymapping "$PWD/target/release/libmeltype_native.so"
 ```
 
 The addon loads `libMeltypeNative.so` under `MELTYPE_DIR`, retaining the existing
@@ -40,3 +43,10 @@ Unicode/NUL and duplicate keys. Temporary profiles are private; it does not run 
 fcitx daemon or type into any application. The SDK addon builds and real fcitx5
 input require separate evidence. CI builds both Rust and compatibility variants
 and runs the standalone ABI test against its release Rust library.
+
+The SDK key test compares the original virtual-key policy for 131,076 key
+symbols and 512 modifier combinations through the real Rust ABI. It preserves
+the former fcitx policy (including ignoring lock bits and Super2), independently
+of the IBus frontend’s mapping. Japanese mode/role keys are still handled by the
+C++ adapter before ordinary key translation. See the [SDK modifier definitions](https://github.com/fcitx/fcitx5/blob/master/src/lib/fcitx-utils/keysym.h)
+and [raw flag accessor](https://github.com/fcitx/fcitx5/blob/master/src/lib/fcitx-utils/flags.h).

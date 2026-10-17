@@ -12,6 +12,7 @@
 #include "rust_json.hpp"
 #else
 #include "compat/json_reader.hpp"
+#include "compat/key_mapping.hpp"
 #endif
 
 #include <cstdint>
@@ -52,6 +53,8 @@ struct Native {
     void *handle = nullptr;
 #ifdef MELTYPE_RUST_CORE
     meltype_fcitx::JsonVisit visitJson = nullptr;
+    uint64_t (*mapKey)(uint32_t,uint32_t) = nullptr;
+    int (*mapModifiers)(uint32_t) = nullptr;
 #endif
     int (*initMozc)(const char *, const char *) = nullptr;
     void *(*create)() = nullptr;
@@ -87,8 +90,10 @@ struct Native {
         free = reinterpret_cast<decltype(free)>(sym("meltype_free"));
 #ifdef MELTYPE_RUST_CORE
         visitJson = reinterpret_cast<decltype(visitJson)>(sym("meltype_json_visit_utf8"));
-        if (!visitJson) {
-            FCITX_ERROR() << "Meltype: Rust JSON ABI (meltype_json_visit_utf8) is missing";
+        mapKey = reinterpret_cast<decltype(mapKey)>(sym("meltype_fcitx_key"));
+        mapModifiers = reinterpret_cast<decltype(mapModifiers)>(sym("meltype_fcitx_modifiers"));
+        if (!visitJson || !mapKey || !mapModifiers) {
+            FCITX_ERROR() << "Meltype: Rust fcitx JSON/key ABI is missing";
             return false;
         }
 #endif
@@ -120,52 +125,6 @@ struct Native {
 };
 
 // ---- キー: fcitx5 のキー → Meltype の本体が使う Windows の仮想キーコード (ibus-engine-meltype と同じ) ----
-
-constexpr int OtherCharacterKey = 0x07;
-
-int specialKey(fcitx::KeySym sym) {
-    switch (sym) {
-    case FcitxKey_Return: case FcitxKey_KP_Enter: return 0x0D;
-    case FcitxKey_Tab: return 0x09;
-    case FcitxKey_space: return 0x20;
-    case FcitxKey_BackSpace: return 0x08;
-    case FcitxKey_Delete: return 0x2E;
-    case FcitxKey_Escape: return 0x1B;
-    case FcitxKey_Left: return 0x25;
-    case FcitxKey_Up: return 0x26;
-    case FcitxKey_Right: return 0x27;
-    case FcitxKey_Down: return 0x28;
-    case FcitxKey_Home: return 0x24;
-    case FcitxKey_End: return 0x23;
-    case FcitxKey_Page_Up: return 0x21;
-    case FcitxKey_Page_Down: return 0x22;
-    case FcitxKey_F6: return 0x75;
-    case FcitxKey_F7: return 0x76;
-    case FcitxKey_F8: return 0x77;
-    case FcitxKey_F9: return 0x78;
-    case FcitxKey_F10: return 0x79;
-    default: return 0;
-    }
-}
-
-// (仮想キーコード, 入力する文字)。Meltype が扱わないキーなら仮想キーコードは 0。
-std::pair<int, uint32_t> virtualKey(fcitx::KeySym sym) {
-    if (int vk = specialKey(sym)) return {vk, sym == FcitxKey_space ? 0x20u : 0u};
-    uint32_t c = fcitx::Key::keySymToUnicode(sym);
-    if (c < 0x20) return {0, 0};
-    if (c >= 'a' && c <= 'z') return {static_cast<int>(c - 0x20), c};
-    if (c >= 'A' && c <= 'Z') return {static_cast<int>(c), c};
-    if (c >= '0' && c <= '9') return {static_cast<int>(c), c};
-    switch (c) {
-    case ',': return {0xBC, c};
-    case '.': return {0xBE, c};
-    case '-': return {0xBD, c};
-    case '/': return {0xBF, c};
-    case '[': return {0xDB, c};
-    case ']': return {0xDD, c};
-    default: return {OtherCharacterKey, c};
-    }
-}
 
 // UTF-8 の文字列の、文字単位の位置 → バイトの位置
 size_t byteOffset(const std::string &text, size_t chars) {
@@ -266,14 +225,24 @@ public:
             event.filterAndAccept();
             return;
         }
-        auto [vk, character] = virtualKey(sym);
+#ifdef MELTYPE_RUST_CORE
+        const auto packed = native_.mapKey(sym, fcitx::Key::keySymToUnicode(sym));
+        const int vk = static_cast<int>(packed & 0xffffffffu);
+        const uint32_t character = static_cast<uint32_t>(packed >> 32);
+#else
+        auto [vk, character] = meltype_fcitx::virtualKey(sym);
+#endif
         if (vk == 0) return;
         const auto states = key.states();
+#ifdef MELTYPE_RUST_CORE
+        const int modifiers = native_.mapModifiers(states.toInteger());
+#else
         int modifiers = 0;
         if (states.test(fcitx::KeyState::Shift)) modifiers |= 1;
         if (states.test(fcitx::KeyState::Ctrl)) modifiers |= 2;
         if (states.test(fcitx::KeyState::Alt)) modifiers |= 4;
         if (states.test(fcitx::KeyState::Super)) modifiers |= 8;
+#endif
         std::string before, after;
         bool surrounding = !state->preeditVisible && readSurrounding(ic, before, after);
         auto text = native_.take(native_.handleKey(state->session(), vk, static_cast<int>(character), modifiers,
