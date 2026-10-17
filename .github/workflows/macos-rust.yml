@@ -1,0 +1,46 @@
+name: Rust macOS SDK
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ['rust/native/**', 'rust/core/**', 'rust/build-desktop.sh', 'Cargo.*', 'dictionaries/**', 'mac/**', '.github/workflows/macos-rust.yml']
+permissions:
+  contents: read
+concurrency:
+  group: macos-rust-sdk-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: false
+jobs:
+  sdk-policy:
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - run: cargo clippy -p meltype-native --all-targets --locked -- -D warnings
+      - run: cargo test -p meltype-native --lib --locked
+      - run: cargo build -p meltype-native --release --locked
+      - name: Compare actual Swift bridge and Rust ABI with Carbon SDK policy
+        run: |
+          set -euo pipefail
+          mkdir -p dist/macos-sdk
+          bash mac/test/key-policy/run.sh "$PWD/target/release/libmeltype_native.dylib" | tee dist/macos-sdk/keys.txt
+          swift --version > dist/macos-sdk/swift.txt
+          sw_vers > dist/macos-sdk/system.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: macos-rust-sdk-evidence
+          path: dist/macos-sdk
+          if-no-files-found: ignore
+  production-swift:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/cache@v5
+        with:
+          path: mac/.build
+          key: mac-rust-swiftpm-${{ hashFiles('mac/Package.swift', 'mac/Package.resolved') }}
+      - name: Compile complete Swift adapter against the Rust boundary
+        run: swift build --package-path mac -c release -Xswiftc -DMELTYPE_RUST_CORE

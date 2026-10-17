@@ -98,12 +98,7 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
             return false
         }
         let character: Int32 = scalars.count == 1 ? Int32(scalars[0].value) : 0
-        let flags = event.modifierFlags
-        var modifiers: Int32 = 0
-        if flags.contains(.shift) { modifiers |= 1 }
-        if flags.contains(.control) { modifiers |= 2 }
-        if flags.contains(.option) { modifiers |= 4 }
-        if flags.contains(.command) { modifiers |= 8 }
+        let modifiers = KeyMapping.modifiers(for: event.modifierFlags)
 
         let (before, after) = hasMarkedText ? (nil, nil) : surroundingText(of: client)
         guard let result = NativeCore.shared.handleKey(session, vk: vk, character: character, modifiers: modifiers, before: before, after: after) else {

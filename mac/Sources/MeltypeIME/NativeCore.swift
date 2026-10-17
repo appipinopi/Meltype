@@ -94,6 +94,7 @@ final class NativeCore {
     static let shared = NativeCore()
     var spellCheckCount: Int { spellCacheLock.withLock { spellChecks } }
 
+    let keyPolicy: NativeKeyPolicy?
     private let library: UnsafeMutableRawPointer?
     private let initFunction: InitFunction?
     private let createFunction: CreateFunction?
@@ -112,6 +113,10 @@ final class NativeCore {
         // 初期化が終わるまで self のプロパティは使えないので、ローカルの handle から関数を探す。
         let handle = dlopen(path, RTLD_NOW)
         library = handle
+        keyPolicy = NativeKeyPolicy { name in
+            guard let handle else { return nil }
+            return dlsym(handle, name)
+        }
         if handle == nil, let error = dlerror() {
             NSLog("Meltype: %@ を読み込めませんでした: %@", path, String(cString: error))
         }

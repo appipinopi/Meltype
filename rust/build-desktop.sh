@@ -7,7 +7,7 @@ case "$(uname -s)" in
   Darwin)
     cargo build --manifest-path "$root/Cargo.toml" --locked --release --workspace --target-dir "$root/target"
     MELTYPE_NATIVE_LIBRARY="$root/target/release/libmeltype_native.dylib" \
-      MELTYPE_VERSION=0.1.0 bash "$root/mac/build.sh" --no-install
+      MELTYPE_RUST_CORE=1 MELTYPE_VERSION=0.1.0 bash "$root/mac/build.sh" --no-install
     ;;
   Linux)
     bash "$root/rust/build-linux.sh"
