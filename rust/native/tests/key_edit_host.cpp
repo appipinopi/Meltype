@@ -13,7 +13,7 @@ void* rangeMethods[25] = {};
 void* contextMethods[17] = {};
 void* compositionMethods[7]={};
 void* managerMethods[7]={};
-struct Document { std::wstring text; LONG selectionStart = 0, selectionEnd = 0; int ranges = 0, selections = 0, writes = 0; };
+struct Document { std::wstring text; LONG selectionStart = 0, selectionEnd = 0; int ranges = 0, selections = 0, writes = 0; ITfContext* context=nullptr; };
 struct Range {
     void** table = rangeMethods;
     Document* doc;
@@ -43,6 +43,15 @@ struct Range {
     static HRESULT STDMETHODCALLTYPE Write(Range* self,TfEditCookie cookie,DWORD,const wchar_t* value,LONG count) {
         assert(cookie == 7); self->doc->text.replace(self->start,self->end-self->start,value,count); self->end = self->start+count; ++self->doc->writes; return S_OK;
     }
+    static HRESULT STDMETHODCALLTYPE CompareStart(Range* s,TfEditCookie ec,ITfRange* other,TfAnchor anchor,LONG* out) {
+        assert(ec==7);auto* r=reinterpret_cast<Range*>(other);LONG right=anchor==TF_ANCHOR_START?r->start:r->end;
+        *out=(s->start>right)-(s->start<right);return S_OK;
+    }
+    static HRESULT STDMETHODCALLTYPE CompareEnd(Range* s,TfEditCookie ec,ITfRange* other,TfAnchor anchor,LONG* out) {
+        assert(ec==7);auto* r=reinterpret_cast<Range*>(other);LONG right=anchor==TF_ANCHOR_START?r->start:r->end;
+        *out=(s->end>right)-(s->end<right);return S_OK;
+    }
+    static HRESULT STDMETHODCALLTYPE GetContext(Range* s,ITfContext** out) {*out=s->doc->context;(*out)->AddRef();return S_OK;}
 };
 struct Composition {
     void** table=compositionMethods;ULONG refs=0;Range* range=nullptr;ITfCompositionSink* sink=nullptr;int ended=0;
@@ -102,6 +111,7 @@ int wmain() {
     rangeMethods[3]=reinterpret_cast<void*>(Range::Read);rangeMethods[4]=reinterpret_cast<void*>(Range::Write);
     rangeMethods[8]=reinterpret_cast<void*>(Range::Shift);rangeMethods[9]=reinterpret_cast<void*>(Range::ShiftEnd);
     rangeMethods[14]=reinterpret_cast<void*>(Range::Empty);rangeMethods[15]=reinterpret_cast<void*>(Range::Collapse);rangeMethods[23]=reinterpret_cast<void*>(Range::Clone);
+    rangeMethods[18]=reinterpret_cast<void*>(Range::CompareStart);rangeMethods[19]=reinterpret_cast<void*>(Range::CompareEnd);rangeMethods[24]=reinterpret_cast<void*>(Range::GetContext);
     contextMethods[0]=reinterpret_cast<void*>(Context::Query);contextMethods[1]=reinterpret_cast<void*>(Context::Add);contextMethods[2]=reinterpret_cast<void*>(Context::Release);
     contextMethods[3]=reinterpret_cast<void*>(Context::Edit);contextMethods[5]=reinterpret_cast<void*>(Context::Selection);contextMethods[6]=reinterpret_cast<void*>(Context::SetSelection);
     contextMethods[12]=reinterpret_cast<void*>(Context::Property);contextMethods[13]=reinterpret_cast<void*>(Context::Property);
@@ -110,6 +120,7 @@ int wmain() {
     managerMethods[1]=reinterpret_cast<void*>(Manager::Add);managerMethods[2]=reinterpret_cast<void*>(Manager::Release);managerMethods[3]=reinterpret_cast<void*>(Manager::Start);
     Document doc={L"前😀",3,3};Range selected(&doc,3,3,false);Context context={contextMethods,&selected};
     Composition composition;Manager manager={managerMethods,1,&composition};context.manager=&manager;
+    doc.context=reinterpret_cast<ITfContext*>(&context);
     auto* service=new TextService();BOOL eaten=FALSE;
     assert(service->OnTestKeyDown(reinterpret_cast<ITfContext*>(&context),VK_SPACE,0,&eaten)==S_OK && eaten);
     assert(service->OnKeyDown(reinterpret_cast<ITfContext*>(&context),VK_SPACE,0,&eaten)==S_OK && eaten);
@@ -138,7 +149,22 @@ int wmain() {
     assert(service->OnTestKeyDown(reinterpret_cast<ITfContext*>(&context),VK_PACKET,0,&eaten)==S_OK && !eaten);
     assert(doc.text==L"前😀　ああ" && composition.refs==0 && composition.ended==endedBeforePacket+1);
     assert(doc.selectionStart==0 && doc.selectionEnd==0);
+    const auto beforeTermination=doc.text;
+    doc.selectionStart=doc.selectionEnd=static_cast<LONG>(doc.text.size());
+    assert(service->OnTestKeyDown(doc.context,'A',0,&eaten)==S_OK && eaten);
+    assert(service->OnKeyDown(doc.context,'A',0,&eaten)==S_OK && eaten);
+    assert(doc.text==beforeTermination+L"あ" && composition.refs==1);
+    // The application's own composition reference survives its notification.
+    Composition::Add(&composition);
+    assert(service->OnCompositionTerminated(7,reinterpret_cast<ITfComposition*>(&composition))==S_OK);
+    assert(composition.refs==1 && doc.text==beforeTermination+L"あ");
+    Composition::Release(&composition);
+    assert(service->OnTestKeyDown(doc.context,'A',0,&eaten)==S_OK && eaten);
+    assert(service->OnKeyDown(doc.context,'A',0,&eaten)==S_OK && eaten);
+    assert(doc.text==beforeTermination+L"ああ" && composition.refs==1);
+    assert(SetKeyboardState(control));
+    assert(service->OnTestKeyDown(doc.context,'C',0,&eaten)==S_OK && !eaten);
     assert(doc.ranges==1 && selected.refs==1 && context.refs==1);
     service->Release();assert(g_locks==0);assert(SetKeyboardState(saved));
-    puts("Actual key edit/commit: public TSF entry, packaged core, UTF-16 commit/caret, kana preedit, shortcut/Unicode-packet sync commit, preserved moved caret and key release passed");
+    puts("Actual key edit/commit/termination: public TSF entry, packaged core, UTF-16 caret, kana preedit, shortcut/packet commit, moved caret and host-terminated preedit continuation passed");
 }

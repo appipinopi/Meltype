@@ -184,6 +184,13 @@ struct RustCompositionSlots {IUnknown* lifetime;void** composition;void** contex
 int RustApplyOwnedComposition(TfEditCookie,ITfContext*,const JsonValue&,TfGuidAtom,TfGuidAtom,TfGuidAtom,const RustCompositionSlots&);
 int RustWriteOwnedCommit(TfEditCookie,ITfContext*,ITfRange*,const std::wstring&,bool,const RustCompositionSlots&);
 int RustEndOwnedComposition(TfEditCookie,const RustCompositionSlots&);
+struct RustTerminationCallbacks {
+    void* owner;IUnknown* lifetime;void** composition;void** context;void** resume;void* abandoned;
+    unsigned int (__cdecl *read)(void*);
+    void (__cdecl *update)(void*,unsigned int);
+    void (__cdecl *request)(void*,const char*);
+};
+HRESULT RustCompositionTerminated(TfEditCookie,ITfComposition*,const std::string&,const RustTerminationCallbacks&);
 #endif
 
 // 文字コードの変換

@@ -22,6 +22,7 @@ mod ranges;
 mod recovery;
 mod registration;
 mod subscriptions;
+mod termination;
 use std::{
     ffi::c_void,
     mem::MaybeUninit,

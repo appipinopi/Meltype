@@ -357,6 +357,22 @@ typedef struct MeltypeTsfCompositionSlots {
 int32_t meltype_tsf_apply_owned_composition(void *context, uint32_t cookie, const char *view, uint32_t input_atom, uint32_t converted_atom, uint32_t target_atom, const MeltypeTsfCompositionSlots *slots);
 int32_t meltype_tsf_write_owned_commit(void *context, void *range, uint32_t cookie, const uint16_t *text, uint32_t length, int32_t preserve_caret, const MeltypeTsfCompositionSlots *slots);
 int32_t meltype_tsf_end_owned_composition(uint32_t cookie, const MeltypeTsfCompositionSlots *slots);
+typedef struct MeltypeTsfTerminationCallbacks {
+    void *owner,*lifetime;
+    void **composition,**context,**resume;
+    void *abandoned;
+    uint32_t (*read)(void *);
+    void (*update)(void *, uint32_t operation);
+    void (*request)(void *, const char *json);
+} MeltypeTsfTerminationCallbacks;
+/* TSF thread, live borrowed notification composition and valid cookie. Distinct
+   slots hold owned COM references and a thread-affine recovery token, remaining
+   writable while lifetime is held. Callbacks never throw; metadata={sid:string}.
+   read: disabled=1,deactivated=2,converting=4. update: 0 hide,1 reset stale and
+   clear converting,2 clear direct word/mark moved. request sends moved commit;
+   its reply must not be applied (host already kept the text). Old identities are
+   removed from abandoned cleanup without changing current input. */
+int32_t meltype_tsf_composition_terminated(uint32_t cookie, void *composition, const char *metadata, const MeltypeTsfTerminationCallbacks *callbacks);
 #endif
 #ifdef __cplusplus
 }
