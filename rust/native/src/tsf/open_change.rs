@@ -14,12 +14,12 @@ use windows::{
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct Callbacks {
-    owner: *mut c_void,
-    lifetime: *mut c_void,
-    epoch: *mut u64,
-    phase: *mut u32,
-    current: unsafe extern "C" fn(*mut c_void, *mut *mut c_void) -> u32,
-    update: unsafe extern "C" fn(*mut c_void, u32, i32),
+    pub(super) owner: *mut c_void,
+    pub(super) lifetime: *mut c_void,
+    pub(super) epoch: *mut u64,
+    pub(super) phase: *mut u32,
+    pub(super) current: unsafe extern "C" fn(*mut c_void, *mut *mut c_void) -> u32,
+    pub(super) update: unsafe extern "C" fn(*mut c_void, u32, i32),
 }
 unsafe fn snapshot(c: &Callbacks, epoch: u64, manager: *mut c_void) -> Option<u32> {
     if c.epoch.read() != epoch || c.phase.read() != 0 {

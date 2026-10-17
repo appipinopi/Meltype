@@ -550,6 +550,10 @@ void meltype_tsf_service_clear_resume(void *state);
 /* TSF-thread edit subscription replacement. Lifetime pins the service/state;
    document and edit sink are borrowed SDK interfaces. Null document detaches.
    Reentrant replacement/end invalidates and cleans up a late subscription. */
+/* Service-owned open/close notification state and language-bar update. Commit
+   requests async commit without caret preservation. Optional notice gets mode.
+   TSF thread; lifetime pins state/context/callback code; no unwinding. */
+int32_t meltype_tsf_service_opened(void *state,void *lifetime,const void *guid,void *context,void (*commit)(void *),void (*notice)(void *,int32_t));
 /* Native edit-notification state/actions. Cookie and TSF context/record are
    borrowed; null record preserves own-edit. Lifetime IUnknown pins state/adapter
    and callback code. Query/commit are synchronous adapters and never unwind. */

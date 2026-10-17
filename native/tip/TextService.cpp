@@ -804,17 +804,9 @@ STDMETHODIMP TextService::OnEndEdit(ITfContext* context, TfEditCookie ec, ITfEdi
 
 STDMETHODIMP TextService::OnChange(REFGUID guid) {
 #ifdef MELTYPE_RUST_CORE
-    RustOpenChangeCallbacks callbacks={
-        this,ServiceInterface<ITfTextInputProcessorEx>(),&modeEpoch_,&shutdownPhase_,
-        [](void* p,void** manager)->unsigned int {auto* s=static_cast<TextService*>(p);*manager=s->threadMgr_;return (s->open_?1u:0u)|(s->composition_?2u:0u)|(s->deactivated_?4u:0u);},
-        [](void* p,unsigned int op,int value) {auto* s=static_cast<TextService*>(p);try {switch (op) {
-            case 0:s->open_=value!=0;s->directEnglishWord_=false;break;
-            case 1:s->CommitAsync(false);break;
-            case 2:s->UpdateLangBar();break;
-            case 3:TipLog(L"入力モード: %s",s->open_?L"日本語":L"英数");break;
-        }}catch (...) {}},
-    };
-    return RustOpenChanged(guid,callbacks);
+    return RustServiceOpened(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),guid,this,
+        [](void* p) {try {static_cast<TextService*>(p)->CommitAsync(false);}catch (...) {}},
+        [](void*,int open) {try {TipLog(L"入力モード: %s",open?L"日本語":L"英数");}catch (...) {}});
 #else
     if (!IsEqualGUID(guid, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE) || threadMgr_ == nullptr) return S_OK;
     ITfCompartmentMgr* compartments = nullptr;

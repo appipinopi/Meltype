@@ -123,21 +123,26 @@ int wmain() {
     assert(manager.refs==1 && manager.open.refs==1 && manager.disabled.refs==1 && manager.empty.refs==1);
     auto* service=new TextService();
     assert(service->OnChange(GUID_COMPARTMENT_KEYBOARD_OPENCLOSE)==S_OK);
-    struct ModeState {TextService* service;void* manager;bool open=true;int commits=0,refreshes=0,logs=0;unsigned long long epoch=0;unsigned int phase=0;} state{service,thread};
-    RustOpenChangeCallbacks callbacks={
-        &state,service->ServiceInterface<ITfTextInputProcessorEx>(),&state.epoch,&state.phase,
-        [](void* p,void** manager)->unsigned int {auto* s=static_cast<ModeState*>(p);*manager=s->manager;return (s->open?1u:0u)|2u;},
-        [](void* p,unsigned int op,int value) {auto* s=static_cast<ModeState*>(p);switch (op) {
-            case 0:s->open=value!=0;break;
-            case 1:assert(!s->open && s->logs==1 && !s->refreshes);++s->commits;break;
-            case 2:assert(s->commits==1);++s->refreshes;s->service->Release();s->service=nullptr;assert(g_locks==1);break;
-            case 3:assert(!s->open && !s->commits);++s->logs;break;
-        }},
-    };
-    assert(RustOpenChanged(GUID_NULL,callbacks)==S_OK && state.logs==0);
-    assert(RustOpenChanged(GUID_COMPARTMENT_KEYBOARD_OPENCLOSE,callbacks)==S_OK);
-    assert(!state.open && state.commits==1 && state.refreshes==1 && state.logs==1 && !state.service);
-    assert(manager.refs==1 && manager.open.refs==1);
-    assert(g_locks==0);
+    {
+        RustServiceStateStorage storage;
+        storage.value->manager=thread;storage.value->composition=reinterpret_cast<ITfComposition*>(1);
+        storage.value->direct_word=true;
+        struct ModeState {TextService* service;RustServiceState* native;int commits=0,logs=0;} state{service,storage.value};
+        auto commit=[](void* p) {
+            auto* s=static_cast<ModeState*>(p);
+            assert(!s->native->open && !s->native->direct_word && s->logs==1);++s->commits;
+            s->service->Release();s->service=nullptr;assert(g_locks==2);
+        };
+        auto notice=[](void* p,int open) {
+            auto* s=static_cast<ModeState*>(p);assert(!open && !s->native->open && !s->commits);++s->logs;
+        };
+        auto* lifetime=service->ServiceInterface<ITfTextInputProcessorEx>();
+        assert(RustServiceOpened(state.native,lifetime,GUID_NULL,&state,commit,notice)==S_OK && state.logs==0);
+        assert(RustServiceOpened(state.native,lifetime,GUID_COMPARTMENT_KEYBOARD_OPENCLOSE,&state,commit,notice)==S_OK);
+        assert(!state.native->open && state.commits==1 && state.logs==1 && !state.service);
+        assert(manager.refs==1 && manager.open.refs==1 && g_locks==1);
+        state.native->manager=nullptr;state.native->composition=nullptr;
+    }
+    assert(g_locks==0 && RustServiceStateLiveCount()==0);
     puts("Actual TSF field adapters: scopes/modes, subscriptions, open-notice publication/commit/refresh order, public null-manager notice and owner release passed");
 }

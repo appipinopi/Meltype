@@ -20,6 +20,7 @@ from tsf_abandoned_smoke import DeferredHost
 from tsf_fields_smoke import CompartmentHost,OPEN
 from tsf_service_com_smoke import DISPATCH,DESTROY
 from tsf_edit_events_smoke import EventHost,QUERY
+from tsf_open_change_smoke import Host as OpenHost
 SELECT=c.CFUNCTYPE(None,c.c_void_p,c.c_int,c.c_int)
 CORE_NOTICE=c.CFUNCTYPE(None,c.c_void_p,c.c_uint32,c.c_int)
 FOCUS_COMMIT=c.CFUNCTYPE(c.c_int,c.c_void_p,c.c_int)
@@ -110,6 +111,7 @@ class StateTests(unittest.TestCase):
         cls.api.meltype_tsf_service_focus.argtypes=[P,c.c_char_p,P,P,P,c.c_int,P,FOCUS_COMMIT,TOGGLE,CORE_NOTICE];cls.api.meltype_tsf_service_focus.restype=HR
         cls.api.meltype_tsf_service_edited.argtypes=[P,P,P,P,U32,P,QUERY,TOGGLE];cls.api.meltype_tsf_service_edited.restype=c.c_int
         cls.api.meltype_tsf_start_composition.argtypes=[P,P,P,U32];cls.api.meltype_tsf_start_composition.restype=P
+        cls.api.meltype_tsf_service_opened.argtypes=[P,P,c.POINTER(Guid),P,TOGGLE,NOTICE];cls.api.meltype_tsf_service_opened.restype=HR
         cls.fixture=str(Path(sys.argv[2]).resolve()).encode() if len(sys.argv)>2 else None
 
 
@@ -942,6 +944,98 @@ class StateTests(unittest.TestCase):
             (address,None,QUERY(lambda *_:None),TOGGLE(lambda *_:None)),(address,c.byref(host.context),QUERY(),TOGGLE(lambda *_:None)),
             (address,c.byref(host.context),QUERY(lambda *_:None),TOGGLE())]:
             self.assertEqual(self.api.meltype_tsf_service_edited(data,lifetime,c.byref(host.context),c.byref(host.record),7,None,query,commit),0)
+        self.assertEqual(c.string_at(address,c.sizeof(State)),before);host.verify(self)
+    def opened(self,state,host,commit=None,notice=None,guid=OPEN,lifetime=None):
+        return self.api.meltype_tsf_service_opened(c.addressof(state),lifetime or c.byref(host.context),c.byref(guid),123,
+            commit or TOGGLE(lambda *_:None),notice or NOTICE(lambda *_:None))
+    def test_opened_native_publishes_strict_mode_and_clears_direct_word(self):
+        state=self.create();host=OpenHost();state.manager=c.addressof(host.context);events=[]
+        notice=NOTICE(lambda owner,mode:events.append((owner,mode,state.open,state.direct_word)))
+        try:
+            for value in [-1,0,1]:
+                state.direct_word=True;host.integers[bytes(OPEN)]=value
+                self.assertEqual(self.opened(state,host,notice=notice),0)
+                self.assertEqual(events[-1],(123,int(value!=0),value!=0,False))
+            self.assertEqual(state.mode_epoch,3);host.verify(self)
+        finally:state.manager=None
+    def test_opened_native_close_orders_notice_commit_and_bar_update(self):
+        state=self.create();host=OpenHost();state.manager=c.addressof(host.context);state.composition=123;state.direct_word=True
+        host.integers[bytes(OPEN)]=0;events=[];bar,_=self.create_bar(state)
+        refs,updates=self.advise_bar(bar,on_update=lambda:events.append(('ui',state.open,state.direct_word)))
+        notice=NOTICE(lambda owner,mode:events.append(('notice',state.open,state.direct_word)))
+        commit=TOGGLE(lambda _:events.append(('commit',state.open,state.direct_word)))
+        try:
+            self.assertEqual(self.opened(state,host,commit,notice),0)
+            self.assertEqual(events,[('notice',False,False),('commit',False,False),('ui',False,False)])
+            self.assertEqual(updates,[7]);host.verify(self)
+        finally:state.manager=None;state.composition=None
+    def test_opened_native_failed_read_preserves_flags_but_commits_closed_input(self):
+        state=self.create();host=OpenHost();state.manager=c.addressof(host.context);state.composition=123
+        state.open=False;state.direct_word=True;host.fail_read=True;events=[]
+        try:
+            self.assertEqual(self.opened(state,host,TOGGLE(lambda _:events.append('commit')),NOTICE(lambda owner,mode:events.append(('notice',mode)))),0)
+            self.assertEqual(events,[('notice',0),'commit']);self.assertTrue(state.direct_word);host.verify(self)
+        finally:state.manager=None;state.composition=None
+    def test_opened_native_unrelated_guid_preserves_entire_state(self):
+        state=self.create();host=OpenHost();state.manager=c.addressof(host.context);before=c.string_at(c.addressof(state),c.sizeof(State))
+        try:
+            self.assertEqual(self.opened(state,host,guid=Guid.parse('00000000-0000-0000-0000-000000000000')),0)
+            self.assertEqual(c.string_at(c.addressof(state),c.sizeof(State)),before);self.assertEqual(host.reads,[]);host.verify(self)
+        finally:state.manager=None
+    def test_opened_native_shutdown_and_ended_services_do_not_read_mode(self):
+        state=self.create();host=OpenHost();state.manager=c.addressof(host.context);events=[]
+        try:
+            for field,value in [('shutdown_phase',1),('deactivated',True)]:
+                setattr(state,field,value)
+                self.assertEqual(self.opened(state,host,notice=NOTICE(lambda *_:events.append(1))),0)
+                setattr(state,field,0)
+            self.assertEqual(events,[]);self.assertEqual(host.reads,[]);host.verify(self)
+        finally:state.manager=None
+    def test_opened_native_nested_notice_preserves_new_mode_and_skips_old_commit(self):
+        state=self.create();host=OpenHost();state.manager=c.addressof(host.context);state.composition=123
+        host.integers[bytes(OPEN)]=0;events=[];bar,_=self.create_bar(state)
+        refs,updates=self.advise_bar(bar,on_update=lambda:events.append(('ui',state.open)))
+        @self.checked(NOTICE)
+        def notice(owner,mode):
+            events.append(('notice',mode));host.integers[bytes(OPEN)]=1
+            self.assertEqual(self.opened(state,host,notice=NOTICE(lambda owner,mode:events.append(('nested',mode)))),0)
+        try:
+            self.assertEqual(self.opened(state,host,TOGGLE(lambda _:events.append('old commit')),notice),0)
+            self.assertEqual(events,[('notice',0),('nested',1),('ui',True)])
+            self.assertTrue(state.open);self.assertEqual(state.mode_epoch,2);host.verify(self)
+        finally:state.manager=None;state.composition=None
+    def test_opened_native_manager_replacement_during_read_discards_reply(self):
+        state=self.create();host=OpenHost();other=OpenHost();state.manager=c.addressof(host.context);events=[]
+        host.integers[bytes(OPEN)]=0;host.on_read=lambda:setattr(state,'manager',c.addressof(other.context))
+        state.direct_word=True
+        try:
+            self.assertEqual(self.opened(state,host,notice=NOTICE(lambda *_:events.append(1))),0)
+            self.assertTrue(state.open);self.assertTrue(state.direct_word);self.assertEqual(events,[])
+            host.verify(self);other.verify(self)
+        finally:state.manager=None
+    def test_opened_native_lifetime_pins_state_after_notice_releases_caller(self):
+        state=self.create();address=c.addressof(state);host=OpenHost();events=[]
+        state.manager=c.addressof(host.context);state.composition=123;host.integers[bytes(OPEN)]=0
+        dispatch=DISPATCH(lambda *_:0)
+        @self.checked(DESTROY)
+        def destroyed(owner):
+            events.append(('destroy',state.open));state.manager=None;state.composition=None
+            self.api.meltype_tsf_service_state_destroy(owner)
+        root=self.api.meltype_tsf_service_com_create(address,dispatch,destroyed);self.assertTrue(root);self.owned.remove(address)
+        @self.checked(NOTICE)
+        def notice(owner,mode):
+            events.append(('notice',mode));release(root);self.assertEqual(self.live(),self.before+1)
+        try:
+            self.assertEqual(self.opened(state,host,TOGGLE(lambda _:events.append('commit')),notice,lifetime=root),0)
+            self.assertEqual(events,[('notice',0),'commit',('destroy',False)]);host.verify(self)
+        finally:
+            if not events:release(root)
+    def test_opened_native_invalid_arguments_preserve_state(self):
+        state=self.create();host=OpenHost();address=c.addressof(state);before=c.string_at(address,c.sizeof(State))
+        for data,lifetime,guid,commit in [(None,c.byref(host.context),c.byref(OPEN),TOGGLE(lambda *_:None)),
+            (address,None,c.byref(OPEN),TOGGLE(lambda *_:None)),(address,c.byref(host.context),None,TOGGLE(lambda *_:None)),
+            (address,c.byref(host.context),c.byref(OPEN),TOGGLE())]:
+            self.assertEqual(self.api.meltype_tsf_service_opened(data,lifetime,guid,None,commit,NOTICE()),HR(0x80070057).value)
         self.assertEqual(c.string_at(address,c.sizeof(State)),before);host.verify(self)
 if __name__=='__main__':unittest.main(argv=[sys.argv[0]],verbosity=2,failfast=True)
 

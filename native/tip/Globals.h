@@ -215,12 +215,6 @@ HRESULT RustStartup(ITfThreadMgr*,TfClientId,DWORD,const RustStartupCallbacks&);
 using RustJsonEmit=int (__cdecl *)(void*,unsigned int,double,const unsigned short*,unsigned int);
 bool RustJsonVisit(const std::string&,void*,RustJsonEmit);
 std::string RustJsonQuote(const std::wstring&);
-struct RustOpenChangeCallbacks {
-    void* owner;IUnknown* lifetime;unsigned long long* epoch;unsigned int* phase;
-    unsigned int (__cdecl *current)(void*,void**);
-    void (__cdecl *update)(void*,unsigned int,int);
-};
-HRESULT RustOpenChanged(REFGUID,const RustOpenChangeCallbacks&);
 struct RustCoreStateCallbacks {
     void* owner;IUnknown* lifetime;const unsigned long long* epoch;
     unsigned int (__cdecl *read)(void*,unsigned long long*);
@@ -247,6 +241,7 @@ void RustServiceClearResume(RustServiceState*);
 bool RustServiceExchange(RustServiceState*,IUnknown*,const std::string&,DWORD,bool,void*,int (__cdecl *)(void*,const unsigned char*,unsigned int),void (__cdecl *)(void*));
 HRESULT RustServiceFocus(RustServiceState*,IUnknown*,ITfTextEditSink*,ITfDocumentMgr*,int,void*,int (__cdecl *)(void*,int),void (__cdecl *)(void*));
 bool RustServiceEdited(RustServiceState*,IUnknown*,ITfContext*,ITfEditRecord*,TfEditCookie,void*,void (__cdecl *)(void*,unsigned int,void*,int),void (__cdecl *)(void*));
+HRESULT RustServiceOpened(RustServiceState*,IUnknown*,REFGUID,void*,void (__cdecl *)(void*),void (__cdecl *)(void*,int));
 bool RustServiceCore(RustServiceState*,IUnknown*,bool);
 unsigned int RustServiceMode(const RustServiceState*);
 void RustServiceWriteOpen(RustServiceState*,bool);

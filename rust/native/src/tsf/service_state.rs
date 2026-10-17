@@ -7,6 +7,7 @@ mod core;
 mod edited;
 mod exchange;
 mod focus;
+mod opened;
 use super::{abandoned, candidates, fields, key_state, langbar, mode, recovery, subscriptions};
 use std::{
     alloc::{alloc, Layout},
