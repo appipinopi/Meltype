@@ -50,3 +50,13 @@ Androidサービスが保持していた英数・非公開・Shift・未確定�
 ソフトキーボードのウィジェット生成と、プレビュー・候補／予測ボタンの描画はRustからJNIで行います。キー列、57個のラベル／操作、等幅の重み、最小幅と余白、プレビュー20sp、候補欄の横スクロールと候補ボタンの標準スタイルを従来のJava実装から移しました。候補と予測の選択先は別の操作番号で対応します。表示処理で例外が起きても、入力欄に適用済みのキーを重ねて送りません。
 
 WidgetHostはSDKと同じメソッド形のテスト用ウィジェットをJVMに用意し、実際のJNI呼出しで階層・配置パラメーター・全キーのラベル／操作先、候補と予測、20回の生成、200候補と参照の解放、生成失敗後の復帰を検証します。Androidの実際の描画・ピクセル一致・タッチ入力を検証する試験ではありません。OSコールバック、クリック通知の受渡し、管理画面は引き続きJavaで、端末上でのUI確認は残っています。
+
+## Androidフレームワーク上の検証（追加、実行結果はCIで確認）
+
+`NativeAndroidTest` は実際のAndroidウィジェット、Editable／BaseInputConnection、KeyEventを使う4テストです。キーボードの構造と候補クリック、変換→確定→Undo、UTF-16削除と選択保護、非公開欄、直接入力への代替、入力欄切替時の世代保護を確認します。IMEの登録・有効化や、他アプリへの入力は行いません。矢印イベントはテスト用InputConnectionが受け取ります。
+
+CIはAPI 35 x86_64の専用AVDを一時フォルダーに作り、明示した `emulator-5580` だけにアプリとテストAPKをインストールします。同じシリアルが使用中なら中止します。AVDと起動したエミュレータープロセスは終了時に片付けます。`android/tests/run-emulator.sh` はLinuxのAndroid SDK／KVMと、組み立て済みの両APKがあるCI向けです。通常の端末には使用しません。
+
+実行方法は `gradle -p android assembleDebug assembleDebugAndroidTest lintDebug --no-daemon`、続いて `bash android/tests/run-emulator.sh` です。SDKにはemulatorと `system-images;android-35;google_apis;x86_64` が必要です。`dist/android-emulator/` にJUnitの実行記録、エミュレーター／logcat、Android自身で描画した `input-view.png`、SDK・ABI・画像寸法などの記録を保存します。4件の正常終了とPNGを必須とし、0件・スキップ・クラッシュを成功とみなしません。この追加だけでは端末上での成功や元版との全UI一致を証明しません。
+
+テスト基盤は [AndroidJUnitRunner](https://developer.android.com/training/testing/instrumented-tests/androidx-test-libraries/runner) と [adbによる実行](https://developer.android.com/studio/test/command-line) に従います。
