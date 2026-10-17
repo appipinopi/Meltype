@@ -221,6 +221,15 @@ struct RustShutdownCallbacks {
     void (__cdecl *request)(void*,const char*,unsigned int,void*,void*);
 };
 HRESULT RustShutdown(TfClientId,const std::string&,const RustShutdownCallbacks&);
+struct RustStartupCallbacks {
+    void* owner;IUnknown* lifetime;unsigned long long* epoch;unsigned int* phase;
+    void** manager;void** keys;void** abandoned;void** resume;
+    void** subscriptions[3];TfGuidAtom* atoms[3];void* sinks[3];
+    void (__cdecl *initialize)(void*,unsigned int,int,int,const char*);
+    void* (__cdecl *action)(void*,unsigned int,int,void*);
+    void* (__cdecl *category)(void*);
+};
+HRESULT RustStartup(ITfThreadMgr*,TfClientId,DWORD,const RustStartupCallbacks&);
 #endif
 
 // 文字コードの変換

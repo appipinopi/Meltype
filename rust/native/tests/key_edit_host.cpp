@@ -7,12 +7,24 @@
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
+#include <objbase.h>
 using namespace meltype;
 namespace {
 void* rangeMethods[25] = {};
 void* contextMethods[17] = {};
 void* compositionMethods[7]={};
 void* managerMethods[7]={};
+void* threadMethods[14]={};
+struct ThreadManager {
+    void** table=threadMethods;ULONG refs=1;int focusQueries=0;
+    static HRESULT STDMETHODCALLTYPE Query(ThreadManager* s,REFIID iid,void** out) {
+        *out=nullptr;if (iid!=IID_IUnknown) return E_NOINTERFACE;
+        ++s->refs;*out=s;return S_OK;
+    }
+    static ULONG STDMETHODCALLTYPE Add(ThreadManager* s) {return ++s->refs;}
+    static ULONG STDMETHODCALLTYPE Release(ThreadManager* s) {return --s->refs;}
+    static HRESULT STDMETHODCALLTYPE Focus(ThreadManager* s,ITfDocumentMgr** out) {++s->focusQueries;*out=nullptr;return S_OK;}
+};
 struct Document { std::wstring text; LONG selectionStart = 0, selectionEnd = 0; int ranges = 0, selections = 0, writes = 0; ITfContext* context=nullptr; };
 struct Range {
     void** table = rangeMethods;
@@ -223,6 +235,20 @@ int wmain() {
     assert(service->Deactivate()==S_OK);
     assert(service->OnSetFocus(static_cast<ITfDocumentMgr*>(nullptr),nullptr)==S_OK);
     assert(nextComposition.ended==endedBeforeShutdown+1 && nextDoc.text==beforeShutdown);
+    // Reactivate the same service against a private manager. No system TSF
+    // manager is activated; uninitialized COM also prevents category creation.
+    ULONG_PTR comToken=0;assert(CoGetContextToken(&comToken)==CO_E_NOTINITIALIZED);
+    threadMethods[0]=reinterpret_cast<void*>(ThreadManager::Query);
+    threadMethods[1]=reinterpret_cast<void*>(ThreadManager::Add);threadMethods[2]=reinterpret_cast<void*>(ThreadManager::Release);
+    threadMethods[7]=reinterpret_cast<void*>(ThreadManager::Focus);
+    ThreadManager thread;auto* threadInterface=reinterpret_cast<ITfThreadMgr*>(&thread);
+    assert(service->ActivateEx(threadInterface,17,TF_TMAE_SECUREMODE)==S_OK);
+    assert(!service->IsOpen() && thread.refs==2);
+    assert(service->Deactivate()==S_OK && thread.refs==1 && g_locks==1);
+    assert(service->Activate(threadInterface,17)==S_OK);
+    assert(service->IsOpen() && thread.refs==2);
+    assert(service->Deactivate()==S_OK && thread.refs==1 && g_locks==1);
+    assert(thread.focusQueries==2);
     service->Release();assert(g_locks==0);assert(SetKeyboardState(saved));
-    puts("Actual key edit/commit/termination/abandonment/focus/shutdown: public TSF entry, packaged core, UTF-16 caret, kana preedit, shortcut/packet commit, host-terminated continuation, refused old field, replacement preedit, focus commit and idempotent shutdown passed");
+    puts("Actual key edit/commit/termination/abandonment/focus/shutdown/startup: public TSF entry, packaged core, UTF-16 caret, preedit, commits, old field, focus, idempotent shutdown and secure/normal private-manager reactivation passed");
 }

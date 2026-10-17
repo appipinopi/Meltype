@@ -441,6 +441,28 @@ typedef struct MeltypeTsfShutdownCallbacks {
    Reentrant/repeated shutdown is inert; reactivation supersedes remaining cleanup.
    A delayed SYNC edit is disabled before return. Returns HRESULT. */
 int32_t meltype_tsf_shutdown(uint32_t client, const char *metadata, const MeltypeTsfShutdownCallbacks *callbacks);
+typedef struct MeltypeTsfStartupCallbacks {
+    void *owner,*lifetime;
+    uint64_t *epoch;
+    uint32_t *phase;
+    void **manager,**keys,**abandoned,**resume;
+    void **subscriptions[3];
+    uint32_t *atoms[3];
+    void *sinks[3];
+    void (*initialize)(void *, uint32_t client, int32_t disabled, int32_t own_process, const char *sid);
+    void *(*action)(void *, uint32_t operation, int32_t value, void *document);
+    void *(*category)(void *);
+} MeltypeTsfStartupCallbacks;
+/* TSF thread, borrowed manager/owner/sinks; distinct writable owned COM/token
+   slots, atom slots and epoch/phase/storage/code valid while lifetime is held.
+   Callbacks never throw. Subscription/sink order thread,key,mode. initialize
+   resets shell primitive state and stores supplied client/disabled/own/sid.
+   action 0 sets open(value),1 creates candidates,2 creates language bar and
+   returns borrowed ITfLangBarItem,3 advises document,4 hello. category optionally
+   returns owned ITfCategoryMgr; null callback uses native CoCreateInstance.
+   Nested activation/shutdown supersedes old work; late tokens are unsubscribed.
+   Does not register a COM server or input profile. Returns HRESULT. */
+int32_t meltype_tsf_startup(void *manager, uint32_t client, uint32_t flags, const MeltypeTsfStartupCallbacks *callbacks);
 #endif
 #ifdef __cplusplus
 }

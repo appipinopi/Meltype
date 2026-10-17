@@ -256,9 +256,40 @@ STDMETHODIMP TextService::Activate(ITfThreadMgr* threadMgr, TfClientId clientId)
 
 STDMETHODIMP TextService::ActivateEx(ITfThreadMgr* threadMgr, TfClientId clientId, DWORD flags) {
 #ifdef MELTYPE_RUST_CORE
-    ++focusEpoch_;
-    shutdownPhase_=0;
-#endif
+    RustStartupCallbacks callbacks={
+        this,static_cast<ITfTextInputProcessorEx*>(this),&focusEpoch_,&shutdownPhase_,
+        reinterpret_cast<void**>(&threadMgr_),&keyState_,&abandoned_,&resume_,
+        {&threadSubscription_,&keySubscription_,&modeSubscription_},{&atomInput_,&atomConverted_,&atomTarget_},
+        {static_cast<ITfThreadMgrEventSink*>(this),static_cast<ITfKeyEventSink*>(this),static_cast<ITfCompartmentEventSink*>(this)},
+        [](void* p,unsigned int client,int disabled,int own,const char* sid) {auto* s=static_cast<TextService*>(p);try {
+            s->clientId_=client;s->deactivated_=false;s->serverActive_=false;s->directDetection_=false;s->directEnglishWord_=false;
+            s->lastHello_=0;s->caretMoved_=false;s->ownEdit_=false;s->secretChecked_=false;s->lastConverting_=false;
+            s->passReason_=nullptr;s->keyFailed_=false;s->consumed_=true;s->ownProcess_=own!=0;s->disabled_=disabled!=0;s->sid_=sid;
+            TipLog(L"Activate (%s)%s",ProcessName().c_str(),disabled?L" 無効: セキュリティ保護された画面":L"");
+        }catch (...) {}},
+        [](void* p,unsigned int op,int value,void* document)->void* {auto* s=static_cast<TextService*>(p);try {switch (op) {
+            case 0:s->open_=value!=0;break;
+            case 1:{
+                auto epoch=s->focusEpoch_;
+                auto created=std::make_unique<CandidateWindow>([s](int index,bool prediction) {s->SelectCandidate(index,prediction);});
+                if (epoch==s->focusEpoch_ && s->shutdownPhase_==0) s->candidates_.swap(created);
+                break;
+            }
+            case 2:{
+                auto epoch=s->focusEpoch_;auto* created=new LangBarButton(s);
+                if (epoch!=s->focusEpoch_ || s->shutdownPhase_!=0) {created->Detach();created->Release();return nullptr;}
+                auto* old=s->langBar_;s->langBar_=created;
+                if (old) {old->Detach();old->Release();}
+                if (epoch!=s->focusEpoch_ || s->shutdownPhase_!=0 || s->langBar_!=created) return nullptr;
+                return created->Item();
+            }
+            case 3:s->AdviseTextEditSink(static_cast<ITfDocumentMgr*>(document));break;
+            case 4:s->Hello();break;
+        }}catch (...) {}return nullptr;},
+        nullptr,
+    };
+    return RustStartup(threadMgr,clientId,flags,callbacks);
+#else
     threadMgr_ = threadMgr;
     threadMgr_->AddRef();
     clientId_ = clientId;
@@ -382,6 +413,7 @@ STDMETHODIMP TextService::ActivateEx(ITfThreadMgr* threadMgr, TfClientId clientI
     }
     if (!disabled_) Hello();
     return S_OK;
+#endif
 }
 
 STDMETHODIMP TextService::Deactivate() {
