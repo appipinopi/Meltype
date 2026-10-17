@@ -319,6 +319,12 @@ typedef struct MeltypeTsfCommitCallbacks {
    or cancellation (lifetime IUnknown is pinned). Incorrectly deferred sync
    sessions are disabled after return. Stale scheduled targets do nothing. */
 int32_t meltype_tsf_commit(uint32_t mode, void *context, uint32_t client, uint32_t cookie, const char *metadata, const MeltypeTsfCommitCallbacks *callbacks, int32_t preserve_caret);
+/* Same callback lifetime/thread contract as commit. Schedules an async
+   READWRITE session and rechecks both context and optional composition before
+   selecting. Sets own edit, builds {op:select,sid,index,prediction?}, then invokes
+   request_apply. No caret-policy/end/hide operations. Indices are passed to the
+   core unchanged, including negative indices. Missing context is a no-op. */
+int32_t meltype_tsf_select_candidate(uint32_t client, int32_t index, int32_t prediction, const char *metadata, const MeltypeTsfCommitCallbacks *callbacks);
 #endif
 #ifdef __cplusplus
 }

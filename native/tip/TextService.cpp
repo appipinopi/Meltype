@@ -2046,6 +2046,9 @@ void TextService::CommitInSession(TfEditCookie ec, ITfContext* context, bool kee
 }
 
 void TextService::SelectCandidate(int index, bool prediction) {
+#ifdef MELTYPE_RUST_CORE
+    RustSelectCandidate(clientId_,index,prediction,"{\"sid\":\""+sid_+"\"}",CommitCallbacks());
+#else
     if (compositionContext_ == nullptr) return;
     Microsoft::WRL::ComPtr<ITfContext> context = compositionContext_;
     Microsoft::WRL::ComPtr<ITfComposition> target = composition_;
@@ -2062,6 +2065,7 @@ void TextService::SelectCandidate(int index, bool prediction) {
         }
         return S_OK;
     });
+#endif
 }
 
 // ---- 候補 ----

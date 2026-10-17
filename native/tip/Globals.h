@@ -172,6 +172,7 @@ struct RustCommitCallbacks {
     void (__cdecl *requestApply)(void*,const char*,unsigned int,void*,void*);
 };
 HRESULT RustCommit(unsigned int,ITfContext*,TfClientId,TfEditCookie,const std::string&,const RustCommitCallbacks&,bool);
+HRESULT RustSelectCandidate(TfClientId,int,bool,const std::string&,const RustCommitCallbacks&);
 #endif
 
 // 文字コードの変換

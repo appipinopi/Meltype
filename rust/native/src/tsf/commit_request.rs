@@ -183,3 +183,98 @@ pub unsafe extern "C" fn meltype_tsf_commit(
     }))
     .unwrap_or(E_FAIL)
 }
+
+struct Selection {
+    c: Callbacks,
+    _owner: IUnknown,
+    context: ITfContext,
+    target: Option<ITfComposition>,
+    request: CString,
+}
+unsafe extern "C" fn select(owner: *mut c_void, cookie: u32) -> HRESULT {
+    catch_unwind(AssertUnwindSafe(|| {
+        let s = &*owner.cast::<Selection>();
+        let (mut context, mut sink) = (ptr::null_mut(), ptr::null_mut());
+        let current = (s.c.current)(s.c.owner, &mut context, &mut sink);
+        let target = s.target.as_ref().map_or(ptr::null_mut(), Interface::as_raw);
+        if current != target || context != s.context.as_raw() {
+            return S_OK;
+        }
+        (s.c.update)(s.c.owner, 0, cookie, 1);
+        (s.c.request_apply)(
+            s.c.owner,
+            s.request.as_ptr(),
+            cookie,
+            s.context.as_raw(),
+            target,
+        );
+        S_OK
+    }))
+    .unwrap_or(E_FAIL)
+}
+unsafe extern "C" fn destroy_selection(owner: *mut c_void) {
+    drop(Box::from_raw(owner.cast::<Selection>()));
+}
+/// # Safety
+/// Same callback contract as meltype_tsf_commit. Schedules an asynchronous
+/// READWRITE session, retaining owner/context/optional composition until execution
+/// or cancellation. Both target pointers must still match at execution time.
+/// Sets own-edit before request/apply; never changes caret policy, ends a
+/// composition or hides candidates itself. Negative indices pass to the core,
+/// matching the original frontend's validation responsibility.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_tsf_select_candidate(
+    client: u32,
+    index: i32,
+    prediction: i32,
+    metadata: *const c_char,
+    callbacks: *const Callbacks,
+) -> HRESULT {
+    catch_unwind(AssertUnwindSafe(|| {
+        let Some(c) = callbacks.as_ref().copied() else {
+            return E_INVALIDARG;
+        };
+        let Some(owner) = IUnknown::from_raw_borrowed(&c.lifetime).cloned() else {
+            return E_INVALIDARG;
+        };
+        if metadata.is_null() {
+            return E_INVALIDARG;
+        }
+        let Ok(metadata) = serde_json::from_slice::<Value>(CStr::from_ptr(metadata).to_bytes())
+        else {
+            return E_INVALIDARG;
+        };
+        if !metadata["sid"].is_string() {
+            return E_INVALIDARG;
+        }
+        let (mut context, mut sink) = (ptr::null_mut(), ptr::null_mut());
+        let target = (c.current)(c.owner, &mut context, &mut sink);
+        let Some(context) = ITfContext::from_raw_borrowed(&context).cloned() else {
+            return S_OK;
+        };
+        let target = ITfComposition::from_raw_borrowed(&target).cloned();
+        let mut request = json!({"op":"select", "sid":metadata["sid"], "index":index});
+        if prediction != 0 {
+            request["prediction"] = json!(true);
+        }
+        let Ok(request) = CString::new(request.to_string()) else {
+            return E_INVALIDARG;
+        };
+        let work = Box::new(Selection {
+            c,
+            _owner: owner,
+            context: context.clone(),
+            target,
+            request,
+        });
+        edit_session::meltype_tsf_request_edit_session(
+            context.as_raw(),
+            client,
+            (TF_ES_ASYNCDONTCARE | TF_ES_READWRITE).0,
+            Box::into_raw(work).cast(),
+            Some(select),
+            destroy_selection,
+        )
+    }))
+    .unwrap_or(E_FAIL)
+}
