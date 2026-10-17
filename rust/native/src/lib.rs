@@ -272,6 +272,7 @@ pub unsafe extern "C" fn meltype_handle_key(
             all.get(&(handle as usize))
                 .filter(|s| {
                     vk == 0x20
+                        && !s.protects_tail()
                         && !s.is_converting()
                         && !s.raw().is_empty()
                         && !s.direct

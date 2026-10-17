@@ -743,6 +743,14 @@ impl Session {
     }
     /// Preserve the legacy macOS C ABI's external-scalar boundary. Combining
     /// marks attach to committed text; the OS receives the original event once.
+    pub fn protects_tail(&self) -> bool {
+        !self.is_converting()
+            && self.function_key == 0
+            && !self.uses_kana()
+            && crate::protection::scan(&self.raw)
+                .last()
+                .is_some_and(|span| span.end == self.raw.len())
+    }
     pub fn commit_external(&mut self, latin: bool, preserve_text: bool) -> SessionResult {
         let raw_latin = latin
             && !self.is_converting()
@@ -1399,6 +1407,13 @@ impl Session {
                     .get(&self.raw[self.settings.text("SnippetMark").len()..])
                     .cloned();
                 self.commit()
+            }
+            0x20 | 0x09 if self.protects_tail() => {
+                let suffix = if vk == 0x20 { " " } else { "" };
+                self.explicit = Some(self.display(true) + suffix);
+                let mut result = self.commit_with_spacing(false);
+                result.consumed = vk == 0x20;
+                result
             }
             0x09 if !self.raw.is_empty() && !self.is_converting() => {
                 if let Some(suggestion) = self.language_suggestion() {

@@ -28,3 +28,40 @@ with tempfile.TemporaryDirectory(prefix="meltype-macos-boundary-") as directory:
             assert [edit["text"] for edit in actual["commits"]] == ([] if expected is None else [expected])
         finally:api.meltype_destroy(handle)
 print("8 macOS external-text boundary ABI fixtures passed")
+
+with tempfile.TemporaryDirectory(prefix="meltype-macos-protected-") as directory:
+    Path(directory,"config.json").write_text('{"SigilWordsDirect":false}',encoding="utf-8")
+    for vk,character,suffix in [(32,32," "),(9,9,"")]:
+        handle=api.meltype_create_at(directory.encode())
+        try:
+            for ch in "@kuraido":result(api.meltype_macos_handle_key(handle,ord(ch.upper()) if ch.isalpha() else 7,ord(ch),0,None,None))
+            actual=result(api.meltype_macos_handle_key(handle,vk,character,0,None,None))
+            assert actual["view"] is None and [edit["text"] for edit in actual["commits"]]==["@kuraido"+suffix],actual
+        finally:api.meltype_destroy(handle)
+print("2 macOS protected Space/Tab ABI fixtures passed")
+
+callbacks=[]
+Clause=c.CFUNCTYPE(c.c_void_p,c.c_char_p,c.c_char_p)
+Candidates=c.CFUNCTYPE(c.c_void_p,c.c_char_p)
+@Clause
+def clauses(reading,context):
+    callbacks.append(reading)
+    return None
+@Candidates
+def candidates(reading):
+    callbacks.append(reading)
+    return None
+api.meltype_init.argtypes=[c.c_void_p]*3
+api.meltype_init(clauses,candidates,None)
+with tempfile.TemporaryDirectory(prefix="meltype-macos-protected-converter-") as directory:
+    Path(directory,"config.json").write_text('{"SigilWordsDirect":false,"LiveConversion":false}',encoding="utf-8")
+    handle=api.meltype_create_at(directory.encode())
+    try:
+        for ch in "kyouha「@kuraido":result(api.meltype_macos_handle_key(handle,ord(ch.upper()) if ch.isascii() and ch.isalpha() else 7,ord(ch),0,None,None))
+        callbacks.clear()
+        actual=result(api.meltype_macos_handle_key(handle,32,32,0,None,None))
+        assert not callbacks,"protected tail sent to external converter"
+        assert actual["view"] is None and [edit["text"] for edit in actual["commits"]]==["きょうは「@kuraido "],actual
+    finally:api.meltype_destroy(handle)
+api.meltype_init(None,None,None)
+print("macOS protected-tail converter bypass passed")
