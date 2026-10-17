@@ -17,19 +17,20 @@ use windows::{
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct Callbacks {
-    owner: *mut c_void,
-    lifetime: *mut c_void,
-    epoch: *mut u64,
-    phase: *mut u32,
-    composition: *mut *mut c_void,
-    context: *mut *mut c_void,
-    manager: *mut *mut c_void,
-    mode_subscription: *mut *mut c_void,
-    key_subscription: *mut *mut c_void,
-    thread_subscription: *mut *mut c_void,
-    read: unsafe extern "C" fn(*mut c_void) -> u32,
-    action: unsafe extern "C" fn(*mut c_void, u32, u32, *mut c_void),
-    request: unsafe extern "C" fn(*mut c_void, *const c_char, u32, *mut c_void, *mut c_void),
+    pub(super) owner: *mut c_void,
+    pub(super) lifetime: *mut c_void,
+    pub(super) epoch: *mut u64,
+    pub(super) phase: *mut u32,
+    pub(super) composition: *mut *mut c_void,
+    pub(super) context: *mut *mut c_void,
+    pub(super) manager: *mut *mut c_void,
+    pub(super) mode_subscription: *mut *mut c_void,
+    pub(super) key_subscription: *mut *mut c_void,
+    pub(super) thread_subscription: *mut *mut c_void,
+    pub(super) read: unsafe extern "C" fn(*mut c_void) -> u32,
+    pub(super) action: unsafe extern "C" fn(*mut c_void, u32, u32, *mut c_void),
+    pub(super) request:
+        unsafe extern "C" fn(*mut c_void, *const c_char, u32, *mut c_void, *mut c_void),
 }
 unsafe fn current(c: &Callbacks, epoch: u64) -> bool {
     c.epoch.read() == epoch && c.phase.read() == 1

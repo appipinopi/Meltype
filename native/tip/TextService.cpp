@@ -449,29 +449,12 @@ STDMETHODIMP TextService::ActivateEx(ITfThreadMgr* threadMgr, TfClientId clientI
 
 STDMETHODIMP TextService::Deactivate() {
 #ifdef MELTYPE_RUST_CORE
-    RustShutdownCallbacks callbacks={
-        this,ServiceInterface<ITfTextInputProcessorEx>(),&focusEpoch_,&shutdownPhase_,
-        reinterpret_cast<void**>(&composition_),reinterpret_cast<void**>(&compositionContext_),reinterpret_cast<void**>(&threadMgr_),
-        &modeSubscription_,&keySubscription_,&threadSubscription_,
-        [](void* p)->unsigned int {return static_cast<TextService*>(p)->disabled_?1u:0u;},
-        [](void* p,unsigned int op,unsigned int ec,void* manager) {auto* s=static_cast<TextService*>(p);try {switch (op) {
-            case 0:s->deactivated_=true;break;
-            case 1:s->ClearResume();break;
-            case 2:s->ForgetSecretField();break;
-            case 3:s->EndAbandonedNow();break;
-            case 4:RustServiceClose(s->state_.value);break;
-            case 5:RustServiceDropCandidates(s->state_.value);break;
-            case 6:s->UnadviseTextEditSink();break;
-            case 7:RustServiceRemoveBar(s->state_.value,static_cast<IUnknown*>(manager));break;
-            case 8:s->clientId_=TF_CLIENTID_NULL;break;
-            case 9:s->EndComposition(ec);break;
-        }}catch (...) {}},
+    return RustServiceDeactivate(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),this,
         [](void* p,const char* json,unsigned int ec,void* context,void* target) {auto* s=static_cast<TextService*>(p);try {
             JsonValue reply;
             if (s->Request(json,reply) && context && s->compositionContext_==context && s->composition_==target) s->Apply(ec,static_cast<ITfContext*>(context),reply);
         }catch (...) {}},
-    };
-    return RustShutdown(clientId_,"{\"sid\":\""+SessionId()+"\"}",callbacks);
+        [](void* p,unsigned int ec) {try {static_cast<TextService*>(p)->EndComposition(ec);}catch (...) {}});
 #else
     TipLog(L"Deactivate");
     if (composition_ != nullptr && compositionContext_ != nullptr) {
