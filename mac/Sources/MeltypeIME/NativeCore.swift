@@ -95,6 +95,7 @@ final class NativeCore {
     var spellCheckCount: Int { spellCacheLock.withLock { spellChecks } }
 
     let keyPolicy: NativeKeyPolicy?
+    let editorPolicy: NativeEditorPolicy?
     private let library: UnsafeMutableRawPointer?
     private let initFunction: InitFunction?
     private let createFunction: CreateFunction?
@@ -114,6 +115,10 @@ final class NativeCore {
         let handle = dlopen(path, RTLD_NOW)
         library = handle
         keyPolicy = NativeKeyPolicy { name in
+            guard let handle else { return nil }
+            return dlsym(handle, name)
+        }
+        editorPolicy = NativeEditorPolicy { name in
             guard let handle else { return nil }
             return dlsym(handle, name)
         }

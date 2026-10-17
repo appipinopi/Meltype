@@ -46,6 +46,6 @@ enum BoundaryTests {
             }
             print("PASS: \(raw.debugDescription) + \(external.debugDescription)")
         }
-        print("8/8 Swift + NativeAOT boundary cases passed (converter stub; no IMK GUI)")
+        print("8/8 Swift + native core boundary cases passed (converter stub; no IMK GUI)")
     }
 }

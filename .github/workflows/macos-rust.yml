@@ -27,6 +27,11 @@ jobs:
           bash mac/test/key-policy/run.sh "$PWD/target/release/libmeltype_native.dylib" | tee dist/macos-sdk/keys.txt
           swift --version > dist/macos-sdk/swift.txt
           sw_vers > dist/macos-sdk/system.txt
+      - name: Controlled IMK and Unicode boundary integration
+        run: |
+          set -euo pipefail
+          python3 tools/test-mac-boundaries.py target/release/libmeltype_native.dylib --rust-core | tee dist/macos-sdk/boundaries.txt
+          python3 tools/test-mac-events.py target/release/libmeltype_native.dylib --rust-core | tee dist/macos-sdk/events.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:

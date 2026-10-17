@@ -16,3 +16,11 @@ and Unicode extraction stay at the SDK boundary, preserving system behavior.
 The Rust build rejects a missing key ABI without switching to the legacy mapper.
 The focused Rust macOS SDK workflow also compiles the complete Swift adapter,
 including its real converter dependency, separately from the SDK fixture.
+
+The same SDK host also compares the Rust editor-range bridge with the former
+InputController NSRange arithmetic and Swift canonical String equality. It covers
+UTF-16 deletion lengths, marked/selected caret choice, missing expected strings,
+20/4000-unit context windows, overflow rejection, composed/decomposed characters,
+Hangul, NUL and compatibility-character distinctions. The existing controlled
+IMK event/boundary tools accept --rust-core to exercise product Rust paths; their
+explicit source lists include the new bridge files for legacy builds as well.

@@ -265,11 +265,20 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
             if edit.deleteBefore > 0 {
                 // 確定し直し: キャレット (変換中の文字があればその先頭) の前の文字を置き換える。
                 let marked = client.markedRange()
+#if MELTYPE_RUST_CORE
+                let selection = marked.location != NSNotFound && marked.length > 0 ? NSRange(location: NSNotFound, length: 0) : client.selectedRange()
+                guard let policy = NativeCore.shared.editorPolicy,
+                      let expected = edit.expect,
+                      let replacement = policy.replacementRange(marked: marked, selected: selection, remove: edit.deleteBefore, expected: expected) else { return }
+                range = replacement
+                guard let actual = client.attributedSubstring(from: range)?.string, policy.expectedEqual(actual, expected) else { return }
+#else
                 let caret = marked.location != NSNotFound && marked.length > 0 ? marked.location : client.selectedRange().location
                 guard caret != NSNotFound, caret >= edit.deleteBefore,
                       let expected = edit.expect, (expected as NSString).length == edit.deleteBefore else { return }
                 range = NSRange(location: caret - edit.deleteBefore, length: edit.deleteBefore)
                 guard client.attributedSubstring(from: range)?.string == expected else { return }
+#endif
             }
             client.insertText(NSAttributedString(string: edit.text), replacementRange: range)
             hasMarkedText = false
@@ -424,10 +433,16 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
     /// 入力欄のキャレットの前後の文字列 (それぞれ 20 文字まで)。取れなければ nil。
     private func surroundingText(of client: IMKTextInput) -> (String?, String?) {
         let selection = client.selectedRange()
+#if MELTYPE_RUST_CORE
+        guard let ranges = NativeCore.shared.editorPolicy?.contextRanges(selection: selection, code: codeInput) else { return (nil, nil) }
+        let before = client.attributedSubstring(from: ranges.0)?.string
+        let after = client.attributedSubstring(from: ranges.1)?.string
+#else
         guard selection.location != NSNotFound else { return (nil, nil) }
         let start = max(0, selection.location - (codeInput ? 4000 : 20))
         let before = client.attributedSubstring(from: NSRange(location: start, length: selection.location - start))?.string
         let after = client.attributedSubstring(from: NSRange(location: selection.location + selection.length, length: 20))?.string
+#endif
         return (before, after)
     }
 }

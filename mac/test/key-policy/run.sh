@@ -18,6 +18,7 @@ PLIST
 swiftc -swift-version 5 -DMELTYPE_RUST_CORE -DMELTYPE_POLICY_TEST \
   "$root/mac/Sources/MeltypeIME/NativeKeyPolicy.swift" \
   "$root/mac/Sources/MeltypeIME/NativeCore.swift" \
+  "$root/mac/Sources/MeltypeIME/NativeEditorPolicy.swift" \
   "$root/mac/Sources/MeltypeIME/KeyMapping.swift" \
   "$root/mac/Sources/MeltypeIME/LegacyKeyMapping.swift" \
   "$root/mac/test/key-policy/fixtures/Converter.swift" \
