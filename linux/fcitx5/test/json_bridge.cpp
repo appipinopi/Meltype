@@ -65,6 +65,7 @@ static ViewTrace referenceView(const Json &result) {
     }
     emit(7);return out;
 }
+#include "edit_reference.hpp"
 int main(int argc,char **argv) {
     try {
         check(argc==3,"library and private profile required");
@@ -130,9 +131,41 @@ int main(int argc,char **argv) {
         auto stopView=[](void *context,uint32_t,int,const uint8_t *,uint32_t)->int {++*static_cast<int *>(context);return 0;};
         int callbacks=0;const std::string emptyView=R"({"view":{}})";
         check(viewPlan(reinterpret_cast<const uint8_t *>(emptyView.data()),emptyView.size(),&callbacks,stopView)==0&&callbacks==1,"view callback cancellation");
+        auto applyPlan=reinterpret_cast<int (*)(void *,const uint8_t *,uint32_t,void *,ViewCallback)>(dlsym(library,"meltype_fcitx_apply_utf8"));
+        check(applyPlan!=nullptr,"editor application ABI missing");
+        size_t editCount=0;
+        const auto compareApply=[&](const std::string &reply) {
+            Json parsed;check(JsonReader(reply).read(parsed),"reference edit parse");
+            for(const std::string &input:{std::string("prefix前😀後"),std::string("abc"),std::string(""),std::string("a\0b",3)}) {
+                for(size_t cursor=0;cursor<=charLength(input);cursor++) {
+                    for(bool capable:{false,true}) {
+                        Editor actual{input,cursor,capable,deletion,false,-1,{}};
+                        Editor reference{input,cursor,capable,deletion,true,-1,{}};
+                        referenceApply(reference,parsed);
+                        check(applyPlan(nullptr,reinterpret_cast<const uint8_t *>(reply.data()),reply.size(),&actual,editEvent)==1,"apply callback traversal");
+                        check(actual.trace==reference.trace&&actual.text==reference.text&&actual.cursor==reference.cursor,"legacy edit order/content mismatch");editCount++;
+                    }
+                }
+            }
+        };
+        for(const std::string reply:{"null",R"({"commits":null})",R"({"commits":[null,{},false,{"text":""},{"text":3}]})",
+            R"({"commits":[{"text":"日本😀"}],"view":{"text":"かな"}})",
+            R"({"commits":[{"deleteBefore":3,"expect":"前😀","text":"仮名"}],"view":{"text":"残り"}})",
+            R"({"commits":[{"deleteBefore":2,"expect":"前😀","text":"NG"},{"text":"later"}]})",
+            R"({"commits":[{"deleteBefore":1,"expect":"","text":"NG"}]})",
+            R"({"commits":[{"deleteBefore":-1,"text":"a"},{"deleteBefore":1,"expect":"a","text":"😀"},{"deleteBefore":2,"expect":"😀","text":"b"}],"view":{}})",
+            R"({"commits":[{"text":"a\u0000b"},{"deleteBefore":3,"expect":"a\u0000b","text":"終"}],"view":{}})"})compareApply(reply);
+        const std::string editReply=R"({"commits":[{"deleteBefore":3,"expect":"前😀","text":"仮名"}],"view":{"text":"残り"}})";
+        for(int fail:{8,9,10,11,0,1,2,7}) {
+            Editor editor{"前😀",2,true,deletion,false,fail,{}};
+            check(applyPlan(nullptr,reinterpret_cast<const uint8_t *>(editReply.data()),editReply.size(),&editor,editEvent)==0,"host failure must stop application");
+            check(!editor.trace.empty()&&static_cast<int>(std::get<0>(editor.trace.back()))==fail,"host failure continued callbacks");
+        }
+        Editor invalidEditor{"前😀",2,true,deletion,false,-1,{}};
+        check(applyPlan(nullptr,reinterpret_cast<const uint8_t *>(invalidPlan.data()),invalidPlan.size(),&invalidEditor,editEvent)==0&&invalidEditor.trace.empty(),"invalid JSON changed editor");
         size_t count=0;
         auto compare=[&](const std::string &text) {
-            compareView(text);
+            compareView(text);compareApply(text);
             Json oldValue,newValue;
             check(JsonReader(text).read(oldValue),"legacy fixture parse failed: "+text);
             check(readRustJson(text,newValue,visit),"Rust fixture parse failed: "+text);
@@ -158,8 +191,17 @@ int main(int argc,char **argv) {
         check(create&&key&&commit&&destroy&&freeResult,"core ABI missing");
         void *session=create(argv[2]);check(session!=nullptr,"private session");
         for (char scalar:std::string("nihongo")) {char *reply=key(session,0,scalar,0,nullptr,nullptr);check(reply!=nullptr,"engine key");compare(reply);freeResult(reply);}
-        char *reply=commit(session);check(reply!=nullptr,"engine commit");compare(reply);freeResult(reply);destroy(session);
+        char *reply=commit(session);check(reply!=nullptr,"engine commit");compare(reply);freeResult(reply);
+        reply=key(session,0,'k',0,nullptr,nullptr);check(reply!=nullptr,"pending key for reset");freeResult(reply);
+        const std::string mismatch=R"({"commits":[{"deleteBefore":1,"expect":"x","text":"must not commit"}],"view":{"text":"must not display"}})";
+        Editor mismatchEditor{"a",1,true,deletion,false,-1,{}};
+        check(applyPlan(session,reinterpret_cast<const uint8_t *>(mismatch.data()),mismatch.size(),&mismatchEditor,editEvent)==1,"mismatch reset traversal");
+        reply=commit(session);check(reply!=nullptr,"post mismatch commit");Json resetResult;check(readRustJson(reply,resetResult,visit),"reset reply parse");freeResult(reply);
+        const auto *resetCommits=resetResult.get("commits");
+        check(!resetCommits||resetCommits->items.empty(),"mismatch did not clear pending core input");
+        destroy(session);
         check(dlclose(library)==0,"library close");
+        std::cout<<"fcitx Rust edits: "<<editCount<<" legacy/core live-editor cases, Unicode deletions, multi-edit ordering, mismatch reset and callback failures passed\n";
         std::cout<<"fcitx Rust view: "<<viewCount<<" legacy/core panel plans, Unicode/NUL, clauses, highlight, hint, candidates, invalid input and cancellation passed\n";
         std::cout<<"fcitx Rust JSON: "<<count<<" reference/core projections, UTF-8/NUL/escapes, malformed input, cancellation and duplicate policy passed\n";
     } catch (const std::exception &error) {std::cerr<<error.what()<<'\n';return 1;}

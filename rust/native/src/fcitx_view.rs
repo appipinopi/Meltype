@@ -97,7 +97,71 @@ pub unsafe extern "C" fn meltype_fcitx_view_utf8(
         return 0;
     };
     for Event(kind, argument, text) in plan(&result) {
-        if callback(context, kind, argument, text.as_ptr(), text.len() as u32) == 0 {
+        if callback(context, kind, argument, text.as_ptr(), text.len() as u32) <= 0 {
+            return 0;
+        }
+    }
+    1
+}
+/// Apply the response in upstream order. Callback 9 queries a live expected
+/// suffix (argument: UTF-16 units), returning SDK character count, zero for a
+/// mismatch or negative on host failure. Operations 10/11/12 delete characters,
+/// commit text, and reset the panel without notifications. Panel events 0..8
+/// follow edits. A mismatch resets the core and hides without applying the view.
+/// # Safety
+/// Same buffer/callback requirements as meltype_fcitx_view_utf8. handle is an
+/// opaque core session token; no session lock is held while callbacks execute.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_fcitx_apply_utf8(
+    handle: *mut c_void,
+    input: *const u8,
+    length: u32,
+    context: *mut c_void,
+    callback: Option<Callback>,
+) -> i32 {
+    let Some(callback) = callback else {
+        return 0;
+    };
+    if input.is_null() {
+        return 0;
+    }
+    let Ok(result) =
+        serde_json::from_slice::<Value>(std::slice::from_raw_parts(input, length as usize))
+    else {
+        return 0;
+    };
+    // Validate and allocate the view before applying any editor mutation.
+    let view = plan(&result);
+    let emit = |kind, argument, text: &str| {
+        callback(context, kind, argument, text.as_ptr(), text.len() as u32)
+    };
+    if let Some(commits) = result.get("commits").and_then(Value::as_array) {
+        for edit in commits {
+            let remove = integer(edit, "deleteBefore", 0);
+            if remove > 0 {
+                let count = emit(9, remove, string(edit, "expect"));
+                if count < 0 {
+                    return 0;
+                }
+                if count == 0 {
+                    let reset = super::meltype_reset(handle);
+                    super::meltype_free(reset.cast());
+                    return i32::from(emit(8, 0, "") > 0);
+                }
+                if emit(8, 0, "") <= 0 || emit(10, count, "") <= 0 {
+                    return 0;
+                }
+            } else if emit(12, 0, "") <= 0 {
+                return 0;
+            }
+            let text = string(edit, "text");
+            if !text.is_empty() && emit(11, 0, text) <= 0 {
+                return 0;
+            }
+        }
+    }
+    for Event(kind, argument, text) in view {
+        if emit(kind, argument, &text) <= 0 {
             return 0;
         }
     }

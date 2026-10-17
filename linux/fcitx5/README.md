@@ -99,3 +99,16 @@ former `show()` implementation. The standalone ABI test compares Rust plans to
 that policy, including wrong field types, missing views, candidate boundaries,
 Unicode, cancellation and actual core replies. This establishes policy evidence,
 not rendered pixels or real application input compatibility.
+
+Editor response application now uses `meltype_fcitx_apply_utf8`. Rust owns the
+commit loop, current-suffix query, hide/delete/commit ordering, mismatch-triggered
+core reset and stopping later edits/view updates. The SDK callback fetches current
+surrounding text separately for each deletion; it does not cache the context from
+the first edit. Host failures stop traversal, and the C++ boundary hides the panel.
+Panel planning completes before any editor mutation. The legacy build keeps the
+original loop. A controlled editor compares both operation traces and final text
+against that loop, including capabilities, cursor positions, Japanese/emoji/NUL,
+multiple dependent edits, mismatches, malformed replies and callback failures.
+This fixture does not establish real application input compatibility. SDK calls,
+framework property/candidate objects and remaining key-event orchestration still
+need migration.

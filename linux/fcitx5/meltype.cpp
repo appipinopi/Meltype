@@ -56,7 +56,7 @@ struct Native {
 #ifdef MELTYPE_RUST_CORE
     meltype_fcitx::JsonVisit visitJson = nullptr;
     using ViewCallback = int (*)(void *,uint32_t,int,const uint8_t *,uint32_t);
-    int (*viewPlan)(const uint8_t *,uint32_t,void *,ViewCallback) = nullptr;
+    int (*applyPlan)(void *,const uint8_t *,uint32_t,void *,ViewCallback) = nullptr;
     uint64_t (*mapKey)(uint32_t,uint32_t) = nullptr;
     int (*mapModifiers)(uint32_t) = nullptr;
     uint32_t (*modePlan)(uint32_t,int) = nullptr;
@@ -99,7 +99,7 @@ struct Native {
         free = reinterpret_cast<decltype(free)>(sym("meltype_free"));
 #ifdef MELTYPE_RUST_CORE
         visitJson = reinterpret_cast<decltype(visitJson)>(sym("meltype_json_visit_utf8"));
-        viewPlan = reinterpret_cast<decltype(viewPlan)>(sym("meltype_fcitx_view_utf8"));
+        applyPlan = reinterpret_cast<decltype(applyPlan)>(sym("meltype_fcitx_apply_utf8"));
         mapKey = reinterpret_cast<decltype(mapKey)>(sym("meltype_fcitx_key"));
         mapModifiers = reinterpret_cast<decltype(mapModifiers)>(sym("meltype_fcitx_modifiers"));
         modePlan = reinterpret_cast<decltype(modePlan)>(sym("meltype_fcitx_mode"));
@@ -110,7 +110,7 @@ struct Native {
         setPreedit = reinterpret_cast<decltype(setPreedit)>(sym("meltype_fcitx_set_preedit"));
         contextOffsets = reinterpret_cast<decltype(contextOffsets)>(sym("meltype_fcitx_context_offsets"));
         deleteCount = reinterpret_cast<decltype(deleteCount)>(sym("meltype_fcitx_delete_count"));
-        if (!viewPlan || !visitJson || !mapKey || !mapModifiers || !modePlan || !frontendState || !setPreedit || !contextOffsets || !deleteCount) {
+        if (!applyPlan || !visitJson || !mapKey || !mapModifiers || !modePlan || !frontendState || !setPreedit || !contextOffsets || !deleteCount) {
             FCITX_ERROR() << "Meltype: Rust fcitx JSON/key ABI is missing";
             return false;
         }
@@ -334,29 +334,20 @@ private:
         if (native_.readJson(text, result)) apply(ic, result, text);
     }
 
-    void apply(fcitx::InputContext *ic, const Json &result, [[maybe_unused]] const std::string &raw) {
+    void apply(fcitx::InputContext *ic, [[maybe_unused]] const Json &result, [[maybe_unused]] const std::string &raw) {
+#ifdef MELTYPE_RUST_CORE
+        applyRust(ic, raw);
+#else
         if (auto *commits = result.get("commits"); commits && commits->kind == Json::Kind::Array) {
             for (const auto &edit : commits->items) {
                 int remove = edit.integer("deleteBefore");
                 if (remove > 0) {
                     const auto expected = edit.str("expect");
-#ifdef MELTYPE_RUST_CORE
-                    int count=0;
-                    if(ic->capabilityFlags().test(fcitx::CapabilityFlag::SurroundingText) && ic->surroundingText().isValid()) {
-                        const auto &text=ic->surroundingText().text();
-                        const auto cursor=ic->surroundingText().cursor();
-                        if(text.size()<=std::numeric_limits<uint32_t>::max() && expected.size()<=std::numeric_limits<uint32_t>::max())
-                            count=native_.deleteCount(reinterpret_cast<const uint8_t *>(text.data()),static_cast<uint32_t>(text.size()),cursor,
-                                reinterpret_cast<const uint8_t *>(expected.data()),static_cast<uint32_t>(expected.size()),remove);
-                    }
-                    const bool matched=count>0;
-#else
                     std::string before, after;
                     const bool matched=!expected.empty() && meltype_fcitx::utf16Length(expected)==static_cast<size_t>(remove)
                         && readSurrounding(ic,before,after,meltype_fcitx::charLength(expected))
                         && before.size()>=expected.size() && before.compare(before.size()-expected.size(),expected.size(),expected)==0;
                     const auto count=static_cast<unsigned int>(meltype_fcitx::charLength(expected));
-#endif
                     if(!matched) {
                         auto *session = ic->propertyFor(&factory_)->session();
                         if (native_.resetSession) native_.take(native_.resetSession(session));
@@ -373,9 +364,6 @@ private:
                 if (!committed.empty()) ic->commitString(committed);
             }
         }
-#ifdef MELTYPE_RUST_CORE
-        showRust(ic, raw);
-#else
         auto *view = result.get("view");
         if (view && view->kind == Json::Kind::Object) show(ic, *view);
         else hidePreedit(ic);
@@ -464,14 +452,26 @@ private:
                 ic->updatePreedit();
                 ic->updateUserInterface(fcitx::UserInterfaceComponent::InputPanel); break;
             case 8: sink.engine->hidePreedit(ic); break;
+            case 9: {
+                if(!ic->capabilityFlags().test(fcitx::CapabilityFlag::SurroundingText) || !ic->surroundingText().isValid())return 0;
+                const auto &surrounding=ic->surroundingText().text();
+                if(surrounding.size()>std::numeric_limits<uint32_t>::max())return 0;
+                return sink.engine->native_.deleteCount(reinterpret_cast<const uint8_t *>(surrounding.data()),static_cast<uint32_t>(surrounding.size()),
+                    ic->surroundingText().cursor(),bytes,length,argument);
+            }
+            case 10: ic->deleteSurroundingText(-argument,static_cast<unsigned int>(argument)); break;
+            case 11: ic->commitString(text); break;
+            case 12:
+                panel.reset();
+                ic->propertyFor(&sink.engine->factory_)->setPreeditVisible(false); break;
             default: return 0;
             }
             return 1;
-        } catch(...) { return 0; }
+        } catch(...) { return -1; }
     }
-    void showRust(fcitx::InputContext *ic,const std::string &raw) {
+    void applyRust(fcitx::InputContext *ic,const std::string &raw) {
         ViewSink sink{this,ic,{},nullptr};
-        if(raw.size()>std::numeric_limits<uint32_t>::max() || !native_.viewPlan(reinterpret_cast<const uint8_t *>(raw.data()),static_cast<uint32_t>(raw.size()),&sink,viewEvent))
+        if(raw.size()>std::numeric_limits<uint32_t>::max() || !native_.applyPlan(ic->propertyFor(&factory_)->session(),reinterpret_cast<const uint8_t *>(raw.data()),static_cast<uint32_t>(raw.size()),&sink,viewEvent))
             hidePreedit(ic);
     }
 #endif
