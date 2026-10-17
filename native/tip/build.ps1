@@ -5,7 +5,7 @@
 #   powershell -ExecutionPolicy Bypass -File native\tip\build.ps1 [-Configuration Release|Debug]
 # 出力: native\tip\bin\x64\MeltypeTip.dll と native\tip\bin\x86\MeltypeTip.dll (32bit のアプリ用)
 
-param([ValidateSet('Release', 'Debug')][string]$Configuration = 'Release', [switch]$RustCore)
+param([ValidateSet('Release', 'Debug')][string]$Configuration = 'Release', [switch]$RustCore, [switch]$CompatibilityObjects)
 
 $ErrorActionPreference = 'Stop'
 $here = $PSScriptRoot
@@ -25,7 +25,8 @@ function Get-Sha256([string]$path) {
 }
 
 $sources = 'Dll.cpp', 'TextService.cpp', 'CandidateWindow.cpp', 'DisplayAttributes.cpp', 'LangBar.cpp', 'Pipe.cpp', 'Json.cpp'
-if ($RustCore) { $sources = $sources | Where-Object { $_ -notin @('DisplayAttributes.cpp', 'LangBar.cpp', 'CandidateWindow.cpp') } | ForEach-Object { if ($_ -eq 'Pipe.cpp') { 'RustPipe.cpp' } else { $_ } } }
+if ($RustCore) { $sources = 'Dll.cpp','RustDll.cpp' }
+if ($CompatibilityObjects -and -not $RustCore) { throw '-CompatibilityObjects requires -RustCore' }
 $coreDefine = if ($RustCore) { '/DMELTYPE_RUST_CORE' } else { '' }
 # /Brepro: 同じソースからは同じ DLL にする (日時を埋め込まない)。入れ直したときに、変わっていない DLL を登録し直さない (UAC を出さない) ため
 $optimize = if ($Configuration -eq 'Release') { '/O2 /MT /DNDEBUG' } else { '/Od /MTd /Zi' }
@@ -37,11 +38,15 @@ foreach ($arch in 'x64', 'x86') {
     if ($RustCore) { $out = Join-Path $here "bin\rust-$arch"; $obj = Join-Path $here "obj\rust-$arch" }
     New-Item -ItemType Directory -Force -Path $out, $obj | Out-Null
     $vcarch = if ($arch -eq 'x64') { 'x64' } else { 'x64_x86' }
+    $compat = if ($RustCore -and $CompatibilityObjects) {
+        "cl /nologo /Brepro /std:c++17 /EHsc /W4 /wd4100 /utf-8 /DUNICODE /D_UNICODE $coreDefine $optimize /Fo`"$obj\\`" /Fd`"$obj\\`" /c TextService.cpp RustPipe.cpp Json.cpp"
+    } else { 'ver >nul' }
     $cmd = @(
         "`"$vcvars`" $vcarch >nul",
         "cd /d `"$here`"",
+        $compat,
         "rc /nologo /fo `"$obj\MeltypeTip.res`" MeltypeTip.rc",
-        "cl /nologo /Brepro /std:c++17 /EHsc /W4 /wd4100 /utf-8 /DUNICODE /D_UNICODE $coreDefine $optimize /Fo`"$obj\\`" /Fd`"$obj\\`" /LD $($sources -join ' ') `"$obj\MeltypeTip.res`" /link /Brepro /DEF:MeltypeTip.def /IMPLIB:`"$obj\MeltypeTip.lib`" /OUT:`"$out\MeltypeTip.dll`" $libs"
+        "cl /nologo /Brepro /std:c++17 /EHsc /W4 /wd4100 /utf-8 /DUNICODE /D_UNICODE $coreDefine $optimize /Fo`"$obj\\`" /Fd`"$obj\\`" /LD $($sources -join ' ') `"$obj\MeltypeTip.res`" /link /Brepro /DEF:MeltypeTip.def /MAP:`"$obj\MeltypeTip.map`" /IMPLIB:`"$obj\MeltypeTip.lib`" /OUT:`"$out\MeltypeTip.dll`" $libs"
     ) -join ' && '
     Write-Host "== $arch =="
     cmd /c $cmd

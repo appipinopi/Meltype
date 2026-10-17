@@ -5,6 +5,12 @@
 #include <cassert>
 #include <cstdio>
 using namespace meltype;
+// Legacy callback ABI reference helper; production uses native follow-ups.
+bool RustServiceEdited(RustServiceState* state,IUnknown* life,ITfContext* context,ITfEditRecord* record,TfEditCookie cookie,void* adapter,void (__cdecl *query)(void*,unsigned int,void*,int),void (__cdecl *commit)(void*)) {
+    auto module=LoadLibraryW(L"meltype_native.dll");assert(module);
+    auto call=reinterpret_cast<int (__cdecl *)(void*,void*,void*,void*,unsigned int,void*,void (__cdecl *)(void*,unsigned int,void*,int),void (__cdecl *)(void*))>(GetProcAddress(module,"meltype_tsf_service_edited"));assert(call);
+    auto result=call(state,life,context,record,cookie,adapter,query,commit);FreeLibrary(module);return result!=0;
+}
 namespace {
 void* methods[17] = {};
 struct Context {

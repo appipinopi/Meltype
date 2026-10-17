@@ -10,11 +10,26 @@
 #include <objbase.h>
 using namespace meltype;
 #ifdef MELTYPE_TEST_NATIVE_OWNER
-// Thin test holder; the production owner/state/COM object is entirely Rust.
+// Exercise the actual production DLL and class factory, not compatibility code.
+HMODULE nativeShell=nullptr;
+using CanUnload=HRESULT (STDAPICALLTYPE *)();
+int NativeUnloadState() {
+    auto test=reinterpret_cast<CanUnload>(GetProcAddress(nativeShell,"DllCanUnloadNow"));assert(test);
+    return test()==S_OK?0:1;
+}
+#define g_locks (NativeUnloadState())
 class FixtureService {
     IUnknown* root=nullptr;
 public:
-    FixtureService() {assert(RustCreateNativeService(IID_ITfTextInputProcessorEx,reinterpret_cast<void**>(&root))==S_OK && root);}
+    FixtureService() {
+        nativeShell=LoadLibraryW(L"MeltypeTip.dll");assert(nativeShell);
+        using GetClass=HRESULT (STDAPICALLTYPE *)(REFCLSID,REFIID,void**);
+        auto get=reinterpret_cast<GetClass>(GetProcAddress(nativeShell,"DllGetClassObject"));assert(get);
+        IClassFactory* factory=nullptr;
+        assert(get(CLSID_TextService,IID_IClassFactory,reinterpret_cast<void**>(&factory))==S_OK && factory);
+        assert(factory->CreateInstance(nullptr,IID_ITfTextInputProcessorEx,reinterpret_cast<void**>(&root))==S_OK && root);
+        factory->Release();
+    }
     template<class T> T* ServiceInterface() const {return static_cast<T*>(RustServiceComInterface(root,__uuidof(T)));}
     void Release() {assert(root->Release()==0);delete this;}
 };
@@ -305,5 +320,8 @@ int wmain() {
     assert(service->ServiceInterface<ITfTextInputProcessorEx>()->Deactivate()==S_OK && thread.refs==1 && g_locks==1);
     assert(thread.focusQueries==2);
     service->Release();assert(g_locks==0 && RustServiceStateLiveCount()==0);assert(SetKeyboardState(saved));
+#ifdef MELTYPE_TEST_NATIVE_OWNER
+    assert(FreeLibrary(nativeShell));nativeShell=nullptr;
+#endif
     puts("Actual key edit/commit/termination/abandonment/focus/shutdown/startup: public TSF entry, packaged core, UTF-16 caret, preedit, commits, old field, focus, idempotent shutdown and secure/normal private-manager reactivation passed");
 }

@@ -39,6 +39,7 @@
 - [ ] OS連携のRust化
 - [x] Linux IBusのPythonランタイムをRust実行ファイルへ移植（キー受信・確定・文節表示・候補・意味・予測・モード切替・周辺文字照合・プライバシー）
 - [ ] Windows TSF、macOS InputMethodKit、fcitx5、Androidの残りの接続処理のRust化
+- [x] Windowsの配布用TSF DLLをDll.cpp＋最小RustDll.cppだけでリンク（TextService.cpp／RustPipe.cpp／Json.cppは互換SDK試験用に分離。リンクマップで旧オブジェクト不在を検査。配布DLLをLoadLibrary／DllGetClassObject／CreateInstanceから使う入力・確定・終了／再起動・解放試験をx64/x86で確認。DLL入口・読込・ログのC++は残り、完全なRust単体DLL化と実アプリ確認は未完了）
 - [x] Windows TSFクラスファクトリーの生成先をRust所有サービスへ変更（状態・workerパス・COM root・参照寿命をRustで確保／破棄し、本番生成時にC++ TextServiceを作らない。状態試験x64/x86各240件で全インターフェースの同一性、未対応IID失敗時の解放、最終参照解放とDLL保持、公開起動／終了を確認。Rust所有者を使う入力／ライフサイクル試験をCIへ追加。C++互換所有者は比較用に残り、DLL入口／読込／ログ等と実アプリ確認は未完了）
 - [x] Windows TSFの公開COM操作の振分けをRustへ移行（C++側の起動／終了・キー・フォーカス・開閉／編集・外部確定の分岐を除去。状態試験x64/x86各235件でネイティブroot／sink取得、保護モード起動、通知、pointer幅キー解放、不正引数を確認。言語バーの表示判定も元と同じopenかつcodeEnglishでない条件へ一致。シェルの生成／破棄・モジュール接続等と実アプリ確認は残る）
 - [x] Windows TSFの起動時に候補選択・言語バー状態読取り／切替をRustサービスへ直接登録（本番C++のUI操作コールバックを除去。UIがRustアダプターとworkerパスを保持し、操作中も一時参照を保持。状態試験x64/x86各229件で起動後の操作、候補クリックの選択要求、再起動と保持された旧ボタンの無効化を確認。その他のC++接続と実アプリ／UI一致検証は残る）

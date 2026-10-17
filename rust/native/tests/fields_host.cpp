@@ -5,6 +5,12 @@
 #include <cassert>
 #include <cstdio>
 using namespace meltype;
+// Legacy callback ABI reference helper; production uses native follow-ups.
+HRESULT RustServiceOpened(RustServiceState* state,IUnknown* life,REFGUID guid,void* adapter,void (__cdecl *commit)(void*),void (__cdecl *notice)(void*,int)) {
+    auto module=LoadLibraryW(L"meltype_native.dll");assert(module);
+    auto call=reinterpret_cast<HRESULT (__cdecl *)(void*,void*,const GUID*,void*,void (__cdecl *)(void*),void (__cdecl *)(void*,int))>(GetProcAddress(module,"meltype_tsf_service_opened"));assert(call);
+    auto result=call(state,life,&guid,adapter,commit,notice);FreeLibrary(module);return result;
+}
 namespace {
 struct Compartment final : ITfCompartment {
     ULONG refs = 1;

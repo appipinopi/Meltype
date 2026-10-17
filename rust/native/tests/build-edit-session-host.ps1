@@ -3,6 +3,9 @@
 param([string]$NativeX64, [string]$NativeX86)
 $ErrorActionPreference = 'Stop'
 $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../../..'))
+# Compatibility-owner SDK hosts need these objects; production DLL links only
+# Dll.cpp + RustDll.cpp and does not contain the old adapters.
+& (Join-Path $root 'native/tip/build.ps1') -RustCore -CompatibilityObjects
 & (Join-Path $PSScriptRoot 'prepare-reference-json.ps1')
 if (-not $NativeX64) { $NativeX64 = Join-Path $root 'target/x86_64-pc-windows-msvc/release/meltype_native.dll' }
 if (-not $NativeX86) { $NativeX86 = Join-Path $root 'target/i686-pc-windows-msvc/release/meltype_native.dll' }
@@ -14,6 +17,11 @@ foreach ($arch in 'x64','x86') {
     $out = Join-Path $root "dist/edit-session-host/$arch"
     New-Item -ItemType Directory -Force -Path $out | Out-Null
     $native = if ($arch -eq 'x64') { $NativeX64 } else { $NativeX86 }
+    $linkMap = Get-Content -LiteralPath (Join-Path $root "native/tip/obj/rust-$arch/MeltypeTip.map") -Raw
+    if ($linkMap -notmatch 'RustDll\.obj' -or $linkMap -match '(TextService|RustPipe|Json)\.obj') {
+        throw "Production DLL must link the minimal Rust bridge only: $arch"
+    }
+    Copy-Item -LiteralPath (Join-Path $root "native/tip/bin/rust-$arch/MeltypeTip.dll") -Destination $out
     Copy-Item -LiteralPath $native -Destination (Join-Path $out 'meltype_native.dll')
     Copy-Item -LiteralPath (Join-Path (Split-Path $native) 'meltype-tip-worker.exe') -Destination $out
     $objects = @('Dll','TextService','RustPipe','Json') | ForEach-Object { '"' + (Join-Path $root "native/tip/obj/rust-$arch/$_.obj") + '"' }
