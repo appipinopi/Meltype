@@ -49,6 +49,10 @@ enum MacUserDictionary {
     }
 
     static func importFile(_ source: URL, directory: String) throws -> Int {
+#if MELTYPE_RUST_CORE
+        guard let policy=NativeCore.shared.editorPolicy else {throw ImportError.unsupported}
+        return try policy.importDictionary(source,directory:directory)
+#else
         let entries = try entries(from: Data(contentsOf: source))
         let folder = URL(fileURLWithPath: directory, isDirectory: true)
         let destination = folder.appendingPathComponent("userdict.txt")
@@ -60,5 +64,6 @@ enum MacUserDictionary {
             try merged.write(to: destination, atomically: true, encoding: .utf8)
         }
         return count
+#endif
     }
 }

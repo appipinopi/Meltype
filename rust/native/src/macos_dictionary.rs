@@ -98,6 +98,34 @@ pub unsafe extern "C" fn meltype_macos_dictionary_entries(
         std::ptr::null_mut()
     }
 }
+/// Import a source NSURL into directory/userdict.txt through the original
+/// Foundation read/create/atomic-write APIs. >=0 added count, -1 SDK error,
+/// -2 unsupported entries/invalid ABI. Error is a +1 NSError for the caller.
+/// # Safety
+/// source is a live NSURL; directory is readable UTF-16 for directory_length;
+/// error is null or a writable object slot. Caller consumes error's +1 reference.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_macos_dictionary_import(
+    source: *mut c_void,
+    directory: *const u16,
+    directory_length: u32,
+    error: *mut *mut c_void,
+) -> i64 {
+    if !error.is_null() {
+        *error = std::ptr::null_mut();
+    }
+    if source.is_null() || directory.is_null() && directory_length != 0 {
+        return -2;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        native::import(source, directory, directory_length, error)
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        -2
+    }
+}
 #[cfg(target_os = "macos")]
 mod native {
     use super::*;
@@ -140,15 +168,24 @@ mod native {
     pub unsafe fn entries(bytes: *const u8, length: u32, error: *mut *mut c_void) -> *mut c_char {
         let data: Retained<AnyObject> =
             msg_send![class(c"NSData"),dataWithBytes:bytes.cast::<c_void>(),length:length as usize];
-        let mut failure: *mut AnyObject = std::ptr::null_mut();
-        let root: Option<Retained<AnyObject>> = msg_send![class(c"NSPropertyListSerialization"),propertyListWithData:&*data,options:0usize,format:std::ptr::null_mut::<usize>(),error:&mut failure];
-        let Some(root) = root else {
-            if !error.is_null() {
-                if let Some(failure) = Retained::retain(failure) {
-                    *error = Retained::into_raw(failure).cast();
-                }
+        match parse(&data, error) {
+            Some(result) => crate::allocate(&serde_json::to_string(&result).unwrap()),
+            None => std::ptr::null_mut(),
+        }
+    }
+    unsafe fn capture(failure: *mut AnyObject, error: *mut *mut c_void) {
+        if !error.is_null() {
+            if let Some(failure) = Retained::retain(failure) {
+                *error = Retained::into_raw(failure).cast();
             }
-            return std::ptr::null_mut();
+        }
+    }
+    unsafe fn parse(data: &AnyObject, error: *mut *mut c_void) -> Option<Vec<[String; 2]>> {
+        let mut failure: *mut AnyObject = std::ptr::null_mut();
+        let root: Option<Retained<AnyObject>> = msg_send![class(c"NSPropertyListSerialization"),propertyListWithData:data,options:0usize,format:std::ptr::null_mut::<usize>(),error:&mut failure];
+        let Some(root) = root else {
+            capture(failure, error);
+            return None;
         };
         let rows = if is(&root, c"NSArray") {
             Some(root)
@@ -196,6 +233,76 @@ mod native {
                 }
             }
         }
-        crate::allocate(&serde_json::to_string(&result).unwrap())
+        Some(result)
+    }
+    pub unsafe fn import(
+        source: *mut c_void,
+        directory: *const u16,
+        length: u32,
+        error: *mut *mut c_void,
+    ) -> i64 {
+        let Some(source) = Retained::retain(source.cast::<AnyObject>()) else {
+            return -2;
+        };
+        if !is(&source, c"NSURL") {
+            return -2;
+        }
+        let units = if length == 0 {
+            &[][..]
+        } else {
+            std::slice::from_raw_parts(directory, length as usize)
+        };
+        let Ok(directory) = String::from_utf16(units) else {
+            return -2;
+        };
+        let directory = NSString::from_str(&directory);
+        let mut failure: *mut AnyObject = std::ptr::null_mut();
+        let data: Option<Retained<AnyObject>> = msg_send![class(c"NSData"),dataWithContentsOfURL:&*source,options:0usize,error:&mut failure];
+        let Some(data) = data else {
+            capture(failure, error);
+            return -1;
+        };
+        let Some(entries) = parse(&data, error) else {
+            return -1;
+        };
+        if entries.is_empty() {
+            return -2;
+        }
+        let folder: Retained<AnyObject> =
+            msg_send![class(c"NSURL"),fileURLWithPath:&*directory,isDirectory:true];
+        let name = NSString::from_str("userdict.txt");
+        let destination: Retained<AnyObject> =
+            msg_send![&folder,URLByAppendingPathComponent:&*name];
+        let manager: Retained<AnyObject> = msg_send![class(c"NSFileManager"), defaultManager];
+        let path: Retained<NSString> = msg_send![&destination, path];
+        let exists: bool = msg_send![&manager,fileExistsAtPath:&*path];
+        let existing = if exists {
+            failure = std::ptr::null_mut();
+            let text: Option<Retained<NSString>> = msg_send![class(c"NSString"),stringWithContentsOfURL:&*destination,encoding:4usize,error:&mut failure];
+            let Some(text) = text else {
+                capture(failure, error);
+                return -1;
+            };
+            text.to_string()
+        } else {
+            String::new()
+        };
+        let (merged, count) = merge(Merge { entries, existing });
+        if count > 0 {
+            failure = std::ptr::null_mut();
+            let created: bool = msg_send![&manager,createDirectoryAtURL:&*folder,withIntermediateDirectories:true,attributes:std::ptr::null::<AnyObject>(),error:&mut failure];
+            if !created {
+                capture(failure, error);
+                return -1;
+            }
+            let text = NSString::from_str(&merged);
+            failure = std::ptr::null_mut();
+            let written: bool = msg_send![&text,writeToURL:&*destination,atomically:true,encoding:4usize,error:&mut failure];
+            if !written {
+                capture(failure, error);
+                return -1;
+            }
+        }
+        count as i64
     }
 }

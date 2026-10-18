@@ -5,6 +5,11 @@ import ctypes as c,json,sys,unicodedata
 from pathlib import Path
 api=c.CDLL(str(Path(sys.argv[1]).resolve()))
 P=c.c_void_p
+api.meltype_macos_dictionary_import.argtypes=[P,c.POINTER(c.c_uint16),c.c_uint32,c.POINTER(P)]
+api.meltype_macos_dictionary_import.restype=c.c_int64
+failure=P(123)
+assert api.meltype_macos_dictionary_import(None,None,0,c.byref(failure))==-2
+assert not failure.value
 api.meltype_macos_dictionary_merge.argtypes=[P,c.c_uint32];api.meltype_macos_dictionary_merge.restype=P
 api.meltype_macos_dictionary_entries.argtypes=[P,c.c_uint32,c.POINTER(P)];api.meltype_macos_dictionary_entries.restype=P
 api.meltype_free.argtypes=[P]

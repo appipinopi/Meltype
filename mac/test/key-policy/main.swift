@@ -864,3 +864,62 @@ for _ in 0..<2 {
 }
 try FileManager.default.removeItem(at:dictionaryRoot)
 print("macOS Rust dictionary: \(dictionaryParseCases) XML/binary plist shapes, original Foundation errors/normalization/filtering, \(dictionaryMergeCases) canonical/CRLF/NUL merge cases and private repeated file import comparison passed (file IO/UI still Swift)")
+
+let importIORoot=FileManager.default.temporaryDirectory.appendingPathComponent("MeltypeRustImportIO-"+UUID().uuidString,isDirectory:true)
+try FileManager.default.createDirectory(at:importIORoot,withIntermediateDirectories:true)
+let importIOSource=importIORoot.appendingPathComponent("辞書 source.plist")
+try PropertyListSerialization.data(fromPropertyList:[["reading":"カナ","phrase":"単語"]],format:.binary,options:0).write(to:importIOSource)
+let nativeIOFolder=importIORoot.appendingPathComponent("native 空白/sub/folder",isDirectory:true)
+let oldIOFolder=importIORoot.appendingPathComponent("legacy 空白/sub/folder",isDirectory:true)
+let firstNative=try MacUserDictionary.importFile(importIOSource,directory:nativeIOFolder.path)
+let firstOld=try LegacyMacUserDictionary.importFile(importIOSource,directory:oldIOFolder.path)
+precondition(firstNative==firstOld && firstNative==1)
+let nativeIOFile=nativeIOFolder.appendingPathComponent("userdict.txt")
+let oldIOFile=oldIOFolder.appendingPathComponent("userdict.txt")
+let importedNativeBytes=try Data(contentsOf:nativeIOFile),importedOldBytes=try Data(contentsOf:oldIOFile)
+precondition(importedNativeBytes==importedOldBytes)
+let beforeAttributes=try FileManager.default.attributesOfItem(atPath:nativeIOFile.path)
+let duplicateIOCount=try MacUserDictionary.importFile(importIOSource,directory:nativeIOFolder.path)
+precondition(duplicateIOCount==0)
+let afterAttributes=try FileManager.default.attributesOfItem(atPath:nativeIOFile.path)
+precondition((beforeAttributes[.modificationDate] as? Date)==(afterAttributes[.modificationDate] as? Date),"duplicate import rewrote file")
+func importError(_ operation:() throws -> Int)->NSError {
+    do {_=try operation();fatalError("expected import error")}catch{return error as NSError}
+}
+var importIOFailures=0
+for failure in ["missing source","invalid plist","unsupported rows","invalid UTF8","directory destination","file parent"] {
+    let nativeFolder=importIORoot.appendingPathComponent("failure native "+failure,isDirectory:true)
+    let oldFolder=importIORoot.appendingPathComponent("failure legacy "+failure,isDirectory:true)
+    var source=importIOSource
+    if failure=="file parent" {
+        try Data("parent marker".utf8).write(to:nativeFolder)
+        try Data("parent marker".utf8).write(to:oldFolder)
+    } else {
+        try FileManager.default.createDirectory(at:nativeFolder,withIntermediateDirectories:true)
+        try FileManager.default.createDirectory(at:oldFolder,withIntermediateDirectories:true)
+        if failure=="directory destination" {
+            try FileManager.default.createDirectory(at:nativeFolder.appendingPathComponent("userdict.txt"),withIntermediateDirectories:true)
+            try FileManager.default.createDirectory(at:oldFolder.appendingPathComponent("userdict.txt"),withIntermediateDirectories:true)
+        }else{
+            let bytes=failure=="invalid UTF8" ? Data([255,254,255]) : Data("existing marker\n".utf8)
+            try bytes.write(to:nativeFolder.appendingPathComponent("userdict.txt"))
+            try bytes.write(to:oldFolder.appendingPathComponent("userdict.txt"))
+        }
+    }
+    if failure=="missing source" {source=importIORoot.appendingPathComponent("missing.plist")}
+    if failure=="invalid plist" {source=importIORoot.appendingPathComponent("invalid.plist");try Data("invalid".utf8).write(to:source)}
+    if failure=="unsupported rows" {source=importIORoot.appendingPathComponent("empty.plist");try PropertyListSerialization.data(fromPropertyList:[],format:.xml,options:0).write(to:source)}
+    let originalError=importError {try LegacyMacUserDictionary.importFile(source,directory:oldFolder.path)}
+    let nativeError=importError {try MacUserDictionary.importFile(source,directory:nativeFolder.path)}
+    if failure=="unsupported rows" {precondition(nativeError.localizedDescription==originalError.localizedDescription)}
+    else{precondition(nativeError.domain==originalError.domain && nativeError.code==originalError.code,"import error differs for \(failure): \(nativeError), \(originalError)")}
+    let nativePreserved=failure=="file parent" ? nativeFolder : nativeFolder.appendingPathComponent("userdict.txt")
+    let oldPreserved=failure=="file parent" ? oldFolder : oldFolder.appendingPathComponent("userdict.txt")
+    if failure != "directory destination" {
+        let nativeBytes=try Data(contentsOf:nativePreserved),oldBytes=try Data(contentsOf:oldPreserved)
+        precondition(nativeBytes==oldBytes,"failure changed prior dictionary/parent")
+    }
+    importIOFailures+=1
+}
+try FileManager.default.removeItem(at:importIORoot)
+print("macOS Rust dictionary IO: Foundation source/read/create/atomic-write compared with former Swift, nested Unicode path, no-op mtime, \(importIOFailures) error-domain/code and previous-content preservation cases passed (dialog/notification still Swift)")
