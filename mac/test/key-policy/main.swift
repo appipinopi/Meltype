@@ -305,13 +305,13 @@ for initiallyVisible in [false,true] {
     if supported { original.perform(step,with:nil) }
     precondition(editor.candidateWindow(native,operation:3,argument:direction)==(supported ? 1 : 0))
    }
-   original.annotate(NSAttributedString(string:text))
+   if original.isVisible() { original.annotate(NSAttributedString(string:text)) }
    precondition(editor.candidateWindow(native,operation:5,text:text)==1)
    original.hide();precondition(editor.candidateWindow(native,operation:4)==1)
    precondition(editor.candidateWindow(native,operation:5,text:text)==0)
    // Last hidden query is shared by the original annotation guard.
    _=original.isVisible()
-   precondition(original.trace==native.trace,"direct Objective-C candidate sequence differs")
+   precondition(original.trace==native.trace,"direct Objective-C candidate sequence differs: original=\(original.trace), native=\(native.trace)")
    precondition(original.receivedUnits==native.receivedUnits,"annotation UTF16 changed")
    let before=native.trace
    precondition(editor.candidateWindow(native,operation:1,argument:-1)==0)
