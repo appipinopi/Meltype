@@ -54,6 +54,8 @@ struct NativeEditorPolicy {
     private typealias DictionaryMerge = @convention(c) (UnsafePointer<UInt8>?,UInt32) -> UnsafeMutablePointer<CChar>?
     private typealias FreeDictionaryJSON = @convention(c) (UnsafeMutablePointer<CChar>?) -> Void
     private typealias DictionaryImport = @convention(c) (UnsafeMutableRawPointer?,UnsafePointer<UInt16>?,UInt32,UnsafeMutablePointer<UnsafeMutableRawPointer?>?) -> Int64
+    private typealias DictionaryDialog = @convention(c) (UnsafeMutableRawPointer?, NativeDictionaryDirectory) -> Int32
+    private let dictionaryDialogFunction: DictionaryDialog
     private let dictionaryImportFunction: DictionaryImport
     private let dictionaryEntriesFunction: DictionaryEntries
     private let dictionaryMergeFunction: DictionaryMerge
@@ -109,7 +111,8 @@ struct NativeEditorPolicy {
               let dictionaryEntries=lookup("meltype_macos_dictionary_entries"),
               let dictionaryMerge=lookup("meltype_macos_dictionary_merge"),
               let dictionaryFree=lookup("meltype_free"),
-              let dictionaryImport=lookup("meltype_macos_dictionary_import") else { return nil }
+              let dictionaryImport=lookup("meltype_macos_dictionary_import"),
+              let dictionaryDialog=lookup("meltype_macos_dictionary_dialog") else { return nil }
         self.modeServicesCreate=unsafeBitCast(modeServicesCreate,to:ModeServicesCreate.self)
         self.modeServicesTargetFunction=unsafeBitCast(modeServicesTarget,to:ModeServicesTarget.self)
         self.modeServicesDispatch=unsafeBitCast(modeServicesDispatch,to:ModeServicesDispatch.self)
@@ -126,6 +129,7 @@ struct NativeEditorPolicy {
         self.selectionCreateFunction=unsafeBitCast(selectionCreate,to:SelectionCreate.self)
         self.selectionUpdateFunction=unsafeBitCast(selectionUpdate,to:SelectionUpdate.self)
         self.menuCreateFunction=unsafeBitCast(menuCreate,to:MenuCreate.self)
+        self.dictionaryDialogFunction=unsafeBitCast(dictionaryDialog,to:DictionaryDialog.self)
         self.dictionaryImportFunction=unsafeBitCast(dictionaryImport,to:DictionaryImport.self)
         self.dictionaryEntriesFunction=unsafeBitCast(dictionaryEntries,to:DictionaryEntries.self)
         self.dictionaryMergeFunction=unsafeBitCast(dictionaryMerge,to:DictionaryMerge.self)
@@ -259,6 +263,13 @@ struct NativeEditorPolicy {
     func inputMenu(target:AnyObject,direct:Bool,code:Bool,indicator:Bool)->AnyObject? {
         guard let pointer=withExtendedLifetime(target,{menuCreateFunction(Unmanaged.passUnretained(target).toOpaque(),direct ? 1 : 0,code ? 1 : 0,indicator ? 1 : 0)}) else {return nil}
         return Unmanaged<AnyObject>.fromOpaque(pointer).takeRetainedValue()
+    }
+    @discardableResult
+    func showDictionaryImport(directory:@escaping () -> String?) -> Int32 {
+        let sink=NativeDictionaryDirectorySink(directory)
+        return withExtendedLifetime(sink) {
+            dictionaryDialogFunction(Unmanaged.passUnretained(sink).toOpaque(),nativeDictionaryDirectory)
+        }
     }
     func importDictionary(_ source:URL,directory:String) throws -> Int {
         let units=Array(directory.utf16)
@@ -451,3 +462,14 @@ private let nativeMeaningCallback: NativeMeaningCallback = { context in
 typealias NativeModeServiceHost = @convention(c) (UnsafeMutableRawPointer?, UnsafeMutableRawPointer?, UInt32, Int32) -> Int32
 
 typealias NativeIndicatorEnabled = @convention(c) () -> Int32
+
+private typealias NativeDictionaryDirectory = @convention(c) (UnsafeMutableRawPointer?) -> UnsafeMutableRawPointer?
+private final class NativeDictionaryDirectorySink {
+    let directory:() -> String?
+    init(_ directory:@escaping () -> String?) {self.directory=directory}
+}
+private let nativeDictionaryDirectory:NativeDictionaryDirectory = {context in
+    guard let context,
+          let value=Unmanaged<NativeDictionaryDirectorySink>.fromOpaque(context).takeUnretainedValue().directory() else {return nil}
+    return Unmanaged.passRetained(value as NSString).toOpaque()
+}

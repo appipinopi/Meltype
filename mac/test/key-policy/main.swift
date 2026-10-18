@@ -863,7 +863,7 @@ for _ in 0..<2 {
     precondition(actualBytes==expectedBytes)
 }
 try FileManager.default.removeItem(at:dictionaryRoot)
-print("macOS Rust dictionary: \(dictionaryParseCases) XML/binary plist shapes, original Foundation errors/normalization/filtering, \(dictionaryMergeCases) canonical/CRLF/NUL merge cases and private repeated file import comparison passed (file IO/UI still Swift)")
+print("macOS Rust dictionary: \(dictionaryParseCases) XML/binary plist shapes, original Foundation errors/normalization/filtering, \(dictionaryMergeCases) canonical/CRLF/NUL merge cases and private repeated file import comparison passed (parse/merge fixture; file IO compared separately)")
 
 let importIORoot=FileManager.default.temporaryDirectory.appendingPathComponent("MeltypeRustImportIO-"+UUID().uuidString,isDirectory:true)
 try FileManager.default.createDirectory(at:importIORoot,withIntermediateDirectories:true)
@@ -958,3 +958,6 @@ for (index,bytes) in [Data([0xef,0xbb,0xbf])+Data("かな\t単語\n".utf8),Data(
 }
 try FileManager.default.removeItem(at:importIORoot)
 print("macOS Rust dictionary IO: Foundation source/read/create/atomic-write compared with former Swift, nested Unicode path, no-op mtime, \(importIOFailures) error-domain/code and previous-content preservation cases passed (dialog/notification still Swift)")
+
+try testDictionaryDialog(editor)
+autoreleasepool {testDictionaryChooserCancel(editor)}

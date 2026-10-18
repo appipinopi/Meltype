@@ -231,6 +231,9 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
 
     @objc private func importUserDictionary(_ sender: Any?) {
         commitComposition(client())
+#if MELTYPE_RUST_CORE
+        NativeCore.shared.editorPolicy?.showDictionaryImport { NativeCore.shared.dataDirectory }
+#else
         let panel = NSOpenPanel()
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
@@ -247,6 +250,7 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
             alert.informativeText = error.localizedDescription
         }
         alert.runModal()
+#endif
     }
 
     @objc private func openReport(_ sender: Any?) {

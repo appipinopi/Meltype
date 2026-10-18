@@ -5,6 +5,15 @@ import ctypes as c,json,sys,unicodedata
 from pathlib import Path
 api=c.CDLL(str(Path(sys.argv[1]).resolve()))
 P=c.c_void_p
+Directory=c.CFUNCTYPE(P,P)
+api.meltype_macos_dictionary_dialog.argtypes=[P,Directory]
+api.meltype_macos_dictionary_dialog.restype=c.c_int32
+assert api.meltype_macos_dictionary_dialog(None,Directory())==0
+if sys.platform!="darwin":
+    @Directory
+    def unavailable_directory(context):
+        raise AssertionError("unavailable SDK queried directory")
+    assert api.meltype_macos_dictionary_dialog(None,unavailable_directory)==0
 api.meltype_macos_dictionary_import.argtypes=[P,c.POINTER(c.c_uint16),c.c_uint32,c.POINTER(P)]
 api.meltype_macos_dictionary_import.restype=c.c_int64
 failure=P(123)

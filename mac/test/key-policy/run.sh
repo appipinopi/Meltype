@@ -29,6 +29,7 @@ swiftc -swift-version 5 -DMELTYPE_RUST_CORE -DMELTYPE_POLICY_TEST \
   "$root/mac/Sources/MeltypeIME/LegacyKeyMapping.swift" \
   "$root/mac/test/key-policy/fixtures/LegacyModeIndicator.swift" \
   "$root/mac/test/key-policy/fixtures/LegacyMacUserDictionary.swift" \
+  "$root/mac/test/key-policy/fixtures/DictionaryDialog.swift" \
   "$root/mac/test/key-policy/fixtures/Converter.swift" \
   "$root/mac/test/key-policy/main.swift" \
   -framework AppKit -framework Carbon -framework InputMethodKit -o "$app/Contents/MacOS/KeyPolicy"
