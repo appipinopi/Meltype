@@ -43,6 +43,7 @@ def main():
     parser.add_argument("--rust", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--cases", type=Path)
+    parser.add_argument("--scored", action="store_true", help="enable scored segmentation in both hosts for every case")
     parser.add_argument("--profile", type=Path, help="isolated data directory with dictionaries/romaji.txt (never a user profile)")
     parser.add_argument("--check", action="store_true", help="exit unsuccessfully if any core trace differs")
     args = parser.parse_args()
@@ -51,6 +52,10 @@ def main():
     if (output / "report.json").exists():
         parser.error("choose a new output directory to preserve evidence")
     cases = json.loads(args.cases.read_text(encoding="utf-8")) if args.cases else fixtures()
+    if isinstance(cases, dict):
+        cases = cases["cases"]
+    if args.scored:
+        cases = [dict(case, scored=True) for case in cases]
     fixture_path = output / "cases.json"
     fixture_path.write_text(json.dumps(cases, ensure_ascii=False, indent=2), encoding="utf-8")
     rows = {}

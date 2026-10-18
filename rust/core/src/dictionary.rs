@@ -6,6 +6,7 @@ use std::{
     sync::OnceLock,
 };
 mod composition;
+mod scored;
 
 pub struct Dictionary {
     english: HashSet<String>,

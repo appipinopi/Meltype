@@ -42,6 +42,9 @@ impl Units {
     pub fn raw(&self) -> &str {
         &self.raw
     }
+    pub fn parts(&self) -> (&[Token], &str) {
+        (&self.units, &self.pending)
+    }
     pub fn kana(&self, final_input: bool) -> String {
         self.kana_range(0, self.raw.len(), final_input)
     }

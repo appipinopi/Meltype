@@ -29,6 +29,9 @@ fn boundaries() -> &'static HashMap<String, Vec<usize>> {
 fn token(c: char) -> bool {
     c.is_ascii_alphanumeric() || "_-+#.'@/:".contains(c)
 }
+pub(crate) fn is_phrase(lower: &str) -> bool {
+    boundaries().contains_key(lower)
+}
 pub fn format(text: &str) -> String {
     let mut result = String::with_capacity(text.len());
     let mut at = 0;

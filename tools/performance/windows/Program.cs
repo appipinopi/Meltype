@@ -21,6 +21,8 @@ foreach (var c in cases)
         var languages = new LanguageMemory(null);
         detector.Memory = languages;
         var settings = new Settings { LiveConversion = false, PredictiveCandidates = false, LearningEnabled = false }.Normalize();
+        settings.ScoredSegmentation = c.scored;
+        detector.UseScoredSegmentation = () => settings.ScoredSegmentation;
         var options = new CompositionOptions
         {
             Languages = languages, Candidates = CandidateDictionary.Load(null),
@@ -48,7 +50,7 @@ foreach (var c in cases)
             Console.WriteLine(JsonSerializer.Serialize(new Row(c.name, sample-warmups, totalMs, keysMs, responses), ReportJson.Default.Row));
     }
 }
-sealed record Case(string name, int[][] keys);
+sealed record Case(string name, int[][] keys, bool scored = false);
 sealed record Row([property: JsonPropertyName("case")] string name, int sample, double total_ms, List<double> keys_ms, List<string> responses);
 static class Bench { public static string? Sink; }
 sealed class NullConverter : IKanjiConverter

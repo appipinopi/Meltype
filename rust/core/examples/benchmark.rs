@@ -9,6 +9,8 @@ use std::{hint::black_box, time::Instant};
 struct Case {
     name: String,
     keys: Vec<[i32; 3]>,
+    #[serde(default)]
+    scored: bool,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -24,6 +26,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Session::default()
             };
             session.can_delete = true;
+            session
+                .settings
+                .set("ScoredSegmentation", json!(case.scored))?;
             for setting in ["LiveConversion", "PredictiveCandidates", "LearningEnabled"] {
                 session.settings.set(setting, json!(false))?;
             }

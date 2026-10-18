@@ -81,6 +81,7 @@ pub struct Probe {
     pub before: String,
     pub after: String,
     pub level: String,
+    pub scored: bool,
 }
 impl Probe {
     pub fn evaluate(&self) {
@@ -89,7 +90,13 @@ impl Probe {
         for word in &self.words {
             crate::protection::transform(word, |part| {
                 for final_input in [false, true] {
-                    dictionary.composition(
+                    let detect = if self.scored {
+                        crate::dictionary::Dictionary::composition_scored
+                    } else {
+                        crate::dictionary::Dictionary::composition
+                    };
+                    detect(
+                        dictionary,
                         part,
                         final_input,
                         &self.before,

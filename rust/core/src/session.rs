@@ -409,6 +409,7 @@ impl Session {
                 .collect(),
             after: after.unwrap_or(&self.after).chars().take(4000).collect(),
             level: self.settings.text("DetectionLevel").to_owned(),
+            scored: Dictionary::uses_scored(self.settings.boolean("ScoredSegmentation")),
         })
     }
     pub fn raw(&self) -> &str {
@@ -420,7 +421,11 @@ impl Session {
             self.kana_text.clone()
         } else if let Some(units) = self.edited_units.as_ref().filter(|u| u.raw() == self.raw) {
             if self.external_converter_only {
-                units.render(&self.mixed_reading(true), true)
+                if Dictionary::uses_scored(self.settings.boolean("ScoredSegmentation")) {
+                    self.mixed_reading(true)
+                } else {
+                    units.render(&self.mixed_reading(true), true)
+                }
             } else {
                 units.kana(true)
             }
@@ -439,15 +444,28 @@ impl Session {
         }
     }
     fn mixed_reading(&self, final_input: bool) -> String {
-        crate::protection::transform(&self.raw, |part| {
-            Dictionary::bundled().composition(
-                part,
+        crate::protection::transform(&self.raw, |part| self.detect_composition(part, final_input))
+    }
+    fn detect_composition(&self, raw: &str, final_input: bool) -> String {
+        let dictionary = Dictionary::bundled();
+        if Dictionary::uses_scored(self.settings.boolean("ScoredSegmentation")) {
+            dictionary.composition_scored_units(
+                raw,
+                final_input,
+                &self.before,
+                &self.after,
+                self.settings.text("DetectionLevel"),
+                self.edited_units.as_ref().filter(|u| u.raw() == raw),
+            )
+        } else {
+            dictionary.composition(
+                raw,
                 final_input,
                 &self.before,
                 &self.after,
                 self.settings.text("DetectionLevel"),
             )
-        })
+        }
     }
     fn refresh_kana(&mut self) {
         if !["Kana", "Both"].contains(&self.settings.text("InputStyle")) {
@@ -558,15 +576,7 @@ impl Session {
             }
         }
         let dictionary = Dictionary::bundled();
-        let detected = || {
-            dictionary.composition(
-                &self.raw,
-                final_input,
-                &self.before,
-                &self.after,
-                self.settings.text("DetectionLevel"),
-            )
-        };
+        let detected = || self.detect_composition(&self.raw, final_input);
         let text = match self.preferences.english.get(&self.raw.to_ascii_lowercase()) {
             _ if self.settings.text("DetectionLevel") == "Manual" => detected(),
             Some(true) => self.raw.clone(),
@@ -576,22 +586,19 @@ impl Session {
         let text = crate::protection::transform(&self.raw, |part| {
             if part == self.raw {
                 text.clone()
-            } else if self.settings.text("DetectionLevel") == "Balanced" {
+            } else if self.settings.text("DetectionLevel") == "Balanced"
+                && !Dictionary::uses_scored(self.settings.boolean("ScoredSegmentation"))
+            {
                 dictionary.mixed(part, final_input)
             } else {
-                dictionary.composition(
-                    part,
-                    final_input,
-                    &self.before,
-                    &self.after,
-                    self.settings.text("DetectionLevel"),
-                )
+                self.detect_composition(part, final_input)
             }
         });
         let text = self
             .edited_units
             .as_ref()
             .filter(|u| u.raw() == self.raw)
+            .filter(|_| !Dictionary::uses_scored(self.settings.boolean("ScoredSegmentation")))
             .map_or(text.clone(), |u| u.render(&text, final_input));
         self.punctuate(text)
     }

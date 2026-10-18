@@ -33,7 +33,7 @@ impl Dictionary {
             0
         }
     }
-    fn before_evidence(&self, before: &str) -> i32 {
+    pub(super) fn before_evidence(&self, before: &str) -> i32 {
         let sentence = before
             .rsplit(['。', '！', '？', '.', '!', '?', '\n', '\r'])
             .next()
@@ -52,7 +52,7 @@ impl Dictionary {
             score
         }
     }
-    fn after_evidence(&self, after: &str) -> i32 {
+    pub(super) fn after_evidence(&self, after: &str) -> i32 {
         self.side(
             after
                 .trim_start()

@@ -4,8 +4,9 @@
     <OutputType>Exe</OutputType>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <CoreProject Condition="'$(CoreProject)' == ''">../../../src/Meltype.Core/Meltype.Core.csproj</CoreProject>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../../../src/Meltype.Core/Meltype.Core.csproj" />
+    <ProjectReference Include="$(CoreProject)" />
   </ItemGroup>
 </Project>

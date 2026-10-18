@@ -196,9 +196,17 @@ fn typo_repairs_flow_through_session_and_respect_protected_english_and_settings(
 
 fn direct_typing(raw: &str, mut s: meltype_core::Session) -> (String, meltype_core::Session) {
     let mut document = String::new();
-    for c in raw.chars() {
+    for (index, c) in raw.chars().enumerate() {
         s.set_context(Some(&document), None);
-        let result = s.key(c.to_ascii_uppercase() as i32, c as i32, 0);
+        // Test the input behavior at known inter-key times. Cold dictionary
+        // initialization or parallel test load must not simulate a 700ms pause.
+        // The separate native smoke test exercises the real monotonic clock.
+        let result = s.key_at(
+            c.to_ascii_uppercase() as i32,
+            c as i32,
+            0,
+            index as u64 * 10,
+        );
         for edit in result.commits {
             if edit.delete_before > 0 {
                 let expected = edit.expect.unwrap();
