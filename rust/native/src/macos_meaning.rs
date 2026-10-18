@@ -95,3 +95,52 @@ pub unsafe extern "C" fn meltype_macos_meaning_matches(
 pub extern "C" fn meltype_macos_meaning_delay_ms() -> u32 {
     1500
 }
+
+/// Schedule once on the macOS main queue after the original 1500ms delay.
+/// Returns 1 only when ownership of context is transferred to the callback.
+/// Other platforms reject without taking ownership.
+/// # Safety
+/// context and callback must remain valid until delivery; callback must release
+/// its context exactly once and must not unwind across this ABI. The library
+/// must stay loaded through delivery, as for all registered native callbacks.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_macos_meaning_schedule(
+    context: *mut c_void,
+    callback: Option<unsafe extern "C" fn(*mut c_void)>,
+) -> i32 {
+    let Some(callback) = callback else {
+        return 0;
+    };
+    if context.is_null() {
+        return 0;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        // Public dispatch_get_main_queue is an inline returning this object's
+        // address (dispatch/queue.h); do not read the opaque queue storage.
+        #[link(name = "System")]
+        extern "C" {
+            static _dispatch_main_q: u8;
+            fn dispatch_time(when: u64, delta: i64) -> u64;
+            fn dispatch_after_f(
+                when: u64,
+                queue: *const c_void,
+                context: *mut c_void,
+                callback: unsafe extern "C" fn(*mut c_void),
+            );
+        }
+        let deadline = dispatch_time(0, i64::from(meltype_macos_meaning_delay_ms()) * 1_000_000);
+        dispatch_after_f(
+            deadline,
+            std::ptr::addr_of!(_dispatch_main_q).cast(),
+            context,
+            callback,
+        );
+        1
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = callback;
+        0
+    }
+}

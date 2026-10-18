@@ -7,6 +7,16 @@ api=c.CDLL(str(Path(sys.argv[1]).resolve()))
 P=c.c_void_p;U=c.c_uint32
 api.meltype_macos_meaning_delay_ms.restype=U
 assert api.meltype_macos_meaning_delay_ms()==1500
+callback_type=c.CFUNCTYPE(None,P)
+api.meltype_macos_meaning_schedule.argtypes=[P,callback_type]
+api.meltype_macos_meaning_schedule.restype=c.c_int
+called=[]
+callback=callback_type(lambda context:called.append(context))
+assert not api.meltype_macos_meaning_schedule(None,callback)
+assert not api.meltype_macos_meaning_schedule(P(1),callback_type())
+if sys.platform!="darwin":
+    assert not api.meltype_macos_meaning_schedule(P(1),callback)
+assert not called,"rejected scheduling invoked callback"
 api.meltype_macos_create_at.argtypes=[c.c_char_p];api.meltype_macos_create_at.restype=P
 api.meltype_macos_meaning_update.argtypes=[P,c.c_int64,c.POINTER(c.c_uint16),U,c.c_int];api.meltype_macos_meaning_update.restype=c.c_int
 api.meltype_macos_meaning_matches.argtypes=[P,c.c_int64,c.POINTER(c.c_uint16),U];api.meltype_macos_meaning_matches.restype=c.c_int

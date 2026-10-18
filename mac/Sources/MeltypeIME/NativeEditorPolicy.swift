@@ -12,6 +12,8 @@ struct NativeEditorPolicy {
     private typealias MeaningUpdate = @convention(c) (UnsafeMutableRawPointer?, Int64, UnsafePointer<UInt16>?, UInt32, Int32) -> Int32
     private typealias MeaningMatches = @convention(c) (UnsafeMutableRawPointer?, Int64, UnsafePointer<UInt16>?, UInt32) -> Int32
     private typealias MeaningDelay = @convention(c) () -> UInt32
+    private typealias MeaningSchedule = @convention(c) (UnsafeMutableRawPointer?, NativeMeaningCallback) -> Int32
+    private let meaningSchedule: MeaningSchedule
     private let meaningDelay: MeaningDelay
     var meaningDelayMilliseconds: Int { Int(meaningDelay()) }
     private let meaningUpdate: MeaningUpdate
@@ -31,7 +33,9 @@ struct NativeEditorPolicy {
               let candidates = lookup("meltype_macos_candidates_utf8"),
               let meaningUpdate = lookup("meltype_macos_meaning_update"),
               let meaningMatches = lookup("meltype_macos_meaning_matches"),
-              let meaningDelay = lookup("meltype_macos_meaning_delay_ms") else { return nil }
+              let meaningDelay = lookup("meltype_macos_meaning_delay_ms"),
+              let meaningSchedule = lookup("meltype_macos_meaning_schedule") else { return nil }
+        self.meaningSchedule = unsafeBitCast(meaningSchedule, to: MeaningSchedule.self)
         self.meaningDelay = unsafeBitCast(meaningDelay, to: MeaningDelay.self)
         self.meaningUpdate = unsafeBitCast(meaningUpdate, to: MeaningUpdate.self)
         self.meaningMatches = unsafeBitCast(meaningMatches, to: MeaningMatches.self)
@@ -72,6 +76,13 @@ struct NativeEditorPolicy {
         return withExtendedLifetime(sink) {
             data.withUnsafeBytes { candidatesFunction($0.bindMemory(to: UInt8.self).baseAddress, count, Unmanaged.passUnretained(sink).toOpaque(), nativeCandidatesHost) != 0 }
         }
+    }
+    @discardableResult
+    func scheduleMeaning(_ action: @escaping () -> Void) -> Bool {
+        let context = Unmanaged.passRetained(NativeMeaningSink(action)).toOpaque()
+        if meaningSchedule(context, nativeMeaningCallback) != 0 { return true }
+        Unmanaged<NativeMeaningSink>.fromOpaque(context).release()
+        return false
     }
     func reserveMeaning(_ handle: UnsafeMutableRawPointer?, index: Int, text: String?) -> Bool {
         let units = Array((text ?? "").utf16)
@@ -176,4 +187,15 @@ private final class NativeCandidatesSink {
 private let nativeCandidatesHost: NativeCandidatesHost = { context, operation, argument in
     guard let context, let value = Int(exactly: argument) else { return -1 }
     return Unmanaged<NativeCandidatesSink>.fromOpaque(context).takeUnretainedValue().operation(operation, value)
+}
+
+private typealias NativeMeaningCallback = @convention(c) (UnsafeMutableRawPointer?) -> Void
+private final class NativeMeaningSink {
+    let action: () -> Void
+    init(_ action: @escaping () -> Void) { self.action = action }
+}
+private let nativeMeaningCallback: NativeMeaningCallback = { context in
+    guard let context else { return }
+    let sink = Unmanaged<NativeMeaningSink>.fromOpaque(context).takeRetainedValue()
+    sink.action()
 }

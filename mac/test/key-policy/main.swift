@@ -221,3 +221,39 @@ NativeCore.shared.destroySession(meaningSession)
 precondition(!editor.matchesMeaning(meaningSession,index:1,text:"意味😀"),"destroyed meaning handle matched")
 precondition(!editor.reserveMeaning(meaningSession,index:1,text:"意味😀"),"destroyed meaning handle resurrected")
 print("macOS Rust meaning SDK: \(meaningChecks) Swift reservation/timer-key comparisons, canonical equality, NUL, clear and destroyed handle passed")
+
+// Exercise the real Rust -> libdispatch main queue -> Swift callback path.
+final class MeaningLifetimeProbe {}
+var probe: MeaningLifetimeProbe? = MeaningLifetimeProbe()
+weak var weakProbe = probe
+var deliveries = 0
+let timerStarted = ProcessInfo.processInfo.systemUptime
+guard let liveTimerSession = NativeCore.shared.createSession(),
+      let deadTimerSession = NativeCore.shared.createSession() else { fatalError("timer sessions") }
+precondition(editor.reserveMeaning(liveTimerSession,index:0,text:"意味😀"))
+precondition(editor.reserveMeaning(deadTimerSession,index:0,text:"古い"))
+precondition(editor.scheduleMeaning { [held = probe!] in
+    _ = held
+    precondition(Thread.isMainThread,"Rust timer left main thread")
+    precondition(ProcessInfo.processInfo.systemUptime-timerStarted>=1.5,"meaning fired early")
+    precondition(editor.matchesMeaning(liveTimerSession,index:0,text:"意味😀"))
+    deliveries+=1
+})
+precondition(editor.scheduleMeaning {
+    precondition(Thread.isMainThread)
+    precondition(!editor.matchesMeaning(deadTimerSession,index:0,text:"古い"),"destroyed timer revived")
+    deliveries+=1
+})
+probe=nil
+precondition(weakProbe != nil,"callback capture released before delivery")
+NativeCore.shared.destroySession(deadTimerSession)
+let timerTimeout=Date(timeIntervalSinceNow:10)
+while deliveries<2 && Date()<timerTimeout {
+    RunLoop.main.run(until:Date(timeIntervalSinceNow:0.02))
+}
+precondition(deliveries==2,"Rust main queue timer missing")
+precondition(weakProbe == nil,"callback capture leaked after delivery")
+RunLoop.main.run(until:Date(timeIntervalSinceNow:0.1))
+precondition(deliveries==2,"timer delivered more than once")
+NativeCore.shared.destroySession(liveTimerSession)
+print("macOS Rust dispatch: real 1500ms main-queue delivery, two callbacks exactly once, capture lifetime and destroyed-session rejection passed")

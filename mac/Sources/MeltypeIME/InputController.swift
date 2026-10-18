@@ -409,7 +409,7 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
         let index = view.selectedIndex
         guard let policy = NativeCore.shared.editorPolicy,
               policy.reserveMeaning(token, index: index, text: view.meaning), let meaning = view.meaning else { return }
-        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(policy.meaningDelayMilliseconds)) { [weak self] in
+        policy.scheduleMeaning { [weak self] in
             guard self != nil, policy.matchesMeaning(token, index: index, text: meaning),
                   let window = candidatesWindow, window.isVisible() else { return }
             window.showAnnotation(NSAttributedString(string: meaning))
