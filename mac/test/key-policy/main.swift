@@ -754,3 +754,55 @@ precondition(restartSelection.current == .code)
 print("macOS Rust preferences restart: parent -> first fresh process -> second fresh process -> parent, mode and indicator values survived, cached parent selection preserved (private suite only)")
 preferences.removePersistentDomain(forName:preferencesSuite)
 print("macOS Rust preferences: \(preferenceCases) legacy preference/mode comparisons, absent defaults, bool coercion, persisted roundtrip, cached selection, invalid stored values unchanged and all mode actions passed (private suite only)")
+
+@objc final class InputMenuProbe:NSObject {
+    var actions:[String]=[]
+    @objc func selectAutomatic(_ sender:Any?) {actions.append("automatic")}
+    @objc func selectDirect(_ sender:Any?) {actions.append("direct")}
+    @objc func selectCode(_ sender:Any?) {actions.append("code")}
+    @objc func toggleModeIndicator(_ sender:Any?) {actions.append("indicator")}
+    @objc func importUserDictionary(_ sender:Any?) {actions.append("import")}
+    @objc func openDataFolder(_ sender:Any?) {actions.append("folder")}
+    @objc func openReport(_ sender:Any?) {actions.append("report")}
+}
+func legacyInputMenu(target:InputMenuProbe,direct:Bool,code:Bool,indicator:Bool)->NSMenu {
+    let menu=NSMenu()
+    for (title,action,selected) in [
+        ("日本語・英語の自動判定",#selector(InputMenuProbe.selectAutomatic(_:)),!code && !direct),
+        ("英数の直接入力",#selector(InputMenuProbe.selectDirect(_:)),direct),
+        ("コード入力 (コメント・文字列は日本語)",#selector(InputMenuProbe.selectCode(_:)),code && !direct)
+    ] {let item=menu.addItem(withTitle:title,action:action,keyEquivalent:"");item.target=target;item.state=selected ? .on : .off}
+    menu.addItem(.separator())
+    let item=menu.addItem(withTitle:"入力モードをミニウィンドウで表示",action:#selector(InputMenuProbe.toggleModeIndicator(_:)),keyEquivalent:"")
+    item.target=target;item.state=indicator ? .on : .off
+    menu.addItem(withTitle:"macOSのユーザー辞書を取り込む…",action:#selector(InputMenuProbe.importUserDictionary(_:)),keyEquivalent:"").target=target
+    menu.addItem(withTitle:"Meltype のデータフォルダを開く (設定・ユーザー辞書)",action:#selector(InputMenuProbe.openDataFolder(_:)),keyEquivalent:"")
+    menu.addItem(withTitle:"不具合の報告・提案… (Mac 版はプレビュー版です)",action:#selector(InputMenuProbe.openReport(_:)),keyEquivalent:"")
+    return menu
+}
+var menuCases=0
+let menuTarget=InputMenuProbe()
+for direct in [false,true] {for code in [false,true] {for enabled in [false,true] {
+    let expected=legacyInputMenu(target:menuTarget,direct:direct,code:code,indicator:enabled)
+    var produced:NSMenu?
+    autoreleasepool {produced=editor.inputMenu(target:menuTarget,direct:direct,code:code,indicator:enabled) as? NSMenu}
+    guard let actual=produced else {fatalError("Rust menu missing")}
+    precondition(actual.title==expected.title && actual.autoenablesItems==expected.autoenablesItems)
+    precondition(actual.items.count==expected.items.count)
+    for (a,e) in zip(actual.items,expected.items) {
+        precondition(a.title==e.title && a.action==e.action && a.state==e.state && a.isSeparatorItem==e.isSeparatorItem)
+        precondition(a.keyEquivalent==e.keyEquivalent && a.keyEquivalentModifierMask==e.keyEquivalentModifierMask)
+        precondition((a.target as AnyObject?) === (e.target as AnyObject?))
+    }
+    menuTarget.actions=[]
+    for index in [0,1,2,4,5] {actual.performActionForItem(at:index)}
+    precondition(menuTarget.actions==["automatic","direct","code","indicator","import"],"native SDK menu dispatch changed")
+    menuCases+=1
+}}}
+let menuBackgroundDone=DispatchSemaphore(value:0)
+DispatchQueue.global().async {
+    precondition(editor.inputMenu(target:menuTarget,direct:false,code:false,indicator:true)==nil)
+    menuBackgroundDone.signal()
+}
+precondition(menuBackgroundDone.wait(timeout:.now()+5) == .success)
+print("macOS Rust menu: \(menuCases) actual NSMenus compared with former Swift, title/order/separator/checks/key equivalents/targets and five owned target actions, autorelease ownership and background rejection passed (OS input-menu presentation not tested)")

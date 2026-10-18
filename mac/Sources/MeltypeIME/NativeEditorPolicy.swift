@@ -48,6 +48,8 @@ struct NativeEditorPolicy {
     private let indicatorPreferenceFunction: IndicatorPreference
     private let selectionCreateFunction: SelectionCreate
     private let selectionUpdateFunction: SelectionUpdate
+    private typealias MenuCreate = @convention(c) (UnsafeMutableRawPointer?,Int32,Int32,Int32) -> UnsafeMutableRawPointer?
+    private let menuCreateFunction: MenuCreate
     private let applicationRun: ApplicationRun
     private let servicesRegister: ServicesRegister
     private let serverCreate: ServerCreate
@@ -94,7 +96,8 @@ struct NativeEditorPolicy {
               let modeAfter=lookup("meltype_macos_mode_after"),
               let indicatorPreference=lookup("meltype_macos_indicator_preference"),
               let selectionCreate=lookup("meltype_macos_mode_selection_create"),
-              let selectionUpdate=lookup("meltype_macos_mode_selection") else { return nil }
+              let selectionUpdate=lookup("meltype_macos_mode_selection"),
+              let menuCreate=lookup("meltype_macos_menu") else { return nil }
         self.modeServicesCreate=unsafeBitCast(modeServicesCreate,to:ModeServicesCreate.self)
         self.modeServicesTargetFunction=unsafeBitCast(modeServicesTarget,to:ModeServicesTarget.self)
         self.modeServicesDispatch=unsafeBitCast(modeServicesDispatch,to:ModeServicesDispatch.self)
@@ -110,6 +113,7 @@ struct NativeEditorPolicy {
         self.indicatorPreferenceFunction=unsafeBitCast(indicatorPreference,to:IndicatorPreference.self)
         self.selectionCreateFunction=unsafeBitCast(selectionCreate,to:SelectionCreate.self)
         self.selectionUpdateFunction=unsafeBitCast(selectionUpdate,to:SelectionUpdate.self)
+        self.menuCreateFunction=unsafeBitCast(menuCreate,to:MenuCreate.self)
         self.applicationRun = unsafeBitCast(applicationRun, to: ApplicationRun.self)
         self.servicesRegister = unsafeBitCast(servicesRegister, to: ServicesRegister.self)
         self.serverCreate = unsafeBitCast(serverCreate, to: ServerCreate.self)
@@ -235,6 +239,10 @@ struct NativeEditorPolicy {
     }
     func modeSelection(_ owner:AnyObject,mode:UInt32?=nil)->Int32 {
         withExtendedLifetime(owner) {selectionUpdateFunction(Unmanaged.passUnretained(owner).toOpaque(),mode == nil ? 0 : 1,mode ?? 0)}
+    }
+    func inputMenu(target:AnyObject,direct:Bool,code:Bool,indicator:Bool)->AnyObject? {
+        guard let pointer=withExtendedLifetime(target,{menuCreateFunction(Unmanaged.passUnretained(target).toOpaque(),direct ? 1 : 0,code ? 1 : 0,indicator ? 1 : 0)}) else {return nil}
+        return Unmanaged<AnyObject>.fromOpaque(pointer).takeRetainedValue()
     }
     func runApplication() -> Bool { applicationRun() != 0 }
     func registerServices(provider: AnyObject, portName: String) -> Bool {

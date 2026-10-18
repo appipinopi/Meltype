@@ -158,6 +158,9 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
     // ---- メニュー (メニューバーの入力メニュー) ----
 
     override func menu() -> NSMenu! {
+#if MELTYPE_RUST_CORE
+        return NativeCore.shared.editorPolicy?.inputMenu(target:self,direct:directInput,code:codeInput,indicator:ModeIndicatorSettings.shared.isEnabled) as? NSMenu
+#else
         let menu = NSMenu()
         for (title, action, selected) in [
             ("日本語・英語の自動判定", #selector(selectAutomatic(_:)), !codeInput && !directInput),
@@ -177,6 +180,7 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
         menu.addItem(withTitle: "Meltype のデータフォルダを開く (設定・ユーザー辞書)", action: #selector(openDataFolder(_:)), keyEquivalent: "")
         menu.addItem(withTitle: "不具合の報告・提案… (Mac 版はプレビュー版です)", action: #selector(openReport(_:)), keyEquivalent: "")
         return menu
+#endif
     }
 
     private func selectMode(direct: Bool, code: Bool, showIndicator: Bool = false) {
