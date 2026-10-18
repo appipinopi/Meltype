@@ -270,13 +270,13 @@ pub(crate) fn unit_boundaries(
                 && known_english(prefix)
                 && !analyze(prefix, true).valid;
             let split_stem = length >= 2
-                && known_english(prefix)
                 && (matches!(rest.as_bytes()[0], b'l' | b'x')
                     || rest.starts_with("ts")
                     || next == Some(b'y') && whole_english(prefix) && {
                         let stem = analyze(prefix, true);
                         !stem.valid || !stem.partial.is_empty()
-                    });
+                    })
+                && known_english(prefix);
             if split_n || split_stem {
                 at += 1;
                 bounds[at] = true;

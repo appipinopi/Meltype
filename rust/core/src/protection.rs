@@ -22,18 +22,25 @@ pub fn scan(raw: &str) -> Vec<Span> {
     let n = chars.len();
     let mut result: Vec<Span> = vec![];
     let mut i = 0;
+    // Every position in one scheme-character run has the same endpoint.
+    // Reuse it when a run is ordinary prose instead of scanning its tail
+    // again for every letter. Protected spans and UTF-8 offsets are unchanged.
+    let mut scheme_end = 0;
     let end_byte = |index: usize| chars.get(index).map_or(raw.len(), |(b, _)| *b);
     while i < n {
         let (byte, c) = chars[i];
         let rest = &raw[byte..];
         let mut found = None;
         if c.is_ascii_alphabetic() {
-            let end = (i + 1..n)
-                .find(|j| {
-                    let c = chars[*j].1;
-                    !(c.is_ascii_alphanumeric() || "+-.".contains(c))
-                })
-                .unwrap_or(n);
+            if scheme_end <= i {
+                scheme_end = (i + 1..n)
+                    .find(|j| {
+                        let c = chars[*j].1;
+                        !(c.is_ascii_alphanumeric() || "+-.".contains(c))
+                    })
+                    .unwrap_or(n);
+            }
+            let end = scheme_end;
             if raw[end_byte(end)..].starts_with("://") {
                 let mut j = end + 3;
                 while j < n
