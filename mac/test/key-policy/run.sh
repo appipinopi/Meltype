@@ -16,6 +16,9 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
 <plist version="1.0"><dict><key>CFBundleExecutable</key><string>KeyPolicy</string><key>CFBundleIdentifier</key><string>moe.meltype.tests.keypolicy</string><key>CFBundlePackageType</key><string>APPL</string><key>LSBackgroundOnly</key><true/><key>NSPrincipalClass</key><string>NSApplication</string><key>InputMethodServerControllerClass</key><string>MeltypePolicyController</string><key>InputMethodServerDelegateClass</key><string>MeltypePolicyController</string></dict></plist>
 PLIST
 plutil -insert InputMethodConnectionName -string "MeltypePolicy_$(basename "$temporary")" "$app/Contents/Info.plist"
+# Check the Rust Carbon/CoreFoundation ABI assumptions against this exact SDK.
+clang -std=c11 -fsyntax-only -Werror "$root/mac/test/key-policy/fixtures/CarbonSignatures.c"
+echo "macOS Rust registration: Carbon/CoreFoundation header ABI signatures and widths passed (no OS mutation)"
 swiftc -swift-version 5 -DMELTYPE_RUST_CORE -DMELTYPE_POLICY_TEST \
   "$root/mac/Sources/MeltypeIME/NativeKeyPolicy.swift" \
   "$root/mac/Sources/MeltypeIME/NativeCore.swift" \
