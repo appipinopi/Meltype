@@ -1,0 +1,2282 @@
+{
+  "baseline": "45e14f86558aa6ea34f2c2ecd038ba95ca8c3c46",
+  "reference_assembly_sha256": "710e2460a24134903ef6f189cb42f156b8519f74ef346cf581484b703cc410b9",
+  "scope": "Real ScoreEngine, direct-mode detection, synthetic monotonic times; bundled spelling, no converter/live/prediction/learning. Compares consumed/commits/text/direct/latch/document only.",
+  "cases": [
+    {
+      "name": "idle-k-a-699",
+      "steps": [
+        {
+          "vk": 75,
+          "ch": 107,
+          "mods": 0,
+          "time": 0
+        },
+        {
+          "vk": 65,
+          "ch": 97,
+          "mods": 0,
+          "time": 699
+        }
+      ],
+      "expected": [
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "k"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "ka"
+        }
+      ]
+    },
+    {
+      "name": "idle-k-a-700",
+      "steps": [
+        {
+          "vk": 75,
+          "ch": 107,
+          "mods": 0,
+          "time": 0
+        },
+        {
+          "vk": 65,
+          "ch": 97,
+          "mods": 0,
+          "time": 700
+        }
+      ],
+      "expected": [
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "k"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": true,
+          "document": "ka"
+        }
+      ]
+    },
+    {
+      "name": "idle-k-a-701",
+      "steps": [
+        {
+          "vk": 75,
+          "ch": 107,
+          "mods": 0,
+          "time": 0
+        },
+        {
+          "vk": 65,
+          "ch": 97,
+          "mods": 0,
+          "time": 701
+        }
+      ],
+      "expected": [
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "k"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": true,
+          "document": "ka"
+        }
+      ]
+    },
+    {
+      "name": "idle-k-a-750",
+      "steps": [
+        {
+          "vk": 75,
+          "ch": 107,
+          "mods": 0,
+          "time": 0
+        },
+        {
+          "vk": 65,
+          "ch": 97,
+          "mods": 0,
+          "time": 750
+        }
+      ],
+      "expected": [
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "k"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": true,
+          "document": "ka"
+        }
+      ]
+    },
+    {
+      "name": "konnnichiwa",
+      "steps": [
+        {
+          "vk": 75,
+          "ch": 107,
+          "mods": 0,
+          "time": 0
+        },
+        {
+          "vk": 79,
+          "ch": 111,
+          "mods": 0,
+          "time": 20
+        },
+        {
+          "vk": 78,
+          "ch": 110,
+          "mods": 0,
+          "time": 40
+        },
+        {
+          "vk": 78,
+          "ch": 110,
+          "mods": 0,
+          "time": 60
+        },
+        {
+          "vk": 78,
+          "ch": 110,
+          "mods": 0,
+          "time": 80
+        },
+        {
+          "vk": 73,
+          "ch": 105,
+          "mods": 0,
+          "time": 100
+        },
+        {
+          "vk": 67,
+          "ch": 99,
+          "mods": 0,
+          "time": 120
+        },
+        {
+          "vk": 72,
+          "ch": 104,
+          "mods": 0,
+          "time": 140
+        },
+        {
+          "vk": 73,
+          "ch": 105,
+          "mods": 0,
+          "time": 160
+        },
+        {
+          "vk": 87,
+          "ch": 119,
+          "mods": 0,
+          "time": 180
+        },
+        {
+          "vk": 65,
+          "ch": 97,
+          "mods": 0,
+          "time": 200
+        }
+      ],
+      "expected": [
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "k"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "ko"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "kon"
+        },
+        {
+          "consumed": true,
+          "commits": [
+            {
+              "deleteBefore": 3,
+              "text": "",
+              "expect": "kon"
+            }
+          ],
+          "text": "こん",
+          "direct": false,
+          "english": false,
+          "document": ""
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "こんn",
+          "direct": false,
+          "english": false,
+          "document": ""
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "こんに",
+          "direct": false,
+          "english": false,
+          "document": ""
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "こんにc",
+          "direct": false,
+          "english": false,
+          "document": ""
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "こんにch",
+          "direct": false,
+          "english": false,
+          "document": ""
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "こんにち",
+          "direct": false,
+          "english": false,
+          "document": ""
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "こんにちw",
+          "direct": false,
+          "english": false,
+          "document": ""
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "こんにちわ",
+          "direct": false,
+          "english": false,
+          "document": ""
+        }
+      ]
+    },
+    {
+      "name": "hello",
+      "steps": [
+        {
+          "vk": 72,
+          "ch": 104,
+          "mods": 0,
+          "time": 0
+        },
+        {
+          "vk": 69,
+          "ch": 101,
+          "mods": 0,
+          "time": 20
+        },
+        {
+          "vk": 76,
+          "ch": 108,
+          "mods": 0,
+          "time": 40
+        },
+        {
+          "vk": 76,
+          "ch": 108,
+          "mods": 0,
+          "time": 60
+        },
+        {
+          "vk": 79,
+          "ch": 111,
+          "mods": 0,
+          "time": 80
+        }
+      ],
+      "expected": [
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "h"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "he"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": true,
+          "document": "hel"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": true,
+          "document": "hell"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": true,
+          "document": "hello"
+        }
+      ]
+    },
+    {
+      "name": "helloka",
+      "steps": [
+        {
+          "vk": 72,
+          "ch": 104,
+          "mods": 0,
+          "time": 0
+        },
+        {
+          "vk": 69,
+          "ch": 101,
+          "mods": 0,
+          "time": 20
+        },
+        {
+          "vk": 76,
+          "ch": 108,
+          "mods": 0,
+          "time": 40
+        },
+        {
+          "vk": 76,
+          "ch": 108,
+          "mods": 0,
+          "time": 60
+        },
+        {
+          "vk": 79,
+          "ch": 111,
+          "mods": 0,
+          "time": 80
+        },
+        {
+          "vk": 75,
+          "ch": 107,
+          "mods": 0,
+          "time": 100
+        },
+        {
+          "vk": 65,
+          "ch": 97,
+          "mods": 0,
+          "time": 120
+        }
+      ],
+      "expected": [
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "h"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "he"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": true,
+          "document": "hel"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": true,
+          "document": "hell"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": true,
+          "document": "hello"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": true,
+          "document": "hellok"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": true,
+          "document": "helloka"
+        }
+      ]
+    },
+    {
+      "name": "hello ka",
+      "steps": [
+        {
+          "vk": 72,
+          "ch": 104,
+          "mods": 0,
+          "time": 0
+        },
+        {
+          "vk": 69,
+          "ch": 101,
+          "mods": 0,
+          "time": 20
+        },
+        {
+          "vk": 76,
+          "ch": 108,
+          "mods": 0,
+          "time": 40
+        },
+        {
+          "vk": 76,
+          "ch": 108,
+          "mods": 0,
+          "time": 60
+        },
+        {
+          "vk": 79,
+          "ch": 111,
+          "mods": 0,
+          "time": 80
+        },
+        {
+          "vk": 32,
+          "ch": 32,
+          "mods": 0,
+          "time": 100
+        },
+        {
+          "vk": 75,
+          "ch": 107,
+          "mods": 0,
+          "time": 120
+        },
+        {
+          "vk": 65,
+          "ch": 97,
+          "mods": 0,
+          "time": 140
+        }
+      ],
+      "expected": [
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "h"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "he"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": true,
+          "document": "hel"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": true,
+          "document": "hell"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": true,
+          "document": "hello"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "hello "
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "hello k"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "hello ka"
+        }
+      ]
+    },
+    {
+      "name": "upakara",
+      "steps": [
+        {
+          "vk": 85,
+          "ch": 117,
+          "mods": 0,
+          "time": 0
+        },
+        {
+          "vk": 80,
+          "ch": 112,
+          "mods": 0,
+          "time": 20
+        },
+        {
+          "vk": 65,
+          "ch": 97,
+          "mods": 0,
+          "time": 40
+        },
+        {
+          "vk": 75,
+          "ch": 107,
+          "mods": 0,
+          "time": 60
+        },
+        {
+          "vk": 65,
+          "ch": 97,
+          "mods": 0,
+          "time": 80
+        },
+        {
+          "vk": 82,
+          "ch": 114,
+          "mods": 0,
+          "time": 100
+        },
+        {
+          "vk": 65,
+          "ch": 97,
+          "mods": 0,
+          "time": 120
+        }
+      ],
+      "expected": [
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "u"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "up"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "upa"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "upak"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "upaka"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": true,
+          "document": "upakar"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": true,
+          "document": "upakara"
+        }
+      ]
+    },
+    {
+      "name": "myaku",
+      "steps": [
+        {
+          "vk": 77,
+          "ch": 109,
+          "mods": 0,
+          "time": 0
+        },
+        {
+          "vk": 89,
+          "ch": 121,
+          "mods": 0,
+          "time": 20
+        },
+        {
+          "vk": 65,
+          "ch": 97,
+          "mods": 0,
+          "time": 40
+        },
+        {
+          "vk": 75,
+          "ch": 107,
+          "mods": 0,
+          "time": 60
+        },
+        {
+          "vk": 85,
+          "ch": 117,
+          "mods": 0,
+          "time": 80
+        }
+      ],
+      "expected": [
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "m"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "my"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "mya"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "myak"
+        },
+        {
+          "consumed": true,
+          "commits": [
+            {
+              "deleteBefore": 4,
+              "text": "",
+              "expect": "myak"
+            }
+          ],
+          "text": "みゃく",
+          "direct": false,
+          "english": false,
+          "document": ""
+        }
+      ]
+    },
+    {
+      "name": "unreported-boundary-after-timeout",
+      "steps": [
+        {
+          "vk": 75,
+          "ch": 107,
+          "mods": 0,
+          "time": 0
+        },
+        {
+          "vk": 75,
+          "ch": 107,
+          "mods": 0,
+          "time": 800,
+          "before": "k "
+        },
+        {
+          "vk": 65,
+          "ch": 97,
+          "mods": 0,
+          "time": 820
+        }
+      ],
+      "expected": [
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "k"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "k k"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "k ka"
+        }
+      ]
+    },
+    {
+      "name": "caret-after-hold",
+      "steps": [
+        {
+          "vk": 75,
+          "ch": 107,
+          "mods": 0,
+          "time": 0
+        },
+        {
+          "vk": 75,
+          "ch": 107,
+          "mods": 0,
+          "time": 800,
+          "before": "",
+          "moved": true
+        },
+        {
+          "vk": 65,
+          "ch": 97,
+          "mods": 0,
+          "time": 820
+        }
+      ],
+      "expected": [
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "k"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "k"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "ka"
+        }
+      ]
+    },
+    {
+      "name": "mode-change-after-hold",
+      "steps": [
+        {
+          "vk": 75,
+          "ch": 107,
+          "mods": 0,
+          "time": 0
+        },
+        {
+          "vk": 65,
+          "ch": 97,
+          "mods": 0,
+          "time": 800,
+          "direct": false
+        },
+        {
+          "vk": 73,
+          "ch": 105,
+          "mods": 0,
+          "time": 820
+        }
+      ],
+      "expected": [
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "k"
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "a",
+          "direct": false,
+          "english": false,
+          "document": "k"
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "あい",
+          "direct": false,
+          "english": false,
+          "document": "k"
+        }
+      ]
+    },
+    {
+      "name": "unobserved-prefix",
+      "before": "kon",
+      "steps": [
+        {
+          "vk": 78,
+          "ch": 110,
+          "mods": 0,
+          "time": 0
+        }
+      ],
+      "expected": [
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "konn"
+        }
+      ]
+    },
+    {
+      "name": "modifier-shift",
+      "steps": [
+        {
+          "vk": 75,
+          "ch": 107,
+          "mods": 0,
+          "time": 0
+        },
+        {
+          "vk": 65,
+          "ch": 65,
+          "mods": 1,
+          "time": 20
+        },
+        {
+          "vk": 65,
+          "ch": 97,
+          "mods": 0,
+          "time": 40
+        }
+      ],
+      "expected": [
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "k"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": true,
+          "document": "kA"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": true,
+          "document": "kAa"
+        }
+      ]
+    },
+    {
+      "name": "modifier-ctrl",
+      "steps": [
+        {
+          "vk": 75,
+          "ch": 107,
+          "mods": 0,
+          "time": 0
+        },
+        {
+          "vk": 65,
+          "ch": 97,
+          "mods": 2,
+          "time": 20
+        },
+        {
+          "vk": 65,
+          "ch": 97,
+          "mods": 0,
+          "time": 40
+        }
+      ],
+      "expected": [
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "k"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": true,
+          "document": "ka"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": true,
+          "document": "kaa"
+        }
+      ]
+    },
+    {
+      "name": "modifier-alt",
+      "steps": [
+        {
+          "vk": 75,
+          "ch": 107,
+          "mods": 0,
+          "time": 0
+        },
+        {
+          "vk": 65,
+          "ch": 97,
+          "mods": 4,
+          "time": 20
+        },
+        {
+          "vk": 65,
+          "ch": 97,
+          "mods": 0,
+          "time": 40
+        }
+      ],
+      "expected": [
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "k"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": true,
+          "document": "ka"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": true,
+          "document": "kaa"
+        }
+      ]
+    },
+    {
+      "name": "modifier-command",
+      "steps": [
+        {
+          "vk": 75,
+          "ch": 107,
+          "mods": 0,
+          "time": 0
+        },
+        {
+          "vk": 65,
+          "ch": 97,
+          "mods": 8,
+          "time": 20
+        },
+        {
+          "vk": 65,
+          "ch": 97,
+          "mods": 0,
+          "time": 40
+        }
+      ],
+      "expected": [
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "k"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": true,
+          "document": "ka"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": true,
+          "document": "kaa"
+        }
+      ]
+    },
+    {
+      "name": "changed-context-without-notification",
+      "steps": [
+        {
+          "vk": 75,
+          "ch": 107,
+          "mods": 0,
+          "time": 0
+        },
+        {
+          "vk": 65,
+          "ch": 97,
+          "mods": 0,
+          "time": 20,
+          "before": "z"
+        }
+      ],
+      "expected": [
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "k"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "za"
+        }
+      ]
+    },
+    {
+      "name": "supplementary-text-before-input",
+      "before": "😀 ",
+      "steps": [
+        {
+          "vk": 75,
+          "ch": 107,
+          "mods": 0,
+          "time": 0
+        },
+        {
+          "vk": 65,
+          "ch": 97,
+          "mods": 0,
+          "time": 20
+        }
+      ],
+      "expected": [
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "😀 k"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "😀 ka"
+        }
+      ]
+    },
+    {
+      "name": "hyphen:ro-",
+      "steps": [
+        {
+          "vk": 82,
+          "ch": 114,
+          "mods": 0,
+          "time": 0
+        },
+        {
+          "vk": 79,
+          "ch": 111,
+          "mods": 0,
+          "time": 20
+        },
+        {
+          "vk": 189,
+          "ch": 45,
+          "mods": 0,
+          "time": 40
+        }
+      ],
+      "expected": [
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "r"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "ro"
+        },
+        {
+          "consumed": true,
+          "commits": [
+            {
+              "deleteBefore": 2,
+              "text": "",
+              "expect": "ro"
+            }
+          ],
+          "text": "ろー",
+          "direct": false,
+          "english": false,
+          "document": ""
+        }
+      ]
+    },
+    {
+      "name": "hyphen:ro-maji",
+      "steps": [
+        {
+          "vk": 82,
+          "ch": 114,
+          "mods": 0,
+          "time": 0
+        },
+        {
+          "vk": 79,
+          "ch": 111,
+          "mods": 0,
+          "time": 20
+        },
+        {
+          "vk": 189,
+          "ch": 45,
+          "mods": 0,
+          "time": 40
+        },
+        {
+          "vk": 77,
+          "ch": 109,
+          "mods": 0,
+          "time": 60
+        },
+        {
+          "vk": 65,
+          "ch": 97,
+          "mods": 0,
+          "time": 80
+        },
+        {
+          "vk": 74,
+          "ch": 106,
+          "mods": 0,
+          "time": 100
+        },
+        {
+          "vk": 73,
+          "ch": 105,
+          "mods": 0,
+          "time": 120
+        }
+      ],
+      "expected": [
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "r"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "ro"
+        },
+        {
+          "consumed": true,
+          "commits": [
+            {
+              "deleteBefore": 2,
+              "text": "",
+              "expect": "ro"
+            }
+          ],
+          "text": "ろー",
+          "direct": false,
+          "english": false,
+          "document": ""
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "ろーm",
+          "direct": false,
+          "english": false,
+          "document": ""
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "ろーま",
+          "direct": false,
+          "english": false,
+          "document": ""
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "ろーまj",
+          "direct": false,
+          "english": false,
+          "document": ""
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "ろーまじ",
+          "direct": false,
+          "english": false,
+          "document": ""
+        }
+      ]
+    },
+    {
+      "name": "hyphen:e-mail",
+      "steps": [
+        {
+          "vk": 69,
+          "ch": 101,
+          "mods": 0,
+          "time": 0
+        },
+        {
+          "vk": 189,
+          "ch": 45,
+          "mods": 0,
+          "time": 20
+        },
+        {
+          "vk": 77,
+          "ch": 109,
+          "mods": 0,
+          "time": 40
+        },
+        {
+          "vk": 65,
+          "ch": 97,
+          "mods": 0,
+          "time": 60
+        },
+        {
+          "vk": 73,
+          "ch": 105,
+          "mods": 0,
+          "time": 80
+        },
+        {
+          "vk": 76,
+          "ch": 108,
+          "mods": 0,
+          "time": 100
+        }
+      ],
+      "expected": [
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "e"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "e-"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "e-m"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "e-ma"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "e-mai"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": true,
+          "document": "e-mail"
+        }
+      ]
+    },
+    {
+      "name": "hyphen:e-me-ru",
+      "steps": [
+        {
+          "vk": 69,
+          "ch": 101,
+          "mods": 0,
+          "time": 0
+        },
+        {
+          "vk": 189,
+          "ch": 45,
+          "mods": 0,
+          "time": 20
+        },
+        {
+          "vk": 77,
+          "ch": 109,
+          "mods": 0,
+          "time": 40
+        },
+        {
+          "vk": 69,
+          "ch": 101,
+          "mods": 0,
+          "time": 60
+        },
+        {
+          "vk": 189,
+          "ch": 45,
+          "mods": 0,
+          "time": 80
+        },
+        {
+          "vk": 82,
+          "ch": 114,
+          "mods": 0,
+          "time": 100
+        },
+        {
+          "vk": 85,
+          "ch": 117,
+          "mods": 0,
+          "time": 120
+        }
+      ],
+      "expected": [
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "e"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "e-"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "e-m"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "e-me"
+        },
+        {
+          "consumed": true,
+          "commits": [
+            {
+              "deleteBefore": 4,
+              "text": "",
+              "expect": "e-me"
+            }
+          ],
+          "text": "えーめー",
+          "direct": false,
+          "english": false,
+          "document": ""
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "えーめーr",
+          "direct": false,
+          "english": false,
+          "document": ""
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "えーめーる",
+          "direct": false,
+          "english": false,
+          "document": ""
+        }
+      ]
+    },
+    {
+      "name": "hyphen:co-op",
+      "steps": [
+        {
+          "vk": 67,
+          "ch": 99,
+          "mods": 0,
+          "time": 0
+        },
+        {
+          "vk": 79,
+          "ch": 111,
+          "mods": 0,
+          "time": 20
+        },
+        {
+          "vk": 189,
+          "ch": 45,
+          "mods": 0,
+          "time": 40
+        },
+        {
+          "vk": 79,
+          "ch": 111,
+          "mods": 0,
+          "time": 60
+        },
+        {
+          "vk": 80,
+          "ch": 112,
+          "mods": 0,
+          "time": 80
+        }
+      ],
+      "expected": [
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "c"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "co"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "co-"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "co-o"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": true,
+          "document": "co-op"
+        }
+      ]
+    },
+    {
+      "name": "hyphen:x-ray",
+      "steps": [
+        {
+          "vk": 88,
+          "ch": 120,
+          "mods": 0,
+          "time": 0
+        },
+        {
+          "vk": 189,
+          "ch": 45,
+          "mods": 0,
+          "time": 20
+        },
+        {
+          "vk": 82,
+          "ch": 114,
+          "mods": 0,
+          "time": 40
+        },
+        {
+          "vk": 65,
+          "ch": 97,
+          "mods": 0,
+          "time": 60
+        },
+        {
+          "vk": 89,
+          "ch": 121,
+          "mods": 0,
+          "time": 80
+        }
+      ],
+      "expected": [
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "x"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": true,
+          "document": "x-"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "x-r"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "x-ra"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "x-ray"
+        }
+      ]
+    },
+    {
+      "name": "hyphen:de-ta",
+      "steps": [
+        {
+          "vk": 68,
+          "ch": 100,
+          "mods": 0,
+          "time": 0
+        },
+        {
+          "vk": 69,
+          "ch": 101,
+          "mods": 0,
+          "time": 20
+        },
+        {
+          "vk": 189,
+          "ch": 45,
+          "mods": 0,
+          "time": 40
+        },
+        {
+          "vk": 84,
+          "ch": 116,
+          "mods": 0,
+          "time": 60
+        },
+        {
+          "vk": 65,
+          "ch": 97,
+          "mods": 0,
+          "time": 80
+        }
+      ],
+      "expected": [
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "d"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "de"
+        },
+        {
+          "consumed": true,
+          "commits": [
+            {
+              "deleteBefore": 2,
+              "text": "",
+              "expect": "de"
+            }
+          ],
+          "text": "でー",
+          "direct": false,
+          "english": false,
+          "document": ""
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "でーt",
+          "direct": false,
+          "english": false,
+          "document": ""
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "でーた",
+          "direct": false,
+          "english": false,
+          "document": ""
+        }
+      ]
+    },
+    {
+      "name": "hyphen:hotel",
+      "steps": [
+        {
+          "vk": 72,
+          "ch": 104,
+          "mods": 0,
+          "time": 0
+        },
+        {
+          "vk": 79,
+          "ch": 111,
+          "mods": 0,
+          "time": 20
+        },
+        {
+          "vk": 84,
+          "ch": 116,
+          "mods": 0,
+          "time": 40
+        },
+        {
+          "vk": 69,
+          "ch": 101,
+          "mods": 0,
+          "time": 60
+        },
+        {
+          "vk": 76,
+          "ch": 108,
+          "mods": 0,
+          "time": 80
+        }
+      ],
+      "expected": [
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "h"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "ho"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "hot"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "hote"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": true,
+          "document": "hotel"
+        }
+      ]
+    },
+    {
+      "name": "hyphen:hello-world",
+      "steps": [
+        {
+          "vk": 72,
+          "ch": 104,
+          "mods": 0,
+          "time": 0
+        },
+        {
+          "vk": 69,
+          "ch": 101,
+          "mods": 0,
+          "time": 20
+        },
+        {
+          "vk": 76,
+          "ch": 108,
+          "mods": 0,
+          "time": 40
+        },
+        {
+          "vk": 76,
+          "ch": 108,
+          "mods": 0,
+          "time": 60
+        },
+        {
+          "vk": 79,
+          "ch": 111,
+          "mods": 0,
+          "time": 80
+        },
+        {
+          "vk": 189,
+          "ch": 45,
+          "mods": 0,
+          "time": 100
+        },
+        {
+          "vk": 87,
+          "ch": 119,
+          "mods": 0,
+          "time": 120
+        },
+        {
+          "vk": 79,
+          "ch": 111,
+          "mods": 0,
+          "time": 140
+        },
+        {
+          "vk": 82,
+          "ch": 114,
+          "mods": 0,
+          "time": 160
+        },
+        {
+          "vk": 76,
+          "ch": 108,
+          "mods": 0,
+          "time": 180
+        },
+        {
+          "vk": 68,
+          "ch": 100,
+          "mods": 0,
+          "time": 200
+        }
+      ],
+      "expected": [
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "h"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "he"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": true,
+          "document": "hel"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": true,
+          "document": "hell"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": true,
+          "document": "hello"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "hello-"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "hello-w"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": true,
+          "document": "hello-wo"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": true,
+          "document": "hello-wor"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": true,
+          "document": "hello-worl"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": true,
+          "document": "hello-world"
+        }
+      ]
+    },
+    {
+      "name": "idle-kon-n-699",
+      "steps": [
+        {
+          "vk": 75,
+          "ch": 107,
+          "mods": 0,
+          "time": 0
+        },
+        {
+          "vk": 79,
+          "ch": 111,
+          "mods": 0,
+          "time": 20
+        },
+        {
+          "vk": 78,
+          "ch": 110,
+          "mods": 0,
+          "time": 40
+        },
+        {
+          "vk": 78,
+          "ch": 110,
+          "mods": 0,
+          "time": 739
+        }
+      ],
+      "expected": [
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "k"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "ko"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "kon"
+        },
+        {
+          "consumed": true,
+          "commits": [
+            {
+              "deleteBefore": 3,
+              "text": "",
+              "expect": "kon"
+            }
+          ],
+          "text": "こん",
+          "direct": false,
+          "english": false,
+          "document": ""
+        }
+      ]
+    },
+    {
+      "name": "idle-kon-n-700",
+      "steps": [
+        {
+          "vk": 75,
+          "ch": 107,
+          "mods": 0,
+          "time": 0
+        },
+        {
+          "vk": 79,
+          "ch": 111,
+          "mods": 0,
+          "time": 20
+        },
+        {
+          "vk": 78,
+          "ch": 110,
+          "mods": 0,
+          "time": 40
+        },
+        {
+          "vk": 78,
+          "ch": 110,
+          "mods": 0,
+          "time": 740
+        }
+      ],
+      "expected": [
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "k"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "ko"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "kon"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": true,
+          "document": "konn"
+        }
+      ]
+    },
+    {
+      "name": "idle-kon-n-701",
+      "steps": [
+        {
+          "vk": 75,
+          "ch": 107,
+          "mods": 0,
+          "time": 0
+        },
+        {
+          "vk": 79,
+          "ch": 111,
+          "mods": 0,
+          "time": 20
+        },
+        {
+          "vk": 78,
+          "ch": 110,
+          "mods": 0,
+          "time": 40
+        },
+        {
+          "vk": 78,
+          "ch": 110,
+          "mods": 0,
+          "time": 741
+        }
+      ],
+      "expected": [
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "k"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "ko"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": false,
+          "document": "kon"
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "text": null,
+          "direct": true,
+          "english": true,
+          "document": "konn"
+        }
+      ]
+    }
+  ]
+}

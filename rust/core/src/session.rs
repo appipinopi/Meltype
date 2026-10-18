@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 appipinopi
+mod direct;
 use crate::{
     dictionary::Dictionary,
     linguistics::Linguistics,
@@ -133,6 +134,10 @@ pub struct Session {
     sigil: crate::sigil::Sigil,
     edited_units: Option<crate::composition_units::Units>,
     custom_romaji: Option<std::sync::Arc<romaji::CustomTable>>,
+    clock: std::time::Instant,
+    key_time_ms: u64,
+    direct_pending: String,
+    direct_last_key_ms: Option<u64>,
 }
 
 impl Default for Session {
@@ -178,6 +183,10 @@ impl Default for Session {
             sigil: Default::default(),
             edited_units: None,
             custom_romaji: None,
+            clock: std::time::Instant::now(),
+            key_time_ms: 0,
+            direct_pending: String::new(),
+            direct_last_key_ms: None,
         }
     }
 }
@@ -254,6 +263,7 @@ impl Session {
     }
     pub fn set_process(&mut self, process: &str) {
         if self.process != process {
+            self.forget_direct_input();
             self.sigil = Default::default();
             self.correctable.clear();
             self.code_japanese = false;
@@ -346,7 +356,7 @@ impl Session {
         self.sigil.lose();
         self.correctable.clear();
         self.last_commit = None;
-        self.direct_english_word = false;
+        self.forget_direct_input();
         if control || matches!(vk, 0 | 9 | 0x21..=0x28 | 0x2e) {
             self.code_japanese = false;
         }
@@ -486,98 +496,6 @@ impl Session {
     fn uses_kana(&self) -> bool {
         self.settings.text("InputStyle") == "Kana"
             || self.settings.text("InputStyle") == "Both" && self.composition_kana
-    }
-    fn detect_direct(&mut self, vk: i32, ch: i32, modifiers: i32) -> Option<SessionResult> {
-        if !self.direct
-            || !self.direct_detection
-            || !self.context_is_fresh
-            || !self.can_delete
-            || self.private
-            || self.code_input
-            || !self.raw.is_empty()
-            || !self.settings.boolean("Enabled")
-            || !self.settings.boolean("DirectModeAutoDetect")
-            || self.settings.text("DetectionLevel") == "Manual"
-            || modifiers & 15 != 0
-        {
-            return None;
-        }
-        self.context_is_fresh = false;
-        let c = char::from_u32(ch as u32)?;
-        if !c.is_ascii_lowercase() {
-            self.direct_english_word = false;
-            return None;
-        }
-        let prefix: String = self
-            .before
-            .chars()
-            .rev()
-            .take_while(char::is_ascii_alphabetic)
-            .collect::<String>()
-            .chars()
-            .rev()
-            .collect();
-        let boundary = &self.before[..self.before.len() - prefix.len()];
-        // An identifier, command, path or mention never becomes a Japanese word.
-        if boundary
-            .chars()
-            .next_back()
-            .is_some_and(|c| c.is_ascii_alphanumeric() || "_@$/\\.:+-".contains(c))
-            || prefix.len() >= self.settings.integer("MaxPendingKeys") as usize
-            || prefix.bytes().any(|c| c.is_ascii_uppercase())
-        {
-            self.direct_english_word = true;
-            return None;
-        }
-        let typed = format!("{prefix}{c}");
-        let mut keys: Vec<_> = prefix
-            .bytes()
-            .map(|b| b.to_ascii_uppercase() as i32)
-            .collect();
-        keys.push(if vk == 0 {
-            c.to_ascii_uppercase() as i32
-        } else {
-            vk
-        });
-        let result = crate::detection::evaluate(&typed, &keys, false, &self.settings);
-        self.direct_english_word = matches!(
-            result.verdict,
-            crate::detection::Verdict::English | crate::detection::Verdict::Unknown
-        );
-        if result.verdict != crate::detection::Verdict::Japanese
-            || self.preferences.english.get(&typed) == Some(&true)
-        {
-            return None;
-        }
-        self.direct = false;
-        self.direct_english_word = false;
-        self.composition_kana = self.settings.text("InputStyle") == "Both"
-            && result
-                .contributions
-                .iter()
-                .any(|c| c.source == "Kana" && c.japanese > 0)
-            && result
-                .contributions
-                .iter()
-                .all(|c| c.source == "Kana" || c.japanese == 0);
-        self.raw = typed;
-        self.typed_keys = self
-            .raw
-            .chars()
-            .zip(keys)
-            .map(|(c, vk)| (vk, c, false))
-            .collect();
-        self.before.truncate(boundary.len());
-        self.refresh_kana();
-        let mut result = self.result(true);
-        if !prefix.is_empty() {
-            result.commits.push(TextEdit {
-                delete_before: prefix.encode_utf16().count(),
-                text: String::new(),
-                expect: Some(prefix),
-            });
-        }
-        Some(result)
     }
     fn romaji_fix(&self) -> Option<crate::typo::Fix> {
         if !self.settings.boolean("CorrectTypos")
@@ -832,6 +750,7 @@ impl Session {
         }
     }
     pub fn reset(&mut self) {
+        self.forget_direct_input();
         self.sigil = Default::default();
         self.correctable.clear();
         self.space_started_conversion = false;
@@ -1456,10 +1375,23 @@ impl Session {
     /// Virtual keys follow the existing native ABI; modifiers: shift=1, ctrl=2,
     /// alt=4, command=8. Platform shortcuts commit first and pass through.
     pub fn key(&mut self, vk: i32, ch: i32, modifiers: i32) -> SessionResult {
+        let now_ms = self.clock.elapsed().as_millis().min(u64::MAX as u128) as u64;
+        self.key_at(vk, ch, modifiers, now_ms)
+    }
+    /// Monotonic milliseconds, for hosts with an event clock and deterministic
+    /// replay tests. Use one clock consistently for a session.
+    pub fn key_at(&mut self, vk: i32, ch: i32, modifiers: i32, now_ms: u64) -> SessionResult {
         let _romaji = romaji::Scope::new(self.custom_romaji.clone());
         if ch < 0 || char::from_u32(ch as u32).is_none() {
             return self.result(false);
         }
+        self.key_time_ms = now_ms;
+        if self.direct && modifiers & 15 != 0 && !self.direct_pending.is_empty() {
+            self.direct_pending.clear();
+            self.direct_last_key_ms = None;
+            self.direct_english_word = true;
+        }
+        let timeout_edit = self.direct_timeout(now_ms);
         let c = char::from_u32(ch as u32).unwrap();
         if self.private {
             self.sigil = Default::default();
@@ -1474,10 +1406,14 @@ impl Session {
         {
             self.correctable.clear();
             self.last_commit = None;
+            self.forget_direct_input();
             self.sigil.passed(vk, c, modifiers);
             return self.result(false);
         }
-        let result = self.key_inner(vk, ch, modifiers);
+        let mut result = self.key_inner(vk, ch, modifiers);
+        if let Some(edit) = timeout_edit {
+            result.commits.insert(0, edit);
+        }
         if !result.consumed && !self.private {
             self.sigil.passed(vk, c, modifiers);
         }
@@ -1514,6 +1450,9 @@ impl Session {
             || !self.settings.boolean("Enabled")
         {
             self.correctable.clear();
+            if self.raw.is_empty() {
+                return self.result(false);
+            }
             let mut result = self.commit();
             self.correctable.clear();
             result.consumed = false;

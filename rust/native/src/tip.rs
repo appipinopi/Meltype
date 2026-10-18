@@ -180,6 +180,14 @@ mod tests {
     use super::*;
     #[test]
     fn direct_detection_requires_deletion_capability_and_switches_mode() {
+        // Exclude debug-build dictionary initialization from the user's
+        // inter-key interval; timeout boundaries have deterministic fixtures.
+        meltype_core::detection::evaluate(
+            "ka",
+            &[75, 65],
+            false,
+            &meltype_core::settings::Settings::default(),
+        );
         unsafe {
             let connection = meltype_tip_create();
             let call = |can_delete: bool| -> Value {
@@ -191,9 +199,23 @@ mod tests {
             };
             assert_eq!(call(false)["consumed"], false);
             let value = call(true);
-            assert_eq!(value["switchToJapanese"], true);
-            assert_eq!(value["commits"][0]["expect"], "kon");
-            assert_eq!(value["view"]["text"], "こん");
+            // Text observed before this session is not replay history. The
+            // original timed host also leaves this n unconsumed and deletes
+            // none of the existing kon (upstream-direct-time.json).
+            assert_eq!(value["consumed"], false);
+            assert_eq!(value["commits"], json!([]));
+            for (ch, before) in [('k', ""), ('o', "k"), ('n', "ko"), ('n', "kon")] {
+                let request = CString::new(json!({"op":"key","sid":"typed","process":"notepad.exe","direct":true,"canDelete":true,"before":before,"vk":ch.to_ascii_uppercase() as i32,"ch":ch as i32}).to_string()).unwrap();
+                let result: Value = serde_json::from_str(
+                    &take(meltype_tip_request(connection, request.as_ptr())).unwrap(),
+                )
+                .unwrap();
+                if before == "kon" {
+                    assert_eq!(result["switchToJapanese"], true);
+                    assert_eq!(result["commits"][0]["expect"], "kon");
+                    assert_eq!(result["view"]["text"], "こん");
+                }
+            }
             meltype_tip_destroy(connection);
         }
     }

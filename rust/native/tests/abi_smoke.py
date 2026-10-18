@@ -48,6 +48,8 @@ def main(library):
     api.meltype_reconvert_selection.restype = c.c_void_p
     api.meltype_commit.argtypes = [c.c_void_p]
     api.meltype_commit.restype = c.c_void_p
+    api.meltype_reset.argtypes = [c.c_void_p]
+    api.meltype_reset.restype = c.c_void_p
     api.meltype_commit_preedit.argtypes = [c.c_void_p]
     api.meltype_commit_preedit.restype = c.c_void_p
     api.meltype_control.argtypes = [c.c_void_p, c.c_char_p]
@@ -134,6 +136,10 @@ def main(library):
             assert not value["consumed"], "auto detection requires deletion capability"
             api.meltype_set_can_delete(handle, 1)
             value = result(api.meltype_handle_key(handle, 78,110,0,b"kon",b""))
+            assert not value["consumed"] and value["commits"] == [], "existing text is not replay history (original timed fixture)"
+            value = result(api.meltype_reset(handle))
+            for letter, before in zip("konn", (b"", b"k", b"ko", b"kon")):
+                value = result(api.meltype_handle_key(handle, ord(letter.upper()),ord(letter),0,before,b""))
             assert value["commits"] == [{"deleteBefore":3,"text":"","expect":"kon"}]
             assert value["view"]["text"] == "こん"
         finally:

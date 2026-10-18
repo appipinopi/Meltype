@@ -70,6 +70,19 @@ impl Dictionary {
         level: &str,
     ) -> String {
         if !["Aggressive", "Conservative", "Manual"].contains(&level) {
+            // IsEnglishSpan requires two sides for a two-letter spelling
+            // which also reads as Japanese. One preceding Latin word is not
+            // an English sentence (k|ai after a direct-mode change).
+            if raw.len() == 2 && raw.bytes().all(|b| b.is_ascii_lowercase()) {
+                let analysis = romaji::analyze(raw, false);
+                if analysis.valid
+                    && ["", "n"].contains(&analysis.partial.as_str())
+                    && self.before_evidence(before) + self.after_evidence(after) < 2
+                    && !(before.ends_with(char::is_whitespace) && self.english_context(before))
+                {
+                    return self.mixed_context(raw, final_input, false);
+                }
+            }
             return self.mixed_context(raw, final_input, self.english_context(before));
         }
         if raw.starts_with('$') && raw.bytes().all(|c| c.is_ascii_graphic()) {

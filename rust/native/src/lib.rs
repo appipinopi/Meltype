@@ -532,7 +532,7 @@ fn set(handle: *mut c_void, f: impl FnOnce(&mut Session)) {
 }
 #[no_mangle]
 pub extern "C" fn meltype_set_direct(handle: *mut c_void, enabled: i32) {
-    set(handle, |s| s.direct = enabled != 0);
+    set(handle, |s| s.set_direct(enabled != 0));
 }
 #[no_mangle]
 pub extern "C" fn meltype_set_direct_detection(handle: *mut c_void, enabled: i32) {
