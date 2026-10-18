@@ -363,3 +363,8 @@ macOS意味表示の予約キー・重複予約抑止・1500msの遅延値・発
 
 
 c8f2069では候補ウィンドウの`isVisible`／`update`／`show:`／移動selector／`hide`／`showAnnotation:`をRustから直接呼びます。呼出し中はオブジェクトを保持し、メインスレッド以外をOS操作前に拒否します。注釈はUTF-16を全体検証し、可視時だけ属性なしのNSAttributedStringとして送信します。Swiftは借用ポインターの受渡しと入力コントローラーの通知状態を担当します。ローカルでApple Silicon／Intel macOS向け型チェック、Windowsの41ネイティブテスト・Clippy／整形と実ABIの拒否経路が成功。[ed6d00dのmacOS SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39089133498)で両ジョブ成功。SDK制御オブジェクトで旧Objective-Cメッセージ順20パターン、方向selector非対応、可視／非表示の注釈、Unicode／NUL／空本文、不正操作と背景スレッド拒否を確認。実タイマーからの注釈受渡し、既存スタブ22操作・実変換器28操作、全Swiftコンパイルの保存ログも確認済み。[同じ版のfcitx SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39089133524)も成功。実IMKパネルの描画・配置・外観一致は未検証です。
+
+
+d3e0b94では、実SDKのSwift／Objective-C対応を照合し、Swiftの`update()`に対する送信selectorを`updateCandidates`へ修正しました。前の20パターン試験は制御オブジェクトだけを比較していたため、このSDK名称差を検出できませんでした。試験に実IMKCandidatesのselectorと`instancesRespond`検査を追加しました。[d3e0b94のSDK CI](https://github.com/appipinopi/Meltype/actions/runs/39089423239)と後続の起動試験で通過しています。
+
+e2e7cb1ではIMKServerと候補パネルの作成をRustのSDK initializerへ移し、所有権を+1のObjective-C参照としてSwiftのARCへ渡します。メインスレッドとサーバー型を確認し、元と同じパネル種別・SDK既定設定を使います。ローカルのApple Silicon／Intel向け型チェック、Apple Silicon向けClippyとWindows実ABI試験が成功。[e2e7cb1のmacOS SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39089572509)で両ジョブ成功。一時アプリで実IMKServer／IMKCandidatesを作成し、autoreleasepoolを越えるARC受渡し、SDK既定のパネル種別・選択キー・自動非表示・可視性と背景／不正サーバー拒否を確認。実SDK selector照合、20操作比較、実タイマー注釈、既存スタブ22操作・実変換器28操作と全Swiftコンパイルの保存ログも確認済み。[同じ版のfcitx SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39089572486)も成功。実候補画面と入力アプリへの接続・全UI一致は未検証です。
