@@ -87,15 +87,17 @@ final class ModeIndicatorSettings {
 
     init(defaults: UserDefaults = .standard) { self.defaults = defaults }
 
-    var isEnabled: Bool {
 #if MELTYPE_RUST_CORE
+    var isEnabled: Bool {
         get {NativeCore.shared.editorPolicy?.indicatorPreference(defaults) ?? false}
         set {_=NativeCore.shared.editorPolicy?.indicatorPreference(defaults,value:newValue)}
+    }
 #else
+    var isEnabled: Bool {
         get { defaults.object(forKey: Self.storageKey) == nil || defaults.bool(forKey: Self.storageKey) }
         set { defaults.set(newValue, forKey: Self.storageKey) }
-#endif
     }
+#endif
 }
 
 /// 入力欄や入力ソースが変わっても、最後に選んだ入力モードを保持する。
