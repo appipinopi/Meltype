@@ -88,6 +88,8 @@ struct CommittedInput {
     raw: String,
     text: String,
     keys: Vec<(i32, char, bool)>,
+    units: Option<crate::composition_units::Units>,
+    romaji: Option<std::sync::Arc<romaji::CustomTable>>,
 }
 
 pub struct Session {
@@ -130,6 +132,7 @@ pub struct Session {
     chosen_conversion: bool,
     sigil: crate::sigil::Sigil,
     edited_units: Option<crate::composition_units::Units>,
+    custom_romaji: Option<std::sync::Arc<romaji::CustomTable>>,
 }
 
 impl Default for Session {
@@ -174,6 +177,7 @@ impl Default for Session {
             chosen_conversion: false,
             sigil: Default::default(),
             edited_units: None,
+            custom_romaji: None,
         }
     }
 }
@@ -182,12 +186,19 @@ impl Session {
     pub fn open(store: Store) -> std::io::Result<Self> {
         let settings = store.settings()?;
         let state = store.load()?;
+        let (custom_romaji, storage_error) =
+            match romaji::CustomTable::load(&store.directory.join("dictionaries")) {
+                Ok(table) => (table, None),
+                Err(error) => (None, Some(format!("romaji.txt: {error}"))),
+            };
         Ok(Self {
             preferences: state.preferences.clone(),
             state,
             settings,
             store: Some(store),
             selected_prediction: -1,
+            custom_romaji,
+            storage_error,
             ..Default::default()
         })
     }
@@ -223,6 +234,12 @@ impl Session {
             self.settings = store.settings()?.for_app(&self.process);
             self.state = store.load()?;
             self.preferences = self.state.preferences.clone();
+            if self.raw.is_empty() {
+                match romaji::CustomTable::load(&store.directory.join("dictionaries")) {
+                    Ok(table) => self.custom_romaji = table,
+                    Err(error) => self.storage_error = Some(format!("romaji.txt: {error}")),
+                }
+            }
         }
         Ok(())
     }
@@ -272,6 +289,7 @@ impl Session {
         }
     }
     pub fn predictions(&self) -> Vec<String> {
+        let _romaji = romaji::Scope::new(self.custom_romaji.clone());
         if self.private
             || !self.settings.boolean("PredictiveCandidates")
             || self.is_converting()
@@ -368,6 +386,7 @@ impl Session {
             }
         }
         Some(crate::spelling::Probe {
+            romaji: self.custom_romaji.clone(),
             words,
             before: before
                 .unwrap_or(&self.before)
@@ -386,6 +405,7 @@ impl Session {
         &self.raw
     }
     pub fn reading(&self) -> String {
+        let _romaji = romaji::Scope::new(self.custom_romaji.clone());
         if self.uses_kana() {
             self.kana_text.clone()
         } else if let Some(units) = self.edited_units.as_ref().filter(|u| u.raw() == self.raw) {
@@ -598,6 +618,7 @@ impl Session {
         !self.candidates.is_empty()
     }
     pub fn display(&self, final_input: bool) -> String {
+        let _romaji = romaji::Scope::new(self.custom_romaji.clone());
         if let Some(text) = &self.explicit {
             return text.clone();
         }
@@ -732,6 +753,7 @@ impl Session {
         .then(|| vec![self.raw.clone(), "ご".into()])
     }
     pub fn result(&self, consumed: bool) -> SessionResult {
+        let _romaji = romaji::Scope::new(self.custom_romaji.clone());
         let preview = self.preview_candidates();
         let language_suggestion = self.language_suggestion();
         SessionResult {
@@ -896,6 +918,7 @@ impl Session {
         self.commit_with_options(space_around, true)
     }
     fn commit_with_options(&mut self, space_around: bool, format_phrases: bool) -> SessionResult {
+        let _romaji = romaji::Scope::new(self.custom_romaji.clone());
         let mut text = self.display(true);
         if self.selected_prediction >= 0 {
             if let Some(prediction) = self.predictions().get(self.selected_prediction as usize) {
@@ -1017,6 +1040,8 @@ impl Session {
         }
         let raw = self.raw.clone();
         let keys = self.typed_keys.clone();
+        let units = self.edited_units.take();
+        let romaji = self.custom_romaji.clone();
         self.reset();
         self.correctable = records;
         if !self.private {
@@ -1027,6 +1052,8 @@ impl Session {
                 raw,
                 text: text.clone(),
                 keys,
+                units,
+                romaji,
             });
         }
         SessionResult {
@@ -1113,7 +1140,14 @@ impl Session {
         if !self.can_delete || self.private || !self.raw.is_empty() {
             return self.result(false);
         }
-        let Some(CommittedInput { raw, text, keys }) = self.last_commit.take() else {
+        let Some(CommittedInput {
+            raw,
+            text,
+            keys,
+            units,
+            romaji,
+        }) = self.last_commit.take()
+        else {
             return self.result(false);
         };
         self.correctable.clear();
@@ -1123,6 +1157,9 @@ impl Session {
         self.before.truncate(self.before.len() - text.len());
         self.raw = raw;
         self.typed_keys = keys;
+        self.edited_units = units;
+        self.custom_romaji = romaji;
+        let _romaji = romaji::Scope::new(self.custom_romaji.clone());
         self.refresh_kana();
         let mut result = self.result(true);
         result.commits.push(TextEdit {
@@ -1175,6 +1212,7 @@ impl Session {
         self.commit()
     }
     pub fn begin_conversion(&mut self, external: Vec<String>) {
+        let _romaji = romaji::Scope::new(self.custom_romaji.clone());
         if self.raw.is_empty() || self.is_converting() {
             return;
         }
@@ -1237,6 +1275,7 @@ impl Session {
     /// Request live conversion only for settled Japanese input. English islands
     /// and protected tokens retain their original text.
     pub fn live_reading(&self) -> Option<String> {
+        let _romaji = romaji::Scope::new(self.custom_romaji.clone());
         if !self.settings.boolean("LiveConversion")
             || self.is_converting()
             || self.explicit.is_some()
@@ -1269,6 +1308,7 @@ impl Session {
         Some(reading)
     }
     pub fn update_live_conversion(&mut self, mut clauses: Vec<Clause>) -> bool {
+        let _romaji = romaji::Scope::new(self.custom_romaji.clone());
         let Some(reading) = self.live_reading() else {
             return false;
         };
@@ -1290,6 +1330,7 @@ impl Session {
     }
     /// Accept segments only when they cover the entire current reading.
     pub fn begin_clauses(&mut self, mut clauses: Vec<Clause>) -> bool {
+        let _romaji = romaji::Scope::new(self.custom_romaji.clone());
         if self.raw.is_empty()
             || clauses.is_empty()
             || clauses.iter().any(|c| {
@@ -1415,6 +1456,7 @@ impl Session {
     /// Virtual keys follow the existing native ABI; modifiers: shift=1, ctrl=2,
     /// alt=4, command=8. Platform shortcuts commit first and pass through.
     pub fn key(&mut self, vk: i32, ch: i32, modifiers: i32) -> SessionResult {
+        let _romaji = romaji::Scope::new(self.custom_romaji.clone());
         if ch < 0 || char::from_u32(ch as u32).is_none() {
             return self.result(false);
         }
@@ -1784,6 +1826,9 @@ impl Session {
                     return result;
                 }
                 let character = char::from_u32(ch as u32).unwrap();
+                if self.raw.is_empty() && self.custom_romaji.is_some() && !self.uses_kana() {
+                    self.edited_units = Some(Default::default());
+                }
                 if let Some(units) = self.edited_units.as_mut() {
                     if units.raw() == self.raw {
                         units.push(&character.to_string());

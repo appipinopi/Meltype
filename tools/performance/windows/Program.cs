@@ -14,8 +14,10 @@ foreach (var c in cases)
     for (var sample = 0; sample < warmups + samples; sample++)
     {
         // Each run has fresh in-memory learning/history; bundled dictionaries are cached.
-        var detector = CompositionDetector.CreateDefault();
-        detector.SpellChecker = null; // Neither implementation calls OS spelling APIs.
+        var detector = CompositionDetector.CreateDefault(args.Length > 3 ? Path.Combine(args[3], "dictionaries") : null);
+        // Rust loads this same bundled SCOWL word list. Disable OS APIs, not
+        // the built-in spelling dictionary used by the original product.
+        detector.SpellChecker = BuiltInWordChecker.Shared;
         var languages = new LanguageMemory(null);
         detector.Memory = languages;
         var settings = new Settings { LiveConversion = false, PredictiveCandidates = false, LearningEnabled = false }.Normalize();

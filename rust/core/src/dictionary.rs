@@ -28,6 +28,7 @@ impl Dictionary {
     pub fn bundled() -> &'static Self {
         static DICT: OnceLock<Dictionary> = OnceLock::new();
         DICT.get_or_init(|| {
+            let _builtins = romaji::Scope::new(None);
             let mut dict = Self {
                 english: HashSet::new(),
                 japanese_origin: {
@@ -344,7 +345,12 @@ impl Dictionary {
         // the start of input is English unless it is also a Japanese prefix.
         if !final_input
             && lower.len() >= 4
-            && self.proper.iter().any(|word| word.starts_with(&lower))
+            && (self.proper.iter().any(|word| word.starts_with(&lower))
+                || !romaji::analyze(&lower, false).valid
+                    && self
+                        .common_english
+                        .iter()
+                        .any(|word| word.starts_with(&lower)))
             && !self.japanese_prefix(&lower)
             && (romaji::analyze(&lower, false).valid || {
                 let fragment = romaji::analyze(&lower, true);
@@ -378,6 +384,15 @@ impl Dictionary {
         }
         if self.english.contains(&lower) {
             let fragment = romaji::analyze(&lower, true);
+            let strict = romaji::analyze(&lower, false);
+            if !self.readable_english.contains(&lower)
+                && !self.proper.contains(&lower)
+                && fragment.valid
+                && (strict.valid && fragment.partial == "n"
+                    || !final_input && !fragment.partial.is_empty() && self.japanese_prefix(&lower))
+            {
+                return romaji::hiragana(raw, final_input);
+            }
             if lower.len() < 6
                 && fragment.valid
                 && fragment.partial.is_empty()
@@ -451,6 +466,19 @@ impl Dictionary {
         // Shortest-path segmentation over ASCII byte boundaries. Unknown syllables
         // remain kana; dictionary words can form English islands inside Japanese.
         let n = raw.len();
+        let boundaries = romaji::unit_boundaries(
+            &lower,
+            |prefix| {
+                (0..prefix.len().saturating_sub(2)).any(|start| {
+                    let word = &prefix[start..];
+                    self.common_english.contains(word)
+                        || self.proper.contains(word)
+                        || self.readable_english.contains(word)
+                        || word.len() >= 4 && (self.is_english(word) || self.spell_word(word))
+                })
+            },
+            |prefix| self.known_english(prefix),
+        );
         let mut costs = vec![f64::INFINITY; n + 1];
         let mut paths = vec![(0, false); n + 1];
         costs[0] = 0.0;
@@ -466,17 +494,39 @@ impl Dictionary {
                     .contains(&piece);
                 let acronym =
                     piece.len() >= 2 && raw[i..end].bytes().all(|c| c.is_ascii_uppercase());
-                let english_piece =
-                    (piece.len() >= 3 && !jp && self.english_atom(piece)) || acronym;
-                let en = english_piece
-                    && (end == n
-                        || [
-                            "no", "ga", "wo", "ni", "de", "to", "ha", "mo", "wa", "he", "ya", "sa",
-                            "shi", "si", "su",
-                        ]
-                        .iter()
-                        .any(|p| lower[end..].starts_with(p))
-                        || self.english_atom(&lower[end..]));
+                let english_piece = boundaries[i]
+                    && boundaries[end]
+                    && ((piece.len() >= 3
+                        && !jp
+                        && (self.english.contains(piece) || self.spell_word(piece)))
+                        || acronym);
+                // IsEnglishSpan keeps a short composition-only spelling in
+                // Japanese when its next sound continues it (hosu|thin|gu).
+                let japanese_continuation = english_piece
+                    && i > 0
+                    && !paths[i].1
+                    && end < n
+                    && piece.len() <= 4
+                    && !romaji::analyze(piece, false).valid
+                    && {
+                        let fragment = romaji::analyze(piece, true);
+                        fragment.valid
+                            && ["", "n"].contains(&fragment.partial.as_str())
+                            && (end + 1..=n)
+                                .find(|next| boundaries[*next])
+                                .is_some_and(|next| romaji::analyze(&lower[i..next], true).valid)
+                    };
+                let strict = romaji::analyze(piece, false);
+                let partial_japanese = english_piece
+                    && end == n
+                    && strict.valid
+                    && !strict.partial.is_empty()
+                    && !self.proper.contains(piece)
+                    && !self.readable_english.contains(piece)
+                    && (strict.partial == "n"
+                        || !final_input && self.japanese_prefix(piece)
+                        || i > 0 && !paths[i].1 && !self.common_english.contains(piece));
+                let en = english_piece && !japanese_continuation && !partial_japanese;
                 let cost = if jp {
                     0.3
                 } else if en {
@@ -560,6 +610,26 @@ impl Dictionary {
             .find_map(|p| lower.strip_prefix(p))
             .is_some_and(|rest| rest.len() >= 3 && self.known_english(rest));
             if self.known_english(&lower) || !particle_then_word {
+                return raw.to_owned();
+            }
+        }
+        // HasListedEnglishPrefixSplit: a short listed head followed only by
+        // unrecognised Latin letters is an unknown English word, rather than
+        // an English prefix with an accidental Japanese reading.
+        if let Some(&(0, head_end, true)) = pieces.first() {
+            if head_end <= 3
+                && head_end < n
+                && (self.common_english.contains(&lower[..head_end])
+                    || self.proper.contains(&lower[..head_end]))
+                && pieces.iter().skip(1).all(|(_, _, en)| !en)
+                && ![
+                    "kara", "made", "yori", "ga", "wo", "ni", "de", "no", "to", "mo", "ha", "wa",
+                    "ya",
+                ]
+                .iter()
+                .any(|p| lower[head_end..].starts_with(p))
+                && !(head_end + 1..=n).any(|end| self.known_english(&lower[..end]))
+            {
                 return raw.to_owned();
             }
         }

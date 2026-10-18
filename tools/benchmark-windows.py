@@ -4,6 +4,7 @@
 
 Does not install/register an IME or read user dictionaries. Conversion backends,
 OS spelling, live conversion, prediction, learning and disk I/O are excluded.
+Both implementations use the bundled spelling dictionary.
 Session/dictionary construction, verification and process startup are not timed.
 """
 import argparse
@@ -94,7 +95,13 @@ def main():
     if (output / "report.json").exists():
         parser.error("choose a new output directory to preserve previous measurements")
     baseline = command(["git", "rev-parse", args.baseline_ref])
-    source_paths = ["tools/benchmark-windows.py", "tools/performance/windows/Program.cs", "rust/core/examples/benchmark.rs"]
+    source_paths = sorted({"tools/benchmark-windows.py", "tools/performance/windows/Program.cs",
+                           "tools/performance/windows/Compare.csproj", "Cargo.toml", "Cargo.lock",
+                           "rust/core/Cargo.toml"} | {
+        p.relative_to(REPO).as_posix()
+        for root in (REPO / "rust/core/src", REPO / "rust/core/examples", REPO / "dictionaries")
+        for p in root.rglob("*") if p.is_file()
+    })
     source_hashes = {p: sha(REPO / p) for p in source_paths}
     working_tree = command(["git", "status", "--short"])
     rust_commit = command(["git", "rev-parse", "HEAD"])
@@ -127,7 +134,13 @@ def main():
             subprocess.run(build, cwd=REPO, env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
     suffix = ".exe" if os.name == "nt" else ""
     target = Path(env.get("CARGO_TARGET_DIR", REPO / "target"))
-    programs = {"rust": [str(target / "release/examples" / ("benchmark" + suffix))],
+    if {p: sha(REPO / p) for p in source_paths} != source_hashes:
+        raise RuntimeError("sources changed during the build; rerun with fixed sources")
+    # Keep the measured executable independent of subsequent cargo builds.
+    rust_binary = output / "rust" / ("benchmark" + suffix)
+    rust_binary.parent.mkdir(exist_ok=True)
+    shutil.copyfile(target / "release/examples" / ("benchmark" + suffix), rust_binary)
+    programs = {"rust": [str(rust_binary)],
                 "csharp": (["dotnet", str(output / "csharp/Compare.dll")] if args.jit else [str(output / "csharp" / ("Compare" + suffix))])}
     binary_paths = {v: Path(program[-1]) for v, program in programs.items()}
     binary_hashes = {v: sha(p) for v, p in binary_paths.items()}
@@ -152,6 +165,8 @@ def main():
                 evidence[key] = value
                 row.update(version=label, round=round_index)
                 rows.append(row)
+    sources_unchanged = all(sha(REPO / p) == source_hashes[p] for p in source_paths)
+    binaries_unchanged = all(sha(p) == binary_hashes[v] for v, p in binary_paths.items())
     comparisons = []
     for case in cases:
         name = case["name"]
@@ -164,20 +179,22 @@ def main():
                                 p95_key_ms={v: ts[int((len(ts)-1)*.95)] for v, ts in latencies.items()},
                                 rust_over_csharp=medians["rust"] / medians["csharp"],
                                 output_matches=matching_output, trace_matches=matching_trace,
-                                eligible_for_speed_claim=matching_trace))
+                                eligible_for_speed_claim=matching_trace and sources_unchanged and binaries_unchanged))
         print(f"{name}: C# {medians['csharp']:.3f} ms; Rust {medians['rust']:.3f} ms; "
               f"ratio {medians['rust']/medians['csharp']:.3f}; output={matching_output}, trace={matching_trace}")
     report = dict(measured_at=datetime.datetime.now(datetime.timezone.utc).isoformat(),
                   machine=platform.platform(), cpu=platform.processor(), baseline=baseline,
                   rust_commit=rust_commit, working_tree=working_tree,
                   binary_sha256=binary_hashes,
-                  binaries_unchanged=all(sha(p) == binary_hashes[v] for v, p in binary_paths.items()),
+                  binaries_unchanged=binaries_unchanged, sources_unchanged=sources_unchanged,
+                  accepted_performance_baseline=sources_unchanged and binaries_unchanged,
                   rustc=command(["rustc", f"+{args.rust_toolchain}", "-Vv"]), dotnet=command(["dotnet", "--version"]),
                   csharp_runtime="JIT (tiering disabled)" if args.jit else "NativeAOT", build_commands=build_commands,
                   samples_per_round=args.samples, warmups_per_case=args.warmups, order=order,
-                  settings=dict(LiveConversion=False, PredictiveCandidates=False, LearningEnabled=False, CanDeleteSurrounding=True),
+                  settings=dict(LiveConversion=False, PredictiveCandidates=False, LearningEnabled=False,
+                                CanDeleteSurrounding=True, BuiltInSpelling=True, OsSpelling=False),
                   scope=__doc__, dictionaries=hashes, fixtures_sha256=sha(fixture_file),
-                  harness_sha256=source_hashes,
+                  source_sha256=source_hashes,
                   comparisons=comparisons, rows=rows,
                   evidence={v: {c["name"]: evidence[v, c["name"]] for c in cases} for v in programs})
     (output / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

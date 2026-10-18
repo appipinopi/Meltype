@@ -18,7 +18,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let warmups: usize = args[3].parse()?;
     for case in cases {
         for sample in 0..warmups + samples {
-            let mut session = Session::default();
+            let mut session = if let Some(directory) = args.get(4) {
+                Session::open(meltype_core::storage::Store::new(directory))?
+            } else {
+                Session::default()
+            };
             session.can_delete = true;
             for setting in ["LiveConversion", "PredictiveCandidates", "LearningEnabled"] {
                 session.settings.set(setting, json!(false))?;

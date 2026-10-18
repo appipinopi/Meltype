@@ -4,6 +4,7 @@
 
 Use the binaries built by benchmark-windows.py. No OS IME registration is used.
 All input is synthetic, session-local, with learning/live/prediction disabled.
+Both hosts must use the bundled spelling dictionary, with OS spelling disabled.
 """
 import argparse
 import datetime
@@ -42,6 +43,7 @@ def main():
     parser.add_argument("--rust", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--cases", type=Path)
+    parser.add_argument("--profile", type=Path, help="isolated data directory with dictionaries/romaji.txt (never a user profile)")
     parser.add_argument("--check", action="store_true", help="exit unsuccessfully if any core trace differs")
     args = parser.parse_args()
     output = args.output.resolve()
@@ -55,7 +57,8 @@ def main():
     for label, binary in (("csharp", args.csharp), ("rust", args.rust)):
         print("Checking", label, flush=True)
         with (output / f"{label}.jsonl").open("w", encoding="utf-8") as log:
-            subprocess.run([str(binary.resolve()), str(fixture_path), "1", "1"], cwd=ROOT, stdout=log, check=True)
+            subprocess.run([str(binary.resolve()), str(fixture_path), "1", "1"] +
+                           ([str(args.profile.resolve())] if args.profile else []), cwd=ROOT, stdout=log, check=True)
         rows[label] = {r["case"]: r for line in (output / f"{label}.jsonl").read_text(encoding="utf-8-sig").splitlines()
                        for r in [json.loads(line)]}
         if len(rows[label]) != len(cases):

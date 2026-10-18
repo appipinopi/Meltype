@@ -1,6 +1,6 @@
 {
   "baseline": "45e14f86558aa6ea34f2c2ecd038ba95ca8c3c46",
-  "reference_executable_sha256": "a1ecf2bb1b4868262b9d9d22cd9c7810dfad0b644ada25e5249a30c7ed6682fb",
+  "reference_executable_sha256": "a887604bd3390071afdc1c822243a89a2ba70f22115828c059919417f0c95718",
   "cases": [
     {
       "name": "type:gakt",
@@ -902,5 +902,6 @@
         }
       ]
     }
-  ]
+  ],
+  "builtin_spelling": true
 }

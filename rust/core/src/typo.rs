@@ -137,6 +137,9 @@ impl Corrector {
         if raw.len() > 128 || !raw.bytes().all(|c| c.is_ascii_alphabetic()) {
             return false;
         }
+        if romaji::custom_table().is_some() {
+            return self.common_uncached(raw);
+        }
         if let Some(result) = self
             .common_cache
             .lock()
@@ -215,6 +218,9 @@ impl Corrector {
             || crate::dictionary::Dictionary::bundled().is_english(raw)
         {
             return None;
+        }
+        if romaji::custom_table().is_some() {
+            return self.fix_uncached(raw, final_input);
         }
         let key = (raw.to_owned(), final_input);
         if let Some(value) = self

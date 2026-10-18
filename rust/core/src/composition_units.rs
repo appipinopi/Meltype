@@ -158,6 +158,9 @@ impl Units {
         result
     }
     pub fn render(&self, detected: &str, final_input: bool) -> String {
+        if self.units.is_empty() {
+            return romaji::hiragana(&self.pending, final_input);
+        }
         if self.japanese_edit {
             return self.kana_range(0, self.raw.len(), final_input);
         }
@@ -182,6 +185,24 @@ impl Units {
             };
             let start = cursor + offset;
             let end = start + english.len();
+            {
+                let mut boundary = 0;
+                let mut boundaries = vec![0];
+                for unit in &self.units {
+                    boundary += unit.spelling.len();
+                    boundaries.push(boundary);
+                }
+                boundaries.push(self.raw.len());
+                if !boundaries.contains(&start) || !boundaries.contains(&end) {
+                    return if crate::dictionary::Dictionary::bundled()
+                        .unknown_english_word(&self.raw.to_ascii_lowercase())
+                    {
+                        self.raw.clone()
+                    } else {
+                        self.kana(final_input)
+                    };
+                }
+            }
             result.push_str(&self.kana_range(cursor, start, true));
             // A retained sokuon is Japanese even after its next unit was erased.
             let mut position = 0;

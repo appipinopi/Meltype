@@ -51,6 +51,7 @@ fn prefixes(words: &HashSet<String>) -> HashSet<String> {
 fn lexicon() -> &'static Lexicon {
     static LEXICON: OnceLock<Lexicon> = OnceLock::new();
     LEXICON.get_or_init(|| {
+        let _builtins = romaji::Scope::new(None);
         let mut japanese = HashSet::new();
         let mut kana = HashSet::new();
         for word in words(include_str!("../../../dictionaries/japanese.txt")) {

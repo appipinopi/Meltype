@@ -60,6 +60,8 @@ jobs:
           python-version: '3.12'
       - name: Native ABI callbacks and live conversion
         run: python rust/native/tests/abi_smoke.py
+      - name: Custom romaji original key traces through native ABI
+        run: python rust/native/tests/custom_romaji_smoke.py
       - name: Settings UI labels match upstream
         run: python tools/extract-rust-settings-ui.py --check
       - name: Package standalone Rust IBus engine

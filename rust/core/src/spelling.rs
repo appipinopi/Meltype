@@ -76,6 +76,7 @@ pub fn is_word(raw: &str) -> bool {
     })
 }
 pub struct Probe {
+    pub romaji: Option<std::sync::Arc<crate::romaji::CustomTable>>,
     pub words: Vec<String>,
     pub before: String,
     pub after: String,
@@ -83,6 +84,7 @@ pub struct Probe {
 }
 impl Probe {
     pub fn evaluate(&self) {
+        let _romaji = crate::romaji::Scope::new(self.romaji.clone());
         let dictionary = crate::dictionary::Dictionary::bundled();
         for word in &self.words {
             crate::protection::transform(word, |part| {

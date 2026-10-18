@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Yukishiro, appipinopi
 use std::{collections::HashMap, sync::OnceLock};
+mod custom;
+pub(crate) use custom::current as custom_table;
+pub use custom::CustomTable;
+pub(crate) use custom::Scope;
 
 fn table() -> &'static HashMap<&'static str, &'static str> {
     static TABLE: OnceLock<HashMap<&str, &str>> = OnceLock::new();
@@ -39,6 +43,7 @@ impl Analysis {
 /// Upstream distinguishes strict language detection from composition spellings
 /// such as l/x/v. Tokens retain source boundaries for conservative typo repair.
 pub fn analyze(raw: &str, composition: bool) -> Analysis {
+    let custom = custom_table();
     static STRICT: OnceLock<HashMap<&str, &str>> = OnceLock::new();
     let spellings = if composition {
         table()
@@ -57,6 +62,14 @@ pub fn analyze(raw: &str, composition: bool) -> Analysis {
         let c = bytes[i];
         if !c.is_ascii_lowercase() {
             return result;
+        }
+        if let Some((length, kana)) = custom.as_ref().and_then(|table| table.matches(&raw[i..])) {
+            result.tokens.push(Token {
+                spelling: raw[i..i + length].into(),
+                kana: kana.into(),
+            });
+            i += length;
+            continue;
         }
         let next = bytes.get(i + 1).copied();
         let consonant = |b: u8| b.is_ascii_lowercase() && !b"aiueo".contains(&b);
@@ -122,7 +135,11 @@ pub fn analyze(raw: &str, composition: bool) -> Analysis {
             i += length;
         } else {
             let rest = &raw[i..];
-            if rest == "n" || rest == "tc" || spellings.keys().any(|s| s.starts_with(rest)) {
+            if rest == "n"
+                || rest == "tc"
+                || spellings.keys().any(|s| s.starts_with(rest))
+                || custom.as_ref().is_some_and(|table| table.partial(rest))
+            {
                 result.valid = true;
                 result.partial = rest.into();
             }
@@ -201,12 +218,79 @@ pub fn spelling_variants(raw: &str, limit: usize) -> Vec<String> {
     results
 }
 
+/// CompositionDetector considers English spans only at complete sound-unit
+/// boundaries. English stems may keep a final n/l/x/t/consonant before a
+/// Japanese suffix, as in python|no, hotel|ya and reflect|sareta.
+pub(crate) fn unit_boundaries(
+    raw: &str,
+    known_english: impl Fn(&str) -> bool,
+    whole_english: impl Fn(&str) -> bool,
+) -> Vec<bool> {
+    let mut bounds = vec![false; raw.len() + 1];
+    bounds[0] = true;
+    let mut at = 0;
+    while at < raw.len() {
+        let analysis = analyze(&raw[at..], true);
+        let mut restart = false;
+        for token in analysis.tokens {
+            let length = token.spelling.len();
+            let rest = &raw[at..];
+            let word_end = at + 1;
+            let prefix = &raw[..word_end];
+            let next = rest.as_bytes().get(1).copied();
+            let split_n = token.spelling == "nn"
+                && token.kana == "ん"
+                && rest
+                    .as_bytes()
+                    .get(2)
+                    .is_some_and(|c| b"aiueoy".contains(c))
+                && known_english(prefix)
+                && !analyze(prefix, true).valid;
+            let split_stem = length >= 2
+                && known_english(prefix)
+                && (matches!(rest.as_bytes()[0], b'l' | b'x')
+                    || rest.starts_with("ts")
+                    || next == Some(b'y') && whole_english(prefix) && {
+                        let stem = analyze(prefix, true);
+                        !stem.valid || !stem.partial.is_empty()
+                    });
+            if split_n || split_stem {
+                at += 1;
+                bounds[at] = true;
+                restart = true;
+                break;
+            }
+            at += length;
+            bounds[at] = true;
+        }
+        if restart {
+            continue;
+        }
+        if analysis.valid {
+            bounds[raw.len()] = true;
+            break;
+        }
+        let Some(c) = raw[at..].chars().next() else {
+            break;
+        };
+        at += c.len_utf8();
+        bounds[at] = true;
+    }
+    bounds
+}
+
 /// Incremental conversion. An incomplete consonant is preserved until commit.
 pub fn hiragana(raw: &str, final_input: bool) -> String {
+    let custom = custom_table();
     let lower = raw.to_ascii_lowercase();
     let mut rest = lower.as_str();
     let mut out = String::new();
     while !rest.is_empty() {
+        if let Some((length, kana)) = custom.as_ref().and_then(|table| table.matches(rest)) {
+            out.push_str(kana);
+            rest = &rest[length..];
+            continue;
+        }
         let mut chars = rest.chars();
         let first = chars.next().unwrap();
         let next = chars.next();
@@ -247,7 +331,10 @@ pub fn hiragana(raw: &str, final_input: bool) -> String {
             rest = &rest[spelling.len()..];
             continue;
         }
-        if !final_input && table().keys().any(|key| key.starts_with(rest)) {
+        if !final_input
+            && (table().keys().any(|key| key.starts_with(rest))
+                || custom.as_ref().is_some_and(|table| table.partial(rest)))
+        {
             out.push_str(rest);
             break;
         }
