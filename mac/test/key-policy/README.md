@@ -146,3 +146,12 @@ queries at presentation time, timer replacement, panel reuse, missing screens,
 and destruction while pending/visible. Both queue and timer target hold only
 weak owners. Swift provides the preference read callback and bridge entry point. Full-screen visual parity
 and actual editor input are not established by these property comparisons.
+
+
+The mode/preference bridge uses Rust-owned NSUserDefaults calls with the existing
+MacSelectedInputMode and MacShowModeIndicator schema. A private UUID-named suite
+checks twenty bool/action comparisons, absent defaults, persistence and restoration
+through new selection objects, per-instance cached modes, and invalid persisted
+values without rewriting them. The private suite is removed after the fixture.
+This restoration check creates new instances in the same process; a full app
+restart and installed input-method use remain separate integration checks.

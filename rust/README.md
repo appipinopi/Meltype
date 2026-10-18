@@ -383,3 +383,6 @@ acd350cではミニモード表示のビュー生成、文字／選択色／フ�
 
 
 79fae1aではミニ表示の遅延予約、パネル管理・画面選択・1秒のNSTimerもRustへ移しました。main queueの予約とタイマーのtargetは所有者を弱参照し、連続切替／hideで予約世代を無効化します。設定は表示時にSwiftコールバックへ問い合わせ、所有者破棄でタイマーを取消し、パネルを隠します。Apple Silicon／Intel型チェック・Clippyと実ABI拒否試験は通過。[e29162aのmacOS SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39096959822)で両ジョブ成功。実main queueと1秒のNSTimer、旧SDKパネル設定／ビューとの比較、予約の上書き・hide前取消し・表示時の設定確認・タイマー置換・パネル再利用・画面なし・待機中／表示中の所有者破棄・背景拒否の保存ログを確認。既存スタブ22操作・実変換器28操作と全Swiftコンパイルも通過。[同じ版のfcitx SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39096959847)も成功。設定の保存と呼出しブリッジのSwift、全画面外観一致・実アプリ入力の検証は残ります。
+
+
+3bdc357ではモード選択状態の保持とNSUserDefaultsの登録既定値・復元・保存、ミニ表示設定の読み書き、循環モード方針をRustへ移しました。保存キーと文字列値を変更せず、未設定時のautomatic／表示有効、Bool変換と選択インスタンス内のキャッシュを保持します。不正な保存モードは元と同じく初期化失敗にし、上書きしません。Apple Silicon／Intel型チェック、Clippyと実ABI比較が成功。[e296d9eのmacOS SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39097526961)で両ジョブ成功。私用suiteで旧設定／モード20比較、未設定の既定値・Bool変換・保存と新規インスタンスでの復元・インスタンス内キャッシュ・不正保存値の無変更・全モード切替のログを確認。既存スタブ22操作・実変換器28操作と全Swiftコンパイルも通過。[同じ版のfcitx SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39097526967)も成功。復元試験は同一プロセスでの新規インスタンスまでで、アプリ再起動後の確認は別途残ります。Swiftの呼出しブリッジと表示文言、実アプリ入力／全UI一致の検証は残ります。
