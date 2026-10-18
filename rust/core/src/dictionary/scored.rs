@@ -434,7 +434,7 @@ impl Dictionary {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn scored_english(
+    pub(super) fn scored_english(
         &self,
         raw: &str,
         at_end: bool,

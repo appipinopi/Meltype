@@ -275,12 +275,7 @@ unsafe fn external_conversion_min(
         }
         spans.sort_by_key(|span| span.start);
     }
-    let callbacks = CALLBACKS
-        .lock()
-        .map(|c| c.clauses.is_some() || c.candidates.is_some())
-        .unwrap_or(false);
-    let backend = MOZC.lock().map(|m| m.is_some()).unwrap_or(false);
-    if spans.is_empty() || !callbacks && !backend {
+    if spans.is_empty() {
         if reading.encode_utf16().count() < minimum {
             return (Vec::new(), Vec::new());
         }
@@ -288,10 +283,10 @@ unsafe fn external_conversion_min(
     }
     let mut segments = Vec::new();
     let mut offset = 0;
-    for (start, end, protected) in spans
+    for (start, end, kind) in spans
         .iter()
-        .map(|span| (span.start, span.end, true))
-        .chain(std::iter::once((reading.len(), reading.len(), false)))
+        .map(|span| (span.start, span.end, Some(span.kind)))
+        .chain(std::iter::once((reading.len(), reading.len(), None)))
     {
         if offset < start {
             let gap = &reading[offset..start];
@@ -306,9 +301,18 @@ unsafe fn external_conversion_min(
                 segments.extend(clauses);
             }
         }
-        if protected {
+        if let Some(kind) = kind {
             let text = reading[start..end].to_owned();
-            segments.push(Clause::new(text.clone(), vec![text]));
+            if kind == "detected_english" {
+                segments.extend(
+                    meltype_core::dictionary::Dictionary::bundled()
+                        .english_parts(&text)
+                        .into_iter()
+                        .map(|word| Clause::literal(word.to_owned(), true)),
+                );
+            } else {
+                segments.push(Clause::literal(text, false));
+            }
         }
         offset = end;
     }
@@ -411,7 +415,10 @@ pub unsafe extern "C" fn meltype_handle_key(
         let reading = sessions().lock().ok().and_then(|all| {
             all.get(&(handle as usize))
                 .filter(|s| {
-                    vk == 0x20
+                    (vk == 0x20 || vk == 0x1c && s.settings.boolean("SeparateKeyRoles"))
+                        && !(vk == 0x20
+                            && !s.settings.boolean("SeparateKeyRoles")
+                            && s.ends_in_english())
                         && !s.protects_tail()
                         && !s.is_converting()
                         && !s.raw().is_empty()
@@ -422,7 +429,7 @@ pub unsafe extern "C" fn meltype_handle_key(
                         && (s.display(true) != s.raw() || s.settings.boolean("SeparateKeyRoles"))
                         && modifiers & 15 == 0
                 })
-                .map(Session::reading)
+                .map(Session::conversion_reading)
         });
         let (segments, external) = reading
             .as_deref()

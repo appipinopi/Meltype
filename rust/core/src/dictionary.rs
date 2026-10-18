@@ -323,6 +323,62 @@ impl Dictionary {
         out
     }
 
+    /// Capitalized words following an ordinary lower-case English word are
+    /// separate clauses. Preserve canonical names and structured identifiers.
+    pub fn english_parts<'a>(&self, raw: &'a str) -> Vec<&'a str> {
+        if !raw.is_ascii()
+            || !raw.starts_with(|c: char| c.is_ascii_lowercase())
+            || self.known_english(raw)
+            || raw
+                .as_bytes()
+                .windows(3)
+                .filter(|w| {
+                    w[0].is_ascii_lowercase()
+                        && w[1].is_ascii_uppercase()
+                        && w[2].is_ascii_lowercase()
+                })
+                .count()
+                >= 2
+        {
+            return vec![raw];
+        }
+        for i in 1..raw.len() {
+            if raw.as_bytes()[i].is_ascii_uppercase()
+                && raw.as_bytes()[i - 1].is_ascii_lowercase()
+                && self.known_english(&raw[..i])
+            {
+                return vec![&raw[..i], &raw[i..]];
+            }
+        }
+        vec![raw]
+    }
+    pub(crate) fn rendered_english_tail(&self, text: &str, level: &str) -> bool {
+        let start = text
+            .rfind(|c: char| !c.is_ascii_alphabetic())
+            .map_or(0, |i| i + text[i..].chars().next().unwrap().len_utf8());
+        let parts = self.english_parts(&text[start..]);
+        let tail = parts.last().copied().unwrap_or("");
+        if tail.is_empty() {
+            return false;
+        }
+        self.scored_english(
+            tail,
+            true,
+            true,
+            if parts.len() > 1 {
+                1
+            } else if start == 0 {
+                0
+            } else {
+                -1
+            },
+            0,
+            start == 0,
+            !romaji::analyze(&tail.to_ascii_lowercase(), true).valid,
+            "",
+            level,
+        )
+    }
     pub fn english_context(&self, before: &str) -> bool {
         let sentence = before
             .rsplit(['。', '！', '？', '\n', '\r'])
@@ -420,6 +476,28 @@ impl Dictionary {
             && !crate::typo::Corrector::bundled().is_common_japanese(&lower[..lower.len() - 1])
         {
             return raw.to_owned();
+        }
+        // FindSpans tries each later sound boundary after rejecting a
+        // common-Japanese whole stem with a final capital (tanniG -> たnniG).
+        // The remaining suffix can itself satisfy IsTrailingCapitalName.
+        if raw.len() >= 4
+            && raw.as_bytes().last().is_some_and(u8::is_ascii_uppercase)
+            && raw[..raw.len() - 1].bytes().all(|c| c.is_ascii_lowercase())
+        {
+            let (bounds, _) = romaji::unit_boundaries(
+                &lower,
+                |word| self.known_english(word),
+                |word| self.known_english(word),
+            );
+            for start in 1..raw.len().saturating_sub(3) {
+                let stem = &lower[start..lower.len() - 1];
+                if bounds[start]
+                    && !self.japanese.contains(stem)
+                    && !crate::typo::Corrector::bundled().is_common_japanese(stem)
+                {
+                    return format!("{}{}", romaji::hiragana(&raw[..start], true), &raw[start..]);
+                }
+            }
         }
         if ["no", "ya", "repo", "to"].contains(&lower.as_str()) {
             return romaji::hiragana(raw, final_input);
@@ -624,7 +702,32 @@ impl Dictionary {
                     && (strict.partial == "n" && (end < n || !paths[i].1)
                         || !final_input && !paths[i].1 && self.japanese_prefix(piece)
                         || i > 0 && !paths[i].1 && !self.common_english.contains(piece));
-                let en = english_piece && !japanese_continuation && !partial_japanese;
+                // Readable English candidates after Japanese need the same
+                // contextual evidence as IsEnglishSpan (kono|tea -> このてあ).
+                let ambiguous_japanese = english_piece
+                    && i > 0
+                    && !paths[i].1
+                    && strict.valid
+                    && strict.partial.is_empty()
+                    && {
+                        let next = (end + 1..=n).find(|p| boundaries[*p]).unwrap_or(n);
+                        let next = if pending_start == Some(next) { n } else { next };
+                        !self.scored_english(
+                            &raw[i..end],
+                            end == n,
+                            final_input,
+                            -1,
+                            if end == n { 0 } else { -1 },
+                            false,
+                            false,
+                            &raw[end..next],
+                            "Balanced",
+                        )
+                    };
+                let en = english_piece
+                    && !japanese_continuation
+                    && !partial_japanese
+                    && !ambiguous_japanese;
                 let cost = if jp {
                     0.3
                 } else if en {

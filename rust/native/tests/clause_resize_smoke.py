@@ -72,18 +72,23 @@ with tempfile.TemporaryDirectory(prefix="meltype-clause-resize-") as directory:
     for case in golden["cases"]:
         queries.clear()
         failure = case.get("failure", False)
+        (root / "config.json").write_text(json.dumps(dict(ScoredSegmentation=False, LearningEnabled=False,
+            LiveConversion=False, PredictiveCandidates=False, SeparateKeyRoles=case.get("separate", False))), encoding="utf-8")
         handle = api.meltype_create_at(str(root).encode())
         assert handle
         api.meltype_set_can_delete(handle, 1)
         assert len(case["keys"]) == len(case["expected"])
         try:
             for index, (key, expected) in enumerate(zip(case["keys"], case["expected"], strict=True)):
+                query_count = len(queries)
                 pointer = api.meltype_handle_key(handle, *key, None, None)
                 assert pointer, (case["name"], index, "null native response")
                 try:
                     value = json.loads(c.string_at(pointer))
                 finally:
                     api.meltype_free(pointer)
+                if case["name"] in {"mixed-grow-last-english-noop", "mixed-grow-unreadable-next-noop"} and key == [39, 0, 1]:
+                    assert len(queries) == query_count, (case["name"], "no-op resize queried converter")
                 def projection(result):
                     view = result["view"]
                     fields = ("text", "converting", "clauses") + (("selectedIndex", "selectedClause") if view and view["converting"] else ())

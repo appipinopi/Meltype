@@ -61,6 +61,10 @@ pub struct Clause {
     pub reading: String,
     pub candidates: Vec<String>,
     pub selected: usize,
+    /// English is preserved until the user explicitly moves its boundary.
+    pub english: bool,
+    /// None for protected text, Some for English sound-unit readings.
+    pub kana: Option<String>,
 }
 impl Clause {
     pub fn new(reading: String, mut candidates: Vec<String>) -> Self {
@@ -78,7 +82,17 @@ impl Clause {
             reading,
             candidates: unique,
             selected: 0,
+            english: false,
+            kana: None,
         }
+    }
+    pub fn literal(reading: String, ordinary_english: bool) -> Self {
+        let mut clause = Self::new(reading.clone(), vec![reading]);
+        clause.english = true;
+        if ordinary_english {
+            clause.kana = Some(String::new());
+        }
+        clause
     }
     pub fn text(&self) -> &str {
         &self.candidates[self.selected]
@@ -459,6 +473,16 @@ impl Session {
             crate::protection::transform(&self.raw, |part| romaji::hiragana(part, true))
         }
     }
+    /// Conversion engines receive Japanese readings and literal English spans.
+    /// This is separate from the reading used by edit and repair operations.
+    pub fn conversion_reading(&self) -> String {
+        let _romaji = romaji::Scope::new(self.custom_romaji.clone());
+        if self.uses_kana() || self.function_key != 0 {
+            self.reading()
+        } else {
+            self.mixed_reading(true)
+        }
+    }
     fn mixed_reading(&self, final_input: bool) -> String {
         crate::protection::transform(&self.raw, |part| self.detect_composition(part, final_input))
     }
@@ -626,6 +650,17 @@ impl Session {
             && Dictionary::bundled().is_english(&self.raw)
             && self.display(false) != self.raw)
             .then(|| self.raw.clone())
+    }
+    /// Auto-mode Space commits a final English segment, including mixed text.
+    pub fn ends_in_english(&self) -> bool {
+        let _romaji = romaji::Scope::new(self.custom_romaji.clone());
+        self.function_key == 0
+            && self.explicit.is_none()
+            && !self.uses_kana()
+            && Dictionary::bundled().rendered_english_tail(
+                &self.detect_composition(&self.raw, true),
+                self.settings.text("DetectionLevel"),
+            )
     }
     fn english_at_word_end(&self) -> bool {
         if self.settings.text("DetectionLevel") == "Manual"
@@ -1282,14 +1317,23 @@ impl Session {
                 .iter()
                 .map(|c| c.reading.as_str())
                 .collect::<String>()
-                != self.reading()
+                != self.conversion_reading()
         {
             return false;
         }
         clauses = crate::time_candidates::join(clauses);
         self.translation_candidates.clear();
         let mut preceding = self.before.clone();
+        let mut previous_english = false;
         for clause in &mut clauses {
+            if clause.english {
+                if clause.kana.is_some() {
+                    clause.kana = Some(romaji::hiragana(&clause.reading, true));
+                }
+                preceding.push_str(clause.text());
+                previous_english = true;
+                continue;
+            }
             let mut values = vec![clause.text().to_owned()];
             values.extend(
                 self.preferences
@@ -1320,8 +1364,44 @@ impl Session {
             values.retain(|candidate| !emoji.contains(candidate));
             values.extend(emoji);
             crate::math_candidates::augment(&clause.reading, &preceding, &mut values);
+            let has_preference = self.preferences.selected.contains_key(&clause.reading)
+                || !self.external_converter_only
+                    && Linguistics::bundled()
+                        .context(&clause.reading, &format!("{}{}", self.before, self.after))
+                        .is_some();
+            let particle = [
+                "は", "が", "を", "に", "で", "と", "も", "へ", "の", "や", "か", "から", "まで",
+                "より",
+            ]
+            .contains(&clause.reading.as_str());
+            let suru = previous_english
+                && [
+                    "する",
+                    "すれ",
+                    "した",
+                    "して",
+                    "しま",
+                    "しな",
+                    "しよ",
+                    "しと",
+                    "しちゃ",
+                    "しろ",
+                    "され",
+                    "させ",
+                    "せず",
+                ]
+                .iter()
+                .any(|stem| clause.reading.starts_with(stem))
+                && values
+                    .first()
+                    .and_then(|text| text.chars().next())
+                    .is_some_and(|ch| !crate::linguistics::kana(ch));
+            if !has_preference && particle || suru {
+                values.insert(0, clause.reading.clone());
+            }
             *clause = Clause::new(clause.reading.clone(), values);
             preceding.push_str(clause.text());
+            previous_english = false;
         }
         self.rank_clauses(&mut clauses);
         self.live_clauses.clear();
@@ -1334,6 +1414,9 @@ impl Session {
     }
     fn rank_clauses(&self, clauses: &mut [Clause]) {
         for clause in clauses {
+            if clause.english {
+                continue;
+            }
             if let Some(preferred) = self.preferences.selected.get(&clause.reading) {
                 if let Some(index) = clause.candidates.iter().position(|c| c == preferred) {
                     clause.selected = index;
@@ -1367,7 +1450,7 @@ impl Session {
             return false;
         }
         for (index, candidates) in external {
-            if candidates.is_empty() || index >= self.clauses.len() {
+            if candidates.is_empty() || index >= self.clauses.len() || self.clauses[index].english {
                 continue;
             }
             let reading = self.clauses[index].reading.clone();
@@ -1398,15 +1481,29 @@ impl Session {
     }
     fn resize_clause(&mut self, grow: bool) {
         let index = self.selected_clause;
-        if self.clauses.is_empty() {
+        let Some(current) = self.clauses.get(index) else {
             return;
-        }
-        let mut reading = self.clauses[index].reading.clone();
-        if grow {
-            if index + 1 >= self.clauses.len() {
-                return;
+        };
+        let as_japanese = |clause: &Clause| -> Option<String> {
+            if clause.english {
+                clause
+                    .kana
+                    .as_ref()
+                    .filter(|kana| kana.chars().any(crate::linguistics::kana))
+                    .cloned()
+            } else {
+                Some(clause.reading.clone())
             }
-            let mut next = self.clauses[index + 1].reading.clone();
+        };
+        let Some(mut reading) = as_japanese(current) else {
+            return;
+        };
+        // Validate the move before replacing an English clause. A failed
+        // resize must preserve its display and selected candidate verbatim.
+        if grow {
+            let Some(mut next) = self.clauses.get(index + 1).and_then(as_japanese) else {
+                return;
+            };
             let c = next.remove(0);
             reading.push(c);
             if next.is_empty() {
@@ -1419,7 +1516,9 @@ impl Session {
                 return;
             }
             let c = reading.pop().unwrap();
-            let next = if index + 1 < self.clauses.len() {
+            // Shrinking before English inserts a new Japanese clause instead
+            // of absorbing/reinterpreting that untouched English clause.
+            let next = if self.clauses.get(index + 1).is_some_and(|c| !c.english) {
                 format!("{c}{}", self.clauses.remove(index + 1).reading)
             } else {
                 c.to_string()
@@ -1689,6 +1788,14 @@ impl Session {
             0x20 if !self.raw.is_empty() => {
                 if !self.is_converting()
                     && !self.settings.boolean("SeparateKeyRoles")
+                    && self.ends_in_english()
+                {
+                    self.space_started_conversion = true;
+                    self.explicit = Some(self.display(true) + " ");
+                    return self.commit();
+                }
+                if !self.is_converting()
+                    && !self.settings.boolean("SeparateKeyRoles")
                     && (self.display(true) == self.raw
                         || self.english_at_word_end()
                         || self.before.is_empty()
@@ -1726,6 +1833,8 @@ impl Session {
                         reading: self.reading(),
                         candidates: self.candidates.clone(),
                         selected: self.selected,
+                        english: false,
+                        kana: None,
                     });
                 }
                 if modifiers & 1 != 0 {

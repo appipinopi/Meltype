@@ -1,7 +1,7 @@
 {
   "baseline": "45e14f86558aa6ea34f2c2ecd038ba95ca8c3c46",
-  "host_sha256": "0babcc5ce84591ba105840352bb35328b7c27b5e9910ce1fe88df1678da286ad",
-  "scope": "Deterministic converter: Japanese clause resizing, text/selection/commit and converter candidates; not all candidate sources or mixed-English resizing.",
+  "host_sha256": "c0184854ae55c4b0f5ba9093cc8973e09078b4c77f749ee418c25eab199144c6",
+  "scope": "Deterministic converter with production romaji typo lexicon: Japanese and mixed-English clause resizing; text/selection/commit and converter candidates, not all candidate sources.",
   "cases": [
     {
       "name": "shrink-grow",
@@ -103,6 +103,7 @@
         ]
       ],
       "failure": false,
+      "separate": false,
       "expected": [
         {
           "consumed": true,
@@ -607,6 +608,7 @@
         ]
       ],
       "failure": false,
+      "separate": false,
       "expected": [
         {
           "consumed": true,
@@ -1116,6 +1118,7 @@
         ]
       ],
       "failure": false,
+      "separate": false,
       "expected": [
         {
           "consumed": true,
@@ -1660,6 +1663,7 @@
         ]
       ],
       "failure": false,
+      "separate": false,
       "expected": [
         {
           "consumed": true,
@@ -2187,6 +2191,7 @@
         ]
       ],
       "failure": false,
+      "separate": false,
       "expected": [
         {
           "consumed": true,
@@ -2812,6 +2817,7 @@
         ]
       ],
       "failure": false,
+      "separate": false,
       "expected": [
         {
           "consumed": true,
@@ -3452,6 +3458,7 @@
         ]
       ],
       "failure": false,
+      "separate": false,
       "expected": [
         {
           "consumed": true,
@@ -3946,6 +3953,7 @@
         ]
       ],
       "failure": false,
+      "separate": false,
       "expected": [
         {
           "consumed": true,
@@ -4484,6 +4492,7 @@
         ]
       ],
       "failure": false,
+      "separate": false,
       "expected": [
         {
           "consumed": true,
@@ -4993,6 +5002,7 @@
         ]
       ],
       "failure": false,
+      "separate": false,
       "expected": [
         {
           "consumed": true,
@@ -5606,6 +5616,7 @@
         ]
       ],
       "failure": false,
+      "separate": false,
       "expected": [
         {
           "consumed": true,
@@ -6545,6 +6556,7 @@
         ]
       ],
       "failure": true,
+      "separate": false,
       "expected": [
         {
           "consumed": true,
@@ -6943,6 +6955,3408 @@
               "text": "あいうえおか【きくけこ】"
             }
           ],
+          "view": null
+        }
+      ]
+    },
+    {
+      "name": "mixed-grow-across-english",
+      "keys": [
+        [
+          75,
+          107,
+          0
+        ],
+        [
+          79,
+          111,
+          0
+        ],
+        [
+          78,
+          110,
+          0
+        ],
+        [
+          79,
+          111,
+          0
+        ],
+        [
+          84,
+          116,
+          0
+        ],
+        [
+          69,
+          101,
+          0
+        ],
+        [
+          65,
+          97,
+          0
+        ],
+        [
+          77,
+          109,
+          0
+        ],
+        [
+          68,
+          100,
+          0
+        ],
+        [
+          69,
+          101,
+          0
+        ],
+        [
+          89,
+          121,
+          0
+        ],
+        [
+          65,
+          97,
+          0
+        ],
+        [
+          82,
+          114,
+          0
+        ],
+        [
+          85,
+          117,
+          0
+        ],
+        [
+          32,
+          0,
+          0
+        ],
+        [
+          39,
+          0,
+          1
+        ],
+        [
+          39,
+          0,
+          1
+        ],
+        [
+          13,
+          0,
+          0
+        ]
+      ],
+      "failure": false,
+      "separate": false,
+      "expected": [
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "k",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "こ",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "こn",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "この",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "こnot",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このて",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このてあ",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このteam",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このてamd",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このteamで",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このteamでy",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このteamでや",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このteamでやr",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このteamでやる",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "【この】team【でやる】",
+            "converting": true,
+            "selectedIndex": 0,
+            "selectedClause": 0,
+            "hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+            "candidates": [
+              "【この】",
+              "この★",
+              "この",
+              "コノ",
+              "ｺﾉ",
+              "kono",
+              "ｋｏｎｏ"
+            ],
+            "clauses": [
+              "【この】",
+              "team",
+              "【でやる】"
+            ],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              "半角",
+              "全角"
+            ],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "【このて】【あm】【でやる】",
+            "converting": true,
+            "selectedIndex": 0,
+            "selectedClause": 0,
+            "hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+            "candidates": [
+              "【このて】",
+              "このて★",
+              "このて",
+              "コノテ",
+              "ｺﾉﾃ"
+            ],
+            "clauses": [
+              "【このて】",
+              "【あm】",
+              "【でやる】"
+            ],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "【このてあ】【m】【でやる】",
+            "converting": true,
+            "selectedIndex": 0,
+            "selectedClause": 0,
+            "hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+            "candidates": [
+              "【このてあ】",
+              "このてあ★",
+              "このてあ",
+              "コノテア",
+              "ｺﾉﾃｱ"
+            ],
+            "clauses": [
+              "【このてあ】",
+              "【m】",
+              "【でやる】"
+            ],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [
+            {
+              "deleteBefore": 0,
+              "text": "【このてあ】【m】【でやる】"
+            }
+          ],
+          "view": null
+        }
+      ]
+    },
+    {
+      "name": "mixed-shrink-english",
+      "keys": [
+        [
+          75,
+          107,
+          0
+        ],
+        [
+          79,
+          111,
+          0
+        ],
+        [
+          78,
+          110,
+          0
+        ],
+        [
+          79,
+          111,
+          0
+        ],
+        [
+          84,
+          116,
+          0
+        ],
+        [
+          69,
+          101,
+          0
+        ],
+        [
+          65,
+          97,
+          0
+        ],
+        [
+          77,
+          109,
+          0
+        ],
+        [
+          68,
+          100,
+          0
+        ],
+        [
+          69,
+          101,
+          0
+        ],
+        [
+          89,
+          121,
+          0
+        ],
+        [
+          65,
+          97,
+          0
+        ],
+        [
+          82,
+          114,
+          0
+        ],
+        [
+          85,
+          117,
+          0
+        ],
+        [
+          32,
+          0,
+          0
+        ],
+        [
+          39,
+          0,
+          0
+        ],
+        [
+          37,
+          0,
+          1
+        ],
+        [
+          37,
+          0,
+          1
+        ],
+        [
+          13,
+          0,
+          0
+        ]
+      ],
+      "failure": false,
+      "separate": false,
+      "expected": [
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "k",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "こ",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "こn",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "この",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "こnot",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このて",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このてあ",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このteam",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このてamd",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このteamで",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このteamでy",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このteamでや",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このteamでやr",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このteamでやる",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "【この】team【でやる】",
+            "converting": true,
+            "selectedIndex": 0,
+            "selectedClause": 0,
+            "hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+            "candidates": [
+              "【この】",
+              "この★",
+              "この",
+              "コノ",
+              "ｺﾉ",
+              "kono",
+              "ｋｏｎｏ"
+            ],
+            "clauses": [
+              "【この】",
+              "team",
+              "【でやる】"
+            ],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              "半角",
+              "全角"
+            ],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "【この】team【でやる】",
+            "converting": true,
+            "selectedIndex": 0,
+            "selectedClause": 1,
+            "hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+            "candidates": [
+              "team",
+              "Team",
+              "TEAM",
+              "ｔｅａｍ"
+            ],
+            "clauses": [
+              "【この】",
+              "team",
+              "【でやる】"
+            ],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [
+              "半角",
+              null,
+              null,
+              "全角"
+            ],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "【この】【てあ】【mでやる】",
+            "converting": true,
+            "selectedIndex": 0,
+            "selectedClause": 1,
+            "hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+            "candidates": [
+              "【てあ】",
+              "てあ★",
+              "てあ",
+              "テア",
+              "ﾃｱ"
+            ],
+            "clauses": [
+              "【この】",
+              "【てあ】",
+              "【mでやる】"
+            ],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "【この】【て】【あmでやる】",
+            "converting": true,
+            "selectedIndex": 0,
+            "selectedClause": 1,
+            "hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+            "candidates": [
+              "【て】",
+              "て★",
+              "て",
+              "テ",
+              "ﾃ"
+            ],
+            "clauses": [
+              "【この】",
+              "【て】",
+              "【あmでやる】"
+            ],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [
+            {
+              "deleteBefore": 0,
+              "text": "【この】【て】【あmでやる】"
+            }
+          ],
+          "view": null
+        }
+      ]
+    },
+    {
+      "name": "mixed-shrink-before-english",
+      "keys": [
+        [
+          84,
+          116,
+          0
+        ],
+        [
+          65,
+          97,
+          0
+        ],
+        [
+          78,
+          110,
+          0
+        ],
+        [
+          78,
+          110,
+          0
+        ],
+        [
+          73,
+          105,
+          0
+        ],
+        [
+          71,
+          71,
+          1
+        ],
+        [
+          73,
+          105,
+          0
+        ],
+        [
+          84,
+          116,
+          0
+        ],
+        [
+          72,
+          104,
+          0
+        ],
+        [
+          85,
+          117,
+          0
+        ],
+        [
+          66,
+          98,
+          0
+        ],
+        [
+          68,
+          100,
+          0
+        ],
+        [
+          69,
+          101,
+          0
+        ],
+        [
+          32,
+          0,
+          0
+        ],
+        [
+          37,
+          0,
+          1
+        ],
+        [
+          39,
+          0,
+          1
+        ],
+        [
+          13,
+          0,
+          0
+        ]
+      ],
+      "failure": false,
+      "separate": false,
+      "expected": [
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "t",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "た",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "たn",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "たん",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "たんい",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "たnniG",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "たんいGi",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "たんいGit",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "たんいGith",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "たんいGithu",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "たんいGithub",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "たんいGithubd",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "たんいGithubで",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "【たんい】Githubで",
+            "converting": true,
+            "selectedIndex": 0,
+            "selectedClause": 0,
+            "hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+            "candidates": [
+              "【たんい】",
+              "たんい★",
+              "たんい",
+              "タンイ",
+              "ﾀﾝｲ",
+              "tanni",
+              "ｔａｎｎｉ"
+            ],
+            "clauses": [
+              "【たんい】",
+              "Github",
+              "で"
+            ],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              "半角",
+              "全角"
+            ],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "【たん】【い】Githubで",
+            "converting": true,
+            "selectedIndex": 0,
+            "selectedClause": 0,
+            "hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+            "candidates": [
+              "【たん】",
+              "たん★",
+              "たん",
+              "タン",
+              "ﾀﾝ"
+            ],
+            "clauses": [
+              "【たん】",
+              "【い】",
+              "Github",
+              "で"
+            ],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "【たんい】Githubで",
+            "converting": true,
+            "selectedIndex": 0,
+            "selectedClause": 0,
+            "hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+            "candidates": [
+              "【たんい】",
+              "たんい★",
+              "たんい",
+              "タンイ",
+              "ﾀﾝｲ"
+            ],
+            "clauses": [
+              "【たんい】",
+              "Github",
+              "で"
+            ],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [
+            {
+              "deleteBefore": 0,
+              "text": "【たんい】Githubで"
+            }
+          ],
+          "view": null
+        }
+      ]
+    },
+    {
+      "name": "mixed-grow-last-english-noop",
+      "keys": [
+        [
+          75,
+          107,
+          0
+        ],
+        [
+          79,
+          111,
+          0
+        ],
+        [
+          78,
+          110,
+          0
+        ],
+        [
+          79,
+          111,
+          0
+        ],
+        [
+          84,
+          116,
+          0
+        ],
+        [
+          69,
+          101,
+          0
+        ],
+        [
+          65,
+          97,
+          0
+        ],
+        [
+          77,
+          109,
+          0
+        ],
+        [
+          28,
+          0,
+          0
+        ],
+        [
+          39,
+          0,
+          0
+        ],
+        [
+          39,
+          0,
+          1
+        ],
+        [
+          13,
+          0,
+          0
+        ]
+      ],
+      "failure": false,
+      "separate": true,
+      "expected": [
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "k",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "こ",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "こn",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "この",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "こnot",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このて",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このてあ",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このteam",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "【この】team",
+            "converting": true,
+            "selectedIndex": 0,
+            "selectedClause": 0,
+            "hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+            "candidates": [
+              "【この】",
+              "この★",
+              "この",
+              "コノ",
+              "ｺﾉ",
+              "kono",
+              "ｋｏｎｏ"
+            ],
+            "clauses": [
+              "【この】",
+              "team"
+            ],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              "半角",
+              "全角"
+            ],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "【この】team",
+            "converting": true,
+            "selectedIndex": 0,
+            "selectedClause": 1,
+            "hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+            "candidates": [
+              "team",
+              "Team",
+              "TEAM",
+              "ｔｅａｍ"
+            ],
+            "clauses": [
+              "【この】",
+              "team"
+            ],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [
+              "半角",
+              null,
+              null,
+              "全角"
+            ],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "【この】team",
+            "converting": true,
+            "selectedIndex": 0,
+            "selectedClause": 1,
+            "hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+            "candidates": [
+              "team",
+              "Team",
+              "TEAM",
+              "ｔｅａｍ"
+            ],
+            "clauses": [
+              "【この】",
+              "team"
+            ],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [
+              "半角",
+              null,
+              null,
+              "全角"
+            ],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [
+            {
+              "deleteBefore": 0,
+              "text": "【この】team"
+            }
+          ],
+          "view": null
+        }
+      ]
+    },
+    {
+      "name": "mixed-grow-unreadable-next-noop",
+      "keys": [
+        [
+          75,
+          107,
+          0
+        ],
+        [
+          79,
+          111,
+          0
+        ],
+        [
+          78,
+          110,
+          0
+        ],
+        [
+          79,
+          111,
+          0
+        ],
+        [
+          84,
+          116,
+          0
+        ],
+        [
+          69,
+          101,
+          0
+        ],
+        [
+          65,
+          97,
+          0
+        ],
+        [
+          77,
+          109,
+          0
+        ],
+        [
+          88,
+          88,
+          1
+        ],
+        [
+          89,
+          121,
+          0
+        ],
+        [
+          90,
+          122,
+          0
+        ],
+        [
+          28,
+          0,
+          0
+        ],
+        [
+          39,
+          0,
+          0
+        ],
+        [
+          39,
+          0,
+          1
+        ],
+        [
+          13,
+          0,
+          0
+        ]
+      ],
+      "failure": false,
+      "separate": true,
+      "expected": [
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "k",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "こ",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "こn",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "この",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "こnot",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このて",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このてあ",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このteam",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "konoteamX",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Enter 確定　Space 確定+空白　Shift+Space 日本語で変換　半角/全角 日本語に",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このてあmXy",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このteamXyz",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "【この】teamXyz",
+            "converting": true,
+            "selectedIndex": 0,
+            "selectedClause": 0,
+            "hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+            "candidates": [
+              "【この】",
+              "この★",
+              "この",
+              "コノ",
+              "ｺﾉ",
+              "kono",
+              "ｋｏｎｏ"
+            ],
+            "clauses": [
+              "【この】",
+              "team",
+              "Xyz"
+            ],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              "半角",
+              "全角"
+            ],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "【この】teamXyz",
+            "converting": true,
+            "selectedIndex": 0,
+            "selectedClause": 1,
+            "hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+            "candidates": [
+              "team",
+              "Team",
+              "TEAM",
+              "ｔｅａｍ"
+            ],
+            "clauses": [
+              "【この】",
+              "team",
+              "Xyz"
+            ],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [
+              "半角",
+              null,
+              null,
+              "全角"
+            ],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "【この】teamXyz",
+            "converting": true,
+            "selectedIndex": 0,
+            "selectedClause": 1,
+            "hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+            "candidates": [
+              "team",
+              "Team",
+              "TEAM",
+              "ｔｅａｍ"
+            ],
+            "clauses": [
+              "【この】",
+              "team",
+              "Xyz"
+            ],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [
+              "半角",
+              null,
+              null,
+              "全角"
+            ],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [
+            {
+              "deleteBefore": 0,
+              "text": "【この】teamXyz"
+            }
+          ],
+          "view": null
+        }
+      ]
+    },
+    {
+      "name": "protected-shrink-noop",
+      "keys": [
+        [
+          75,
+          107,
+          0
+        ],
+        [
+          79,
+          111,
+          0
+        ],
+        [
+          78,
+          110,
+          0
+        ],
+        [
+          79,
+          111,
+          0
+        ],
+        [
+          72,
+          104,
+          0
+        ],
+        [
+          84,
+          116,
+          0
+        ],
+        [
+          84,
+          116,
+          0
+        ],
+        [
+          80,
+          112,
+          0
+        ],
+        [
+          83,
+          115,
+          0
+        ],
+        [
+          7,
+          58,
+          0
+        ],
+        [
+          7,
+          47,
+          0
+        ],
+        [
+          7,
+          47,
+          0
+        ],
+        [
+          69,
+          101,
+          0
+        ],
+        [
+          88,
+          120,
+          0
+        ],
+        [
+          65,
+          97,
+          0
+        ],
+        [
+          77,
+          109,
+          0
+        ],
+        [
+          80,
+          112,
+          0
+        ],
+        [
+          76,
+          108,
+          0
+        ],
+        [
+          69,
+          101,
+          0
+        ],
+        [
+          7,
+          46,
+          0
+        ],
+        [
+          67,
+          99,
+          0
+        ],
+        [
+          79,
+          111,
+          0
+        ],
+        [
+          77,
+          109,
+          0
+        ],
+        [
+          7,
+          47,
+          0
+        ],
+        [
+          32,
+          0,
+          0
+        ],
+        [
+          39,
+          0,
+          0
+        ],
+        [
+          37,
+          0,
+          1
+        ],
+        [
+          13,
+          0,
+          0
+        ]
+      ],
+      "failure": false,
+      "separate": false,
+      "expected": [
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "k",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "こ",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "こn",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "この",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このh",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このht",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このhっt",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このhttp",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このhttps",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このhttps:",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このhttps:/",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "konohttps://",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Enter 確定　Space 確定+空白　Shift+Space 日本語で変換　半角/全角 日本語に",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "konohttps://e",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Enter 確定　Space 確定+空白　Shift+Space 日本語で変換　半角/全角 日本語に",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "konohttps://ex",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Enter 確定　Space 確定+空白　Shift+Space 日本語で変換　半角/全角 日本語に",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "konohttps://exa",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Enter 確定　Space 確定+空白　Shift+Space 日本語で変換　半角/全角 日本語に",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "konohttps://exam",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Enter 確定　Space 確定+空白　Shift+Space 日本語で変換　半角/全角 日本語に",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "konohttps://examp",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Enter 確定　Space 確定+空白　Shift+Space 日本語で変換　半角/全角 日本語に",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "konohttps://exampl",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Enter 確定　Space 確定+空白　Shift+Space 日本語で変換　半角/全角 日本語に",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "konohttps://example",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Enter 確定　Space 確定+空白　Shift+Space 日本語で変換　半角/全角 日本語に",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "konohttps://example.",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Enter 確定　Space 確定+空白　Shift+Space 日本語で変換　半角/全角 日本語に",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "konohttps://example.c",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Enter 確定　Space 確定+空白　Shift+Space 日本語で変換　半角/全角 日本語に",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "konohttps://example.co",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Enter 確定　Space 確定+空白　Shift+Space 日本語で変換　半角/全角 日本語に",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "konohttps://example.com",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Enter 確定　Space 確定+空白　Shift+Space 日本語で変換　半角/全角 日本語に",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "konohttps://example.com/",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Enter 確定　Space 確定+空白　Shift+Space 日本語で変換　半角/全角 日本語に",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [
+            {
+              "deleteBefore": 0,
+              "text": "konohttps://example.com/ "
+            }
+          ],
+          "view": null
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "view": null
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "view": null
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "view": null
+        }
+      ]
+    },
+    {
+      "name": "mixed-grow-last-english-noop:space",
+      "keys": [
+        [
+          75,
+          107,
+          0
+        ],
+        [
+          79,
+          111,
+          0
+        ],
+        [
+          78,
+          110,
+          0
+        ],
+        [
+          79,
+          111,
+          0
+        ],
+        [
+          84,
+          116,
+          0
+        ],
+        [
+          69,
+          101,
+          0
+        ],
+        [
+          65,
+          97,
+          0
+        ],
+        [
+          77,
+          109,
+          0
+        ],
+        [
+          32,
+          0,
+          0
+        ],
+        [
+          39,
+          0,
+          0
+        ],
+        [
+          39,
+          0,
+          1
+        ],
+        [
+          13,
+          0,
+          0
+        ]
+      ],
+      "failure": false,
+      "separate": false,
+      "expected": [
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "k",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "こ",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "こn",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "この",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "こnot",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このて",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このてあ",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このteam",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [
+            {
+              "deleteBefore": 0,
+              "text": "このteam "
+            }
+          ],
+          "view": null
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "view": null
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "view": null
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "view": null
+        }
+      ]
+    },
+    {
+      "name": "mixed-grow-unreadable-next-noop:space",
+      "keys": [
+        [
+          75,
+          107,
+          0
+        ],
+        [
+          79,
+          111,
+          0
+        ],
+        [
+          78,
+          110,
+          0
+        ],
+        [
+          79,
+          111,
+          0
+        ],
+        [
+          84,
+          116,
+          0
+        ],
+        [
+          69,
+          101,
+          0
+        ],
+        [
+          65,
+          97,
+          0
+        ],
+        [
+          77,
+          109,
+          0
+        ],
+        [
+          88,
+          88,
+          1
+        ],
+        [
+          89,
+          121,
+          0
+        ],
+        [
+          90,
+          122,
+          0
+        ],
+        [
+          32,
+          0,
+          0
+        ],
+        [
+          39,
+          0,
+          0
+        ],
+        [
+          39,
+          0,
+          1
+        ],
+        [
+          13,
+          0,
+          0
+        ]
+      ],
+      "failure": false,
+      "separate": false,
+      "expected": [
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "k",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "こ",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "こn",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "この",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "こnot",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このて",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このてあ",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このteam",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "konoteamX",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Enter 確定　Space 確定+空白　Shift+Space 日本語で変換　半角/全角 日本語に",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このてあmXy",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "このteamXyz",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [
+            {
+              "deleteBefore": 0,
+              "text": "このteamXyz "
+            }
+          ],
+          "view": null
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "view": null
+        },
+        {
+          "consumed": false,
+          "commits": [],
+          "view": null
+        },
+        {
+          "consumed": false,
+          "commits": [],
           "view": null
         }
       ]
