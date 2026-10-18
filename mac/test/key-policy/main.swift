@@ -907,7 +907,7 @@ for failure in ["missing source","invalid plist","unsupported rows","invalid UTF
         }
     }
     if failure=="missing source" {source=importIORoot.appendingPathComponent("missing.plist")}
-    if failure=="invalid plist" {source=importIORoot.appendingPathComponent("invalid.plist");try Data("invalid".utf8).write(to:source)}
+    if failure=="invalid plist" {source=importIORoot.appendingPathComponent("invalid.plist");try Data("{ broken <plist".utf8).write(to:source)}
     if failure=="unsupported rows" {source=importIORoot.appendingPathComponent("empty.plist");try PropertyListSerialization.data(fromPropertyList:[],format:.xml,options:0).write(to:source)}
     let originalError=importError {try LegacyMacUserDictionary.importFile(source,directory:oldFolder.path)}
     let nativeError=importError {try MacUserDictionary.importFile(source,directory:nativeFolder.path)}
