@@ -910,7 +910,7 @@ for failure in ["missing source","invalid plist","unsupported rows","invalid UTF
     if failure=="invalid plist" {source=importIORoot.appendingPathComponent("invalid.plist");try Data("{ broken <plist".utf8).write(to:source)}
     if failure=="unsupported rows" {source=importIORoot.appendingPathComponent("empty.plist");try PropertyListSerialization.data(fromPropertyList:[],format:.xml,options:0).write(to:source)}
     if failure=="read only destination" {
-        precondition(getuid()!=0,"read-only write failure requires ordinary CI user")
+        precondition(getuid() != 0,"read-only write failure requires ordinary CI user")
         for folder in [nativeFolder,oldFolder] {
             try FileManager.default.setAttributes([.posixPermissions:0o444],ofItemAtPath:folder.appendingPathComponent("userdict.txt").path)
             try FileManager.default.setAttributes([.posixPermissions:0o555],ofItemAtPath:folder.path)
