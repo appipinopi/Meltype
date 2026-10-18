@@ -39,6 +39,62 @@ pub unsafe extern "C" fn meltype_macos_indicator_frame(
         0
     }
 }
+/// Create a +1 NSObject owning indicator lifecycle; enabled is queried at
+/// deferred presentation time and must remain callable through owner destruction.
+/// # Safety
+/// enabled must not unwind and must be callable on the main thread.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_macos_indicator_create(
+    enabled: Option<unsafe extern "C" fn() -> i32>,
+) -> *mut c_void {
+    #[cfg(target_os = "macos")]
+    {
+        enabled.map_or(std::ptr::null_mut(), |enabled| native::create(enabled))
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = enabled;
+        std::ptr::null_mut()
+    }
+}
+/// Queue a show (operation 0), or invalidate/hide (1), on main thread.
+/// # Safety
+/// owner is a live native indicator. caret is null or four readable doubles.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_macos_indicator_update(
+    owner: *mut c_void,
+    operation: u32,
+    mode: u32,
+    caret: *const f64,
+) -> i32 {
+    if owner.is_null() || operation > 1 || mode > 2 {
+        return 0;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        native::update(owner, operation, mode, caret)
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = caret;
+        0
+    }
+}
+/// Borrow/pin the owned panel for SDK inspection; return +1 or null.
+/// # Safety
+/// owner is a live native indicator; caller consumes returned +1 reference.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_macos_indicator_panel(owner: *mut c_void) -> *mut c_void {
+    #[cfg(target_os = "macos")]
+    {
+        native::panel(owner)
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = owner;
+        std::ptr::null_mut()
+    }
+}
 #[cfg(target_os = "macos")]
 mod native {
     use super::*;
@@ -249,5 +305,239 @@ mod native {
         };
         std::ptr::copy_nonoverlapping([x, y, size.width, size.height].as_ptr(), output, 4);
         1
+    }
+    use objc2::{
+        define_class,
+        rc::Weak,
+        runtime::{NSObject, NSObjectProtocol},
+        sel, AnyThread, DefinedClass,
+    };
+    use std::cell::{Cell, RefCell};
+    struct State {
+        panel: RefCell<Option<Retained<AnyObject>>>,
+        timer: RefCell<Option<Retained<AnyObject>>>,
+        generation: Cell<u64>,
+        enabled: unsafe extern "C" fn() -> i32,
+    }
+    define_class!(
+        #[unsafe(super=NSObject)]
+        #[ivars=State]
+        struct Indicator;
+        unsafe impl NSObjectProtocol for Indicator {}
+    );
+    impl Drop for Indicator {
+        fn drop(&mut self) {
+            if MainThreadMarker::new().is_some() {
+                unsafe {
+                    self.hide();
+                }
+            }
+        }
+    }
+    struct TimerState {
+        owner: Weak<Indicator>,
+    }
+    define_class!(
+        #[unsafe(super=NSObject)]
+        #[ivars=TimerState]
+        struct TimerTarget;
+        unsafe impl NSObjectProtocol for TimerTarget {}
+        impl TimerTarget {
+            #[unsafe(method(expire:))]
+            unsafe fn expire(&self,_timer:*mut AnyObject) {
+                if MainThreadMarker::new().is_some() {
+                    if let Some(owner)=self.ivars().owner.load(){owner.hide();}
+                }
+            }
+        }
+    );
+    struct Queued {
+        owner: Weak<Indicator>,
+        generation: u64,
+        mode: u32,
+        caret: Option<NSRect>,
+    }
+    #[link(name = "System")]
+    extern "C" {
+        static _dispatch_main_q: u8;
+        fn dispatch_async_f(
+            queue: *const c_void,
+            context: *mut c_void,
+            callback: unsafe extern "C" fn(*mut c_void),
+        );
+    }
+    #[link(name = "CoreGraphics", kind = "framework")]
+    extern "C" {
+        fn CGRectContainsPoint(rect: NSRect, point: NSPoint) -> bool;
+        fn CGRectIntersectsRect(a: NSRect, b: NSRect) -> bool;
+    }
+    #[link(name = "AppKit", kind = "framework")]
+    extern "C" {
+        fn NSMouseInRect(point: NSPoint, rect: NSRect, flipped: bool) -> bool;
+    }
+    unsafe extern "C" fn queued(context: *mut c_void) {
+        let request = Box::from_raw(context.cast::<Queued>());
+        if let Some(owner) = request.owner.load() {
+            if owner.ivars().generation.get() == request.generation {
+                owner.present(request.mode, request.caret, request.generation);
+            }
+        }
+    }
+    impl Indicator {
+        unsafe fn cancel_timer(&self) {
+            let timer = self.ivars().timer.borrow_mut().take();
+            if let Some(timer) = timer {
+                let _: () = msg_send![&timer, invalidate];
+            }
+        }
+        unsafe fn hide(&self) {
+            self.ivars()
+                .generation
+                .set(self.ivars().generation.get().wrapping_add(1));
+            self.cancel_timer();
+            let panel = self.ivars().panel.borrow().clone();
+            if let Some(panel) = panel {
+                let _: () = msg_send![&panel,orderOut:std::ptr::null::<AnyObject>()];
+            }
+        }
+        unsafe fn present(&self, mode: u32, caret: Option<NSRect>, generation: u64) {
+            let enabled = (self.ivars().enabled)() > 0;
+            if self.ivars().generation.get() != generation {
+                return;
+            }
+            if !enabled {
+                self.hide();
+                return;
+            }
+            let screens: Retained<objc2_foundation::NSArray<AnyObject>> =
+                msg_send![class(c"NSScreen"), screens];
+            let mouse: NSPoint = msg_send![class(c"NSEvent"), mouseLocation];
+            let mut screen = None;
+            for candidate in screens.iter() {
+                let frame: NSRect = msg_send![&candidate, frame];
+                let hit = if let Some(caret) = caret {
+                    CGRectContainsPoint(frame, caret.origin) || CGRectIntersectsRect(frame, caret)
+                } else {
+                    NSMouseInRect(mouse, frame, false)
+                };
+                if hit {
+                    screen = Some(candidate);
+                    break;
+                }
+            }
+            let Some(screen) = screen else {
+                self.hide();
+                return;
+            };
+            let visible: NSRect = msg_send![&screen, visibleFrame];
+            let mut values = [0.0; 4];
+            let c = caret.map(|r| [r.origin.x, r.origin.y, r.size.width, r.size.height]);
+            let v = [
+                visible.origin.x,
+                visible.origin.y,
+                visible.size.width,
+                visible.size.height,
+            ];
+            frame(
+                if caret.is_some() { 1 } else { 2 },
+                c.as_ref().map_or(std::ptr::null(), |c| c.as_ptr()),
+                v.as_ptr(),
+                values.as_mut_ptr(),
+            );
+            let frame = NSRect::new(
+                NSPoint::new(values[0], values[1]),
+                NSSize::new(values[2], values[3]),
+            );
+            let previous = self.ivars().panel.borrow().clone();
+            let panel = if let Some(panel) = previous {
+                panel
+            } else {
+                let allocated: Allocated<AnyObject> = msg_send![class(c"NSPanel"), alloc];
+                let panel: Retained<AnyObject> = msg_send![allocated,initWithContentRect:frame,styleMask:128usize,backing:2usize,defer:false];
+                panel
+            };
+            let _: () = msg_send![&panel,setLevel:101isize];
+            let _: () = msg_send![&panel,setOpaque:false];
+            let color: Retained<AnyObject> = msg_send![class(c"NSColor"), clearColor];
+            let _: () = msg_send![&panel,setBackgroundColor:&*color];
+            let _: () = msg_send![&panel,setHasShadow:true];
+            let _: () = msg_send![&panel,setIgnoresMouseEvents:true];
+            let _: () = msg_send![&panel,setHidesOnDeactivate:false];
+            let _: () = msg_send![&panel,setCollectionBehavior:257usize];
+            let content =
+                Retained::from_raw(content(mode, caret.is_some()).cast::<AnyObject>()).unwrap();
+            let _: () = msg_send![&panel,setContentView:&*content];
+            let _: () = msg_send![&panel,setFrame:frame,display:true];
+            *self.ivars().panel.borrow_mut() = Some(panel.clone());
+            let _: () = msg_send![&panel, orderFrontRegardless];
+            let target = TimerTarget::alloc().set_ivars(TimerState {
+                owner: Weak::new(self),
+            });
+            let target: Retained<TimerTarget> = msg_send![super(target), init];
+            let timer: Retained<AnyObject> = msg_send![class(c"NSTimer"),scheduledTimerWithTimeInterval:1.0f64,target:&*target,selector:sel!(expire:),userInfo:std::ptr::null::<AnyObject>(),repeats:false];
+            *self.ivars().timer.borrow_mut() = Some(timer);
+        }
+    }
+    unsafe fn owner(pointer: *mut c_void) -> Option<Retained<Indicator>> {
+        Retained::retain(pointer.cast::<AnyObject>())?
+            .downcast::<Indicator>()
+            .ok()
+    }
+    pub unsafe fn create(enabled: unsafe extern "C" fn() -> i32) -> *mut c_void {
+        if MainThreadMarker::new().is_none() {
+            return std::ptr::null_mut();
+        }
+        let this = Indicator::alloc().set_ivars(State {
+            panel: RefCell::new(None),
+            timer: RefCell::new(None),
+            generation: Cell::new(0),
+            enabled,
+        });
+        let result: Retained<Indicator> = msg_send![super(this), init];
+        Retained::into_raw(result).cast()
+    }
+    pub unsafe fn update(
+        pointer: *mut c_void,
+        operation: u32,
+        mode: u32,
+        caret: *const f64,
+    ) -> i32 {
+        if MainThreadMarker::new().is_none() {
+            return 0;
+        }
+        let Some(owner) = owner(pointer) else {
+            return 0;
+        };
+        if operation == 1 {
+            owner.hide();
+            return 1;
+        }
+        owner.cancel_timer();
+        let generation = owner.ivars().generation.get().wrapping_add(1);
+        owner.ivars().generation.set(generation);
+        let request = Box::new(Queued {
+            owner: Weak::new(&owner),
+            generation,
+            mode,
+            caret: rect(caret),
+        });
+        dispatch_async_f(
+            std::ptr::addr_of!(_dispatch_main_q).cast(),
+            Box::into_raw(request).cast(),
+            queued,
+        );
+        1
+    }
+    pub unsafe fn panel(pointer: *mut c_void) -> *mut c_void {
+        if MainThreadMarker::new().is_none() {
+            return std::ptr::null_mut();
+        }
+        let Some(owner) = owner(pointer) else {
+            return std::ptr::null_mut();
+        };
+        let panel = owner.ivars().panel.borrow().clone();
+        panel.map_or(std::ptr::null_mut(), |panel| {
+            Retained::into_raw(panel).cast()
+        })
     }
 }

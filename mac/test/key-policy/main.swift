@@ -597,3 +597,68 @@ for caret in [NSRect(x:Double.infinity,y:0,width:1,height:20),NSRect(x:Double.na
     precondition(ModeIndicator.validCaret(caret)==LegacyModeIndicator.validCaret(caret))
 }
 print("macOS Rust indicator: six complete AppKit view trees and \(indicatorFrames) legacy layout frames, fonts/colors/layers/accessibility/caption and caret validation passed (timing/panel lifecycle still Swift)")
+
+func pumpIndicator(_ seconds:Double) {RunLoop.main.run(until:Date(timeIntervalSinceNow:seconds))}
+var indicatorEnabled=true
+var enabledQueries=0
+var indicatorOwner:AnyObject?=editor.createIndicator(enabled:{enabledQueries+=1;return indicatorEnabled ? 1 : 0})
+guard indicatorOwner != nil,let screen=NSScreen.main else {fatalError("indicator lifecycle fixture")}
+let indicatorCaret=NSRect(x:screen.visibleFrame.midX,y:screen.visibleFrame.midY,width:1,height:20)
+// Pending show is superseded before delivery, then explicitly hidden.
+precondition(editor.updateIndicator(indicatorOwner!,operation:0,mode:0,caret:indicatorCaret))
+precondition(editor.updateIndicator(indicatorOwner!,operation:0,mode:1,caret:indicatorCaret))
+precondition(editor.updateIndicator(indicatorOwner!,operation:1))
+pumpIndicator(0.08)
+precondition(editor.indicatorPanel(indicatorOwner!)==nil && enabledQueries==0)
+// Settings must be read when the deferred presentation runs.
+precondition(editor.updateIndicator(indicatorOwner!,operation:0,mode:0,caret:indicatorCaret))
+indicatorEnabled=false;pumpIndicator(0.08)
+precondition(editor.indicatorPanel(indicatorOwner!)==nil && enabledQueries==1)
+indicatorEnabled=true
+let referenceIndicator=LegacyModeIndicator()
+referenceIndicator.show(.code,caret:indicatorCaret)
+precondition(editor.updateIndicator(indicatorOwner!,operation:0,mode:2,caret:indicatorCaret))
+pumpIndicator(0.08)
+guard let indicatorPanel=editor.indicatorPanel(indicatorOwner!) as? NSPanel,
+      let referencePanel=Mirror(reflecting:referenceIndicator).children.first(where:{$0.label=="panel"})?.value as? NSPanel else {fatalError("actual indicator panels")}
+precondition(indicatorPanel.frame==referencePanel.frame)
+precondition(indicatorPanel.level==referencePanel.level && indicatorPanel.styleMask==referencePanel.styleMask)
+precondition(indicatorPanel.isOpaque==referencePanel.isOpaque && indicatorPanel.backgroundColor==referencePanel.backgroundColor)
+precondition(indicatorPanel.hasShadow==referencePanel.hasShadow && indicatorPanel.ignoresMouseEvents==referencePanel.ignoresMouseEvents)
+precondition(indicatorPanel.hidesOnDeactivate==referencePanel.hidesOnDeactivate && indicatorPanel.collectionBehavior==referencePanel.collectionBehavior)
+precondition(indicatorPanel.isVisible && !indicatorPanel.isKeyWindow)
+compareIndicatorViews(indicatorPanel.contentView!,referencePanel.contentView!)
+referenceIndicator.hide()
+// Restarting replaces the previous timer; old expiry must not hide new mode.
+pumpIndicator(0.5)
+precondition(editor.updateIndicator(indicatorOwner!,operation:0,mode:1,caret:indicatorCaret))
+pumpIndicator(0.08)
+precondition((editor.indicatorPanel(indicatorOwner!) as? NSPanel)===indicatorPanel)
+pumpIndicator(0.5)
+precondition(indicatorPanel.isVisible,"old timer hid new indicator")
+pumpIndicator(0.55)
+precondition(!indicatorPanel.isVisible,"one-second timer did not hide indicator")
+// A missing screen hides a previously visible panel.
+precondition(editor.updateIndicator(indicatorOwner!,operation:0,mode:0,caret:indicatorCaret));pumpIndicator(0.08)
+precondition(indicatorPanel.isVisible)
+precondition(editor.updateIndicator(indicatorOwner!,operation:0,mode:0,caret:NSRect(x:1e9,y:1e9,width:1,height:20)));pumpIndicator(0.08)
+precondition(!indicatorPanel.isVisible)
+// Destruction during visible state cancels timer/hides without a retain cycle.
+precondition(editor.updateIndicator(indicatorOwner!,operation:0,mode:0,caret:indicatorCaret));pumpIndicator(0.08)
+precondition(indicatorPanel.isVisible)
+weak var weakIndicatorOwner=indicatorOwner
+indicatorOwner=nil
+precondition(weakIndicatorOwner==nil && !indicatorPanel.isVisible,"indicator owner/timer cycle or leaked panel")
+var pendingIndicator=editor.createIndicator(enabled:{1})
+weak var weakPendingIndicator=pendingIndicator
+precondition(editor.updateIndicator(pendingIndicator!,operation:0,mode:0,caret:indicatorCaret))
+pendingIndicator=nil
+precondition(weakPendingIndicator==nil)
+pumpIndicator(0.08)
+let backgroundIndicatorDone=DispatchSemaphore(value:0)
+DispatchQueue.global().async {
+    precondition(editor.createIndicator(enabled:{1})==nil)
+    backgroundIndicatorDone.signal()
+}
+precondition(backgroundIndicatorDone.wait(timeout:.now()+5) == .success)
+print("macOS Rust indicator lifecycle: actual deferred queue and one-second NSTimer, SDK panel settings/view parity, superseded/hidden requests, presentation-time preference, timer replacement, panel reuse, missing screen, weak owner destruction and background rejection passed")

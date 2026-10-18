@@ -31,6 +31,12 @@ struct NativeEditorPolicy {
     private typealias Suggestion = @convention(c) (UnsafeMutableRawPointer?, UnsafePointer<UInt16>?, UInt32, Int32, UnsafePointer<Double>?, Int32) -> UnsafeMutableRawPointer?
     private typealias IndicatorContent = @convention(c) (UInt32,Int32) -> UnsafeMutableRawPointer?
     private typealias IndicatorFrame = @convention(c) (UInt32,UnsafePointer<Double>?,UnsafePointer<Double>?,UnsafeMutablePointer<Double>?) -> Int32
+    private typealias IndicatorCreate = @convention(c) (NativeIndicatorEnabled) -> UnsafeMutableRawPointer?
+    private typealias IndicatorUpdate = @convention(c) (UnsafeMutableRawPointer?,UInt32,UInt32,UnsafePointer<Double>?) -> Int32
+    private typealias IndicatorPanel = @convention(c) (UnsafeMutableRawPointer?) -> UnsafeMutableRawPointer?
+    private let indicatorCreateFunction: IndicatorCreate
+    private let indicatorUpdateFunction: IndicatorUpdate
+    private let indicatorPanelFunction: IndicatorPanel
     private let indicatorContentFunction: IndicatorContent
     private let indicatorFrameFunction: IndicatorFrame
     private let suggestionFunction: Suggestion
@@ -73,12 +79,18 @@ struct NativeEditorPolicy {
               let sourceMatches=lookup("meltype_macos_input_source_matches"),
               let suggestion=lookup("meltype_macos_suggestion"),
               let indicatorContent=lookup("meltype_macos_indicator_content"),
-              let indicatorFrame=lookup("meltype_macos_indicator_frame") else { return nil }
+              let indicatorFrame=lookup("meltype_macos_indicator_frame"),
+              let indicatorCreate=lookup("meltype_macos_indicator_create"),
+              let indicatorUpdate=lookup("meltype_macos_indicator_update"),
+              let indicatorPanel=lookup("meltype_macos_indicator_panel") else { return nil }
         self.modeServicesCreate=unsafeBitCast(modeServicesCreate,to:ModeServicesCreate.self)
         self.modeServicesTargetFunction=unsafeBitCast(modeServicesTarget,to:ModeServicesTarget.self)
         self.modeServicesDispatch=unsafeBitCast(modeServicesDispatch,to:ModeServicesDispatch.self)
         self.modeServicesErrorFunction=unsafeBitCast(modeServicesError,to:ModeServicesError.self)
         self.sourceMatches=unsafeBitCast(sourceMatches,to:SourceMatches.self)
+        self.indicatorCreateFunction=unsafeBitCast(indicatorCreate,to:IndicatorCreate.self)
+        self.indicatorUpdateFunction=unsafeBitCast(indicatorUpdate,to:IndicatorUpdate.self)
+        self.indicatorPanelFunction=unsafeBitCast(indicatorPanel,to:IndicatorPanel.self)
         self.indicatorContentFunction=unsafeBitCast(indicatorContent,to:IndicatorContent.self)
         self.indicatorFrameFunction=unsafeBitCast(indicatorFrame,to:IndicatorFrame.self)
         self.suggestionFunction=unsafeBitCast(suggestion,to:Suggestion.self)
@@ -166,6 +178,21 @@ struct NativeEditorPolicy {
             }
         }
         guard let pointer else { return nil }
+        return Unmanaged<AnyObject>.fromOpaque(pointer).takeRetainedValue()
+    }
+    func createIndicator(enabled: NativeIndicatorEnabled) -> AnyObject? {
+        guard let pointer=indicatorCreateFunction(enabled) else {return nil}
+        return Unmanaged<AnyObject>.fromOpaque(pointer).takeRetainedValue()
+    }
+    @discardableResult
+    func updateIndicator(_ owner: AnyObject,operation:UInt32,mode:UInt32=0,caret:NSRect?=nil)->Bool {
+        let values=caret.map {[Double($0.origin.x),Double($0.origin.y),Double($0.size.width),Double($0.size.height)]} ?? [0,0,0,0]
+        return withExtendedLifetime(owner) {values.withUnsafeBufferPointer {
+            indicatorUpdateFunction(Unmanaged.passUnretained(owner).toOpaque(),operation,mode,caret == nil ? nil : $0.baseAddress) != 0
+        }}
+    }
+    func indicatorPanel(_ owner:AnyObject)->AnyObject? {
+        guard let pointer=withExtendedLifetime(owner,{indicatorPanelFunction(Unmanaged.passUnretained(owner).toOpaque())}) else {return nil}
         return Unmanaged<AnyObject>.fromOpaque(pointer).takeRetainedValue()
     }
     func indicatorContent(mode: UInt32,compact: Bool) -> AnyObject? {
@@ -335,3 +362,5 @@ private let nativeMeaningCallback: NativeMeaningCallback = { context in
 }
 
 typealias NativeModeServiceHost = @convention(c) (UnsafeMutableRawPointer?, UnsafeMutableRawPointer?, UInt32, Int32) -> Int32
+
+typealias NativeIndicatorEnabled = @convention(c) () -> Int32

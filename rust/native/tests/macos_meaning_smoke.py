@@ -58,6 +58,17 @@ assert not api.meltype_macos_indicator_content(99,0)
 assert not api.meltype_macos_indicator_frame(99,None,None,None)
 if sys.platform!="darwin":
     assert not api.meltype_macos_indicator_content(0,0)
+api.meltype_macos_indicator_create.argtypes=[P]
+api.meltype_macos_indicator_create.restype=P
+api.meltype_macos_indicator_update.argtypes=[P,U,U,c.POINTER(c.c_double)]
+api.meltype_macos_indicator_update.restype=c.c_int
+api.meltype_macos_indicator_panel.argtypes=[P]
+api.meltype_macos_indicator_panel.restype=P
+assert not api.meltype_macos_indicator_create(None)
+assert not api.meltype_macos_indicator_update(None,0,0,None)
+assert not api.meltype_macos_indicator_update(P(1),99,0,None)
+if sys.platform!="darwin":
+    assert not api.meltype_macos_indicator_panel(None)
 callback_type=c.CFUNCTYPE(None,P)
 api.meltype_macos_meaning_schedule.argtypes=[P,callback_type]
 api.meltype_macos_meaning_schedule.restype=c.c_int
