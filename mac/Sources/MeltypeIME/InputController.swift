@@ -408,10 +408,11 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
     private func updateCandidates(_ view: CompositionView) {
         guard let window = candidatesWindow else { return }
 #if MELTYPE_RUST_CORE
-        defer { selectingFromCore = false }
+        var beganSuppression = false
+        defer { if beganSuppression { selectingFromCore = false } }
         NativeCore.shared.editorPolicy?.candidates(view, previous: candidateList, visible: window.isVisible(), windowIndex: windowIndex) { operation, argument in
             switch operation {
-            case 0: self.selectingFromCore = true
+            case 0: beganSuppression = true; self.selectingFromCore = true
             case 1:
                 self.candidateList = view.candidates
                 window.update(); window.show(kIMKLocateCandidatesBelowHint)
