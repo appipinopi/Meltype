@@ -508,3 +508,55 @@ precondition(editor.inputSourceMatches(expected:sourceIdentifier))
 precondition(!editor.inputSourceMatches(expected:sourceIdentifier+"_different"))
 serviceBoard.releaseGlobally()
 print("macOS Rust Services receiver: actual Objective-C selector, four actions, exact errors, inactive/dead targets, old deactivation, pure Swift weak references, reentry, background rejection, owner cleanup, unchanged private pasteboard and read-only Carbon identity passed (no OS shortcut delivery)")
+
+func originalSuggestion(_ text: String, caret: NSRect, panel existing: NSPanel?) -> NSPanel {
+    let label=NSTextField(labelWithString:text)
+    label.font = .systemFont(ofSize:13);label.sizeToFit()
+    let size=NSSize(width:label.frame.width+24,height:label.frame.height+16)
+    let panel=existing ?? NSPanel(contentRect:NSRect(origin:.zero,size:size),styleMask:[.borderless,.nonactivatingPanel],backing:.buffered,defer:false)
+    panel.level = .floating;panel.hasShadow=true;panel.backgroundColor = .windowBackgroundColor;panel.ignoresMouseEvents=true
+    panel.setContentSize(size)
+    panel.contentView?.subviews.forEach {$0.removeFromSuperview()}
+    label.frame.origin=NSPoint(x:12,y:8);panel.contentView?.addSubview(label)
+    if let screen=NSScreen.screens.first(where:{$0.frame.intersects(caret)}) ?? NSScreen.main {
+        let visible=screen.visibleFrame
+        panel.setFrameOrigin(NSPoint(x:max(visible.minX,min(caret.minX,visible.maxX-size.width)),y:max(visible.minY,min(caret.minY-size.height-6,visible.maxY-size.height))))
+    }
+    panel.orderFrontRegardless();return panel
+}
+var nativeSuggestion: NSPanel?, referenceSuggestion: NSPanel?
+let suggestionScreen=NSScreen.main?.visibleFrame ?? NSRect(x:0,y:0,width:800,height:600)
+var suggestionCases=0
+for text in ["", "提案😀", "e\u{301}", "a\u{0}b", "長い候補"+String(repeating:"あ",count:120)] {
+ for caret in [NSRect(x:suggestionScreen.midX,y:suggestionScreen.midY,width:1,height:16),NSRect(x:suggestionScreen.minX-20,y:suggestionScreen.minY,width:1,height:16),NSRect(x:suggestionScreen.maxX,y:suggestionScreen.maxY,width:1,height:16),NSRect(x:suggestionScreen.midX,y:suggestionScreen.midY,width:-2,height:16)] {
+    let previous=nativeSuggestion
+    referenceSuggestion=originalSuggestion(text,caret:caret,panel:referenceSuggestion)
+    nativeSuggestion=editor.suggestion(panel:nativeSuggestion,text:text,caret:caret,selected:true) as? NSPanel
+    guard let actual=nativeSuggestion,let expected=referenceSuggestion else {fatalError("suggestion panel missing")}
+    if let previous {precondition(actual===previous,"suggestion panel recreated")}
+    precondition(actual.styleMask==expected.styleMask && actual.level==expected.level && actual.hasShadow==expected.hasShadow && actual.ignoresMouseEvents==expected.ignoresMouseEvents)
+    precondition(actual.backgroundColor==expected.backgroundColor)
+    precondition(actual.frame.equalTo(expected.frame),"suggestion frame differs: \(actual.frame), \(expected.frame)")
+    guard let actualLabel=actual.contentView?.subviews.first as? NSTextField,let expectedLabel=expected.contentView?.subviews.first as? NSTextField else {fatalError("suggestion label missing")}
+    precondition(actual.contentView?.subviews.count==1)
+    precondition(Array(actualLabel.stringValue.utf16)==Array(expectedLabel.stringValue.utf16))
+    precondition(actualLabel.font==expectedLabel.font && actualLabel.frame.equalTo(expectedLabel.frame))
+    precondition(actual.isVisible && !actual.isKeyWindow)
+    actual.orderOut(nil);expected.orderOut(nil)
+    suggestionCases+=1
+ }
+}
+guard let retainedSuggestion=nativeSuggestion else {fatalError("suggestion lifetime")}
+for (text,caret,selected) in [(nil,NSRect(x:1,y:1,width:1,height:16),true),("候補",.zero,true),("候補",NSRect(x:Double.nan,y:1,width:1,height:16),true),("候補",NSRect(x:1,y:1,width:1,height:16),false)] as [(String?,NSRect,Bool)] {
+    retainedSuggestion.orderFrontRegardless()
+    precondition(editor.suggestion(panel:retainedSuggestion,text:text,caret:caret,selected:selected) === retainedSuggestion)
+    precondition(!retainedSuggestion.isVisible,"invalid suggestion not hidden")
+}
+let suggestionBackgroundDone=DispatchSemaphore(value:0)
+DispatchQueue.global().async {
+    precondition(editor.suggestion(panel:retainedSuggestion,text:"背景",caret:NSRect(x:1,y:1,width:1,height:16),selected:true)==nil)
+    suggestionBackgroundDone.signal()
+}
+precondition(suggestionBackgroundDone.wait(timeout:.now()+5) == .success)
+precondition(!retainedSuggestion.isVisible)
+print("macOS Rust suggestion: \(suggestionCases) actual AppKit panels compared with former Swift, font/UTF16/geometry/style/reuse, invalid caret/selection hide and background rejection passed (screen appearance not asserted)")

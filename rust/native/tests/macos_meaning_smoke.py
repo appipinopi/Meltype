@@ -46,6 +46,10 @@ assert api.meltype_macos_mode_services_dispatch(None,None,0,0)==4
 assert api.meltype_macos_services_error(1).decode("utf-8")=="Meltypeの入力モードはメインスレッドで変更してください。"
 if sys.platform!="darwin":
     assert not api.meltype_macos_input_source_matches(None,0)
+api.meltype_macos_suggestion.argtypes=[P,c.POINTER(c.c_uint16),U,c.c_int,c.POINTER(c.c_double),c.c_int]
+api.meltype_macos_suggestion.restype=P
+if sys.platform!="darwin":
+    assert not api.meltype_macos_suggestion(None,None,0,0,None,0)
 callback_type=c.CFUNCTYPE(None,P)
 api.meltype_macos_meaning_schedule.argtypes=[P,callback_type]
 api.meltype_macos_meaning_schedule.restype=c.c_int

@@ -28,6 +28,8 @@ struct NativeEditorPolicy {
     private let modeServicesDispatch: ModeServicesDispatch
     private let modeServicesErrorFunction: ModeServicesError
     private let sourceMatches: SourceMatches
+    private typealias Suggestion = @convention(c) (UnsafeMutableRawPointer?, UnsafePointer<UInt16>?, UInt32, Int32, UnsafePointer<Double>?, Int32) -> UnsafeMutableRawPointer?
+    private let suggestionFunction: Suggestion
     private let applicationRun: ApplicationRun
     private let servicesRegister: ServicesRegister
     private let serverCreate: ServerCreate
@@ -64,12 +66,14 @@ struct NativeEditorPolicy {
               let modeServicesTarget=lookup("meltype_macos_mode_services_target"),
               let modeServicesDispatch=lookup("meltype_macos_mode_services_dispatch"),
               let modeServicesError=lookup("meltype_macos_services_error"),
-              let sourceMatches=lookup("meltype_macos_input_source_matches") else { return nil }
+              let sourceMatches=lookup("meltype_macos_input_source_matches"),
+              let suggestion=lookup("meltype_macos_suggestion") else { return nil }
         self.modeServicesCreate=unsafeBitCast(modeServicesCreate,to:ModeServicesCreate.self)
         self.modeServicesTargetFunction=unsafeBitCast(modeServicesTarget,to:ModeServicesTarget.self)
         self.modeServicesDispatch=unsafeBitCast(modeServicesDispatch,to:ModeServicesDispatch.self)
         self.modeServicesErrorFunction=unsafeBitCast(modeServicesError,to:ModeServicesError.self)
         self.sourceMatches=unsafeBitCast(sourceMatches,to:SourceMatches.self)
+        self.suggestionFunction=unsafeBitCast(suggestion,to:Suggestion.self)
         self.applicationRun = unsafeBitCast(applicationRun, to: ApplicationRun.self)
         self.servicesRegister = unsafeBitCast(servicesRegister, to: ServicesRegister.self)
         self.serverCreate = unsafeBitCast(serverCreate, to: ServerCreate.self)
@@ -142,6 +146,19 @@ struct NativeEditorPolicy {
         let units=Array(expected.utf16)
         guard let count=UInt32(exactly:units.count) else { return false }
         return units.withUnsafeBufferPointer { sourceMatches($0.baseAddress,count) != 0 }
+    }
+    func suggestion(panel: AnyObject?, text: String?, caret: NSRect, selected: Bool) -> AnyObject? {
+        let units=Array((text ?? "").utf16), rectangle=[Double(caret.origin.x),Double(caret.origin.y),Double(caret.size.width),Double(caret.size.height)]
+        guard let count=UInt32(exactly:units.count) else { return nil }
+        let pointer=withExtendedLifetime(panel) {
+            units.withUnsafeBufferPointer { textBuffer in
+                rectangle.withUnsafeBufferPointer { bounds in
+                    suggestionFunction(panel.map { Unmanaged.passUnretained($0).toOpaque() },textBuffer.baseAddress,count,text == nil ? 0 : 1,bounds.baseAddress,selected ? 1 : 0)
+                }
+            }
+        }
+        guard let pointer else { return nil }
+        return Unmanaged<AnyObject>.fromOpaque(pointer).takeRetainedValue()
     }
     func runApplication() -> Bool { applicationRun() != 0 }
     func registerServices(provider: AnyObject, portName: String) -> Bool {

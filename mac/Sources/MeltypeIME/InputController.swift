@@ -118,8 +118,7 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
         ModeServices.shared.deactivate(self)
         commitComposition(sender)
         hideCandidatesWindow()
-        suggestionPanel?.orderOut(nil)
-        displayedSuggestion = nil
+        hideSuggestion()
         clearMeaning()
         candidateList = []
         super.deactivateServer(sender)
@@ -333,13 +332,27 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
         }
         candidateList = []
         hideCandidatesWindow()
-        suggestionPanel?.orderOut(nil)
-        displayedSuggestion = nil
+        hideSuggestion()
         clearMeaning()
     }
 
+    private func hideSuggestion() {
+#if MELTYPE_RUST_CORE
+        if let panel=NativeCore.shared.editorPolicy?.suggestion(panel:suggestionPanel,text:nil,caret:.zero,selected:false) as? NSPanel { suggestionPanel=panel }
+#else
+        suggestionPanel?.orderOut(nil)
+#endif
+        displayedSuggestion=nil
+    }
     private func showSuggestion(_ suggestion: String?, client: IMKTextInput) {
         let selection = client.selectedRange()
+#if MELTYPE_RUST_CORE
+        var caret=NSRect.zero
+        if suggestion != nil && selection.location != NSNotFound {
+            _=client.attributes(forCharacterIndex:selection.location,lineHeightRectangle:&caret)
+        }
+        if let panel=NativeCore.shared.editorPolicy?.suggestion(panel:suggestionPanel,text:suggestion,caret:caret,selected:selection.location != NSNotFound) as? NSPanel { suggestionPanel=panel }
+#else
         guard let suggestion, selection.location != NSNotFound else {
             suggestionPanel?.orderOut(nil)
             displayedSuggestion = nil
@@ -375,6 +388,7 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
         }
         suggestionPanel = panel
         panel.orderFrontRegardless()
+#endif
     }
 
     private func addMark(_ style: Int, to text: NSMutableAttributedString, range: NSRange) {
