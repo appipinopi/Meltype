@@ -560,3 +560,40 @@ DispatchQueue.global().async {
 precondition(suggestionBackgroundDone.wait(timeout:.now()+5) == .success)
 precondition(!retainedSuggestion.isVisible)
 print("macOS Rust suggestion: \(suggestionCases) actual AppKit panels compared with former Swift, font/UTF16/geometry/style/reuse, invalid caret/selection hide and background rejection passed (screen appearance not asserted)")
+
+func compareIndicatorViews(_ actual: NSView,_ expected: NSView) {
+    precondition(type(of:actual)==type(of:expected))
+    precondition(actual.frame==expected.frame && actual.wantsLayer==expected.wantsLayer)
+    precondition(actual.layer?.cornerRadius==expected.layer?.cornerRadius)
+    precondition(actual.layer?.masksToBounds==expected.layer?.masksToBounds)
+    precondition(actual.layer?.backgroundColor==expected.layer?.backgroundColor)
+    if let a=actual as? NSVisualEffectView,let e=expected as? NSVisualEffectView {
+        precondition(a.material==e.material && a.blendingMode==e.blendingMode && a.state==e.state)
+    }
+    if let a=actual as? NSTextField,let e=expected as? NSTextField {
+        precondition(a.stringValue==e.stringValue && a.font==e.font && a.textColor==e.textColor && a.alignment==e.alignment)
+    }
+    precondition(actual.isAccessibilityElement()==expected.isAccessibilityElement())
+    precondition(actual.accessibilityRole()==expected.accessibilityRole())
+    precondition(actual.accessibilityLabel()==expected.accessibilityLabel())
+    precondition((actual.accessibilityValue() as? NSNumber)==(expected.accessibilityValue() as? NSNumber))
+    precondition(actual.subviews.count==expected.subviews.count)
+    for (a,e) in zip(actual.subviews,expected.subviews) {compareIndicatorViews(a,e)}
+}
+for compact in [false,true] {
+    for mode in MacInputMode.allCases {
+        compareIndicatorViews(ModeIndicator.content(mode:mode,compact:compact),LegacyModeIndicator.content(mode:mode,compact:compact))
+    }
+}
+var indicatorFrames=0
+for visible in [NSRect(x:-1200,y:0,width:1200,height:800),NSRect(x:200,y:100,width:1200,height:800)] {
+ for caret in [nil,.zero,NSRect(x:-500,y:500,width:1,height:20),NSRect(x:1199,y:2,width:0,height:20),NSRect(x:300,y:400,width:-2,height:20)] as [NSRect?] {
+    precondition(ModeIndicator.frame(caret:caret,visible:visible)==LegacyModeIndicator.frame(caret:caret,visible:visible))
+    if let caret {precondition(ModeIndicator.validCaret(caret)==LegacyModeIndicator.validCaret(caret))}
+    indicatorFrames+=1
+ }
+}
+for caret in [NSRect(x:Double.infinity,y:0,width:1,height:20),NSRect(x:Double.nan,y:0,width:1,height:20),NSRect(x:2,y:2,width:1,height:-2)] {
+    precondition(ModeIndicator.validCaret(caret)==LegacyModeIndicator.validCaret(caret))
+}
+print("macOS Rust indicator: six complete AppKit view trees and \(indicatorFrames) legacy layout frames, fonts/colors/layers/accessibility/caption and caret validation passed (timing/panel lifecycle still Swift)")

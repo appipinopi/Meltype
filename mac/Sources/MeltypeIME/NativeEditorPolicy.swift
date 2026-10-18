@@ -29,6 +29,10 @@ struct NativeEditorPolicy {
     private let modeServicesErrorFunction: ModeServicesError
     private let sourceMatches: SourceMatches
     private typealias Suggestion = @convention(c) (UnsafeMutableRawPointer?, UnsafePointer<UInt16>?, UInt32, Int32, UnsafePointer<Double>?, Int32) -> UnsafeMutableRawPointer?
+    private typealias IndicatorContent = @convention(c) (UInt32,Int32) -> UnsafeMutableRawPointer?
+    private typealias IndicatorFrame = @convention(c) (UInt32,UnsafePointer<Double>?,UnsafePointer<Double>?,UnsafeMutablePointer<Double>?) -> Int32
+    private let indicatorContentFunction: IndicatorContent
+    private let indicatorFrameFunction: IndicatorFrame
     private let suggestionFunction: Suggestion
     private let applicationRun: ApplicationRun
     private let servicesRegister: ServicesRegister
@@ -67,12 +71,16 @@ struct NativeEditorPolicy {
               let modeServicesDispatch=lookup("meltype_macos_mode_services_dispatch"),
               let modeServicesError=lookup("meltype_macos_services_error"),
               let sourceMatches=lookup("meltype_macos_input_source_matches"),
-              let suggestion=lookup("meltype_macos_suggestion") else { return nil }
+              let suggestion=lookup("meltype_macos_suggestion"),
+              let indicatorContent=lookup("meltype_macos_indicator_content"),
+              let indicatorFrame=lookup("meltype_macos_indicator_frame") else { return nil }
         self.modeServicesCreate=unsafeBitCast(modeServicesCreate,to:ModeServicesCreate.self)
         self.modeServicesTargetFunction=unsafeBitCast(modeServicesTarget,to:ModeServicesTarget.self)
         self.modeServicesDispatch=unsafeBitCast(modeServicesDispatch,to:ModeServicesDispatch.self)
         self.modeServicesErrorFunction=unsafeBitCast(modeServicesError,to:ModeServicesError.self)
         self.sourceMatches=unsafeBitCast(sourceMatches,to:SourceMatches.self)
+        self.indicatorContentFunction=unsafeBitCast(indicatorContent,to:IndicatorContent.self)
+        self.indicatorFrameFunction=unsafeBitCast(indicatorFrame,to:IndicatorFrame.self)
         self.suggestionFunction=unsafeBitCast(suggestion,to:Suggestion.self)
         self.applicationRun = unsafeBitCast(applicationRun, to: ApplicationRun.self)
         self.servicesRegister = unsafeBitCast(servicesRegister, to: ServicesRegister.self)
@@ -159,6 +167,20 @@ struct NativeEditorPolicy {
         }
         guard let pointer else { return nil }
         return Unmanaged<AnyObject>.fromOpaque(pointer).takeRetainedValue()
+    }
+    func indicatorContent(mode: UInt32,compact: Bool) -> AnyObject? {
+        guard let pointer=indicatorContentFunction(mode,compact ? 1 : 0) else { return nil }
+        return Unmanaged<AnyObject>.fromOpaque(pointer).takeRetainedValue()
+    }
+    func indicatorFrame(operation: UInt32,caret: NSRect?,visible: NSRect) -> NSRect? {
+        func values(_ rect:NSRect)->[Double] {[Double(rect.origin.x),Double(rect.origin.y),Double(rect.size.width),Double(rect.size.height)]}
+        let caretValues=values(caret ?? .zero),visibleValues=values(visible)
+        var output=[Double](repeating:0,count:4)
+        let result=caretValues.withUnsafeBufferPointer { c in visibleValues.withUnsafeBufferPointer { v in
+            indicatorFrameFunction(operation,caret == nil ? nil : c.baseAddress,v.baseAddress,&output)
+        } }
+        guard result != 0 else { return nil }
+        return NSRect(x:output[0],y:output[1],width:output[2],height:output[3])
     }
     func runApplication() -> Bool { applicationRun() != 0 }
     func registerServices(provider: AnyObject, portName: String) -> Bool {

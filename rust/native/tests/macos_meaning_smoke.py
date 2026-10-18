@@ -50,6 +50,14 @@ api.meltype_macos_suggestion.argtypes=[P,c.POINTER(c.c_uint16),U,c.c_int,c.POINT
 api.meltype_macos_suggestion.restype=P
 if sys.platform!="darwin":
     assert not api.meltype_macos_suggestion(None,None,0,0,None,0)
+api.meltype_macos_indicator_content.argtypes=[U,c.c_int]
+api.meltype_macos_indicator_content.restype=P
+api.meltype_macos_indicator_frame.argtypes=[U,c.POINTER(c.c_double),c.POINTER(c.c_double),c.POINTER(c.c_double)]
+api.meltype_macos_indicator_frame.restype=c.c_int
+assert not api.meltype_macos_indicator_content(99,0)
+assert not api.meltype_macos_indicator_frame(99,None,None,None)
+if sys.platform!="darwin":
+    assert not api.meltype_macos_indicator_content(0,0)
 callback_type=c.CFUNCTYPE(None,P)
 api.meltype_macos_meaning_schedule.argtypes=[P,callback_type]
 api.meltype_macos_meaning_schedule.restype=c.c_int
