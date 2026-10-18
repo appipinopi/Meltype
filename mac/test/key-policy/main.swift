@@ -921,5 +921,27 @@ for failure in ["missing source","invalid plist","unsupported rows","invalid UTF
     }
     importIOFailures+=1
 }
+// Swift's UTF8 file initializer decodes Data and uses corrupt-file 259 for
+// invalid byte sequences. Cover BOM handling and several malformed encodings.
+for (index,bytes) in [Data([0xef,0xbb,0xbf])+Data("かな\t単語\n".utf8),Data([0xc0,0xaf]),Data([0xe3,0x81]),Data([0xff,0xfe,0x41,0]),Data("a\u{0}b\n".utf8)].enumerated() {
+    let oldFolder=importIORoot.appendingPathComponent("decode old \(index)",isDirectory:true)
+    let nativeFolder=importIORoot.appendingPathComponent("decode native \(index)",isDirectory:true)
+    try FileManager.default.createDirectory(at:oldFolder,withIntermediateDirectories:true)
+    try FileManager.default.createDirectory(at:nativeFolder,withIntermediateDirectories:true)
+    try bytes.write(to:oldFolder.appendingPathComponent("userdict.txt"))
+    try bytes.write(to:nativeFolder.appendingPathComponent("userdict.txt"))
+    let expected=Result{try LegacyMacUserDictionary.importFile(importIOSource,directory:oldFolder.path)}
+    let actual=Result{try MacUserDictionary.importFile(importIOSource,directory:nativeFolder.path)}
+    switch (expected,actual) {
+    case (.success(let e),.success(let a)):precondition(a==e)
+    case (.failure(let e),.failure(let a)):
+        precondition((a as NSError).domain==(e as NSError).domain && (a as NSError).code==(e as NSError).code)
+        precondition((a as NSError).userInfo.isEmpty && (e as NSError).userInfo.isEmpty)
+    default:fatalError("UTF8 file read acceptance differs")
+    }
+    let e=try Data(contentsOf:oldFolder.appendingPathComponent("userdict.txt"))
+    let a=try Data(contentsOf:nativeFolder.appendingPathComponent("userdict.txt"))
+    precondition(a==e,"UTF8 file import bytes differ")
+}
 try FileManager.default.removeItem(at:importIORoot)
 print("macOS Rust dictionary IO: Foundation source/read/create/atomic-write compared with former Swift, nested Unicode path, no-op mtime, \(importIOFailures) error-domain/code and previous-content preservation cases passed (dialog/notification still Swift)")

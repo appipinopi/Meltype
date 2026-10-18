@@ -278,9 +278,20 @@ mod native {
         let exists: bool = msg_send![&manager,fileExistsAtPath:&*path];
         let existing = if exists {
             failure = std::ptr::null_mut();
-            let text: Option<Retained<NSString>> = msg_send![class(c"NSString"),stringWithContentsOfURL:&*destination,encoding:4usize,error:&mut failure];
-            let Some(text) = text else {
+            let bytes: Option<Retained<AnyObject>> = msg_send![class(c"NSData"),dataWithContentsOfURL:&*destination,options:0usize,error:&mut failure];
+            let Some(bytes) = bytes else {
                 capture(failure, error);
+                return -1;
+            };
+            let allocated: objc2::rc::Allocated<NSString> = msg_send![class(c"NSString"), alloc];
+            let text: Option<Retained<NSString>> =
+                msg_send![allocated,initWithData:&*bytes,encoding:4usize];
+            let Some(text) = text else {
+                // Swift String(contentsOf:encoding:) reports corrupt-file (259)
+                // for failed Data->String decoding, unlike NSString URL read 261.
+                let domain = NSString::from_str("NSCocoaErrorDomain");
+                let failure: Retained<AnyObject> = msg_send![class(c"NSError"),errorWithDomain:&*domain,code:259isize,userInfo:std::ptr::null::<AnyObject>()];
+                capture(Retained::as_ptr(&failure).cast_mut(), error);
                 return -1;
             };
             text.to_string()
