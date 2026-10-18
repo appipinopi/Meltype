@@ -2,6 +2,7 @@
 // Copyright (C) 2026 appipinopi
 import AppKit
 import Carbon.HIToolbox
+import InputMethodKit
 
 precondition(NativeCore.shared.keyPolicy != nil, "real NativeCore did not resolve Rust key ABI")
 precondition(NativeKeyPolicy(lookup: { _ in nil }) == nil, "missing ABI accepted")
@@ -270,7 +271,7 @@ print("macOS Rust dispatch: real 1500ms main-queue delivery, two callbacks exact
     var supportsUp = true
     var receivedUnits: [UInt16] = []
     @objc func isVisible() -> Bool { trace.append("visible"); return visible }
-    @objc func update() { trace.append("update") }
+    @objc(updateCandidates) func update() { trace.append("update") }
     @objc(show:) func show(_ hint: UInt) { trace.append("show:\(hint)"); visible = true }
     @objc func hide() { trace.append("hide"); visible = false }
     @objc(moveDown:) func down(_ sender: Any?) { trace.append("down") }
@@ -335,3 +336,9 @@ DispatchQueue.global().async {
 precondition(backgroundDone.wait(timeout:.now()+5) == .success)
 precondition(backgroundWindow.trace.isEmpty,"background SDK call changed window")
 print("macOS Rust window: off-main-thread operation rejected before Objective-C UI call")
+
+precondition(#selector(IMKCandidates.update)==NSSelectorFromString("updateCandidates"),"SDK update selector changed")
+for selector in [#selector(IMKCandidates.update), #selector(IMKCandidates.show(_:)), #selector(IMKCandidates.hide), #selector(IMKCandidates.isVisible), #selector(IMKCandidates.showAnnotation(_:))] {
+    precondition(IMKCandidates.instancesRespond(to:selector),"actual IMKCandidates lacks \(selector)")
+}
+print("macOS Rust window: actual IMKCandidates SDK selectors checked, including Swift update -> Objective-C updateCandidates")

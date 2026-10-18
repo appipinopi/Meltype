@@ -69,10 +69,10 @@ mod macos {
                 let Ok(hint) = usize::try_from(argument) else {
                     return 0;
                 };
-                if !responds(&window, sel!(update)) || !responds(&window, sel!(show:)) {
+                if !responds(&window, sel!(updateCandidates)) || !responds(&window, sel!(show:)) {
                     return 0;
                 }
-                let _: () = msg_send![&window, update];
+                let _: () = msg_send![&window, updateCandidates];
                 let _: () = msg_send![&window, show: hint];
                 1
             }
