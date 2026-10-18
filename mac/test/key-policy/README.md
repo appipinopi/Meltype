@@ -124,3 +124,12 @@ A private pasteboard remains unchanged. The Carbon source query is compared with
 the SDK current source without selecting or registering any input source. The
 remaining Swift callbacks perform mode selection and indicator display; direct
 receiver invocation does not prove OS delivery of an installed Services shortcut.
+
+
+Suggestion panels are now created/updated/hidden through Rust AppKit calls. The
+SDK host compares twenty actual panels with the former Swift implementation,
+including font, UTF-16 payload, label/content/window geometry, style, screen-edge
+placement, long/empty/combining/NUL/emoji text, negative caret width and reuse.
+Invalid caret/missing selection hides the panel; background calls are rejected.
+These are actual AppKit property comparisons, not screenshot or full app input
+verification. The Swift boundary still obtains the IMK selection and caret.

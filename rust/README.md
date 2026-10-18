@@ -374,3 +374,6 @@ e2e7cb1ではIMKServerと候補パネルの作成をRustのSDK initializerへ移
 
 
 3b1d7eeでは、モードサービスのObjective-C受信クラスと配送制御をRustへ移しました。入力欄と所有者を弱参照し、呼出し中だけ保持して、コールバックをまたぐ可変借用を避けます。Rustが識別子の解析、元のエラー応答、非アクティブな入力欄の拒否、入力欄なしの中央選択とCarbonによる入力ソース照合を担当します。Swiftは実際のモード変更・ミニウィンドウへつなぐコールバックを提供します。[3b1d7eeのmacOS SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39090954963)で両ジョブ成功。実Objective-C受信selectorから4種類の切替、元と同じエラー文、旧入力欄の解除・破棄後の中央選択、純Swiftオブジェクトの弱参照、配送中の再入・所有者破棄、背景スレッド拒否、私用ペーストボードの保持と読み取り専用Carbon照合を確認。既存スタブ22操作・実変換器28操作と全Swiftコンパイルの保存ログも確認済み。[同じ版のfcitx SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39090954965)も成功。Apple Silicon／Intel向け型チェックとClippy、整形・実ABIの拒否試験も通過。これは受信メソッドを直接呼ぶ試験であり、インストール済みサービスショートカットからのOS配送や実アプリ入力は未検証です。
+
+
+3339d11では提案パネルの作成、フォント・ラベル・装飾、画面選択とカーソル下への配置、更新時の再利用と非表示をRustのAppKit呼出しへ移しました。元の13pt文字・左右12／上下8pt・カーソル下6pt、非活性floatingパネル・マウス無視を保ちます。SwiftはIMKクライアントから選択範囲とcaretを取得し、借用した既存パネルを渡します。Apple Silicon／Intel型チェック、ClippyとWindows実ABI拒否試験は通過。[3339d11のmacOS SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39095747711)で両ジョブ成功。実AppKitパネルを旧Swiftと20条件で比較し、UTF16本文・フォント・寸法／位置・装飾・更新時の再利用、不正caret／未選択時の非表示と背景スレッド拒否を確認。既存スタブ22操作・実変換器28操作と全Swiftコンパイルの保存ログも確認済み。[同じ版のfcitx SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39095747644)も成功。画面全体の外観一致・実アプリ入力は未検証です。
