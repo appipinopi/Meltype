@@ -22,6 +22,14 @@ assert not api.meltype_macos_server_create(None,0,None,0)
 assert not api.meltype_macos_candidates_create(None,1)
 if sys.platform!="darwin":
     assert not api.meltype_macos_candidates_create(P(1),1)
+api.meltype_macos_application_run.restype=c.c_int
+api.meltype_macos_services_register.argtypes=[P,c.POINTER(c.c_uint16),U]
+api.meltype_macos_services_register.restype=c.c_int
+assert not api.meltype_macos_services_register(None,None,0)
+assert not api.meltype_macos_services_register(P(1),None,1)
+if sys.platform!="darwin":
+    assert not api.meltype_macos_application_run()
+    assert not api.meltype_macos_services_register(P(1),(c.c_uint16*1)(65),1)
 callback_type=c.CFUNCTYPE(None,P)
 api.meltype_macos_meaning_schedule.argtypes=[P,callback_type]
 api.meltype_macos_meaning_schedule.restype=c.c_int

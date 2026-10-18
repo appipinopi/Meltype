@@ -175,5 +175,14 @@ candidatesWindow = NativeCore.shared.editorPolicy?.createCandidates(server: serv
 #else
 candidatesWindow = IMKCandidates(server: server, panelType: kIMKSingleColumnScrollingCandidatePanel)
 #endif
+#if MELTYPE_RUST_CORE
+guard let policy=NativeCore.shared.editorPolicy,
+      policy.registerServices(provider:ModeServices.shared,portName:ModeServices.portName),
+      policy.runApplication() else {
+    NSLog("Meltype: Rust経由のアプリ起動に失敗しました")
+    exit(1)
+}
+#else
 NSRegisterServicesProvider(ModeServices.shared, ModeServices.portName)
 NSApplication.shared.run()
+#endif

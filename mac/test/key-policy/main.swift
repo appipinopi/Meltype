@@ -375,3 +375,35 @@ DispatchQueue.global().async {
 }
 precondition(creationDone.wait(timeout:.now()+5) == .success)
 print("macOS Rust startup: private actual IMKServer and IMKCandidates created, ARC transfer through autorelease pool, SDK default panel/keys/dismiss/visibility and background/non-server rejection passed (no input-source registration)")
+
+// Run the real AppKit loop through Rust; the private fixture stops its own app.
+final class PolicyServicesProvider: NSObject {}
+let policyProvider=PolicyServicesProvider()
+let policyServicePort=policyConnection+"_Services"
+precondition(!editor.registerServices(provider:policyProvider,portName:""))
+precondition(!editor.registerServices(provider:policyProvider,portName:"bad\u{0}name"))
+precondition(editor.registerServices(provider:policyProvider,portName:policyServicePort))
+let applicationThreadDone=DispatchSemaphore(value:0)
+DispatchQueue.global().async {
+    precondition(!editor.runApplication(),"background AppKit loop accepted")
+    precondition(!editor.registerServices(provider:policyProvider,portName:policyServicePort+"_background"))
+    applicationThreadDone.signal()
+}
+precondition(applicationThreadDone.wait(timeout:.now()+5) == .success)
+var loopCallbacks=0
+let loopWatchdog=DispatchWorkItem { fatalError("Rust AppKit event loop did not stop") }
+DispatchQueue.global().asyncAfter(deadline:.now()+10,execute:loopWatchdog)
+precondition(editor.scheduleMeaning {
+    precondition(Thread.isMainThread && NSApplication.shared.isRunning)
+    precondition(editor.candidateWindow(activePanel,operation:4)==1)
+    loopCallbacks+=1
+    NSApplication.shared.stop(nil)
+    // stop: from a runloop/GCD callback needs an event to wake nextEvent's wait.
+    guard let wake=NSEvent.otherEvent(with:.applicationDefined,location:.zero,modifierFlags:[],timestamp:0,windowNumber:0,context:nil,subtype:0,data1:0,data2:0) else {fatalError("fixture wake event")}
+    NSApplication.shared.postEvent(wake,atStart:true)
+})
+precondition(editor.runApplication(),"Rust AppKit loop failed")
+loopWatchdog.cancel()
+precondition(loopCallbacks==1 && !NSApplication.shared.isRunning)
+NSUnregisterServicesProvider(policyServicePort)
+print("macOS Rust application: actual AppKit run/stop/return with Rust timer and private SDK panel, named Services registration call, invalid-name/background rejection passed (no installed service shortcut delivery tested)")

@@ -16,6 +16,10 @@ struct NativeEditorPolicy {
     private typealias WindowFunction = @convention(c) (UnsafeMutableRawPointer?, UInt32, Int64, UnsafePointer<UInt16>?, UInt32) -> Int32
     private typealias ServerCreate = @convention(c) (UnsafePointer<UInt16>?, UInt32, UnsafePointer<UInt16>?, UInt32) -> UnsafeMutableRawPointer?
     private typealias CandidatesCreate = @convention(c) (UnsafeMutableRawPointer?, UInt64) -> UnsafeMutableRawPointer?
+    private typealias ApplicationRun = @convention(c) () -> Int32
+    private typealias ServicesRegister = @convention(c) (UnsafeMutableRawPointer?, UnsafePointer<UInt16>?, UInt32) -> Int32
+    private let applicationRun: ApplicationRun
+    private let servicesRegister: ServicesRegister
     private let serverCreate: ServerCreate
     private let candidatesCreate: CandidatesCreate
     private let windowFunction: WindowFunction
@@ -43,7 +47,11 @@ struct NativeEditorPolicy {
               let meaningSchedule = lookup("meltype_macos_meaning_schedule"),
               let windowFunction = lookup("meltype_macos_candidate_window"),
               let serverCreate = lookup("meltype_macos_server_create"),
-              let candidatesCreate = lookup("meltype_macos_candidates_create") else { return nil }
+              let candidatesCreate = lookup("meltype_macos_candidates_create"),
+              let applicationRun = lookup("meltype_macos_application_run"),
+              let servicesRegister = lookup("meltype_macos_services_register") else { return nil }
+        self.applicationRun = unsafeBitCast(applicationRun, to: ApplicationRun.self)
+        self.servicesRegister = unsafeBitCast(servicesRegister, to: ServicesRegister.self)
         self.serverCreate = unsafeBitCast(serverCreate, to: ServerCreate.self)
         self.candidatesCreate = unsafeBitCast(candidatesCreate, to: CandidatesCreate.self)
         self.windowFunction = unsafeBitCast(windowFunction, to: WindowFunction.self)
@@ -87,6 +95,14 @@ struct NativeEditorPolicy {
         let sink = NativeCandidatesSink(operation)
         return withExtendedLifetime(sink) {
             data.withUnsafeBytes { candidatesFunction($0.bindMemory(to: UInt8.self).baseAddress, count, Unmanaged.passUnretained(sink).toOpaque(), nativeCandidatesHost) != 0 }
+        }
+    }
+    func runApplication() -> Bool { applicationRun() != 0 }
+    func registerServices(provider: AnyObject, portName: String) -> Bool {
+        let units=Array(portName.utf16)
+        guard let count=UInt32(exactly:units.count) else { return false }
+        return withExtendedLifetime(provider) {
+            units.withUnsafeBufferPointer { servicesRegister(Unmanaged.passUnretained(provider).toOpaque(),$0.baseAddress,count) != 0 }
         }
     }
     func createServer(name: String, bundleIdentifier: String) -> AnyObject? {
