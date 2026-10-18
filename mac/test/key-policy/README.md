@@ -212,3 +212,24 @@ have a process watchdog. Background-thread presentation must reject before
 creating UI or querying the directory. These cases do not prove OS-wide
 notification delivery, an accepted real file chooser, installed IME behavior,
 or complete visual parity. Both jobs in [9eb73ed SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39104520853) passed; the saved keys log contains both real modal-loop results and the nine comparisons.
+
+
+Input-source normalization and registration
+-------------------------------------------
+Rust now owns the `--register-input-source` workflow: repair the existing
+HIToolbox preference array, preserve its original backup key, register the
+bundle with Carbon, enumerate all input sources and enable only the exact base
+and `.Japanese` identifiers, stopping at the first OSStatus failure. It does
+not select an input source. The original prefix-based removal rule during
+repair is intentionally preserved. Unknown rows and values survive without JSON
+conversion. An already-normalized array leaves the prior backup untouched.
+
+The private Swift SDK fixture compares 324 arrays with the former normalization
+and checks eleven stored-value/backup/idempotence cases in unique defaults suites.
+It never writes `com.apple.HIToolbox`. A background registration call must return
+before touching that suite or Carbon. The Rust fake API checks registration and
+enable failures, exact IDs, skipped sources and list release on every exit.
+The header-only C fixture checks seven Rust FFI declarations and scalar widths
+against the installed SDK; it is never linked into the production library and
+never executes a Carbon operation. Actual OS input-source registration/enable
+and installed IME input remain unverified. Both jobs in [5a36cf9 SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39105438244) passed, including the 324 comparisons, eleven private settings cases and header ABI checks. The separate `RegisterInputSource` executable still uses Swift.

@@ -401,3 +401,6 @@ fdd67d6では辞書取込みの読込元NSData、保存先のUTF8読込、親フ
 
 
 d378494では辞書取込みの選択・結果ダイアログと変更通知をRustからAppKit／Foundationへ接続しました。選択取消・選択URLなし・保存先なしでは早期終了し、追加0件でも成功通知を出す元の順序を維持します。Swiftは未確定文字の確定と現在の保存先の通知だけを担当します。Apple Silicon／Intel型チェック、ClippyとWindowsでの実ABI拒否試験が成功。[9eb73edのmacOS SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39104520853)で両ジョブ成功。旧Swiftの9経路の順序・実SDK既定値／日本語表示・成功0件を含む通知引数と私用ファイルを比較。自プロセスの実NSAlertの標準ボタン承認、実NSOpenPanelの取消、背景表示拒否も保存ログで確認。既存スタブ22操作・実変換器28操作と全Swiftコンパイルも通過。[同じ版のfcitx SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39104520866)も成功。OS通知の実配送・実選択承認・インストール済みIMEの実入力と全画面一致は引き続き未確認です。
+
+
+7578524ではmacOSの入力ソース重複修復・修復前バックアップとCarbonの登録／有効化をRustへ移しました。既存のHIToolboxキー、prefix除外の元仕様、無変更時のバックアップ保持、登録失敗・最初の有効化失敗での中断、一覧の解放を維持します。Apple Silicon／Intel型チェック、Clippy、Windowsの実ABI拒否試験と6条件の模擬Carbon制御試験が成功。[5a36cf9のmacOS SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39105438244)で両ジョブ成功。旧Swiftの324配列（結合文字／ZWJ／NUL境界を含む）と私用NSUserDefaults11条件、背景拒否、SDKヘッダーの7関数ABIと型幅の保存ログを確認。既存スタブ22操作・実変換器28操作と全Swiftコンパイルも通過。[同じ版のfcitx SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39105438250)も成功。実OSでの登録・有効化は行っておらず、別実行ファイルRegisterInputSourceのSwift、IME実入力・全画面一致は残ります。
