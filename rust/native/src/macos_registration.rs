@@ -101,7 +101,7 @@ mod native {
         runtime::{AnyClass, AnyObject},
         MainThreadMarker,
     };
-    use objc2_foundation::{NSArray, NSString};
+    use objc2_foundation::{NSArray, NSRange, NSString};
     unsafe fn class(name: &std::ffi::CStr) -> &'static AnyClass {
         AnyClass::get(name).expect("Foundation class unavailable")
     }
@@ -134,11 +134,23 @@ mod native {
         let value = value.filter(|v| is(v, c"NSString"))?;
         Some(Retained::cast_unchecked::<NSString>(value).to_string())
     }
+    unsafe fn has_identifier_prefix(id: &str) -> bool {
+        if !id.starts_with(IDENTIFIER) {
+            return false;
+        }
+        // Swift String.hasPrefix compares whole grapheme clusters. A combining
+        // mark/ZWJ/variation selector after the final ASCII e is not a prefix
+        // boundary. Use this SDK's composed-character boundary for that e.
+        let value = NSString::from_str(id);
+        let range: NSRange =
+            msg_send![&value,rangeOfComposedCharacterSequenceAtIndex:IDENTIFIER.len()-1];
+        range.location + range.length == IDENTIFIER.len()
+    }
     unsafe fn normalize(rows: &NSArray<AnyObject>) -> Retained<AnyObject> {
         let result: Retained<AnyObject> = msg_send![class(c"NSMutableArray"), new];
         for row in rows.iter() {
             if field(&row, "Bundle ID").as_deref() == Some(IDENTIFIER)
-                || field(&row, "Input Mode").is_some_and(|id| id.starts_with(IDENTIFIER))
+                || field(&row, "Input Mode").is_some_and(|id| has_identifier_prefix(&id))
             {
                 continue;
             }
