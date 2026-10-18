@@ -386,3 +386,6 @@ acd350cではミニモード表示のビュー生成、文字／選択色／フ�
 
 
 3bdc357ではモード選択状態の保持とNSUserDefaultsの登録既定値・復元・保存、ミニ表示設定の読み書き、循環モード方針をRustへ移しました。保存キーと文字列値を変更せず、未設定時のautomatic／表示有効、Bool変換と選択インスタンス内のキャッシュを保持します。不正な保存モードは元と同じく初期化失敗にし、上書きしません。Apple Silicon／Intel型チェック、Clippyと実ABI比較が成功。[e296d9eのmacOS SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39097526961)で両ジョブ成功。私用suiteで旧設定／モード20比較、未設定の既定値・Bool変換・保存と新規インスタンスでの復元・インスタンス内キャッシュ・不正保存値の無変更・全モード切替のログを確認。既存スタブ22操作・実変換器28操作と全Swiftコンパイルも通過。[同じ版のfcitx SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39097526967)も成功。復元試験は同一プロセスでの新規インスタンスまでで、アプリ再起動後の確認は別途残ります。Swiftの呼出しブリッジと表示文言、実アプリ入力／全UI一致の検証は残ります。
+
+
+bdd6704では設定の復元試験を別プロセスへ拡張しました。私用UUID suiteへ親がRust経由で保存した値を、新規プロセス1が復元・更新し、新規プロセス2が再び復元・更新して親が確認します。既存親インスタンスの選択キャッシュは維持します。子は設定操作だけを実行して終了し、IMEサーバー起動・入力ソース登録・実アプリ入力は行いません。各子の終了は30秒で打ち切る境界を設けています。[bdd6704のmacOS SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39097858665)で両ジョブ成功。子1がcode／falseを復元してdirect／trueを保存し、子2がdirect／trueを復元してautomatic／falseを保存、親が最終値と既存キャッシュ維持を確認した保存ログを確認済み。既存スタブ22操作・実変換器28操作と全Swiftコンパイルも通過。[同じ版のfcitx SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39097858885)も成功。インストール済みIME全体の再起動・実アプリ入力と全画面一致は未確認です。

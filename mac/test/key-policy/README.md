@@ -153,5 +153,10 @@ MacSelectedInputMode and MacShowModeIndicator schema. A private UUID-named suite
 checks twenty bool/action comparisons, absent defaults, persistence and restoration
 through new selection objects, per-instance cached modes, and invalid persisted
 values without rewriting them. The private suite is removed after the fixture.
-This restoration check creates new instances in the same process; a full app
-restart and installed input-method use remain separate integration checks.
+The fixture additionally launches two fresh copies of its owned executable in
+preference-only mode. The parent persists mode/indicator values; child one reads
+and updates them, child two reads the updated values and updates again, and the
+parent verifies the result while its cached selection stays unchanged. Children
+use only the UUID suite and finish within a 30-second termination bound. They do
+not create an IMK server or register an input source. Restarting an installed
+input method and using it in real editors remain separate integration checks.
