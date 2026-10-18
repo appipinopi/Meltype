@@ -208,3 +208,5 @@
 - [x] macOS意味表示の予約キー・重複予約抑止・遅延値・発火時照合をRust状態へ移した版のSDK確認（53134b6のSDK CI両ジョブ成功。元Swift予約規則43比較、実ABI53照合・100再作成、既存スタブ22操作・実変換器28操作と全Swiftコンパイルの保存ログを確認。同一セッション内の正規等価キー、clear／破棄の無効化、旧tokenによる再作成後の拒否。OSキュー予約・ウィンドウ可視性・実注釈表示はSwift）
 
 - [x] macOS意味表示のOS予約をRustからlibdispatchへ直接接続した版のSDK検証（[2c2aa8dのmacOS SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39088364705)で両ジョブ成功。実メインキューの1500ms以降の配送、2予約の各1回実行、保持したオブジェクトの配送後解放、破棄済みセッションの拒否と保存ログを確認済み。既存スタブ22操作・実変換器28操作と全Swiftコンパイルも通過。[同じ版のfcitx SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39088364728)も成功。メインキューへ1500ms後に1回配送、Swiftコールバックの保持と解放、配送前に破棄したセッションの拒否を実行試験。注釈ウィンドウ描画はSwiftで、実画面は未検証）
+
+- [x] macOS候補ウィンドウへのObjective-Cメッセージ送信をRustへ移した版のSDK検証（[ed6d00dのmacOS SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39089133498)で両ジョブ成功。SDK制御オブジェクトで旧Objective-Cメッセージ順20パターン、方向selector非対応、可視／非表示の注釈、Unicode／NUL／空本文、不正操作と背景スレッド拒否を確認。実タイマーからの注釈受渡し、既存スタブ22操作・実変換器28操作、全Swiftコンパイルの保存ログも確認済み。[同じ版のfcitx SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39089133524)も成功。表示状態／更新とshow／方向selector照会と移動／hide／可視時だけの注釈送信。Swiftはオブジェクトの借用と状態通知。SDK制御オブジェクトで旧メッセージ順・UTF16本文と背景スレッド拒否を比較済み。実IMK候補パネルの画面と4OSの実アプリ入力は未確認）

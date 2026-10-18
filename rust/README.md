@@ -360,3 +360,6 @@ macOS意味表示の予約キー・重複予約抑止・1500msの遅延値・発
 
 
 2c2aa8dでは意味表示のOS予約もRustへ移し、`dispatch_time`／`dispatch_after_f`でメインキューへ配送します。Swiftは保持したコールバックを配送時に1回解放し、失敗時は即時に解放します。SDK試験では実際のキューとランループで1500ms以降の実行、メインスレッド、2予約の各1回実行、キャプチャ寿命と破棄後の拒否を確認しました。[2c2aa8dのmacOS SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39088364705)で両ジョブ成功。実メインキューの1500ms以降の配送、2予約の各1回実行、保持したオブジェクトの配送後解放、破棄済みセッションの拒否と保存ログを確認済み。既存スタブ22操作・実変換器28操作と全Swiftコンパイルも通過。[同じ版のfcitx SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39088364728)も成功。公開キューの取得規約は[libdispatchのqueue.h](https://github.com/swiftlang/swift-corelibs-libdispatch/blob/main/dispatch/queue.h)に従います。候補ウィンドウの可視性確認と注釈描画は引き続きSwiftです。
+
+
+c8f2069では候補ウィンドウの`isVisible`／`update`／`show:`／移動selector／`hide`／`showAnnotation:`をRustから直接呼びます。呼出し中はオブジェクトを保持し、メインスレッド以外をOS操作前に拒否します。注釈はUTF-16を全体検証し、可視時だけ属性なしのNSAttributedStringとして送信します。Swiftは借用ポインターの受渡しと入力コントローラーの通知状態を担当します。ローカルでApple Silicon／Intel macOS向け型チェック、Windowsの41ネイティブテスト・Clippy／整形と実ABIの拒否経路が成功。[ed6d00dのmacOS SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39089133498)で両ジョブ成功。SDK制御オブジェクトで旧Objective-Cメッセージ順20パターン、方向selector非対応、可視／非表示の注釈、Unicode／NUL／空本文、不正操作と背景スレッド拒否を確認。実タイマーからの注釈受渡し、既存スタブ22操作・実変換器28操作、全Swiftコンパイルの保存ログも確認済み。[同じ版のfcitx SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39089133524)も成功。実IMKパネルの描画・配置・外観一致は未検証です。
