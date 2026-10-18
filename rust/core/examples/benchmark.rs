@@ -18,6 +18,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cases: Vec<Case> = serde_json::from_str(&std::fs::read_to_string(&args[1])?)?;
     let samples: usize = args[2].parse()?;
     let warmups: usize = args[3].parse()?;
+    let progress = std::env::var("MELTYPE_BENCH_PROGRESS").is_ok_and(|s| s == "1");
     for case in cases {
         for sample in 0..warmups + samples {
             let mut session = if let Some(directory) = args.get(4) {
@@ -51,6 +52,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     "total_ms": total_ms, "keys_ms": keys_ms, "responses": responses})
                 );
             }
+        }
+        if progress {
+            eprintln!("Completed {}", case.name);
         }
     }
     Ok(())

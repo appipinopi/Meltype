@@ -9,6 +9,7 @@ using Meltype.Detection;
 var cases = JsonSerializer.Deserialize(File.ReadAllText(args[0]), ReportJson.Default.CaseArray)!;
 var samples = int.Parse(args[1]);
 var warmups = int.Parse(args[2]);
+var progress = Environment.GetEnvironmentVariable("MELTYPE_BENCH_PROGRESS") == "1";
 foreach (var c in cases)
 {
     for (var sample = 0; sample < warmups + samples; sample++)
@@ -49,6 +50,7 @@ foreach (var c in cases)
         if (sample >= warmups)
             Console.WriteLine(JsonSerializer.Serialize(new Row(c.name, sample-warmups, totalMs, keysMs, responses), ReportJson.Default.Row));
     }
+    if (progress) Console.Error.WriteLine($"Completed {c.name}");
 }
 sealed record Case(string name, int[][] keys, bool scored = false);
 sealed record Row([property: JsonPropertyName("case")] string name, int sample, double total_ms, List<double> keys_ms, List<string> responses);

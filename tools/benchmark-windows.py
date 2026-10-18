@@ -124,6 +124,7 @@ def main():
     env = os.environ.copy()
     env["DOTNET_TieredCompilation"] = "0"
     env["DOTNET_CLI_TELEMETRY_OPTOUT"] = "1"
+    env["MELTYPE_BENCH_PROGRESS"] = "1"
     build_commands = [
         ["cargo", f"+{args.rust_toolchain}", "build", "-p", "meltype-core", "--example", "benchmark", "--release", "--locked"],
         ["dotnet", "publish", str(harness / "Compare.csproj"), "-c", "Release", "-o", str(output / "csharp"),
