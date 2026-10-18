@@ -1,0 +1,179 @@
+[
+  {
+    "name": "roman:0:identity",
+    "text": "kyouha iitenki desu ne",
+    "engine": "identity",
+    "direct": true
+  },
+  {
+    "name": "roman:1:identity",
+    "text": "asita no meeting de review shimasu",
+    "engine": "identity",
+    "direct": true
+  },
+  {
+    "name": "roman:2:identity",
+    "text": "PR no review onegai shimasu",
+    "engine": "identity",
+    "direct": true
+  },
+  {
+    "name": "roman:3:identity",
+    "text": "nihongo",
+    "engine": "identity",
+    "direct": true
+  },
+  {
+    "name": "roman:4:identity",
+    "text": "konnichiwa",
+    "engine": "identity",
+    "direct": true
+  },
+  {
+    "name": "roman:5:identity",
+    "text": "google de nihongo",
+    "engine": "identity",
+    "direct": true
+  },
+  {
+    "name": "roman:6:identity",
+    "text": "kyouha google de kensaku",
+    "engine": "identity",
+    "direct": true
+  },
+  {
+    "name": "roman:7:identity",
+    "text": "nihongo 2026 nen",
+    "engine": "identity",
+    "direct": true
+  },
+  {
+    "name": "roman:8:identity",
+    "text": "kyouha https://example.com/ de kensaku",
+    "engine": "identity",
+    "direct": true
+  },
+  {
+    "name": "roman:9:identity",
+    "text": "hello world",
+    "engine": "identity",
+    "direct": true
+  },
+  {
+    "name": "roman:10:identity",
+    "text": "  hello   world  ",
+    "engine": "identity",
+    "direct": true
+  },
+  {
+    "name": "roman:0:bracket",
+    "text": "kyouha iitenki desu ne",
+    "engine": "bracket",
+    "direct": true
+  },
+  {
+    "name": "roman:1:bracket",
+    "text": "asita no meeting de review shimasu",
+    "engine": "bracket",
+    "direct": true
+  },
+  {
+    "name": "roman:2:bracket",
+    "text": "PR no review onegai shimasu",
+    "engine": "bracket",
+    "direct": true
+  },
+  {
+    "name": "roman:3:bracket",
+    "text": "nihongo",
+    "engine": "bracket",
+    "direct": true
+  },
+  {
+    "name": "roman:4:bracket",
+    "text": "konnichiwa",
+    "engine": "bracket",
+    "direct": true
+  },
+  {
+    "name": "roman:5:bracket",
+    "text": "google de nihongo",
+    "engine": "bracket",
+    "direct": true
+  },
+  {
+    "name": "roman:6:bracket",
+    "text": "kyouha google de kensaku",
+    "engine": "bracket",
+    "direct": true
+  },
+  {
+    "name": "roman:7:bracket",
+    "text": "nihongo 2026 nen",
+    "engine": "bracket",
+    "direct": true
+  },
+  {
+    "name": "roman:8:bracket",
+    "text": "kyouha https://example.com/ de kensaku",
+    "engine": "bracket",
+    "direct": true
+  },
+  {
+    "name": "roman:9:bracket",
+    "text": "hello world",
+    "engine": "bracket",
+    "direct": true
+  },
+  {
+    "name": "roman:10:bracket",
+    "text": "  hello   world  ",
+    "engine": "bracket",
+    "direct": true
+  },
+  {
+    "name": "roman:escape",
+    "text": "asita no meeting de review shimasu",
+    "engine": "bracket",
+    "action": "escape",
+    "direct": true
+  },
+  {
+    "name": "roman:original",
+    "text": "asita no meeting de review shimasu",
+    "engine": "bracket",
+    "action": "original",
+    "direct": true
+  },
+  {
+    "name": "roman:stale",
+    "text": "asita no meeting de review shimasu",
+    "engine": "bracket",
+    "action": "stale",
+    "direct": true
+  },
+  {
+    "name": "kana:enter",
+    "text": "今日",
+    "reading": "きょう",
+    "engine": "bracket",
+    "action": "enter",
+    "direct": true
+  },
+  {
+    "name": "kana:escape",
+    "text": "今日",
+    "reading": "きょう",
+    "engine": "bracket",
+    "action": "escape",
+    "direct": true
+  },
+  {
+    "name": "kana:stale",
+    "text": "今日",
+    "reading": "きょう",
+    "engine": "bracket",
+    "action": "stale",
+    "direct": true
+  }
+]

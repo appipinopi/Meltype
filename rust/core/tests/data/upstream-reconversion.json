@@ -1,0 +1,1065 @@
+{
+  "baseline": "45e14f86558aa6ea34f2c2ecd038ba95ca8c3c46",
+  "host_sha256": "56fc0ae5bf3a381c3cf5e712636cbfe97a062320c2060b4fae5a45f1eb96099e",
+  "cases": [
+    {
+      "case": {
+        "name": "roman:0:identity",
+        "text": "kyouha iitenki desu ne",
+        "reading": null,
+        "direct": true,
+        "engine": "identity",
+        "action": "enter"
+      },
+      "converted": "きょうはいいてんきですね",
+      "start": {
+        "Text": "きょうはいいてんきですね",
+        "Candidates": [
+          "きょうはいいてんきですね",
+          "kyouha iitenki desu ne"
+        ],
+        "SelectedIndex": 0,
+        "Converting": true,
+        "Hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+        "Clauses": [
+          "きょうはいいてんきですね"
+        ],
+        "SelectedClause": 0,
+        "Notes": null,
+        "Meaning": null,
+        "Suggestion": null,
+        "Predictions": null,
+        "SelectedPrediction": -1,
+        "Typed": null
+      },
+      "after": null,
+      "document": "きょうはいいてんきですね",
+      "replacements": [
+        "きょうはいいてんきですね"
+      ]
+    },
+    {
+      "case": {
+        "name": "roman:1:identity",
+        "text": "asita no meeting de review shimasu",
+        "reading": null,
+        "direct": true,
+        "engine": "identity",
+        "action": "enter"
+      },
+      "converted": "あしたの meeting で review します",
+      "start": {
+        "Text": "あしたの meeting で review します",
+        "Candidates": [
+          "あしたの meeting で review します",
+          "asita no meeting de review shimasu"
+        ],
+        "SelectedIndex": 0,
+        "Converting": true,
+        "Hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+        "Clauses": [
+          "あしたの meeting で review します"
+        ],
+        "SelectedClause": 0,
+        "Notes": null,
+        "Meaning": null,
+        "Suggestion": null,
+        "Predictions": null,
+        "SelectedPrediction": -1,
+        "Typed": null
+      },
+      "after": null,
+      "document": "あしたの meeting で review します",
+      "replacements": [
+        "あしたの meeting で review します"
+      ]
+    },
+    {
+      "case": {
+        "name": "roman:2:identity",
+        "text": "PR no review onegai shimasu",
+        "reading": null,
+        "direct": true,
+        "engine": "identity",
+        "action": "enter"
+      },
+      "converted": "PR の review おねがいします",
+      "start": {
+        "Text": "PR の review おねがいします",
+        "Candidates": [
+          "PR の review おねがいします",
+          "PR no review onegai shimasu"
+        ],
+        "SelectedIndex": 0,
+        "Converting": true,
+        "Hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+        "Clauses": [
+          "PR の review おねがいします"
+        ],
+        "SelectedClause": 0,
+        "Notes": null,
+        "Meaning": null,
+        "Suggestion": null,
+        "Predictions": null,
+        "SelectedPrediction": -1,
+        "Typed": null
+      },
+      "after": null,
+      "document": "PR の review おねがいします",
+      "replacements": [
+        "PR の review おねがいします"
+      ]
+    },
+    {
+      "case": {
+        "name": "roman:3:identity",
+        "text": "nihongo",
+        "reading": null,
+        "direct": true,
+        "engine": "identity",
+        "action": "enter"
+      },
+      "converted": "にほんご",
+      "start": {
+        "Text": "にほんご",
+        "Candidates": [
+          "にほんご",
+          "nihongo"
+        ],
+        "SelectedIndex": 0,
+        "Converting": true,
+        "Hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+        "Clauses": [
+          "にほんご"
+        ],
+        "SelectedClause": 0,
+        "Notes": null,
+        "Meaning": null,
+        "Suggestion": null,
+        "Predictions": null,
+        "SelectedPrediction": -1,
+        "Typed": null
+      },
+      "after": null,
+      "document": "にほんご",
+      "replacements": [
+        "にほんご"
+      ]
+    },
+    {
+      "case": {
+        "name": "roman:4:identity",
+        "text": "konnichiwa",
+        "reading": null,
+        "direct": true,
+        "engine": "identity",
+        "action": "enter"
+      },
+      "converted": "こんいちわ",
+      "start": {
+        "Text": "こんいちわ",
+        "Candidates": [
+          "こんいちわ",
+          "konnichiwa"
+        ],
+        "SelectedIndex": 0,
+        "Converting": true,
+        "Hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+        "Clauses": [
+          "こんいちわ"
+        ],
+        "SelectedClause": 0,
+        "Notes": null,
+        "Meaning": null,
+        "Suggestion": null,
+        "Predictions": null,
+        "SelectedPrediction": -1,
+        "Typed": null
+      },
+      "after": null,
+      "document": "こんいちわ",
+      "replacements": [
+        "こんいちわ"
+      ]
+    },
+    {
+      "case": {
+        "name": "roman:5:identity",
+        "text": "google de nihongo",
+        "reading": null,
+        "direct": true,
+        "engine": "identity",
+        "action": "enter"
+      },
+      "converted": "google でにほんご",
+      "start": {
+        "Text": "google でにほんご",
+        "Candidates": [
+          "google でにほんご",
+          "google de nihongo"
+        ],
+        "SelectedIndex": 0,
+        "Converting": true,
+        "Hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+        "Clauses": [
+          "google でにほんご"
+        ],
+        "SelectedClause": 0,
+        "Notes": null,
+        "Meaning": null,
+        "Suggestion": null,
+        "Predictions": null,
+        "SelectedPrediction": -1,
+        "Typed": null
+      },
+      "after": null,
+      "document": "google でにほんご",
+      "replacements": [
+        "google でにほんご"
+      ]
+    },
+    {
+      "case": {
+        "name": "roman:6:identity",
+        "text": "kyouha google de kensaku",
+        "reading": null,
+        "direct": true,
+        "engine": "identity",
+        "action": "enter"
+      },
+      "converted": "きょうは google でけんさく",
+      "start": {
+        "Text": "きょうは google でけんさく",
+        "Candidates": [
+          "きょうは google でけんさく",
+          "kyouha google de kensaku"
+        ],
+        "SelectedIndex": 0,
+        "Converting": true,
+        "Hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+        "Clauses": [
+          "きょうは google でけんさく"
+        ],
+        "SelectedClause": 0,
+        "Notes": null,
+        "Meaning": null,
+        "Suggestion": null,
+        "Predictions": null,
+        "SelectedPrediction": -1,
+        "Typed": null
+      },
+      "after": null,
+      "document": "きょうは google でけんさく",
+      "replacements": [
+        "きょうは google でけんさく"
+      ]
+    },
+    {
+      "case": {
+        "name": "roman:7:identity",
+        "text": "nihongo 2026 nen",
+        "reading": null,
+        "direct": true,
+        "engine": "identity",
+        "action": "enter"
+      },
+      "converted": "にほんご2026ね",
+      "start": {
+        "Text": "にほんご2026ね",
+        "Candidates": [
+          "にほんご2026ね",
+          "nihongo 2026 nen"
+        ],
+        "SelectedIndex": 0,
+        "Converting": true,
+        "Hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+        "Clauses": [
+          "にほんご2026ね"
+        ],
+        "SelectedClause": 0,
+        "Notes": null,
+        "Meaning": null,
+        "Suggestion": null,
+        "Predictions": null,
+        "SelectedPrediction": -1,
+        "Typed": null
+      },
+      "after": null,
+      "document": "にほんご2026ね",
+      "replacements": [
+        "にほんご2026ね"
+      ]
+    },
+    {
+      "case": {
+        "name": "roman:8:identity",
+        "text": "kyouha https://example.com/ de kensaku",
+        "reading": null,
+        "direct": true,
+        "engine": "identity",
+        "action": "enter"
+      },
+      "converted": "きょうは https://example.com/ でけんさく",
+      "start": {
+        "Text": "きょうは https://example.com/ でけんさく",
+        "Candidates": [
+          "きょうは https://example.com/ でけんさく",
+          "kyouha https://example.com/ de kensaku"
+        ],
+        "SelectedIndex": 0,
+        "Converting": true,
+        "Hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+        "Clauses": [
+          "きょうは https://example.com/ でけんさく"
+        ],
+        "SelectedClause": 0,
+        "Notes": null,
+        "Meaning": null,
+        "Suggestion": null,
+        "Predictions": null,
+        "SelectedPrediction": -1,
+        "Typed": null
+      },
+      "after": null,
+      "document": "きょうは https://example.com/ でけんさく",
+      "replacements": [
+        "きょうは https://example.com/ でけんさく"
+      ]
+    },
+    {
+      "case": {
+        "name": "roman:9:identity",
+        "text": "hello world",
+        "reading": null,
+        "direct": true,
+        "engine": "identity",
+        "action": "enter"
+      },
+      "converted": "hello world",
+      "start": {
+        "Text": "へっぉ world",
+        "Candidates": [
+          "へっぉ",
+          "ヘッォ",
+          "ﾍｯｫ",
+          "hello",
+          "Hello",
+          "HELLO",
+          "ｈｅｌｌｏ"
+        ],
+        "SelectedIndex": 0,
+        "Converting": true,
+        "Hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+        "Clauses": [
+          "へっぉ",
+          " ",
+          "world"
+        ],
+        "SelectedClause": 0,
+        "Notes": [
+          null,
+          null,
+          null,
+          "半角",
+          null,
+          null,
+          "全角"
+        ],
+        "Meaning": null,
+        "Suggestion": null,
+        "Predictions": null,
+        "SelectedPrediction": -1,
+        "Typed": null
+      },
+      "after": null,
+      "document": "へっぉ world",
+      "replacements": [
+        "へっぉ world"
+      ]
+    },
+    {
+      "case": {
+        "name": "roman:10:identity",
+        "text": "  hello   world  ",
+        "reading": null,
+        "direct": true,
+        "engine": "identity",
+        "action": "enter"
+      },
+      "converted": "hello world",
+      "start": {
+        "Text": "hello world",
+        "Candidates": [
+          "hello world",
+          "  hello   world  "
+        ],
+        "SelectedIndex": 0,
+        "Converting": true,
+        "Hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+        "Clauses": [
+          "hello world"
+        ],
+        "SelectedClause": 0,
+        "Notes": null,
+        "Meaning": null,
+        "Suggestion": null,
+        "Predictions": null,
+        "SelectedPrediction": -1,
+        "Typed": null
+      },
+      "after": null,
+      "document": "hello world",
+      "replacements": [
+        "hello world"
+      ]
+    },
+    {
+      "case": {
+        "name": "roman:0:bracket",
+        "text": "kyouha iitenki desu ne",
+        "reading": null,
+        "direct": true,
+        "engine": "bracket",
+        "action": "enter"
+      },
+      "converted": "【きょうはいいてんきですね】",
+      "start": {
+        "Text": "【きょうはいいてんきですね】",
+        "Candidates": [
+          "【きょうはいいてんきですね】",
+          "kyouha iitenki desu ne"
+        ],
+        "SelectedIndex": 0,
+        "Converting": true,
+        "Hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+        "Clauses": [
+          "【きょうはいいてんきですね】"
+        ],
+        "SelectedClause": 0,
+        "Notes": null,
+        "Meaning": null,
+        "Suggestion": null,
+        "Predictions": null,
+        "SelectedPrediction": -1,
+        "Typed": null
+      },
+      "after": null,
+      "document": "【きょうはいいてんきですね】",
+      "replacements": [
+        "【きょうはいいてんきですね】"
+      ]
+    },
+    {
+      "case": {
+        "name": "roman:1:bracket",
+        "text": "asita no meeting de review shimasu",
+        "reading": null,
+        "direct": true,
+        "engine": "bracket",
+        "action": "enter"
+      },
+      "converted": "【あしたの】 meeting 【で】 review 【します】",
+      "start": {
+        "Text": "【あしたの】 meeting 【で】 review 【します】",
+        "Candidates": [
+          "【あしたの】 meeting 【で】 review 【します】",
+          "asita no meeting de review shimasu"
+        ],
+        "SelectedIndex": 0,
+        "Converting": true,
+        "Hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+        "Clauses": [
+          "【あしたの】 meeting 【で】 review 【します】"
+        ],
+        "SelectedClause": 0,
+        "Notes": null,
+        "Meaning": null,
+        "Suggestion": null,
+        "Predictions": null,
+        "SelectedPrediction": -1,
+        "Typed": null
+      },
+      "after": null,
+      "document": "【あしたの】 meeting 【で】 review 【します】",
+      "replacements": [
+        "【あしたの】 meeting 【で】 review 【します】"
+      ]
+    },
+    {
+      "case": {
+        "name": "roman:2:bracket",
+        "text": "PR no review onegai shimasu",
+        "reading": null,
+        "direct": true,
+        "engine": "bracket",
+        "action": "enter"
+      },
+      "converted": "PR 【の】 review 【おねがいします】",
+      "start": {
+        "Text": "PR 【の】 review 【おねがいします】",
+        "Candidates": [
+          "PR 【の】 review 【おねがいします】",
+          "PR no review onegai shimasu"
+        ],
+        "SelectedIndex": 0,
+        "Converting": true,
+        "Hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+        "Clauses": [
+          "PR 【の】 review 【おねがいします】"
+        ],
+        "SelectedClause": 0,
+        "Notes": null,
+        "Meaning": null,
+        "Suggestion": null,
+        "Predictions": null,
+        "SelectedPrediction": -1,
+        "Typed": null
+      },
+      "after": null,
+      "document": "PR 【の】 review 【おねがいします】",
+      "replacements": [
+        "PR 【の】 review 【おねがいします】"
+      ]
+    },
+    {
+      "case": {
+        "name": "roman:3:bracket",
+        "text": "nihongo",
+        "reading": null,
+        "direct": true,
+        "engine": "bracket",
+        "action": "enter"
+      },
+      "converted": "【にほんご】",
+      "start": {
+        "Text": "【にほんご】",
+        "Candidates": [
+          "【にほんご】",
+          "nihongo"
+        ],
+        "SelectedIndex": 0,
+        "Converting": true,
+        "Hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+        "Clauses": [
+          "【にほんご】"
+        ],
+        "SelectedClause": 0,
+        "Notes": null,
+        "Meaning": null,
+        "Suggestion": null,
+        "Predictions": null,
+        "SelectedPrediction": -1,
+        "Typed": null
+      },
+      "after": null,
+      "document": "【にほんご】",
+      "replacements": [
+        "【にほんご】"
+      ]
+    },
+    {
+      "case": {
+        "name": "roman:4:bracket",
+        "text": "konnichiwa",
+        "reading": null,
+        "direct": true,
+        "engine": "bracket",
+        "action": "enter"
+      },
+      "converted": "【こんいちわ】",
+      "start": {
+        "Text": "【こんいちわ】",
+        "Candidates": [
+          "【こんいちわ】",
+          "konnichiwa"
+        ],
+        "SelectedIndex": 0,
+        "Converting": true,
+        "Hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+        "Clauses": [
+          "【こんいちわ】"
+        ],
+        "SelectedClause": 0,
+        "Notes": null,
+        "Meaning": null,
+        "Suggestion": null,
+        "Predictions": null,
+        "SelectedPrediction": -1,
+        "Typed": null
+      },
+      "after": null,
+      "document": "【こんいちわ】",
+      "replacements": [
+        "【こんいちわ】"
+      ]
+    },
+    {
+      "case": {
+        "name": "roman:5:bracket",
+        "text": "google de nihongo",
+        "reading": null,
+        "direct": true,
+        "engine": "bracket",
+        "action": "enter"
+      },
+      "converted": "google 【でにほんご】",
+      "start": {
+        "Text": "google 【でにほんご】",
+        "Candidates": [
+          "google 【でにほんご】",
+          "google de nihongo"
+        ],
+        "SelectedIndex": 0,
+        "Converting": true,
+        "Hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+        "Clauses": [
+          "google 【でにほんご】"
+        ],
+        "SelectedClause": 0,
+        "Notes": null,
+        "Meaning": null,
+        "Suggestion": null,
+        "Predictions": null,
+        "SelectedPrediction": -1,
+        "Typed": null
+      },
+      "after": null,
+      "document": "google 【でにほんご】",
+      "replacements": [
+        "google 【でにほんご】"
+      ]
+    },
+    {
+      "case": {
+        "name": "roman:6:bracket",
+        "text": "kyouha google de kensaku",
+        "reading": null,
+        "direct": true,
+        "engine": "bracket",
+        "action": "enter"
+      },
+      "converted": "【きょうは】 google 【でけんさく】",
+      "start": {
+        "Text": "【きょうは】 google 【でけんさく】",
+        "Candidates": [
+          "【きょうは】 google 【でけんさく】",
+          "kyouha google de kensaku"
+        ],
+        "SelectedIndex": 0,
+        "Converting": true,
+        "Hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+        "Clauses": [
+          "【きょうは】 google 【でけんさく】"
+        ],
+        "SelectedClause": 0,
+        "Notes": null,
+        "Meaning": null,
+        "Suggestion": null,
+        "Predictions": null,
+        "SelectedPrediction": -1,
+        "Typed": null
+      },
+      "after": null,
+      "document": "【きょうは】 google 【でけんさく】",
+      "replacements": [
+        "【きょうは】 google 【でけんさく】"
+      ]
+    },
+    {
+      "case": {
+        "name": "roman:7:bracket",
+        "text": "nihongo 2026 nen",
+        "reading": null,
+        "direct": true,
+        "engine": "bracket",
+        "action": "enter"
+      },
+      "converted": "【にほんご2026ね】",
+      "start": {
+        "Text": "【にほんご2026ね】",
+        "Candidates": [
+          "【にほんご2026ね】",
+          "nihongo 2026 nen"
+        ],
+        "SelectedIndex": 0,
+        "Converting": true,
+        "Hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+        "Clauses": [
+          "【にほんご2026ね】"
+        ],
+        "SelectedClause": 0,
+        "Notes": null,
+        "Meaning": null,
+        "Suggestion": null,
+        "Predictions": null,
+        "SelectedPrediction": -1,
+        "Typed": null
+      },
+      "after": null,
+      "document": "【にほんご2026ね】",
+      "replacements": [
+        "【にほんご2026ね】"
+      ]
+    },
+    {
+      "case": {
+        "name": "roman:8:bracket",
+        "text": "kyouha https://example.com/ de kensaku",
+        "reading": null,
+        "direct": true,
+        "engine": "bracket",
+        "action": "enter"
+      },
+      "converted": "【きょうは】 https://example.com/ 【でけんさく】",
+      "start": {
+        "Text": "【きょうは】 https://example.com/ 【でけんさく】",
+        "Candidates": [
+          "【きょうは】 https://example.com/ 【でけんさく】",
+          "kyouha https://example.com/ de kensaku"
+        ],
+        "SelectedIndex": 0,
+        "Converting": true,
+        "Hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+        "Clauses": [
+          "【きょうは】 https://example.com/ 【でけんさく】"
+        ],
+        "SelectedClause": 0,
+        "Notes": null,
+        "Meaning": null,
+        "Suggestion": null,
+        "Predictions": null,
+        "SelectedPrediction": -1,
+        "Typed": null
+      },
+      "after": null,
+      "document": "【きょうは】 https://example.com/ 【でけんさく】",
+      "replacements": [
+        "【きょうは】 https://example.com/ 【でけんさく】"
+      ]
+    },
+    {
+      "case": {
+        "name": "roman:9:bracket",
+        "text": "hello world",
+        "reading": null,
+        "direct": true,
+        "engine": "bracket",
+        "action": "enter"
+      },
+      "converted": "hello world",
+      "start": {
+        "Text": "【へっぉ】【 】world",
+        "Candidates": [
+          "【へっぉ】",
+          "へっぉ",
+          "ヘッォ",
+          "ﾍｯｫ",
+          "hello",
+          "Hello",
+          "HELLO",
+          "ｈｅｌｌｏ"
+        ],
+        "SelectedIndex": 0,
+        "Converting": true,
+        "Hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+        "Clauses": [
+          "【へっぉ】",
+          "【 】",
+          "world"
+        ],
+        "SelectedClause": 0,
+        "Notes": [
+          null,
+          null,
+          null,
+          null,
+          "半角",
+          null,
+          null,
+          "全角"
+        ],
+        "Meaning": null,
+        "Suggestion": null,
+        "Predictions": null,
+        "SelectedPrediction": -1,
+        "Typed": null
+      },
+      "after": null,
+      "document": "【へっぉ】【 】world",
+      "replacements": [
+        "【へっぉ】【 】world"
+      ]
+    },
+    {
+      "case": {
+        "name": "roman:10:bracket",
+        "text": "  hello   world  ",
+        "reading": null,
+        "direct": true,
+        "engine": "bracket",
+        "action": "enter"
+      },
+      "converted": "hello world",
+      "start": {
+        "Text": "hello world",
+        "Candidates": [
+          "hello world",
+          "  hello   world  "
+        ],
+        "SelectedIndex": 0,
+        "Converting": true,
+        "Hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+        "Clauses": [
+          "hello world"
+        ],
+        "SelectedClause": 0,
+        "Notes": null,
+        "Meaning": null,
+        "Suggestion": null,
+        "Predictions": null,
+        "SelectedPrediction": -1,
+        "Typed": null
+      },
+      "after": null,
+      "document": "hello world",
+      "replacements": [
+        "hello world"
+      ]
+    },
+    {
+      "case": {
+        "name": "roman:escape",
+        "text": "asita no meeting de review shimasu",
+        "reading": null,
+        "direct": true,
+        "engine": "bracket",
+        "action": "escape"
+      },
+      "converted": "【あしたの】 meeting 【で】 review 【します】",
+      "start": {
+        "Text": "【あしたの】 meeting 【で】 review 【します】",
+        "Candidates": [
+          "【あしたの】 meeting 【で】 review 【します】",
+          "asita no meeting de review shimasu"
+        ],
+        "SelectedIndex": 0,
+        "Converting": true,
+        "Hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+        "Clauses": [
+          "【あしたの】 meeting 【で】 review 【します】"
+        ],
+        "SelectedClause": 0,
+        "Notes": null,
+        "Meaning": null,
+        "Suggestion": null,
+        "Predictions": null,
+        "SelectedPrediction": -1,
+        "Typed": null
+      },
+      "after": null,
+      "document": "asita no meeting de review shimasu",
+      "replacements": []
+    },
+    {
+      "case": {
+        "name": "roman:original",
+        "text": "asita no meeting de review shimasu",
+        "reading": null,
+        "direct": true,
+        "engine": "bracket",
+        "action": "original"
+      },
+      "converted": "【あしたの】 meeting 【で】 review 【します】",
+      "start": {
+        "Text": "【あしたの】 meeting 【で】 review 【します】",
+        "Candidates": [
+          "【あしたの】 meeting 【で】 review 【します】",
+          "asita no meeting de review shimasu"
+        ],
+        "SelectedIndex": 0,
+        "Converting": true,
+        "Hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+        "Clauses": [
+          "【あしたの】 meeting 【で】 review 【します】"
+        ],
+        "SelectedClause": 0,
+        "Notes": null,
+        "Meaning": null,
+        "Suggestion": null,
+        "Predictions": null,
+        "SelectedPrediction": -1,
+        "Typed": null
+      },
+      "after": null,
+      "document": "asita no meeting de review shimasu",
+      "replacements": [
+        "asita no meeting de review shimasu"
+      ]
+    },
+    {
+      "case": {
+        "name": "roman:stale",
+        "text": "asita no meeting de review shimasu",
+        "reading": null,
+        "direct": true,
+        "engine": "bracket",
+        "action": "stale"
+      },
+      "converted": "【あしたの】 meeting 【で】 review 【します】",
+      "start": {
+        "Text": "【あしたの】 meeting 【で】 review 【します】",
+        "Candidates": [
+          "【あしたの】 meeting 【で】 review 【します】",
+          "asita no meeting de review shimasu"
+        ],
+        "SelectedIndex": 0,
+        "Converting": true,
+        "Hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+        "Clauses": [
+          "【あしたの】 meeting 【で】 review 【します】"
+        ],
+        "SelectedClause": 0,
+        "Notes": null,
+        "Meaning": null,
+        "Suggestion": null,
+        "Predictions": null,
+        "SelectedPrediction": -1,
+        "Typed": null
+      },
+      "after": null,
+      "document": "asita no meeting de review shimasu",
+      "replacements": []
+    },
+    {
+      "case": {
+        "name": "kana:enter",
+        "text": "今日",
+        "reading": "きょう",
+        "direct": true,
+        "engine": "bracket",
+        "action": "enter"
+      },
+      "converted": "【今日】",
+      "start": {
+        "Text": "【きょう】",
+        "Candidates": [
+          "【きょう】",
+          "きょう",
+          "キョウ",
+          "ｷｮｳ",
+          "2026年10月19日",
+          "2026年10月19日(月)",
+          "10月19日",
+          "10月19日(月)",
+          "2026/10/19",
+          "2026-10-19",
+          "月曜日"
+        ],
+        "SelectedIndex": 0,
+        "Converting": true,
+        "Hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+        "Clauses": [
+          "【きょう】"
+        ],
+        "SelectedClause": 0,
+        "Notes": null,
+        "Meaning": null,
+        "Suggestion": null,
+        "Predictions": null,
+        "SelectedPrediction": -1,
+        "Typed": null
+      },
+      "after": null,
+      "document": "【きょう】",
+      "replacements": [
+        "【きょう】"
+      ]
+    },
+    {
+      "case": {
+        "name": "kana:escape",
+        "text": "今日",
+        "reading": "きょう",
+        "direct": true,
+        "engine": "bracket",
+        "action": "escape"
+      },
+      "converted": "【今日】",
+      "start": {
+        "Text": "【きょう】",
+        "Candidates": [
+          "【きょう】",
+          "きょう",
+          "キョウ",
+          "ｷｮｳ",
+          "2026年10月19日",
+          "2026年10月19日(月)",
+          "10月19日",
+          "10月19日(月)",
+          "2026/10/19",
+          "2026-10-19",
+          "月曜日"
+        ],
+        "SelectedIndex": 0,
+        "Converting": true,
+        "Hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+        "Clauses": [
+          "【きょう】"
+        ],
+        "SelectedClause": 0,
+        "Notes": null,
+        "Meaning": null,
+        "Suggestion": null,
+        "Predictions": null,
+        "SelectedPrediction": -1,
+        "Typed": null
+      },
+      "after": null,
+      "document": "今日",
+      "replacements": []
+    },
+    {
+      "case": {
+        "name": "kana:stale",
+        "text": "今日",
+        "reading": "きょう",
+        "direct": true,
+        "engine": "bracket",
+        "action": "stale"
+      },
+      "converted": "【今日】",
+      "start": {
+        "Text": "【きょう】",
+        "Candidates": [
+          "【きょう】",
+          "きょう",
+          "キョウ",
+          "ｷｮｳ",
+          "2026年10月19日",
+          "2026年10月19日(月)",
+          "10月19日",
+          "10月19日(月)",
+          "2026/10/19",
+          "2026-10-19",
+          "月曜日"
+        ],
+        "SelectedIndex": 0,
+        "Converting": true,
+        "Hint": "←→ 文節　Space/↓ 候補　1〜9 選択　Shift+←→ 区切り　Enter 確定　Esc 戻る",
+        "Clauses": [
+          "【きょう】"
+        ],
+        "SelectedClause": 0,
+        "Notes": null,
+        "Meaning": null,
+        "Suggestion": null,
+        "Predictions": null,
+        "SelectedPrediction": -1,
+        "Typed": null
+      },
+      "after": null,
+      "document": "今日",
+      "replacements": []
+    }
+  ]
+}

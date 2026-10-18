@@ -70,7 +70,7 @@ public final class EditorHost {
             // Drive real conversion results through the same production JNI
             // route, rather than validating only hand-written reply objects.
             Native.reset(session);Native.direct(session,false);e=new Editor();
-            for(int scalar:"konnichiha".codePoints().toArray()) {
+            for(int scalar:"konnnichiha".codePoints().toArray()) {
                 result=apply(session,e,Native.key(session,0,scalar,0));
                 check(result.contains("\"consumed\":true"),result);
             }

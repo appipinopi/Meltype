@@ -37,7 +37,7 @@ public final class ContextHost {
             Native.editorKey(session,null,29,'a',0,true,false,"");
             editor=new EditorHost.Editor();
             Native.startInput(session,1,0);
-            for(int scalar:"konnichiha".codePoints().toArray()) {
+            for(int scalar:"konnnichiha".codePoints().toArray()) {
                 String reply=Native.editorKey(session,editor,0,scalar,0,false,false,editor.pending);
                 Native.applyEditor(session,editor,reply,editor.pending);
             }

@@ -324,7 +324,8 @@ public final class NativeAndroidTest {
     });}
     @Test public void realEditableConversionUndoAndUtf16Guards() throws Throwable {ui(()->{
         try(Profile profile=new Profile()) {
-            long session=profile.session;Editor editor=new Editor();type(session,editor,"konnichiha");
+            // Match the original composition table: nn consumes both keys, then ni follows.
+            long session=profile.session;Editor editor=new Editor();type(session,editor,"konnnichiha");
             Native.applyEditor(session,editor,Native.commit(session),Native.composingText(session));
             assertEquals("こんにちは",editor.text.toString());assertEquals(-1,BaseInputConnection.getComposingSpanStart(editor.text));
             String undo=Native.editorUndo(session,editor,false,"");assertTrue(undo.contains("\"deleteBefore\":5"));
@@ -386,7 +387,7 @@ public final class NativeAndroidTest {
         try(Profile profile=new Profile()) {
             Widgets service=new Widgets();service.session=profile.session;service.editor=new Editor();service.options=6;
             LinearLayout root=(LinearLayout)Native.createInputView(service);assertNotNull(root);
-            keys(root,"konnichiha");press(root,"確定/↵");assertEquals("こんにちは",service.editor.text.toString());
+            keys(root,"konnnichiha");press(root,"確定/↵");assertEquals("こんにちは",service.editor.text.toString());
             assertTrue(service.editor.actions.isEmpty());press(root,"確定/↵");assertEquals(java.util.Collections.singletonList(6),service.editor.actions);
             press(root,"あ/A");press(root,"⇧");press(root,"a");press(root,"a");assertEquals("こんにちはAa",service.editor.text.toString());
             press(root,"あ/A");Native.startInput(profile.session,1,0);service.editor=new Editor();

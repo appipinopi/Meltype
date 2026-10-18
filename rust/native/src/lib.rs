@@ -393,6 +393,73 @@ unsafe fn external_reconversion(reading: &str) -> Vec<String> {
     }
 }
 
+unsafe fn external_selection_conversion(reading: &str, prefer_romaji: bool) -> Vec<Clause> {
+    // ConvertJapanese keeps unreadable ASCII/symbol runs literal. Digits
+    // touching such runs stay with them; other digits can be converted.
+    let chars: Vec<_> = reading.char_indices().collect();
+    let mut keep: Vec<_> = chars
+        .iter()
+        .map(|(_, c)| c.is_ascii_graphic() && !c.is_ascii_digit())
+        .collect();
+    let mut i = 0;
+    while i < chars.len() {
+        if !chars[i].1.is_ascii_digit() {
+            i += 1;
+            continue;
+        }
+        let end = (i..chars.len())
+            .find(|j| !chars[*j].1.is_ascii_digit())
+            .unwrap_or(chars.len());
+        let touches = i > 0 && keep[i - 1] || end < keep.len() && keep[end];
+        keep[i..end].fill(touches);
+        i = end;
+    }
+    let mut clauses = Vec::new();
+    let mut start = 0;
+    for end in 1..=chars.len() {
+        if end < chars.len() && keep[end] == keep[start] {
+            continue;
+        }
+        let stop = chars.get(end).map_or(reading.len(), |(i, _)| *i);
+        let run = &reading[chars[start].0..stop];
+        if keep[start] {
+            let mut candidates = Vec::new();
+            if prefer_romaji {
+                let analysis = meltype_core::romaji::analyze(&run.to_ascii_lowercase(), true);
+                let kana = analysis.kana();
+                if analysis.valid && analysis.partial.is_empty() && !kana.is_empty() {
+                    candidates.extend(external_reconversion(&kana));
+                    let katakana = meltype_core::romaji::katakana(&kana);
+                    candidates.extend([
+                        kana,
+                        katakana.clone(),
+                        meltype_core::kana::halfwidth(&katakana),
+                    ]);
+                }
+                let mut capitalized = run.to_owned();
+                capitalized[..1].make_ascii_uppercase();
+                candidates.extend([run.into(), capitalized, run.to_ascii_uppercase()]);
+            }
+            candidates.extend([run.into(), meltype_core::kana::fullwidth(run)]);
+            let mut clause = Clause::new(run.into(), candidates);
+            if prefer_romaji {
+                clause.english = true;
+                clause.kana = Some(String::new());
+            }
+            clauses.push(clause);
+        } else {
+            let (segments, candidates) = external_conversion_unprotected(run, std::ptr::null());
+            if segments.is_empty() {
+                clauses.push(Clause::new(run.into(), candidates));
+            } else {
+                clauses.extend(segments);
+            }
+        }
+        start = end;
+    }
+    clauses
+}
+
 /// # Safety
 /// before/after, when non-null, must point to valid NUL-terminated UTF-8.
 /// Calls for one session must be serialized. Registered callbacks must remain
@@ -590,9 +657,77 @@ pub unsafe extern "C" fn meltype_reconvert_selection(
     let Some(text) = read(text) else {
         return std::ptr::null_mut();
     };
-    run(handle, |s| {
-        s.reconvert_selection(&text, read(reading).as_deref())
-    })
+    let mut unchanged_romaji = false;
+    let parts = sessions().lock().ok().and_then(|all| {
+        all.get(&(handle as usize))
+            .and_then(|s| s.romaji_reconversion_parts(&text))
+    });
+    if let Some(parts) = parts {
+        let mut converted = String::new();
+        for part in parts {
+            if part.english {
+                if !converted.is_empty() && !converted.ends_with(' ') {
+                    converted.push(' ');
+                }
+                converted.push_str(&part.text);
+                converted.push(' ');
+            } else {
+                let candidates = external_reconversion(&part.text);
+                let value = candidates.first().cloned().unwrap_or_else(|| {
+                    meltype_core::dictionary::Dictionary::bundled().convert(&part.text)
+                });
+                converted.push_str(&value);
+            }
+        }
+        let converted = converted.trim_end().to_owned();
+        if converted != text && !converted.is_empty() {
+            return run(handle, |s| s.begin_romaji_reconversion(&text, &converted));
+        }
+        unchanged_romaji = converted == text;
+    }
+    let supplied = read(reading);
+    let result = run(handle, |s| {
+        s.reconvert_selection(
+            &text,
+            supplied.as_deref().or(if unchanged_romaji {
+                Some(text.as_str())
+            } else {
+                None
+            }),
+        )
+    });
+    let started = read(result)
+        .and_then(|text| serde_json::from_str::<meltype_core::SessionResult>(&text).ok())
+        .is_some_and(|value| {
+            value.consumed && value.selection_expect.as_deref() == Some(text.as_str())
+        });
+    if !started {
+        return result;
+    }
+    let current = sessions().lock().ok().and_then(|all| {
+        all.get(&(handle as usize))
+            .filter(|s| s.is_converting())
+            .map(Session::reading)
+    });
+    if let Some(current) = current {
+        let clauses = external_selection_conversion(&current, unchanged_romaji);
+        if !clauses.is_empty() {
+            if let Some(text) = take(result) {
+                if let Ok(previous) = serde_json::from_str::<meltype_core::SessionResult>(&text) {
+                    return run(handle, |s| {
+                        s.begin_clauses(clauses);
+                        let mut result = s.result(previous.consumed);
+                        result.selection_expect = previous.selection_expect;
+                        result.commits = previous.commits;
+                        result
+                    });
+                }
+                return allocate(&text);
+            }
+            return std::ptr::null_mut();
+        }
+    }
+    result
 }
 /// # Safety
 /// before must be a valid NUL-terminated UTF-8 snapshot of text before the caret.

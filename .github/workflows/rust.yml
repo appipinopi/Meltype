@@ -68,6 +68,8 @@ jobs:
         run: python rust/native/tests/scored_smoke.py --golden rust/core/tests/data/upstream-long-keys.json
       - name: Resized clauses and converter candidates match original traces
         run: python rust/native/tests/clause_resize_smoke.py
+      - name: Selected-text reconversion matches original controller workflows
+        run: python rust/native/tests/reconversion_smoke.py
       - name: Direct-input timeout through native ABI
         run: python rust/native/tests/direct_time_smoke.py
       - name: Legacy input state, replay and prefix learning through native ABI

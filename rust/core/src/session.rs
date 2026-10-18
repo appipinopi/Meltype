@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 appipinopi
 mod direct;
+mod reconversion;
 use crate::{
     dictionary::Dictionary,
     linguistics::Linguistics,
@@ -8,6 +9,7 @@ use crate::{
     settings::Settings,
     storage::{Change, State, Store},
 };
+pub use reconversion::ReconversionPart;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -447,7 +449,9 @@ impl Session {
     }
     pub fn reading(&self) -> String {
         let _romaji = romaji::Scope::new(self.custom_romaji.clone());
-        if self.uses_kana() {
+        if self.reconversion_origin.is_some() {
+            self.raw.clone()
+        } else if self.uses_kana() {
             self.kana_text.clone()
         } else if let Some(units) = self.edited_units.as_ref().filter(|u| u.raw() == self.raw) {
             if self.external_converter_only {
@@ -477,7 +481,7 @@ impl Session {
     /// This is separate from the reading used by edit and repair operations.
     pub fn conversion_reading(&self) -> String {
         let _romaji = romaji::Scope::new(self.custom_romaji.clone());
-        if self.uses_kana() || self.function_key != 0 {
+        if self.reconversion_origin.is_some() || self.uses_kana() || self.function_key != 0 {
             self.reading()
         } else {
             self.mixed_reading(true)
@@ -676,13 +680,15 @@ impl Session {
             && !["n", "nn"].contains(&analysis.partial.as_str())
     }
     fn punctuate(&self, text: String) -> String {
+        self.punctuate_with_context(text, Dictionary::bundled().english_context(&self.before))
+    }
+    fn punctuate_with_context(&self, text: String, mut english: bool) -> String {
         let (comma, period) = match self.settings.text("Punctuation") {
             "FullWidthCommaPeriod" => ('，', '．'),
             "FullWidthCommaKuten" => ('，', '。'),
             "ToutenFullWidthPeriod" => ('、', '．'),
             _ => ('、', '。'),
         };
-        let mut english = Dictionary::bundled().english_context(&self.before);
         crate::protection::transform(&text, |part| {
             part.chars()
                 .map(|c| {
@@ -1061,7 +1067,6 @@ impl Session {
     ) -> SessionResult {
         if !self.raw.is_empty()
             || self.private
-            || self.direct
             || !self.settings.boolean("Enabled")
             || text.is_empty()
             || text.chars().count() > 1024
@@ -1096,9 +1101,16 @@ impl Session {
             .or_else(|| Dictionary::bundled().reading_for(text))
             .unwrap_or_else(|| romaji::hiragana(&crate::user_dictionary::hiragana(text), true));
         let reading = crate::user_dictionary::hiragana(&reading);
-        if reading.chars().count() > 1024 || reading.chars().any(|c| !crate::linguistics::kana(c)) {
+        let literal =
+            supplied_reading == Some(text) && self.romaji_reconversion_parts(text).is_some();
+        if reading.chars().count() > 1024
+            || !literal && reading.chars().any(|c| !crate::linguistics::kana(c))
+        {
             return self.result(false);
         }
+        self.forget_direct_input();
+        self.correctable.clear();
+        self.reconversion_origin = Some(text.to_owned());
         self.raw = reading.clone();
         self.typed_keys = reading.chars().map(|c| (0, c, false)).collect();
         self.kana_text = reading;
@@ -1580,10 +1592,11 @@ impl Session {
         if let Some(result) = self.detect_direct(vk, ch, modifiers) {
             return result;
         }
-        let code_direct = self.code_english();
+        let reconverting = self.reconversion_origin.is_some();
+        let code_direct = self.code_english() && !reconverting;
         if modifiers & 14 == 2
             && !self.raw.is_empty()
-            && !self.direct
+            && (!self.direct || reconverting)
             && !self.private
             && !code_direct
             && self.settings.boolean("Enabled")
@@ -1601,7 +1614,7 @@ impl Session {
             }
         }
         if modifiers & 14 != 0
-            || self.direct
+            || self.direct && !reconverting
             || self.private
             || code_direct
             || !self.settings.boolean("Enabled")

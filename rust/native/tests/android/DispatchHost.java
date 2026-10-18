@@ -42,7 +42,8 @@ public final class DispatchHost extends Context {
             service.fresh();Native.direct(service.session,true);service.press("⇧");service.press("a");service.press("a");
             check(service.editor.before.equals("Aa")&&(Native.editorFlags(service.session)&8)==0,service.editor.before);
             service.press("あ/A");check((Native.editorFlags(service.session)&1)==0,"mode toggle routed");
-            service.fresh();service.type("konnichiha");check(!service.editor.pending.isEmpty(),"software characters compose");
+            // Composition spelling consumes nn as one unit; the next ni needs another n.
+            service.fresh();service.type("konnnichiha");check(!service.editor.pending.isEmpty(),"software characters compose");
             service.options=6;service.press("確定/↵");check(service.editor.before.equals("こんにちは"),service.editor.before);
             check(!service.editor.calls.contains("action:6"),"consumed commit must not trigger editor action");
             service.press("確定/↵");check(service.editor.calls.contains("action:6"),"unconsumed Enter fallback");
@@ -62,7 +63,7 @@ public final class DispatchHost extends Context {
             service.fresh();service.editor.selected="未登録の漢字列";service.press("再変換");
             check(service.preview.text.equals("読みが見つかりません"),service.preview.text);
             service.editor.selected="";service.press("再変換");check(service.preview.text.equals("読みが見つかりません"),"empty selection must be no-op");
-            service.fresh();service.type("konnichiha");service.press("設定");
+            service.fresh();service.type("konnnichiha");service.press("設定");
             check(service.editor.before.equals("こんにちは")&&service.intents.size()==1,"settings commits first");
             Intent intent=service.intents.get(0);check(intent.target==SettingsActivity.class&&intent.flags==0x10000000,"settings target/flags");
             android.os.Build.VERSION.SDK_INT=35;service.press("🌐");check(service.nextIme==1&&!service.nextOnlyCurrent,"modern IME API");

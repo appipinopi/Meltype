@@ -32,7 +32,7 @@ public final class StateHost {
             editor.onFinish=()->check((Native.editorFlags(session)&4)==0&&Native.composingText(session).isEmpty(),"state detached before callback");
             Native.selectionChanged(session,editor,true,0,0,3);
             check(Native.composingText(session).isEmpty(),"selection cleared state");
-            Native.startInput(session,1,0);editor=new EditorHost.Editor();type(session,editor,"konnichiha");
+            Native.startInput(session,1,0);editor=new EditorHost.Editor();type(session,editor,"konnnichiha");
             editor.onFinish=()->{Native.startInput(session,1,0);type(session,new EditorHost.Editor(),"nihongo");};
             Native.selectionChanged(session,editor,true,0,0,3);
             check((Native.editorFlags(session)&4)!=0&&Native.editorView(session).contains(Native.composingText(session)),"selection renderer must use the newer field view");
@@ -46,7 +46,7 @@ public final class StateHost {
                 check(old.before.equals("old")&&!old.calls.contains("commit:extra")&&old.calls.get(old.calls.size()-1).equals("end"),old.calls);
                 check(Native.commit(session).contains("にほんご"),"old failure must not reset new core");
             }
-            Native.startInput(session,1,0);editor=new EditorHost.Editor();type(session,editor,"konnichiha");
+            Native.startInput(session,1,0);editor=new EditorHost.Editor();type(session,editor,"konnnichiha");
             String[] newerText={""};
             editor.onFinish=()->{Native.startInput(session,1,0);type(session,new EditorHost.Editor(),"nihongo");newerText[0]=Native.composingText(session);};
             String outcome=Native.finishInput(session,editor,true,Native.composingText(session));
@@ -54,7 +54,7 @@ public final class StateHost {
             Native.reset(session);check((Native.editorFlags(session)&4)==0&&Native.composingText(session).isEmpty(),"explicit reset");
             Native.privateInput(session,true);check((Native.editorFlags(session)&2)!=0,"legacy privacy ABI synchronized");
             Native.privateInput(session,false);check((Native.editorFlags(session)&2)==0,"privacy disabled");
-            Native.startInput(session,1,0);editor=new EditorHost.Editor();type(session,editor,"konnichiha");
+            Native.startInput(session,1,0);editor=new EditorHost.Editor();type(session,editor,"konnnichiha");
             Native.toggleInputMode(session,editor);
             check(editor.before.equals("こんにちは")&&(Native.editorFlags(session)&1)==1&&Native.composingText(session).isEmpty(),"mode toggle commits before changing mode");
             Native.toggleInputMode(session,editor);check((Native.editorFlags(session)&1)==0,"mode restored");

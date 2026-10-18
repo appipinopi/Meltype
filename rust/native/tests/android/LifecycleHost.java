@@ -17,7 +17,7 @@ public final class LifecycleHost {
         check(session!=0,"session");
         try {
             Native.startInput(session,1,0);EditorHost.Editor editor=new EditorHost.Editor();
-            type(session,editor,"konnichiha");editor.calls.clear();
+            type(session,editor,"konnnichiha");editor.calls.clear();
             String result=Native.finishInput(session,editor,true,editor.pending);
             check(editor.before.equals("こんにちは")&&editor.pending.isEmpty(),editor.before);
             check(result.contains("\"composing\":false")&&result.contains("\"view\":null"),result);
