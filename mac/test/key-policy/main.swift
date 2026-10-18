@@ -887,7 +887,7 @@ func importError(_ operation:() throws -> Int)->NSError {
     do {_=try operation();fatalError("expected import error")}catch{return error as NSError}
 }
 var importIOFailures=0
-for failure in ["missing source","invalid plist","unsupported rows","invalid UTF8","directory destination","file parent"] {
+for failure in ["missing source","invalid plist","unsupported rows","invalid UTF8","directory destination","file parent","read only destination"] {
     let nativeFolder=importIORoot.appendingPathComponent("failure native "+failure,isDirectory:true)
     let oldFolder=importIORoot.appendingPathComponent("failure legacy "+failure,isDirectory:true)
     var source=importIOSource
@@ -909,6 +909,13 @@ for failure in ["missing source","invalid plist","unsupported rows","invalid UTF
     if failure=="missing source" {source=importIORoot.appendingPathComponent("missing.plist")}
     if failure=="invalid plist" {source=importIORoot.appendingPathComponent("invalid.plist");try Data("{ broken <plist".utf8).write(to:source)}
     if failure=="unsupported rows" {source=importIORoot.appendingPathComponent("empty.plist");try PropertyListSerialization.data(fromPropertyList:[],format:.xml,options:0).write(to:source)}
+    if failure=="read only destination" {
+        precondition(getuid()!=0,"read-only write failure requires ordinary CI user")
+        for folder in [nativeFolder,oldFolder] {
+            try FileManager.default.setAttributes([.posixPermissions:0o444],ofItemAtPath:folder.appendingPathComponent("userdict.txt").path)
+            try FileManager.default.setAttributes([.posixPermissions:0o555],ofItemAtPath:folder.path)
+        }
+    }
     let originalError=importError {try LegacyMacUserDictionary.importFile(source,directory:oldFolder.path)}
     let nativeError=importError {try MacUserDictionary.importFile(source,directory:nativeFolder.path)}
     if failure=="unsupported rows" {precondition(nativeError.localizedDescription==originalError.localizedDescription)}
@@ -918,6 +925,12 @@ for failure in ["missing source","invalid plist","unsupported rows","invalid UTF
     if failure != "directory destination" {
         let nativeBytes=try Data(contentsOf:nativePreserved),oldBytes=try Data(contentsOf:oldPreserved)
         precondition(nativeBytes==oldBytes,"failure changed prior dictionary/parent")
+    }
+    if failure=="read only destination" {
+        for folder in [nativeFolder,oldFolder] {
+            try FileManager.default.setAttributes([.posixPermissions:0o755],ofItemAtPath:folder.path)
+            try FileManager.default.setAttributes([.posixPermissions:0o644],ofItemAtPath:folder.appendingPathComponent("userdict.txt").path)
+        }
     }
     importIOFailures+=1
 }
