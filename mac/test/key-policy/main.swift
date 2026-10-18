@@ -407,3 +407,104 @@ loopWatchdog.cancel()
 precondition(loopCallbacks==1 && !NSApplication.shared.isRunning)
 NSUnregisterServicesProvider(policyServicePort)
 print("macOS Rust application: actual AppKit run/stop/return with Rust timer and private SDK panel, named Services registration call, invalid-name/background rejection passed (no installed service shortcut delivery tested)")
+
+// Exercise the real Rust Objective-C receiver through its registered SDK selector.
+final class ServicesTargetProbe: ModeServiceTarget {
+    var actions: [ModeShortcutAction]=[]
+    var available=true
+    var duringApply: (() -> Void)?
+    func selectModeFromService(_ action: ModeShortcutAction) -> Bool {
+        guard available else { return false }
+        actions.append(action);duringApply?();return true
+    }
+}
+func invokeNativeService(_ provider: NSObject, _ identifier: String?) -> NSString? {
+    typealias Receiver = @convention(c) (AnyObject, Selector, NSPasteboard, NSString?, AutoreleasingUnsafeMutablePointer<NSString?>) -> Void
+    let selector=NSSelectorFromString("changeInputMode:userData:error:")
+    precondition(provider.responds(to:selector))
+    guard let implementation=provider.method(for:selector) else {fatalError("native Services selector implementation missing")}
+    let method=unsafeBitCast(implementation,to:Receiver.self)
+    var error: NSString?
+    method(provider,selector,serviceBoard,identifier as NSString?,&error)
+    return error
+}
+let serviceBoard=NSPasteboard.withUniqueName()
+serviceBoard.setString("既存の文字😀",forType:.string)
+var selectedSource=true
+var idleServiceActions: [ModeShortcutAction]=[]
+var servicesOwner: ModeServices?=ModeServices(isMeltypeSelected:{selectedSource},selectWithoutInput:{idleServiceActions.append($0)})
+weak var weakServicesOwner=servicesOwner
+guard let realServiceProvider=servicesOwner?.serviceProvider as? NSObject else {fatalError("native Services provider missing")}
+let oldServicesTarget=ServicesTargetProbe(), currentServicesTarget=ServicesTargetProbe()
+servicesOwner!.activate(oldServicesTarget)
+servicesOwner!.activate(currentServicesTarget)
+servicesOwner!.deactivate(oldServicesTarget)
+for action in ModeShortcutAction.allCases {
+    precondition(invokeNativeService(realServiceProvider,action.serviceIdentifier)==nil)
+    precondition(currentServicesTarget.actions.last==action)
+}
+precondition(oldServicesTarget.actions.isEmpty)
+for identifier in [nil,"","DIRECT","0","unknown","direct\u{0}"] as [String?] {
+    precondition(invokeNativeService(realServiceProvider,identifier)=="Meltypeの入力モードの指定が不正です。")
+}
+selectedSource=false
+precondition(invokeNativeService(realServiceProvider,"direct")=="入力ソースでMeltypeを選択してください。")
+selectedSource=true;currentServicesTarget.available=false
+precondition(invokeNativeService(realServiceProvider,"code")=="Meltypeの入力欄を取得できませんでした。")
+currentServicesTarget.available=true
+// Reentrant activation/deactivation must not hold a native RefCell borrow.
+currentServicesTarget.duringApply={servicesOwner!.deactivate(currentServicesTarget)}
+precondition(invokeNativeService(realServiceProvider,"cycle")==nil)
+precondition(invokeNativeService(realServiceProvider,"direct")==nil)
+precondition(idleServiceActions==[.direct])
+var temporaryServicesTarget: ServicesTargetProbe?=ServicesTargetProbe()
+weak var weakServicesTarget=temporaryServicesTarget
+servicesOwner!.activate(temporaryServicesTarget!)
+temporaryServicesTarget=nil
+precondition(weakServicesTarget==nil,"Rust retained inactive Swift target")
+precondition(invokeNativeService(realServiceProvider,"cycle")==nil)
+precondition(idleServiceActions==[.direct,.cycle])
+let servicesBackgroundDone=DispatchSemaphore(value:0)
+DispatchQueue.global().async {
+    autoreleasepool {
+        precondition(invokeNativeService(realServiceProvider,"direct")=="Meltypeの入力モードはメインスレッドで変更してください。")
+    }
+    servicesBackgroundDone.signal()
+}
+precondition(servicesBackgroundDone.wait(timeout:.now()+5) == .success)
+precondition(serviceBoard.string(forType:.string)=="既存の文字😀","Services modified pasteboard")
+servicesOwner=nil
+precondition(weakServicesOwner==nil,"native service provider retained Swift owner")
+precondition(invokeNativeService(realServiceProvider,"direct")=="Meltypeの入力欄を取得できませんでした。")
+// A source-query callback may dispose its own Swift owner; native delivery pins
+// it for this invocation and rejects subsequent calls through the retained root.
+var disposeOwner: ModeServices?
+var disposeActions: [ModeShortcutAction]=[]
+disposeOwner=ModeServices(isMeltypeSelected:{disposeOwner=nil;return true},selectWithoutInput:{disposeActions.append($0)})
+weak var weakDisposeOwner=disposeOwner
+guard let disposeProvider=disposeOwner?.serviceProvider as? NSObject else {fatalError("dispose provider")}
+precondition(invokeNativeService(disposeProvider,"code")==nil)
+precondition(disposeActions==[.code] && weakDisposeOwner==nil)
+precondition(invokeNativeService(disposeProvider,"direct")=="Meltypeの入力欄を取得できませんでした。")
+let backgroundFirstOwner=ModeServices(isMeltypeSelected:{true},selectWithoutInput:{_ in})
+let backgroundFirstDone=DispatchSemaphore(value:0)
+DispatchQueue.global().async {
+    autoreleasepool {
+        var error: NSString?
+        backgroundFirstOwner.changeInputMode(serviceBoard,userData:"direct",error:&error)
+        precondition(error=="Meltypeの入力モードはメインスレッドで変更してください。")
+    }
+    backgroundFirstDone.signal()
+}
+precondition(backgroundFirstDone.wait(timeout:.now()+5) == .success)
+var backgroundFirstError: NSString?
+backgroundFirstOwner.changeInputMode(serviceBoard,userData:"direct",error:&backgroundFirstError)
+precondition(backgroundFirstError==nil,"first background request poisoned provider creation")
+// Compare the native read-only Carbon query with the SDK without changing source.
+guard let currentSource=TISCopyCurrentKeyboardInputSource()?.takeRetainedValue(),
+      let sourceProperty=TISGetInputSourceProperty(currentSource,kTISPropertyInputSourceID),
+      let sourceIdentifier=unsafeBitCast(sourceProperty,to:CFTypeRef.self) as? String else {fatalError("SDK input source query")}
+precondition(editor.inputSourceMatches(expected:sourceIdentifier))
+precondition(!editor.inputSourceMatches(expected:sourceIdentifier+"_different"))
+serviceBoard.releaseGlobally()
+print("macOS Rust Services receiver: actual Objective-C selector, four actions, exact errors, inactive/dead targets, old deactivation, pure Swift weak references, reentry, background rejection, owner cleanup, unchanged private pasteboard and read-only Carbon identity passed (no OS shortcut delivery)")

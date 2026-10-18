@@ -30,6 +30,22 @@ assert not api.meltype_macos_services_register(P(1),None,1)
 if sys.platform!="darwin":
     assert not api.meltype_macos_application_run()
     assert not api.meltype_macos_services_register(P(1),(c.c_uint16*1)(65),1)
+api.meltype_macos_mode_services_create.argtypes=[P,P]
+api.meltype_macos_mode_services_create.restype=P
+api.meltype_macos_mode_services_target.argtypes=[P,P,c.c_int]
+api.meltype_macos_mode_services_target.restype=c.c_int
+api.meltype_macos_mode_services_dispatch.argtypes=[P,c.POINTER(c.c_uint16),U,c.c_int]
+api.meltype_macos_mode_services_dispatch.restype=c.c_int
+api.meltype_macos_services_error.argtypes=[c.c_int]
+api.meltype_macos_services_error.restype=c.c_char_p
+api.meltype_macos_input_source_matches.argtypes=[c.POINTER(c.c_uint16),U]
+api.meltype_macos_input_source_matches.restype=c.c_int
+assert not api.meltype_macos_mode_services_create(None,None)
+assert not api.meltype_macos_mode_services_target(None,None,1)
+assert api.meltype_macos_mode_services_dispatch(None,None,0,0)==4
+assert api.meltype_macos_services_error(1).decode("utf-8")=="Meltypeの入力モードはメインスレッドで変更してください。"
+if sys.platform!="darwin":
+    assert not api.meltype_macos_input_source_matches(None,0)
 callback_type=c.CFUNCTYPE(None,P)
 api.meltype_macos_meaning_schedule.argtypes=[P,callback_type]
 api.meltype_macos_meaning_schedule.restype=c.c_int

@@ -14,7 +14,9 @@ protocol ModeServiceTarget: AnyObject {
 final class ModeServices: NSObject {
     static let shared = ModeServices()
     static let portName = "MeltypeModeServices"
+    #if !MELTYPE_RUST_CORE
     private weak var activeTarget: ModeServiceTarget?
+    #endif
     private let isMeltypeSelected: () -> Bool
     private let selectWithoutInput: (ModeShortcutAction) -> Void
 
@@ -29,14 +31,46 @@ final class ModeServices: NSObject {
         super.init()
     }
 
+#if MELTYPE_RUST_CORE
+    private lazy var nativeProvider: AnyObject? = NativeCore.shared.editorPolicy?.createModeServices(owner:self,host:Self.nativeHost)
+    var serviceProvider: AnyObject? { nativeProvider }
+    private static let nativeHost: NativeModeServiceHost = { owner,target,operation,rawAction in
+        guard let owner else { return 0 }
+        let service=Unmanaged<ModeServices>.fromOpaque(owner).takeUnretainedValue()
+        if operation == 0 { return service.isMeltypeSelected() ? 1 : 0 }
+        guard let action=ModeShortcutAction(rawValue:Int(rawAction)) else { return 0 }
+        if operation == 1 {
+            guard let target, let selected=Unmanaged<AnyObject>.fromOpaque(target).takeUnretainedValue() as? ModeServiceTarget else { return 0 }
+            return selected.selectModeFromService(action) ? 1 : 0
+        }
+        if operation == 2 { service.selectWithoutInput(action);return 1 }
+        return 0
+    }
+    func activate(_ target: ModeServiceTarget) {
+        if Thread.isMainThread, let provider=nativeProvider { NativeCore.shared.editorPolicy?.modeServicesTarget(provider,target:target,active:true) }
+    }
+    func deactivate(_ target: ModeServiceTarget) {
+        if Thread.isMainThread, let provider=nativeProvider { NativeCore.shared.editorPolicy?.modeServicesTarget(provider,target:target,active:false) }
+    }
+#else
+    var serviceProvider: AnyObject? { self }
     func activate(_ target: ModeServiceTarget) { activeTarget = target }
 
     func deactivate(_ target: ModeServiceTarget) {
         if activeTarget === target { activeTarget = nil }
     }
 
+    #endif
+
     @objc func changeInputMode(_ pasteboard: NSPasteboard, userData: String?,
                                error: AutoreleasingUnsafeMutablePointer<NSString?>) {
+#if MELTYPE_RUST_CORE
+        guard let policy=NativeCore.shared.editorPolicy else {
+            error.pointee="Meltypeの入力欄を取得できませんでした。";return
+        }
+        let code=policy.dispatchModeServices(Thread.isMainThread ? nativeProvider : nil,identifier:userData)
+        if let message=policy.modeServicesError(code) { error.pointee=message }
+#else
         guard Thread.isMainThread else {
             error.pointee = "Meltypeの入力モードはメインスレッドで変更してください。"
             return
@@ -58,12 +92,17 @@ final class ModeServices: NSObject {
             error.pointee = "Meltypeの入力欄を取得できませんでした。"
             return
         }
+#endif
     }
 
     private static func currentInputSourceIsMeltype() -> Bool {
+#if MELTYPE_RUST_CORE
+        return NativeCore.shared.editorPolicy?.inputSourceMatches(expected:InputSourceRegistration.identifier+".Japanese") ?? false
+#else
         guard let source = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue(),
               let pointer = TISGetInputSourceProperty(source, kTISPropertyInputSourceID),
               let identifier = unsafeBitCast(pointer, to: CFTypeRef.self) as? String else { return false }
         return identifier == InputSourceRegistration.identifier + ".Japanese"
+#endif
     }
 }

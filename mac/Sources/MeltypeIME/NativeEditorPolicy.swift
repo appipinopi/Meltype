@@ -18,6 +18,16 @@ struct NativeEditorPolicy {
     private typealias CandidatesCreate = @convention(c) (UnsafeMutableRawPointer?, UInt64) -> UnsafeMutableRawPointer?
     private typealias ApplicationRun = @convention(c) () -> Int32
     private typealias ServicesRegister = @convention(c) (UnsafeMutableRawPointer?, UnsafePointer<UInt16>?, UInt32) -> Int32
+    private typealias ModeServicesCreate = @convention(c) (UnsafeMutableRawPointer?, NativeModeServiceHost) -> UnsafeMutableRawPointer?
+    private typealias ModeServicesTarget = @convention(c) (UnsafeMutableRawPointer?, UnsafeMutableRawPointer?, Int32) -> Int32
+    private typealias ModeServicesDispatch = @convention(c) (UnsafeMutableRawPointer?, UnsafePointer<UInt16>?, UInt32, Int32) -> Int32
+    private typealias ModeServicesError = @convention(c) (Int32) -> UnsafePointer<CChar>?
+    private typealias SourceMatches = @convention(c) (UnsafePointer<UInt16>?, UInt32) -> Int32
+    private let modeServicesCreate: ModeServicesCreate
+    private let modeServicesTargetFunction: ModeServicesTarget
+    private let modeServicesDispatch: ModeServicesDispatch
+    private let modeServicesErrorFunction: ModeServicesError
+    private let sourceMatches: SourceMatches
     private let applicationRun: ApplicationRun
     private let servicesRegister: ServicesRegister
     private let serverCreate: ServerCreate
@@ -49,7 +59,17 @@ struct NativeEditorPolicy {
               let serverCreate = lookup("meltype_macos_server_create"),
               let candidatesCreate = lookup("meltype_macos_candidates_create"),
               let applicationRun = lookup("meltype_macos_application_run"),
-              let servicesRegister = lookup("meltype_macos_services_register") else { return nil }
+              let servicesRegister = lookup("meltype_macos_services_register"),
+              let modeServicesCreate=lookup("meltype_macos_mode_services_create"),
+              let modeServicesTarget=lookup("meltype_macos_mode_services_target"),
+              let modeServicesDispatch=lookup("meltype_macos_mode_services_dispatch"),
+              let modeServicesError=lookup("meltype_macos_services_error"),
+              let sourceMatches=lookup("meltype_macos_input_source_matches") else { return nil }
+        self.modeServicesCreate=unsafeBitCast(modeServicesCreate,to:ModeServicesCreate.self)
+        self.modeServicesTargetFunction=unsafeBitCast(modeServicesTarget,to:ModeServicesTarget.self)
+        self.modeServicesDispatch=unsafeBitCast(modeServicesDispatch,to:ModeServicesDispatch.self)
+        self.modeServicesErrorFunction=unsafeBitCast(modeServicesError,to:ModeServicesError.self)
+        self.sourceMatches=unsafeBitCast(sourceMatches,to:SourceMatches.self)
         self.applicationRun = unsafeBitCast(applicationRun, to: ApplicationRun.self)
         self.servicesRegister = unsafeBitCast(servicesRegister, to: ServicesRegister.self)
         self.serverCreate = unsafeBitCast(serverCreate, to: ServerCreate.self)
@@ -96,6 +116,32 @@ struct NativeEditorPolicy {
         return withExtendedLifetime(sink) {
             data.withUnsafeBytes { candidatesFunction($0.bindMemory(to: UInt8.self).baseAddress, count, Unmanaged.passUnretained(sink).toOpaque(), nativeCandidatesHost) != 0 }
         }
+    }
+    func createModeServices(owner: AnyObject, host: NativeModeServiceHost) -> AnyObject? {
+        let pointer=withExtendedLifetime(owner) { modeServicesCreate(Unmanaged.passUnretained(owner).toOpaque(),host) }
+        guard let pointer else { return nil }
+        return Unmanaged<AnyObject>.fromOpaque(pointer).takeRetainedValue()
+    }
+    func modeServicesTarget(_ provider: AnyObject, target: AnyObject, active: Bool) {
+        withExtendedLifetime((provider,target)) {
+            _=modeServicesTargetFunction(Unmanaged.passUnretained(provider).toOpaque(),Unmanaged.passUnretained(target).toOpaque(),active ? 1 : 0)
+        }
+    }
+    func dispatchModeServices(_ provider: AnyObject?, identifier: String?) -> Int32 {
+        let units=Array((identifier ?? "").utf16)
+        guard let count=UInt32(exactly:units.count) else { return 2 }
+        return withExtendedLifetime(provider) {
+            units.withUnsafeBufferPointer { modeServicesDispatch(provider.map { Unmanaged.passUnretained($0).toOpaque() },$0.baseAddress,count,identifier == nil ? 0 : 1) }
+        }
+    }
+    func modeServicesError(_ code: Int32) -> NSString? {
+        guard code != 0, let pointer=modeServicesErrorFunction(code) else { return nil }
+        return String(cString:pointer) as NSString
+    }
+    func inputSourceMatches(expected: String) -> Bool {
+        let units=Array(expected.utf16)
+        guard let count=UInt32(exactly:units.count) else { return false }
+        return units.withUnsafeBufferPointer { sourceMatches($0.baseAddress,count) != 0 }
     }
     func runApplication() -> Bool { applicationRun() != 0 }
     func registerServices(provider: AnyObject, portName: String) -> Bool {
@@ -248,3 +294,5 @@ private let nativeMeaningCallback: NativeMeaningCallback = { context in
     let sink = Unmanaged<NativeMeaningSink>.fromOpaque(context).takeRetainedValue()
     sink.action()
 }
+
+typealias NativeModeServiceHost = @convention(c) (UnsafeMutableRawPointer?, UnsafeMutableRawPointer?, UInt32, Int32) -> Int32

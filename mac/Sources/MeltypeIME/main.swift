@@ -177,7 +177,8 @@ candidatesWindow = IMKCandidates(server: server, panelType: kIMKSingleColumnScro
 #endif
 #if MELTYPE_RUST_CORE
 guard let policy=NativeCore.shared.editorPolicy,
-      policy.registerServices(provider:ModeServices.shared,portName:ModeServices.portName),
+      let provider=ModeServices.shared.serviceProvider,
+      policy.registerServices(provider:provider,portName:ModeServices.portName),
       policy.runApplication() else {
     NSLog("Meltype: Rust経由のアプリ起動に失敗しました")
     exit(1)
