@@ -8,6 +8,8 @@ struct NativeEditorPolicy {
     private typealias EqualFunction = @convention(c) (UnsafePointer<UInt16>?, UInt32, UnsafePointer<UInt16>?, UInt32) -> Int32
     private typealias ApplyFunction = @convention(c) (UnsafePointer<UInt8>?, UInt32, UnsafeMutableRawPointer?, NativeEditHost) -> Int32
     private typealias CompositionFunction = @convention(c) (UnsafePointer<UInt8>?, UInt32, UnsafeMutableRawPointer?, NativeCompositionHost) -> Int32
+    private typealias CandidatesFunction = @convention(c) (UnsafePointer<UInt8>?, UInt32, UnsafeMutableRawPointer?, NativeCandidatesHost) -> Int32
+    private let candidatesFunction: CandidatesFunction
     private let compositionFunction: CompositionFunction
     private let applyFunction: ApplyFunction
     private let context: ContextFunction
@@ -18,7 +20,9 @@ struct NativeEditorPolicy {
               let replacement = lookup("meltype_macos_replacement_range"),
               let equal = lookup("meltype_macos_expected_equal"),
               let apply = lookup("meltype_macos_apply_utf8"),
-              let composition = lookup("meltype_macos_composition_utf8") else { return nil }
+              let composition = lookup("meltype_macos_composition_utf8"),
+              let candidates = lookup("meltype_macos_candidates_utf8") else { return nil }
+        self.candidatesFunction = unsafeBitCast(candidates, to: CandidatesFunction.self)
         self.compositionFunction = unsafeBitCast(composition, to: CompositionFunction.self)
         self.applyFunction = unsafeBitCast(apply, to: ApplyFunction.self)
         self.context = unsafeBitCast(context, to: ContextFunction.self)
@@ -43,6 +47,17 @@ struct NativeEditorPolicy {
         let sink = NativeCompositionSink(mark: mark, publish: publish)
         return withExtendedLifetime(sink) {
             data.withUnsafeBytes { bytes in compositionFunction(bytes.bindMemory(to: UInt8.self).baseAddress, count, Unmanaged.passUnretained(sink).toOpaque(), nativeCompositionHost) != 0 }
+        }
+    }
+    @discardableResult
+    func candidates(_ view: CompositionView, previous: [String], visible: Bool, windowIndex: Int,
+                    operation: @escaping (UInt32, Int) -> Int32) -> Bool {
+        struct Update: Encodable { let candidates: [String]; let selectedIndex: Int; let previous: [String]; let visible: Bool; let windowIndex: Int }
+        let update = Update(candidates: view.candidates, selectedIndex: view.selectedIndex, previous: previous, visible: visible, windowIndex: windowIndex)
+        guard let data = try? JSONEncoder().encode(update), let count = UInt32(exactly: data.count) else { return false }
+        let sink = NativeCandidatesSink(operation)
+        return withExtendedLifetime(sink) {
+            data.withUnsafeBytes { candidatesFunction($0.bindMemory(to: UInt8.self).baseAddress, count, Unmanaged.passUnretained(sink).toOpaque(), nativeCandidatesHost) != 0 }
         }
     }
     func contextRanges(selection: NSRange, code: Bool) -> (NSRange, NSRange)? {
@@ -128,4 +143,14 @@ private let nativeCompositionHost: NativeCompositionHost = { context, operation,
     default: return 0
     }
     return 1
+}
+
+private typealias NativeCandidatesHost = @convention(c) (UnsafeMutableRawPointer?, UInt32, Int64) -> Int32
+private final class NativeCandidatesSink {
+    let operation: (UInt32, Int) -> Int32
+    init(_ operation: @escaping (UInt32, Int) -> Int32) { self.operation = operation }
+}
+private let nativeCandidatesHost: NativeCandidatesHost = { context, operation, argument in
+    guard let context, let value = Int(exactly: argument) else { return -1 }
+    return Unmanaged<NativeCandidatesSink>.fromOpaque(context).takeUnretainedValue().operation(operation, value)
 }

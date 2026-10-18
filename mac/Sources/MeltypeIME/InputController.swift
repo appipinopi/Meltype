@@ -407,6 +407,30 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
 
     private func updateCandidates(_ view: CompositionView) {
         guard let window = candidatesWindow else { return }
+#if MELTYPE_RUST_CORE
+        defer { selectingFromCore = false }
+        NativeCore.shared.editorPolicy?.candidates(view, previous: candidateList, visible: window.isVisible(), windowIndex: windowIndex) { operation, argument in
+            switch operation {
+            case 0: self.selectingFromCore = true
+            case 1:
+                self.candidateList = view.candidates
+                window.update(); window.show(kIMKLocateCandidatesBelowHint)
+                self.windowIndex = 0
+            case 2:
+                let step = argument > 0 ? #selector(NSResponder.moveDown(_:)) : #selector(NSResponder.moveUp(_:))
+                return window.responds(to: step) ? 1 : 0
+            case 3:
+                let step = argument > 0 ? #selector(NSResponder.moveDown(_:)) : #selector(NSResponder.moveUp(_:))
+                window.perform(step, with: nil)
+            case 4: self.windowIndex = argument
+            case 5: self.scheduleMeaning(view)
+            case 6:
+                self.meaningKey = nil; self.candidateList = []; window.hide()
+            default: return -1
+            }
+            return 1
+        }
+#else
         if view.candidates.count > 1 {
             // 作り直し・選択で候補ウィンドウから candidateSelectionChanged が来ても、本体に返さない。
             selectingFromCore = true
@@ -427,6 +451,7 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
             candidateList = []
             window.hide()
         }
+#endif
     }
 
     /// 候補ウィンドウで今選ばれている候補の番号 (一覧を作り直すと先頭に戻る)。
@@ -435,6 +460,7 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
     /// 候補ウィンドウの選択を index 番目の候補に合わせる。
     /// selectCandidate(withIdentifier:) では選択が動かず、selectedCandidate() も今の選択とずれることがある (macOS 26)。
     /// なので、選択の位置はこちらで覚えておき、矢印キーと同じ moveDown / moveUp でその差だけ動かす。
+#if !MELTYPE_RUST_CORE
     private func selectInWindow(_ window: IMKCandidates, index: Int) {
         let step = index > windowIndex ? #selector(NSResponder.moveDown(_:)) : #selector(NSResponder.moveUp(_:))
         guard window.responds(to: step) else { return }
@@ -444,6 +470,7 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
         windowIndex = index
     }
 
+#endif
     /// 入力欄のキャレットの前後の文字列 (それぞれ 20 文字まで)。取れなければ nil。
     private func surroundingText(of client: IMKTextInput) -> (String?, String?) {
         let selection = client.selectedRange()

@@ -75,3 +75,15 @@ clauses, selection boundaries, combining text, NUL and supplementary characters.
 The controlled product IMK host verifies attributed UTF-16 payload/selection and
 clear. A portable ABI test ensures callback failures stop before publication and
 malformed replies do not start callbacks. This does not establish pixel parity.
+
+Candidate update orchestration now runs in Rust. It requests list rebuild only
+when contents differ by Swift-compatible canonical equality or the window is
+hidden, asks whether the direction selector exists, performs incremental moves,
+then records the selected index and requests meaning scheduling. Zero/one-item
+lists clear/hide. Swift supplies the actual IMKCandidates calls and always ends
+selection-notification suppression, including a failed traversal. The old update
+and move loops remain only in legacy builds. The independent SDK host compares
+list/selection traces across visibility, content, index and selector support;
+portable ABI tests stop at each callback failure and reject malformed input.
+Meaning timer/stale-key management and actual candidate-window pixels still need
+migration/verification, along with other direct OS integration.

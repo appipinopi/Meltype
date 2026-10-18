@@ -166,3 +166,37 @@ for text in ["", "前😀後", "e\u{301}", "a\u{0}b"] {
  }
 }
 print("macOS Rust composition: \(compositionCount) legacy SDK decoration plans, UTF16 clauses, selected/raw styles, empty/outside ranges and publication order passed")
+
+var candidatePlans=0
+for candidates in [[], ["一"], ["一","二","😀"], ["a\u{0}b","e\u{301}"]] {
+ for previous in [[],candidates,["古","候補"],["a\u{0}b","é"]] {
+  for visible in [false,true] {
+   for current in [0,1,2] {
+    for selected in [-1,0,1,2,9] {
+     for supported in [false,true] {
+      let view=CompositionView(text:"かな",converting:true,selectedIndex:selected,selectedClause:0,hint:"",candidates:candidates,clauses:[],meaning:nil,suggestion:nil)
+      var expected:[String]=[],actual:[String]=[]
+      if candidates.count>1 {
+       expected.append("0:0")
+       var index=current
+       if previous != candidates || !visible {expected.append("1:0");index=0}
+       if selected>=0 && selected<candidates.count {
+        let direction=selected>index ? 1 : -1
+        expected.append("2:\(direction)")
+        if supported {
+         for _ in 0..<abs(selected-index) {expected.append("3:\(direction)")}
+         expected.append("4:\(selected)")
+        }
+       }
+       expected.append("5:0")
+      } else {expected.append("6:0")}
+      precondition(editor.candidates(view,previous:previous,visible:visible,windowIndex:current) {op,arg in actual.append("\(op):\(arg)");return op==2 ? (supported ? 1 : 0) : 1})
+      precondition(actual==expected,"candidate update differs from former SDK policy")
+      candidatePlans+=1
+     }
+    }
+   }
+  }
+ }
+}
+print("macOS Rust candidates: \(candidatePlans) legacy update/selection plans, unchanged/hidden/rebuilt lists, unsupported selectors and invalid selection passed")

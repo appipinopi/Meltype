@@ -9,6 +9,7 @@ mod fcitx_dispatch;
 mod fcitx_view;
 pub mod json_bridge;
 mod macos_apply;
+mod macos_candidates;
 mod macos_editor;
 mod macos_key;
 mod macos_view;
