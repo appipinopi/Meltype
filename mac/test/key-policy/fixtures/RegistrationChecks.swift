@@ -12,6 +12,10 @@ func testInputSourceRegistration(_ editor:NativeEditorPolicy) throws {
         ["Bundle ID":25,"Input Mode":false],["Bundle ID":NSNull(),"Input Mode":NSNull()],
         ["Input Mode":"other."+identifier],["unknown":["a",1,Data([0])]],
         ["Bundle ID":"other","date":Date(timeIntervalSince1970:17)],[:],
+        ["Input Mode":identifier+"\u{301}"],["Input Mode":identifier+"\u{200d}"],
+        ["Input Mode":identifier+"\u{fe0f}"],["Input Mode":identifier+"\u{0}"],
+        ["Input Mode":identifier+".Japanese\u{301}"],
+        ["Bundle ID":identifier+"\u{301}"],
     ]
     var comparisons=0
     for first in variants.indices {
@@ -19,7 +23,7 @@ func testInputSourceRegistration(_ editor:NativeEditorPolicy) throws {
             let sources=[variants[first]]+Array(repeating:base,count:first)+[variants[last],other]
             let expected=LegacyInputSourceRegistration.normalized(sources)
             let actual=InputSourceRegistration.normalized(sources)
-            precondition(NSArray(array:actual).isEqual(to:expected),"input-source normalization differs")
+            precondition(NSArray(array:actual).isEqual(to:expected),"input-source normalization differs for pair \(first),\(last): native \(actual), original \(expected)")
             precondition(NSArray(array:actual).isEqual(to:InputSourceRegistration.normalized(actual)),"normalization not idempotent")
             comparisons+=1
         }
