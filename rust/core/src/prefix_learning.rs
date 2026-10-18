@@ -124,7 +124,7 @@ impl Model {
                 .iter()
                 .map(|(k, v)| (k.clone(), v.instant()))
                 .collect();
-            oldest.sort_by(|a, b| a.1.cmp(&b.1));
+            oldest.sort_by_key(|entry| entry.1);
             for (k, _) in oldest.into_iter().take(self.prefixes.len() - 4500) {
                 self.prefixes.remove(&k);
             }
