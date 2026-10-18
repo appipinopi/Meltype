@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 appipinopi
-use crate::{run, System};
+use crate::{run, select, SelectionSystem, System};
 use objc2::{
     msg_send,
     rc::Retained,
@@ -20,6 +20,9 @@ extern "C" {
     fn TISRegisterInputSource(bundle: *const c_void) -> i32;
     fn TISCreateInputSourceList(filter: *const c_void, include_all: u8) -> *const c_void;
     fn TISGetInputSourceProperty(source: *const c_void, key: *const c_void) -> *const c_void;
+    fn TISSelectInputSource(source: *const c_void) -> i32;
+    fn TISCopyCurrentKeyboardInputSource() -> *const c_void;
+    static kTISPropertyInputSourceID: *const c_void;
     static kTISPropertyBundleID: *const c_void;
 }
 #[link(name = "CoreFoundation", kind = "framework")]
@@ -40,8 +43,8 @@ unsafe fn url(path: &str) -> Retained<AnyObject> {
     let path = string(path);
     msg_send![class(c"NSURL"),fileURLWithPath:&*path]
 }
-struct List(*const c_void);
-impl Drop for List {
+struct OwnedCF(*const c_void);
+impl Drop for OwnedCF {
     fn drop(&mut self) {
         unsafe { CFRelease(self.0) }
     }
@@ -111,7 +114,7 @@ impl System for Native {
             if list.is_null() {
                 return false;
             }
-            let list = List(list);
+            let list = OwnedCF(list);
             for index in 0..CFArrayGetCount(list.0) {
                 let source = CFArrayGetValueAtIndex(list.0, index);
                 let value = TISGetInputSourceProperty(source, kTISPropertyBundleID);
@@ -143,6 +146,55 @@ pub fn native_main() -> i32 {
         .map(|arg| arg.to_string_lossy().into_owned());
     objc2::rc::autoreleasepool(|_| run(&mut Native, path))
 }
+
+struct NativeSelection;
+unsafe fn source_id(source: *const c_void) -> Option<String> {
+    let value = TISGetInputSourceProperty(source, kTISPropertyInputSourceID);
+    value.cast::<NSString>().as_ref().map(ToString::to_string)
+}
+impl SelectionSystem for NativeSelection {
+    type List = OwnedCF;
+    fn list(&mut self) -> Option<OwnedCF> {
+        let list = unsafe { TISCreateInputSourceList(std::ptr::null(), 0) };
+        if list.is_null() {
+            None
+        } else {
+            Some(OwnedCF(list))
+        }
+    }
+    fn count(&self, list: &OwnedCF) -> usize {
+        unsafe { CFArrayGetCount(list.0).max(0) as usize }
+    }
+    fn id(&self, list: &OwnedCF, index: usize) -> Option<String> {
+        unsafe { source_id(CFArrayGetValueAtIndex(list.0, index as isize)) }
+    }
+    fn select(&mut self, list: &OwnedCF, index: usize) -> i32 {
+        unsafe { TISSelectInputSource(CFArrayGetValueAtIndex(list.0, index as isize)) }
+    }
+    fn current_id(&mut self) -> Option<String> {
+        unsafe {
+            let source = TISCopyCurrentKeyboardInputSource();
+            if source.is_null() {
+                return None;
+            }
+            let source = OwnedCF(source);
+            source_id(source.0)
+        }
+    }
+    fn wait(&mut self) {
+        std::thread::sleep(std::time::Duration::from_millis(300));
+    }
+    fn stdout(&mut self, text: &str) {
+        let _ = std::io::stdout().write_all(text.as_bytes());
+    }
+    fn stderr(&mut self, text: &str) {
+        let _ = std::io::stderr().write_all(text.as_bytes());
+    }
+}
+pub fn native_select_main() -> i32 {
+    objc2::rc::autoreleasepool(|_| select(&mut NativeSelection))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

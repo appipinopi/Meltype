@@ -14,3 +14,5 @@ SIGNATURE(TISEnableInputSource, OSStatus (*)(TISInputSourceRef));
 SIGNATURE(CFRelease, void (*)(CFTypeRef));
 SIGNATURE(CFArrayGetCount, CFIndex (*)(CFArrayRef));
 SIGNATURE(CFArrayGetValueAtIndex, const void *(*)(CFArrayRef, CFIndex));
+SIGNATURE(TISSelectInputSource, OSStatus (*)(TISInputSourceRef));
+SIGNATURE(TISCopyCurrentKeyboardInputSource, TISInputSourceRef (*)(void));

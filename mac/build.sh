@@ -57,10 +57,12 @@ echo "== 2/3 IME (Swift) をビルド (初回は azooKey の変換エンジン�
 SWIFT_FLAGS=(-c release)
 if [[ "${MELTYPE_RUST_CORE:-0}" == 1 ]]; then
     SWIFT_FLAGS+=(--product MeltypeIME -Xswiftc -DMELTYPE_RUST_CORE)
-    if [[ -z "${MELTYPE_RUST_REGISTER_HELPER:-}" ]]; then
+    if [[ -z "${MELTYPE_RUST_REGISTER_HELPER:-}" || -z "${MELTYPE_RUST_SELECT_HELPER:-}" ]]; then
         cargo build --manifest-path ../Cargo.toml --locked --release -p meltype-mac-register --target-dir "$PWD/../target"
-        MELTYPE_RUST_REGISTER_HELPER="$PWD/../target/release/meltype-register-input-source"
+        MELTYPE_RUST_REGISTER_HELPER="${MELTYPE_RUST_REGISTER_HELPER:-$PWD/../target/release/meltype-register-input-source}"
+        MELTYPE_RUST_SELECT_HELPER="${MELTYPE_RUST_SELECT_HELPER:-$PWD/../target/release/meltype-select-input-source}"
     fi
+    [[ -x "$MELTYPE_RUST_SELECT_HELPER" ]] || { echo "Rust製入力ソース選択ツールがありません: $MELTYPE_RUST_SELECT_HELPER" >&2; exit 1; }
     [[ -x "$MELTYPE_RUST_REGISTER_HELPER" ]] || { echo "Rust製入力ソース登録ツールがありません: $MELTYPE_RUST_REGISTER_HELPER" >&2; exit 1; }
 fi
 swift build "${SWIFT_FLAGS[@]}"
@@ -72,6 +74,7 @@ cp "$BIN/MeltypeIME" "$APP/Contents/MacOS/Meltype"
 # 入力ソースの登録をやり直す小さな道具 (#134)。install.sh が入れ替えたあとに呼ぶ。
 if [[ "${MELTYPE_RUST_CORE:-0}" == 1 ]]; then
     cp "$MELTYPE_RUST_REGISTER_HELPER" "$APP/Contents/MacOS/MeltypeRegisterInputSource"
+    cp "$MELTYPE_RUST_SELECT_HELPER" "$APP/Contents/MacOS/MeltypeSelectInputSource"
 else
     cp "$BIN/RegisterInputSource" "$APP/Contents/MacOS/MeltypeRegisterInputSource"
 fi

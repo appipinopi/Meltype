@@ -69,11 +69,15 @@ jobs:
           cargo build --release --locked -p meltype-native -p meltype-mac-register
           MELTYPE_NATIVE_LIBRARY="$PWD/target/release/libmeltype_native.dylib" \
             MELTYPE_RUST_REGISTER_HELPER="$PWD/target/release/meltype-register-input-source" \
+            MELTYPE_RUST_SELECT_HELPER="$PWD/target/release/meltype-select-input-source" \
             MELTYPE_RUST_CORE=1 MELTYPE_VERSION=0.1.0 bash mac/build.sh --no-install
           codesign --verify --deep --strict mac/build/Meltype.app
           mkdir -p dist/macos-package
           bash mac/test/register-helper/run.sh "$PWD/mac/build/Meltype.app/Contents/MacOS/MeltypeRegisterInputSource" | tee dist/macos-package/register-helper.txt
           otool -L mac/build/Meltype.app/Contents/MacOS/MeltypeRegisterInputSource > dist/macos-package/helper-libraries.txt
+          test -x mac/build/Meltype.app/Contents/MacOS/MeltypeSelectInputSource
+          otool -L mac/build/Meltype.app/Contents/MacOS/MeltypeSelectInputSource > dist/macos-package/selector-libraries.txt
+          if grep -i libswift dist/macos-package/selector-libraries.txt; then exit 1; fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:

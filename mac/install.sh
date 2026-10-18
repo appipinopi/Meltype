@@ -11,9 +11,14 @@ if [[ ! -d Meltype.app ]]; then
     echo "Meltype.app が見つかりません。zip を展開したフォルダーで実行してください。" >&2
     exit 1
 fi
-for helper in install-app.sh start-input-method.sh select-input-source.swift; do
+for helper in install-app.sh start-input-method.sh; do
     [[ -f "$helper" ]] || { echo "必要なファイルがありません: ${helper}。zip 全体を展開してください。" >&2; exit 1; }
 done
+
+if [[ ! -x Meltype.app/Contents/MacOS/MeltypeSelectInputSource && ! -f select-input-source.swift ]]; then
+    echo "必要な入力ソース選択ツールがありません。zip 全体を展開してください。" >&2
+    exit 1
+fi
 
 # 入力ソースの「+」の一覧に Meltype が出ない Mac がある (macOS 26、#21)。
 # アプリ内の登録処理で、有効な入力ソースを追加し、Meltype の重複だけを整理する。
@@ -47,8 +52,16 @@ enable_input_source
 register_input_source
 /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$TARGET/Meltype.app"
 bash ./start-input-method.sh "$TARGET/Meltype.app"
-# swift はコマンドライン・デベロッパ・ツールが無い Mac では使えない。選べなくてもインストールは終わっている。
-if swift ./select-input-source.swift; then
+select_input_source() {
+    local selector="$TARGET/Meltype.app/Contents/MacOS/MeltypeSelectInputSource"
+    if [[ -x "$selector" ]]; then
+        "$selector"
+    else
+        # Legacy packages retain the original Swift fallback.
+        swift ./select-input-source.swift
+    fi
+}
+if select_input_source; then
     echo
     echo "Meltype を起動し、入力ソースとして選択しました。"
 else

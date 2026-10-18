@@ -4,7 +4,9 @@
 #[cfg(target_os = "macos")]
 mod native;
 #[cfg(target_os = "macos")]
-pub use native::native_main;
+pub use native::{native_main, native_select_main};
+mod selection;
+pub use selection::{select, SelectionSystem};
 
 /// Platform operations used by the original helper's synchronous protocol.
 pub trait System {

@@ -8,6 +8,10 @@ license.workspace = true
 name = "meltype-register-input-source"
 path = "src/main.rs"
 
+[[bin]]
+name = "meltype-select-input-source"
+path = "src/select.rs"
+
 [dependencies]
 unicode-normalization = "0.1"
 
