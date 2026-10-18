@@ -186,7 +186,7 @@ struct NativeEditorPolicy {
     }
     @discardableResult
     func updateIndicator(_ owner: AnyObject,operation:UInt32,mode:UInt32=0,caret:NSRect?=nil)->Bool {
-        let values=caret.map {[Double($0.origin.x),Double($0.origin.y),Double($0.size.width),Double($0.size.height)]} ?? [0,0,0,0]
+        let values: [Double] = caret.map { rect -> [Double] in [Double(rect.origin.x),Double(rect.origin.y),Double(rect.size.width),Double(rect.size.height)] } ?? [0.0,0.0,0.0,0.0]
         return withExtendedLifetime(owner) {values.withUnsafeBufferPointer {
             indicatorUpdateFunction(Unmanaged.passUnretained(owner).toOpaque(),operation,mode,caret == nil ? nil : $0.baseAddress) != 0
         }}
