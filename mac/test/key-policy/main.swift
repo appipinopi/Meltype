@@ -961,3 +961,5 @@ print("macOS Rust dictionary IO: Foundation source/read/create/atomic-write comp
 
 try testDictionaryDialog(editor)
 autoreleasepool {testDictionaryChooserCancel(editor)}
+
+try testInputSourceRegistration(editor)

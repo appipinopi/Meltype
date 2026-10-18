@@ -55,6 +55,12 @@ struct NativeEditorPolicy {
     private typealias FreeDictionaryJSON = @convention(c) (UnsafeMutablePointer<CChar>?) -> Void
     private typealias DictionaryImport = @convention(c) (UnsafeMutableRawPointer?,UnsafePointer<UInt16>?,UInt32,UnsafeMutablePointer<UnsafeMutableRawPointer?>?) -> Int64
     private typealias DictionaryDialog = @convention(c) (UnsafeMutableRawPointer?, NativeDictionaryDirectory) -> Int32
+    private typealias InputSourcesObject = @convention(c) (UnsafeMutableRawPointer?) -> UnsafeMutableRawPointer?
+    private typealias InputSourcesRepair = @convention(c) (UnsafeMutableRawPointer?) -> Int32
+    private typealias InputSourceRegister = @convention(c) () -> Int32
+    private let inputSourcesNormalized: InputSourcesObject
+    private let inputSourcesRepair: InputSourcesRepair
+    private let inputSourceRegister: InputSourceRegister
     private let dictionaryDialogFunction: DictionaryDialog
     private let dictionaryImportFunction: DictionaryImport
     private let dictionaryEntriesFunction: DictionaryEntries
@@ -112,7 +118,10 @@ struct NativeEditorPolicy {
               let dictionaryMerge=lookup("meltype_macos_dictionary_merge"),
               let dictionaryFree=lookup("meltype_free"),
               let dictionaryImport=lookup("meltype_macos_dictionary_import"),
-              let dictionaryDialog=lookup("meltype_macos_dictionary_dialog") else { return nil }
+              let dictionaryDialog=lookup("meltype_macos_dictionary_dialog"),
+              let inputSourcesNormalized=lookup("meltype_macos_input_sources_normalized"),
+              let inputSourcesRepair=lookup("meltype_macos_input_sources_repair"),
+              let inputSourceRegister=lookup("meltype_macos_input_source_register") else { return nil }
         self.modeServicesCreate=unsafeBitCast(modeServicesCreate,to:ModeServicesCreate.self)
         self.modeServicesTargetFunction=unsafeBitCast(modeServicesTarget,to:ModeServicesTarget.self)
         self.modeServicesDispatch=unsafeBitCast(modeServicesDispatch,to:ModeServicesDispatch.self)
@@ -129,6 +138,9 @@ struct NativeEditorPolicy {
         self.selectionCreateFunction=unsafeBitCast(selectionCreate,to:SelectionCreate.self)
         self.selectionUpdateFunction=unsafeBitCast(selectionUpdate,to:SelectionUpdate.self)
         self.menuCreateFunction=unsafeBitCast(menuCreate,to:MenuCreate.self)
+        self.inputSourcesNormalized=unsafeBitCast(inputSourcesNormalized,to:InputSourcesObject.self)
+        self.inputSourcesRepair=unsafeBitCast(inputSourcesRepair,to:InputSourcesRepair.self)
+        self.inputSourceRegister=unsafeBitCast(inputSourceRegister,to:InputSourceRegister.self)
         self.dictionaryDialogFunction=unsafeBitCast(dictionaryDialog,to:DictionaryDialog.self)
         self.dictionaryImportFunction=unsafeBitCast(dictionaryImport,to:DictionaryImport.self)
         self.dictionaryEntriesFunction=unsafeBitCast(dictionaryEntries,to:DictionaryEntries.self)
@@ -264,6 +276,18 @@ struct NativeEditorPolicy {
         guard let pointer=withExtendedLifetime(target,{menuCreateFunction(Unmanaged.passUnretained(target).toOpaque(),direct ? 1 : 0,code ? 1 : 0,indicator ? 1 : 0)}) else {return nil}
         return Unmanaged<AnyObject>.fromOpaque(pointer).takeRetainedValue()
     }
+    func normalizedInputSources(_ sources:[[String:Any]])->[[String:Any]] {
+        let array=sources as NSArray
+        guard let pointer=withExtendedLifetime(array,{inputSourcesNormalized(Unmanaged.passUnretained(array).toOpaque())}) else {preconditionFailure("Rust input-source normalization failed")}
+        let result=Unmanaged<AnyObject>.fromOpaque(pointer).takeRetainedValue()
+        guard let rows=result as? [[String:Any]] else {preconditionFailure("Rust input-source result invalid")}
+        return rows
+    }
+    @discardableResult
+    func repairInputSources(_ defaults:UserDefaults)->Bool {
+        withExtendedLifetime(defaults) {inputSourcesRepair(Unmanaged.passUnretained(defaults).toOpaque()) != 0}
+    }
+    func registerInputSource()->Int32 {inputSourceRegister()}
     @discardableResult
     func showDictionaryImport(directory:@escaping () -> String?) -> Int32 {
         let sink=NativeDictionaryDirectorySink(directory)

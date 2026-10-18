@@ -19,6 +19,7 @@ mod macos_key;
 mod macos_meaning;
 mod macos_menu;
 mod macos_preferences;
+mod macos_registration;
 mod macos_services;
 mod macos_suggestion;
 mod macos_view;
