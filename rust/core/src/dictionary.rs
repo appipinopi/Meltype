@@ -346,6 +346,10 @@ impl Dictionary {
             && lower.len() >= 4
             && self.proper.iter().any(|word| word.starts_with(&lower))
             && !self.japanese_prefix(&lower)
+            && (romaji::analyze(&lower, false).valid || {
+                let fragment = romaji::analyze(&lower, true);
+                !fragment.valid || !fragment.partial.is_empty()
+            })
         {
             return raw.to_owned();
         }
@@ -374,6 +378,16 @@ impl Dictionary {
         }
         if self.english.contains(&lower) {
             let fragment = romaji::analyze(&lower, true);
+            if lower.len() < 6
+                && fragment.valid
+                && fragment.partial.is_empty()
+                && !romaji::analyze(&lower, false).valid
+                && !self.common_english.contains(&lower)
+                && !self.proper.contains(&lower)
+                && !self.readable_english.contains(&lower)
+            {
+                return romaji::hiragana(raw, final_input);
+            }
             if lower.len() <= 3
                 && fragment.valid
                 && fragment.partial.is_empty()
@@ -502,6 +516,53 @@ impl Dictionary {
             end = begin;
         }
         pieces.reverse();
+        let first_english = pieces.first().is_some_and(|(_, _, english)| *english);
+        if !first_english && !self.known_english(&lower) {
+            for end in 3..lower.len() {
+                let stem = &lower[..end];
+                if romaji::analyze(stem, true).valid || end >= 5 && self.known_english(stem) {
+                    continue;
+                }
+                let read = romaji::analyze(stem, false).consumed();
+                if read >= 2 {
+                    continue;
+                }
+                let after_invalid = romaji::analyze(&stem[read + 1..], false);
+                if after_invalid.valid && after_invalid.partial.is_empty() {
+                    continue;
+                }
+                let rest = &lower[end..];
+                let analysis = romaji::analyze(rest, false);
+                if [
+                    "kara", "made", "yori", "ga", "wo", "ni", "de", "no", "to", "mo", "ha", "wa",
+                    "ya",
+                ]
+                .iter()
+                .any(|p| rest.starts_with(p))
+                    && analysis.valid
+                    && ["", "n"].contains(&analysis.partial.as_str())
+                {
+                    return format!(
+                        "{}{}",
+                        &raw[..end],
+                        romaji::hiragana(&raw[end..], final_input)
+                    );
+                }
+            }
+        }
+        // CompositionDetector.Segment keeps an unknown word whole when its
+        // first unreadable spelling is within the initial three characters.
+        if !first_english && self.unknown_english_word(&lower) {
+            let particle_then_word = [
+                "kara", "made", "yori", "ga", "wo", "ni", "de", "no", "to", "mo", "ha", "wa", "ya",
+            ]
+            .iter()
+            .find_map(|p| lower.strip_prefix(p))
+            .is_some_and(|rest| rest.len() >= 3 && self.known_english(rest));
+            if self.known_english(&lower) || !particle_then_word {
+                return raw.to_owned();
+            }
+        }
         // Merge adjacent Japanese spans before reading n / doubled consonants.
         let mut result = String::new();
         let mut japanese = String::new();
@@ -516,6 +577,24 @@ impl Dictionary {
         }
         result.push_str(&romaji::hiragana(&japanese, final_input));
         result
+    }
+    pub(crate) fn unknown_english_word(&self, lower: &str) -> bool {
+        if lower.len() < 4 || !lower.bytes().all(|b| b.is_ascii_alphabetic()) {
+            return false;
+        }
+        let analysis = romaji::analyze(lower, false);
+        if analysis.valid || romaji::analyze(lower, true).valid {
+            return false;
+        }
+        let invalid = analysis.consumed();
+        if invalid >= 3 {
+            return false;
+        }
+        let rest = &lower[invalid + 1..];
+        if rest.len() >= 3 && romaji::analyze(rest, true).valid {
+            return false;
+        }
+        !crate::detection::japanese_typo(lower)
     }
     fn english_atom(&self, word: &str) -> bool {
         if self.english.contains(word) {

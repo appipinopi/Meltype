@@ -28,6 +28,8 @@
 - 共通Coreの個別テストは `cargo +stable test -p meltype-core -p meltype-native --locked`。
 - 入力品質は `cargo +stable run -p meltype-core --example quality -- dist/quality.json --check`。2026-10-18時点で削除可能216/216、削除不可215/216。削除不可の1件は未解消で、完全一致とはしない。
 - `tests/data/upstream-backspace.json` は元コミットのC# NativeAOTから採取した20入力の連続削除結果。`upstream_backspace.rs` が各操作のconsumedと表示文字を比較する。入力全般・再入力・全候補の一致を示すものではない。
+- `tests/data/upstream-unknown-words.json` は同じ元版から採取した9入力の各キーの表示・確定・消費状態。未知語、未知語＋助詞、小書きかな、`nn`をRustの期待値に書き換えずに比較する。
+- `tools/check-core-parity.py` で61ケースを再照合。今回の修正前は確定文字54/61・途中状態37/61、修正後は確定文字59/61・途中状態43/61（2026-10-18、通常入力／編集、学習・ライブ変換・予測は無効）。異なる設定・候補一覧・全Core機能の一致は示さない。
 - [Windows共通Coreベンチマーク](../tools/performance/windows/README.md)は動作不一致も記録する。最初の測定は21ケース中、確定文字一致16件、途中状態まで一致1件。Coreの完全移行を示す結果ではない。
 
 ## 次に埋めるCoreの差
@@ -36,4 +38,4 @@
 2. カスタムローマ字表、ScoredSegmentation、入力停止／最大保持時間について、設定を保存できることと実際に処理することを分けて確認・実装する。
 3. ライブ変換の最短4 UTF-16単位と区間ごとの適用は修正済み。元版の全文節・再変換テストとキャッシュ挙動の照合を続ける。
 4. 上記を解消後に同条件で速度を再測定する。変更途中の結果を最終版の性能として扱わない。
-5. 削除後の再入力を拡大照合する。`gakkou`→Backspace×2→`ta` は元版が `gakta`、Rustが `がった` となり未一致。音の保持に加え、再入力時の判定・辞書との関係を移植する必要がある。
+5. 削除後の再入力を拡大照合する。`gakkou`→Backspace×2→`ta` は元版と同じ `gakta` に修正済み。61ケースの照合では、他の再入力や英語の途中表示に差が残っている。

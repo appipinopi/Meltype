@@ -642,7 +642,8 @@ mod tests {
         unsafe {
             let handle = meltype_create();
             assert!(!handle.is_null());
-            for c in "konnichiha".chars() {
+            // Upstream composition consumes nn as one ん unit.
+            for c in "konnnichiha".chars() {
                 let p =
                     meltype_handle_key(handle, 0, c as i32, 0, std::ptr::null(), std::ptr::null());
                 assert!(!p.is_null());

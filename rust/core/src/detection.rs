@@ -80,6 +80,25 @@ fn lexicon() -> &'static Lexicon {
 const PARTICLES: &[&str] = &[
     "no", "ga", "wo", "ni", "de", "to", "ha", "mo", "wa", "he", "ya",
 ];
+/// TypoDetector.Evaluate, also used by CompositionDetector's unknown-word rule.
+pub(crate) fn japanese_typo(text: &str) -> bool {
+    if text.len() < 5 {
+        return false;
+    }
+    let lex = lexicon();
+    if lex.prefixes.contains(text) {
+        return false;
+    }
+    lex.japanese
+        .iter()
+        .filter(|w| w.as_bytes().first() == text.as_bytes().first())
+        .any(|word| {
+            (text.len() - 1..=text.len() + 1).any(|n| {
+                word.get(..n)
+                    .is_some_and(|prefix| crate::linguistics::distance(text, prefix, 1) <= 1)
+            })
+        })
+}
 pub fn evaluate(raw: &str, keys: &[i32], final_input: bool, settings: &Settings) -> Result {
     let lower = raw.to_ascii_lowercase();
     let mut bytes = lower.as_bytes().to_vec();

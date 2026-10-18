@@ -1,0 +1,906 @@
+{
+  "baseline": "45e14f86558aa6ea34f2c2ecd038ba95ca8c3c46",
+  "reference_executable_sha256": "a1ecf2bb1b4868262b9d9d22cd9c7810dfad0b644ada25e5249a30c7ed6682fb",
+  "cases": [
+    {
+      "name": "type:gakt",
+      "keys": [
+        [
+          71,
+          103,
+          0
+        ],
+        [
+          65,
+          97,
+          0
+        ],
+        [
+          75,
+          107,
+          0
+        ],
+        [
+          84,
+          116,
+          0
+        ],
+        [
+          13,
+          0,
+          0
+        ]
+      ],
+      "expected": [
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "g",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "が",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "がk",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "gakt",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [
+            {
+              "deleteBefore": 0,
+              "text": "gakt"
+            }
+          ],
+          "text": null,
+          "converting": false
+        }
+      ]
+    },
+    {
+      "name": "type:gakta",
+      "keys": [
+        [
+          71,
+          103,
+          0
+        ],
+        [
+          65,
+          97,
+          0
+        ],
+        [
+          75,
+          107,
+          0
+        ],
+        [
+          84,
+          116,
+          0
+        ],
+        [
+          65,
+          97,
+          0
+        ],
+        [
+          13,
+          0,
+          0
+        ]
+      ],
+      "expected": [
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "g",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "が",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "がk",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "gakt",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "gakta",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [
+            {
+              "deleteBefore": 0,
+              "text": "gakta"
+            }
+          ],
+          "text": null,
+          "converting": false
+        }
+      ]
+    },
+    {
+      "name": "type:stackoverflow",
+      "keys": [
+        [
+          83,
+          115,
+          0
+        ],
+        [
+          84,
+          116,
+          0
+        ],
+        [
+          65,
+          97,
+          0
+        ],
+        [
+          67,
+          99,
+          0
+        ],
+        [
+          75,
+          107,
+          0
+        ],
+        [
+          79,
+          111,
+          0
+        ],
+        [
+          86,
+          118,
+          0
+        ],
+        [
+          69,
+          101,
+          0
+        ],
+        [
+          82,
+          114,
+          0
+        ],
+        [
+          70,
+          102,
+          0
+        ],
+        [
+          76,
+          108,
+          0
+        ],
+        [
+          79,
+          111,
+          0
+        ],
+        [
+          87,
+          119,
+          0
+        ],
+        [
+          13,
+          0,
+          0
+        ]
+      ],
+      "expected": [
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "s",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "st",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "sた",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "stac",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "stack",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "stacko",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "stackov",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "stackove",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "stackover",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "stackoverf",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "stackoverfl",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "stackoverflo",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "stackoverflow",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [
+            {
+              "deleteBefore": 0,
+              "text": "stackoverflow"
+            }
+          ],
+          "text": null,
+          "converting": false
+        }
+      ]
+    },
+    {
+      "name": "type:grokga",
+      "keys": [
+        [
+          71,
+          103,
+          0
+        ],
+        [
+          82,
+          114,
+          0
+        ],
+        [
+          79,
+          111,
+          0
+        ],
+        [
+          75,
+          107,
+          0
+        ],
+        [
+          71,
+          103,
+          0
+        ],
+        [
+          65,
+          97,
+          0
+        ],
+        [
+          13,
+          0,
+          0
+        ]
+      ],
+      "expected": [
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "g",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "gr",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "gろ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "gろk",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "grokg",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "grokが",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [
+            {
+              "deleteBefore": 0,
+              "text": "grokが"
+            }
+          ],
+          "text": null,
+          "converting": false
+        }
+      ]
+    },
+    {
+      "name": "type:grokniyoruto",
+      "keys": [
+        [
+          71,
+          103,
+          0
+        ],
+        [
+          82,
+          114,
+          0
+        ],
+        [
+          79,
+          111,
+          0
+        ],
+        [
+          75,
+          107,
+          0
+        ],
+        [
+          78,
+          110,
+          0
+        ],
+        [
+          73,
+          105,
+          0
+        ],
+        [
+          89,
+          121,
+          0
+        ],
+        [
+          79,
+          111,
+          0
+        ],
+        [
+          82,
+          114,
+          0
+        ],
+        [
+          85,
+          117,
+          0
+        ],
+        [
+          84,
+          116,
+          0
+        ],
+        [
+          79,
+          111,
+          0
+        ],
+        [
+          13,
+          0,
+          0
+        ]
+      ],
+      "expected": [
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "g",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "gr",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "gろ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "gろk",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "grokn",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "grokに",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "grokniy",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "grokによ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "grokniyor",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "grokによる",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "grokniyorut",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "grokによると",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [
+            {
+              "deleteBefore": 0,
+              "text": "grokによると"
+            }
+          ],
+          "text": null,
+          "converting": false
+        }
+      ]
+    },
+    {
+      "name": "type:kaxnji",
+      "keys": [
+        [
+          75,
+          107,
+          0
+        ],
+        [
+          65,
+          97,
+          0
+        ],
+        [
+          88,
+          120,
+          0
+        ],
+        [
+          78,
+          110,
+          0
+        ],
+        [
+          74,
+          106,
+          0
+        ],
+        [
+          73,
+          105,
+          0
+        ],
+        [
+          13,
+          0,
+          0
+        ]
+      ],
+      "expected": [
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "k",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "か",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "かx",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "かん",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "かんj",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "かんじ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [
+            {
+              "deleteBefore": 0,
+              "text": "かんじ"
+            }
+          ],
+          "text": null,
+          "converting": false
+        }
+      ]
+    },
+    {
+      "name": "type:ulo",
+      "keys": [
+        [
+          85,
+          117,
+          0
+        ],
+        [
+          76,
+          108,
+          0
+        ],
+        [
+          79,
+          111,
+          0
+        ],
+        [
+          13,
+          0,
+          0
+        ]
+      ],
+      "expected": [
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "う",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "うl",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "うぉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [
+            {
+              "deleteBefore": 0,
+              "text": "うぉ"
+            }
+          ],
+          "text": null,
+          "converting": false
+        }
+      ]
+    },
+    {
+      "name": "type:mala",
+      "keys": [
+        [
+          77,
+          109,
+          0
+        ],
+        [
+          65,
+          97,
+          0
+        ],
+        [
+          76,
+          108,
+          0
+        ],
+        [
+          65,
+          97,
+          0
+        ],
+        [
+          13,
+          0,
+          0
+        ]
+      ],
+      "expected": [
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "m",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "ま",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "まl",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "まぁ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [
+            {
+              "deleteBefore": 0,
+              "text": "まぁ"
+            }
+          ],
+          "text": null,
+          "converting": false
+        }
+      ]
+    },
+    {
+      "name": "type:konnichiwa",
+      "keys": [
+        [
+          75,
+          107,
+          0
+        ],
+        [
+          79,
+          111,
+          0
+        ],
+        [
+          78,
+          110,
+          0
+        ],
+        [
+          78,
+          110,
+          0
+        ],
+        [
+          73,
+          105,
+          0
+        ],
+        [
+          67,
+          99,
+          0
+        ],
+        [
+          72,
+          104,
+          0
+        ],
+        [
+          73,
+          105,
+          0
+        ],
+        [
+          87,
+          119,
+          0
+        ],
+        [
+          65,
+          97,
+          0
+        ],
+        [
+          13,
+          0,
+          0
+        ]
+      ],
+      "expected": [
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "k",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "こ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "こn",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "こん",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "こんい",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "こんいc",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "こんいch",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "こんいち",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "こんいちw",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "こんいちわ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [
+            {
+              "deleteBefore": 0,
+              "text": "こんいちわ"
+            }
+          ],
+          "text": null,
+          "converting": false
+        }
+      ]
+    }
+  ]
+}

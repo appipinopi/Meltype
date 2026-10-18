@@ -228,7 +228,11 @@ fn direct_session() -> meltype_core::Session {
 #[test]
 fn direct_detection_replaces_only_a_verified_prefix_and_keeps_english_and_protected_tokens() {
     let (text, s) = direct_typing("konnichiwa", direct_session());
-    assert_eq!(text, "こんにちわ");
+    assert_eq!(text, "こんいちわ"); // Composition spelling consumes both n keys.
+    assert_eq!(
+        direct_typing("konnnichiwa", direct_session()).0,
+        "こんにちわ"
+    );
     assert!(!s.direct);
     for raw in [
         "hello",

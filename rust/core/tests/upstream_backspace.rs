@@ -57,4 +57,22 @@ fn retained_units_survive_function_keys_and_new_input() {
     }
     assert_eq!(session.reading(), "がっこう");
     assert_eq!(session.commit().commits[0].text, "がっこう");
+    for c in "gakkou".chars() {
+        session.key(0, c as i32, 0);
+    }
+    session.key(8, 0, 0);
+    session.key(8, 0, 0);
+    for c in "ta".chars() {
+        session.key(0, c as i32, 0);
+    }
+    assert_eq!(session.commit().commits[0].text, "gakta");
+    for c in "google".chars() {
+        session.key(0, c as i32, 0);
+    }
+    session.key(8, 0, 0);
+    session.key(8, 0, 0);
+    for c in "ya".chars() {
+        session.key(0, c as i32, 0);
+    }
+    assert_eq!(session.commit().commits[0].text, "ごおぎゃ");
 }

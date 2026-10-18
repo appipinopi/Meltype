@@ -48,6 +48,39 @@ impl Units {
     pub fn push(&mut self, text: &str) {
         self.english_edit = false;
         self.japanese_edit = false;
+        // CompositionText.Append returns unreadable letters to Pending so a
+        // following vowel/y can form a syllable after an edit (goog + ya).
+        if text.len() == 1 && text.as_bytes()[0].is_ascii_alphabetic() {
+            while let Some(last) = self.units.last() {
+                if last.spelling.len() != 1
+                    || last.kana != last.spelling
+                    || !last.spelling.as_bytes()[0].is_ascii_alphabetic()
+                {
+                    break;
+                }
+                let letter = last.spelling.as_bytes()[0].to_ascii_lowercase();
+                let known = crate::dictionary::Dictionary::bundled().known_english(&self.raw);
+                if known
+                    && (matches!(letter, b'l' | b'x')
+                        || letter == b't' && text.eq_ignore_ascii_case("s")
+                        || text.eq_ignore_ascii_case("y"))
+                {
+                    break;
+                }
+                if last.spelling.as_bytes()[0].is_ascii_uppercase()
+                    && self.units.len() >= 2
+                    && self.units[self.units.len() - 2]
+                        .spelling
+                        .as_bytes()
+                        .last()
+                        .is_some_and(u8::is_ascii_uppercase)
+                {
+                    break;
+                }
+                let last = self.units.pop().expect("last unit");
+                self.pending.insert_str(0, &last.spelling);
+            }
+        }
         self.raw.push_str(text);
         self.pending.push_str(text);
         self.normalize();
@@ -159,7 +192,9 @@ impl Units {
             });
             if retained
                 && (english.len() == 1
-                    || !crate::dictionary::Dictionary::bundled().is_english(english))
+                    || !crate::dictionary::Dictionary::bundled().is_english(english)
+                        && !crate::dictionary::Dictionary::bundled()
+                            .unknown_english_word(&english.to_ascii_lowercase()))
             {
                 result.push_str(&self.kana_range(start, end, final_input));
             } else {

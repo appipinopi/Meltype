@@ -227,12 +227,9 @@ pub fn hiragana(raw: &str, final_input: bool) -> String {
             }
             if next == Some('n') {
                 out.push('ん');
-                let third = rest.chars().nth(2);
-                rest = &rest[if third.is_some_and(|c| "aiueoy".contains(c)) {
-                    1
-                } else {
-                    2
-                }..];
+                // Composition spelling consumes both n keys. Strict language
+                // analysis has its separate lookahead rule in analyze().
+                rest = &rest[2..];
                 continue;
             }
             if next.is_some_and(|c| !"aiueoy".contains(c)) || (next.is_none() && final_input) {
@@ -288,10 +285,10 @@ mod tests {
     #[test]
     fn romanization() {
         for (raw, expected) in [
-            ("konnichiwa", "こんにちわ"),
+            ("konnichiwa", "こんいちわ"),
             ("gakkou", "がっこう"),
             ("shin'you", "しんよう"),
-            ("konnya", "こんにゃ"),
+            ("konnya", "こんや"),
             ("kon'ya", "こんや"),
             ("nn", "ん"),
             ("n", "ん"),
