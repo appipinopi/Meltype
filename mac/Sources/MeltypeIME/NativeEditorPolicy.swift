@@ -40,6 +40,14 @@ struct NativeEditorPolicy {
     private let indicatorContentFunction: IndicatorContent
     private let indicatorFrameFunction: IndicatorFrame
     private let suggestionFunction: Suggestion
+    private typealias ModeAfter = @convention(c) (UInt32,UInt32) -> Int32
+    private typealias IndicatorPreference = @convention(c) (UnsafeMutableRawPointer?,UInt32,Int32) -> Int32
+    private typealias SelectionCreate = @convention(c) (UnsafeMutableRawPointer?) -> UnsafeMutableRawPointer?
+    private typealias SelectionUpdate = @convention(c) (UnsafeMutableRawPointer?,UInt32,UInt32) -> Int32
+    private let modeAfterFunction: ModeAfter
+    private let indicatorPreferenceFunction: IndicatorPreference
+    private let selectionCreateFunction: SelectionCreate
+    private let selectionUpdateFunction: SelectionUpdate
     private let applicationRun: ApplicationRun
     private let servicesRegister: ServicesRegister
     private let serverCreate: ServerCreate
@@ -82,7 +90,11 @@ struct NativeEditorPolicy {
               let indicatorFrame=lookup("meltype_macos_indicator_frame"),
               let indicatorCreate=lookup("meltype_macos_indicator_create"),
               let indicatorUpdate=lookup("meltype_macos_indicator_update"),
-              let indicatorPanel=lookup("meltype_macos_indicator_panel") else { return nil }
+              let indicatorPanel=lookup("meltype_macos_indicator_panel"),
+              let modeAfter=lookup("meltype_macos_mode_after"),
+              let indicatorPreference=lookup("meltype_macos_indicator_preference"),
+              let selectionCreate=lookup("meltype_macos_mode_selection_create"),
+              let selectionUpdate=lookup("meltype_macos_mode_selection") else { return nil }
         self.modeServicesCreate=unsafeBitCast(modeServicesCreate,to:ModeServicesCreate.self)
         self.modeServicesTargetFunction=unsafeBitCast(modeServicesTarget,to:ModeServicesTarget.self)
         self.modeServicesDispatch=unsafeBitCast(modeServicesDispatch,to:ModeServicesDispatch.self)
@@ -94,6 +106,10 @@ struct NativeEditorPolicy {
         self.indicatorContentFunction=unsafeBitCast(indicatorContent,to:IndicatorContent.self)
         self.indicatorFrameFunction=unsafeBitCast(indicatorFrame,to:IndicatorFrame.self)
         self.suggestionFunction=unsafeBitCast(suggestion,to:Suggestion.self)
+        self.modeAfterFunction=unsafeBitCast(modeAfter,to:ModeAfter.self)
+        self.indicatorPreferenceFunction=unsafeBitCast(indicatorPreference,to:IndicatorPreference.self)
+        self.selectionCreateFunction=unsafeBitCast(selectionCreate,to:SelectionCreate.self)
+        self.selectionUpdateFunction=unsafeBitCast(selectionUpdate,to:SelectionUpdate.self)
         self.applicationRun = unsafeBitCast(applicationRun, to: ApplicationRun.self)
         self.servicesRegister = unsafeBitCast(servicesRegister, to: ServicesRegister.self)
         self.serverCreate = unsafeBitCast(serverCreate, to: ServerCreate.self)
@@ -208,6 +224,17 @@ struct NativeEditorPolicy {
         } }
         guard result != 0 else { return nil }
         return NSRect(x:output[0],y:output[1],width:output[2],height:output[3])
+    }
+    func modeAfter(action:UInt32,current:UInt32)->Int32 {modeAfterFunction(action,current)}
+    func indicatorPreference(_ defaults:UserDefaults,value:Bool?=nil)->Bool {
+        withExtendedLifetime(defaults) {indicatorPreferenceFunction(Unmanaged.passUnretained(defaults).toOpaque(),value == nil ? 0 : 1,value == true ? 1 : 0)>0}
+    }
+    func createModeSelection(_ defaults:UserDefaults)->AnyObject? {
+        guard let pointer=withExtendedLifetime(defaults,{selectionCreateFunction(Unmanaged.passUnretained(defaults).toOpaque())}) else{return nil}
+        return Unmanaged<AnyObject>.fromOpaque(pointer).takeRetainedValue()
+    }
+    func modeSelection(_ owner:AnyObject,mode:UInt32?=nil)->Int32 {
+        withExtendedLifetime(owner) {selectionUpdateFunction(Unmanaged.passUnretained(owner).toOpaque(),mode == nil ? 0 : 1,mode ?? 0)}
     }
     func runApplication() -> Bool { applicationRun() != 0 }
     func registerServices(provider: AnyObject, portName: String) -> Bool {

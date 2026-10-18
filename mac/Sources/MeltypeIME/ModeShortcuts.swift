@@ -23,11 +23,15 @@ enum MacInputMode: String, CaseIterable {
     }
 
     var next: MacInputMode {
+#if MELTYPE_RUST_CORE
+        return ModeShortcutAction.cycle.mode(after:self)
+#else
         switch self {
         case .automatic: return .direct
         case .direct: return .code
         case .code: return .automatic
         }
+#endif
     }
 }
 
@@ -60,12 +64,18 @@ enum ModeShortcutAction: Int, CaseIterable {
     }
 
     func mode(after current: MacInputMode) -> MacInputMode {
+#if MELTYPE_RUST_CORE
+        let index:UInt32=current == .automatic ? 0 : current == .direct ? 1 : 2
+        guard let result=NativeCore.shared.editorPolicy?.modeAfter(action:UInt32(rawValue),current:index),result>=0,result<3 else {preconditionFailure("Rust mode policy unavailable")}
+        return MacInputMode.allCases[Int(result)]
+#else
         switch self {
         case .automatic: return .automatic
         case .direct: return .direct
         case .code: return .code
         case .cycle: return current.next
         }
+#endif
     }
 }
 
@@ -78,8 +88,13 @@ final class ModeIndicatorSettings {
     init(defaults: UserDefaults = .standard) { self.defaults = defaults }
 
     var isEnabled: Bool {
+#if MELTYPE_RUST_CORE
+        get {NativeCore.shared.editorPolicy?.indicatorPreference(defaults) ?? false}
+        set {_=NativeCore.shared.editorPolicy?.indicatorPreference(defaults,value:newValue)}
+#else
         get { defaults.object(forKey: Self.storageKey) == nil || defaults.bool(forKey: Self.storageKey) }
         set { defaults.set(newValue, forKey: Self.storageKey) }
+#endif
     }
 }
 
@@ -88,19 +103,37 @@ final class ModeSelection {
     static let shared = ModeSelection()
     private let defaults: UserDefaults
     private static let storageKey = "MacSelectedInputMode"
+#if MELTYPE_RUST_CORE
+    private let nativeSelection:AnyObject
+    var current:MacInputMode {
+        guard let value=NativeCore.shared.editorPolicy?.modeSelection(nativeSelection),value>=0,value<3 else {preconditionFailure("Rust mode selection unavailable")}
+        return MacInputMode.allCases[Int(value)]
+    }
+#else
     private(set) var current: MacInputMode
+#endif
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+#if MELTYPE_RUST_CORE
+        guard let selection=NativeCore.shared.editorPolicy?.createModeSelection(defaults) else {preconditionFailure("MacSelectedInputMode must be a valid Meltype input mode")}
+        nativeSelection=selection
+#else
         defaults.register(defaults: [Self.storageKey: MacInputMode.automatic.rawValue])
         guard let value = defaults.string(forKey: Self.storageKey), let mode = MacInputMode(rawValue: value) else {
             preconditionFailure("MacSelectedInputMode must be a valid Meltype input mode")
         }
         current = mode
+#endif
     }
 
     func select(_ mode: MacInputMode) {
+#if MELTYPE_RUST_CORE
+        let index:UInt32=mode == .automatic ? 0 : mode == .direct ? 1 : 2
+        _=NativeCore.shared.editorPolicy?.modeSelection(nativeSelection,mode:index)
+#else
         current = mode
         defaults.set(mode.rawValue, forKey: Self.storageKey)
+#endif
     }
 }

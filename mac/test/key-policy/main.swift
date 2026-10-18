@@ -662,3 +662,52 @@ DispatchQueue.global().async {
 }
 precondition(backgroundIndicatorDone.wait(timeout:.now()+5) == .success)
 print("macOS Rust indicator lifecycle: actual deferred queue and one-second NSTimer, SDK panel settings/view parity, superseded/hidden requests, presentation-time preference, timer replacement, panel reuse, missing screen, weak owner destruction and background rejection passed")
+
+let preferencesSuite="MeltypeRustPreferences.\(UUID().uuidString)"
+guard let preferences=UserDefaults(suiteName:preferencesSuite) else {fatalError("private preferences")}
+preferences.removePersistentDomain(forName:preferencesSuite)
+var preferenceCases=0
+func testPrivateModePreferences() {
+    let indicator=ModeIndicatorSettings(defaults:preferences)
+    precondition(indicator.isEnabled,"absent indicator preference must default enabled")
+    for value in [true,false,1,0,"YES","NO","0","1"] as [Any] {
+        preferences.set(value,forKey:"MacShowModeIndicator")
+        let expected=preferences.object(forKey:"MacShowModeIndicator")==nil || preferences.bool(forKey:"MacShowModeIndicator")
+        precondition(indicator.isEnabled==expected,"legacy boolForKey semantics changed")
+        preferenceCases+=1
+    }
+    for enabled in [true,false,true] {
+        indicator.isEnabled=enabled
+        precondition(preferences.bool(forKey:"MacShowModeIndicator")==enabled)
+        precondition(ModeIndicatorSettings(defaults:preferences).isEnabled==enabled)
+    }
+    let selection=ModeSelection(defaults:preferences)
+    precondition(selection.current == .automatic)
+    precondition(preferences.persistentDomain(forName:preferencesSuite)?["MacSelectedInputMode"]==nil,"registerDefaults persisted mode")
+    for mode in MacInputMode.allCases {
+        selection.select(mode)
+        precondition(selection.current==mode)
+        precondition(preferences.string(forKey:"MacSelectedInputMode")==mode.rawValue)
+        precondition(ModeSelection(defaults:preferences).current==mode)
+        for action in ModeShortcutAction.allCases {
+            let expected=action == .cycle ? MacInputMode.allCases[(MacInputMode.allCases.firstIndex(of:mode)!+1)%3] : MacInputMode.allCases[action.rawValue]
+            precondition(action.mode(after:mode)==expected)
+            preferenceCases+=1
+        }
+    }
+    preferences.set("direct",forKey:"MacSelectedInputMode")
+    precondition(selection.current == .code,"existing selection must retain cached mode")
+    precondition(ModeSelection(defaults:preferences).current == .direct)
+    for invalid in ["invalid","DIRECT","",1] as [Any] {
+        preferences.set(invalid,forKey:"MacSelectedInputMode")
+        let before=preferences.persistentDomain(forName:preferencesSuite)! as NSDictionary
+        precondition(editor.createModeSelection(preferences)==nil,"invalid persisted mode accepted")
+        precondition(before.isEqual(to:preferences.persistentDomain(forName:preferencesSuite)!))
+    }
+    preferences.set("automatic",forKey:"MacSelectedInputMode")
+    precondition(editor.modeAfter(action:99,current:0)==(-1))
+    precondition(editor.modeAfter(action:0,current:99)==(-1))
+}
+testPrivateModePreferences()
+preferences.removePersistentDomain(forName:preferencesSuite)
+print("macOS Rust preferences: \(preferenceCases) legacy preference/mode comparisons, absent defaults, bool coercion, persisted roundtrip, cached selection, invalid stored values unchanged and all mode actions passed (private suite only)")

@@ -69,6 +69,22 @@ assert not api.meltype_macos_indicator_update(None,0,0,None)
 assert not api.meltype_macos_indicator_update(P(1),99,0,None)
 if sys.platform!="darwin":
     assert not api.meltype_macos_indicator_panel(None)
+api.meltype_macos_mode_after.argtypes=[U,U]
+api.meltype_macos_mode_after.restype=c.c_int
+for action in range(4):
+    for current in range(3):
+        assert api.meltype_macos_mode_after(action,current)==((current+1)%3 if action==3 else action)
+assert api.meltype_macos_mode_after(99,0)==-1
+assert api.meltype_macos_mode_after(0,99)==-1
+api.meltype_macos_indicator_preference.argtypes=[P,U,c.c_int]
+api.meltype_macos_indicator_preference.restype=c.c_int
+api.meltype_macos_mode_selection_create.argtypes=[P]
+api.meltype_macos_mode_selection_create.restype=P
+api.meltype_macos_mode_selection.argtypes=[P,U,U]
+api.meltype_macos_mode_selection.restype=c.c_int
+assert api.meltype_macos_indicator_preference(None,0,0)==-1
+assert not api.meltype_macos_mode_selection_create(None)
+assert api.meltype_macos_mode_selection(None,0,0)==-1
 callback_type=c.CFUNCTYPE(None,P)
 api.meltype_macos_meaning_schedule.argtypes=[P,callback_type]
 api.meltype_macos_meaning_schedule.restype=c.c_int
