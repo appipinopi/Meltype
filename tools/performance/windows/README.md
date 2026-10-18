@@ -39,6 +39,6 @@ cargo +stable build -p meltype-core --example benchmark --release --locked
 python tools/check-core-parity.py --csharp dist/windows-common-benchmark/csharp/Compare.exe --rust C:/opencode-rust/meltype-target-1.94/release/examples/benchmark.exe --output dist/core-parity
 ```
 
-結果の `report.json` に確定文字の一致数、途中状態までの一致数、全不一致キー・元版の期待値・Rustの実際の値を保存します。`--cases` で任意のキー列JSONを指定できます。`--profile` は `dictionaries/romaji.txt` を配置した試験専用データディレクトリーを両版へ渡します。実際の利用者のプロファイルは指定しないでください。`--check` を加えると途中状態の不一致で終了コード1になります。移行途中の全61ケースはまだ一致していません。元版の各キーを固定した未知語9入力、音単位境界9入力、独自ローマ字表12入力は通常のRustテストでも検査します。
+結果の `report.json` に確定文字の一致数、途中状態までの一致数、全不一致キー・元版の期待値・Rustの実際の値を保存します。`--cases` で任意のキー列JSONを指定できます。`--profile` は `dictionaries/romaji.txt` を配置した試験専用データディレクトリーを両版へ渡します。実際の利用者のプロファイルは指定しないでください。`--check` を加えると途中状態の不一致で終了コード1になります。2026-10-18時点で既定61件と大文字・日本語接続の追加17件は全打鍵が一致しました。重複を除いた75入力を `rust/core/tests/data/upstream-balanced-keys.json` に固定し、独自ローマ字表12入力とともに通常のRustテストでも検査します。Balanced・周辺削除可・学習／ライブ変換／予測無効という限定条件の結果で、全設定・全Core機能の一致を示しません。
 
 この照合用コマンドは速度の評価には使用しません。速度測定はソースと実行ファイルを固定し、他のビルド等が走っていない状態で行ってください。

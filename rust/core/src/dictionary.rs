@@ -341,9 +341,33 @@ impl Dictionary {
     }
     fn mixed_word(&self, raw: &str, final_input: bool) -> String {
         let lower = raw.to_ascii_lowercase();
+        let canonical_case = Self::allows_mixed_case(raw);
+        if let Some(end) = self.capitalized_split(raw, final_input) {
+            return format!(
+                "{}{}",
+                &raw[..end],
+                romaji::hiragana(&raw[end..], final_input)
+            );
+        }
+        // Preserve a product's internal capitals before an attached particle.
+        for particle in [
+            "no", "ga", "wo", "ni", "de", "to", "ha", "mo", "wa", "he", "ya",
+        ] {
+            if let Some(prefix) = raw.strip_suffix(particle) {
+                if prefix.len() >= 3
+                    && !self.english.contains(&lower)
+                    && !self.starts_with_japanese_reading(prefix)
+                    && prefix.bytes().skip(1).any(|b| b.is_ascii_uppercase())
+                    && prefix.bytes().any(|b| b.is_ascii_lowercase())
+                {
+                    return format!("{}{}", prefix, romaji::hiragana(particle, true));
+                }
+            }
+        }
         // CompositionDetector.IsEnglishSpan: a growing proper-name prefix at
         // the start of input is English unless it is also a Japanese prefix.
         if !final_input
+            && canonical_case
             && lower.len() >= 4
             && (self.proper.iter().any(|word| word.starts_with(&lower))
                 || !romaji::analyze(&lower, false).valid
@@ -359,7 +383,17 @@ impl Dictionary {
         {
             return raw.to_owned();
         }
-        if !raw.is_empty() && raw.bytes().all(|c| c.is_ascii_uppercase()) {
+        if raw.starts_with(|c: char| c.is_ascii_uppercase()) {
+            return raw.to_owned();
+        }
+        // A trailing capital name follows IsTrailingCapitalName's common-
+        // Japanese exclusion (macO, but koreX -> これX).
+        if raw.len() >= 4
+            && raw.as_bytes().last().is_some_and(u8::is_ascii_uppercase)
+            && raw[..raw.len() - 1].bytes().all(|c| c.is_ascii_lowercase())
+            && !self.japanese.contains(&lower[..lower.len() - 1])
+            && !crate::typo::Corrector::bundled().is_common_japanese(&lower[..lower.len() - 1])
+        {
             return raw.to_owned();
         }
         if ["no", "ya", "repo", "to"].contains(&lower.as_str()) {
@@ -382,7 +416,7 @@ impl Dictionary {
         if !self.readable_english.contains(&lower) && self.kana_words.contains(&reading) {
             return reading;
         }
-        if self.english.contains(&lower) {
+        if canonical_case && self.english.contains(&lower) {
             let fragment = romaji::analyze(&lower, true);
             let strict = romaji::analyze(&lower, false);
             if !self.readable_english.contains(&lower)
@@ -412,7 +446,7 @@ impl Dictionary {
             }
             return raw.to_owned();
         }
-        if self.spell_word(&lower) {
+        if canonical_case && self.spell_word(&lower) {
             let analysis = romaji::analyze(&lower, false);
             let fragment = romaji::analyze(&lower, true);
             let small_kana =
@@ -424,19 +458,6 @@ impl Dictionary {
                         && analysis.partial != "nn")
             {
                 return raw.to_owned();
-            }
-        }
-        // Preserve case-sensitive product names while separating an attached particle.
-        for particle in [
-            "no", "ga", "wo", "ni", "de", "to", "ha", "mo", "wa", "he", "ya",
-        ] {
-            if let Some(prefix) = raw.strip_suffix(particle) {
-                if prefix.len() >= 3
-                    && prefix.bytes().skip(1).any(|b| b.is_ascii_uppercase())
-                    && prefix.bytes().any(|b| b.is_ascii_lowercase())
-                {
-                    return format!("{}{}", prefix, romaji::hiragana(particle, true));
-                }
             }
         }
         // An English word on each side supplies evidence for a Japanese particle,
@@ -466,7 +487,7 @@ impl Dictionary {
         // Shortest-path segmentation over ASCII byte boundaries. Unknown syllables
         // remain kana; dictionary words can form English islands inside Japanese.
         let n = raw.len();
-        let boundaries = romaji::unit_boundaries(
+        let (boundaries, pending_start) = romaji::unit_boundaries(
             &lower,
             |prefix| {
                 (0..prefix.len().saturating_sub(2)).any(|start| {
@@ -486,20 +507,52 @@ impl Dictionary {
             for end in i + 1..=n.min(i + 40) {
                 let piece = &lower[i..end];
                 let piece_reading = romaji::hiragana(piece, true);
-                let jp = self.japanese.contains(piece)
-                    || self.kana_words.contains(&piece_reading)
-                    || [
-                        "ha", "wa", "wo", "ga", "no", "ni", "de", "to", "mo", "he", "ya",
-                    ]
-                    .contains(&piece);
+                let jp = !raw[i..end].bytes().any(|c| c.is_ascii_uppercase())
+                    && (self.japanese.contains(piece)
+                        || self.kana_words.contains(&piece_reading)
+                        || [
+                            "ha", "wa", "wo", "ga", "no", "ni", "de", "to", "mo", "he", "ya",
+                        ]
+                        .contains(&piece));
                 let acronym =
                     piece.len() >= 2 && raw[i..end].bytes().all(|c| c.is_ascii_uppercase());
+                let strict = romaji::analyze(piece, false);
+                let growing_english = !final_input
+                    && end == n
+                    && piece.len() >= 4
+                    && !strict.valid
+                    && (self
+                        .common_english
+                        .iter()
+                        .any(|word| word.starts_with(piece))
+                        || self.proper.iter().any(|word| word.starts_with(piece)))
+                    && {
+                        let fragment = romaji::analyze(piece, true);
+                        !fragment.valid || !fragment.partial.is_empty()
+                    };
+                let capitalized = end == n
+                    && raw.as_bytes()[i].is_ascii_uppercase()
+                    && !(piece.len() > 2
+                        && !self.known_english(piece)
+                        && [
+                            "kara", "made", "yori", "ga", "wo", "ni", "de", "no", "to", "mo", "ha",
+                            "wa", "ya",
+                        ]
+                        .iter()
+                        .any(|p| piece[1..].starts_with(p))
+                        && romaji::analyze(&piece[1..], true).valid);
                 let english_piece = boundaries[i]
                     && boundaries[end]
+                    // In FindSpans, a span ending at the final completed unit
+                    // must include Pending. It cannot stop just before it.
+                    && (final_input || pending_start != Some(end) || end == n)
+                    && Self::allows_mixed_case(&raw[i..end])
                     && ((piece.len() >= 3
                         && !jp
                         && (self.english.contains(piece) || self.spell_word(piece)))
-                        || acronym);
+                        || acronym
+                        || growing_english
+                        || capitalized);
                 // IsEnglishSpan keeps a short composition-only spelling in
                 // Japanese when its next sound continues it (hosu|thin|gu).
                 let japanese_continuation = english_piece
@@ -516,15 +569,15 @@ impl Dictionary {
                                 .find(|next| boundaries[*next])
                                 .is_some_and(|next| romaji::analyze(&lower[i..next], true).valid)
                     };
-                let strict = romaji::analyze(piece, false);
                 let partial_japanese = english_piece
-                    && end == n
+                    && (end == n || strict.partial == "n")
+                    && !raw.as_bytes()[i].is_ascii_uppercase()
                     && strict.valid
                     && !strict.partial.is_empty()
                     && !self.proper.contains(piece)
                     && !self.readable_english.contains(piece)
-                    && (strict.partial == "n"
-                        || !final_input && self.japanese_prefix(piece)
+                    && (strict.partial == "n" && !paths[i].1
+                        || !final_input && !paths[i].1 && self.japanese_prefix(piece)
                         || i > 0 && !paths[i].1 && !self.common_english.contains(piece));
                 let en = english_piece && !japanese_continuation && !partial_japanese;
                 let cost = if jp {
@@ -647,6 +700,123 @@ impl Dictionary {
         }
         result.push_str(&romaji::hiragana(&japanese, final_input));
         result
+    }
+    fn starts_with_japanese_reading(&self, raw: &str) -> bool {
+        let Some(upper) = raw.bytes().position(|c| c.is_ascii_uppercase()) else {
+            return false;
+        };
+        if upper < 3 {
+            return false;
+        }
+        let head = &raw[..upper];
+        head.bytes().all(|c| c.is_ascii_lowercase())
+            && [
+                "kara", "made", "yori", "ga", "wo", "ni", "de", "no", "to", "mo", "ha", "wa", "ya",
+            ]
+            .iter()
+            .any(|p| head.len() > p.len() && head.ends_with(p))
+            && {
+                let fragment = romaji::analyze(head, true);
+                fragment.valid && fragment.partial.is_empty()
+            }
+            && !self.known_english(head)
+    }
+    // CapitalizedWordEnd runs before ordinary English span detection. In
+    // particular, Shift does not absorb an attached particle (Google|de), or
+    // a consonant label before a common Japanese word (T|shatsu).
+    fn capitalized_split(&self, raw: &str, final_input: bool) -> Option<usize> {
+        let lower_start = raw.len() >= 2
+            && raw.as_bytes()[0].is_ascii_lowercase()
+            && raw.as_bytes()[1].is_ascii_uppercase();
+        if !raw.starts_with(|c: char| c.is_ascii_uppercase()) && !lower_start {
+            return None;
+        }
+        let lower = raw.to_ascii_lowercase();
+        if self.common_english.contains(&lower) || self.proper.contains(&lower) {
+            return None;
+        }
+        let pedia = if lower.ends_with("pedias") {
+            6
+        } else if lower.ends_with("pedia") {
+            5
+        } else {
+            0
+        };
+        if pedia > 0 && (lower.len() == pedia || lower.len() >= pedia + 3) {
+            return None;
+        }
+        let (bounds, pending) = romaji::unit_boundaries(
+            &lower,
+            |word| self.known_english(word),
+            |word| self.known_english(word),
+        );
+        for end in (1..raw.len()).rev() {
+            if !bounds[end] || pending == Some(end) {
+                continue;
+            }
+            let head = &raw[..end];
+            let head_lower = &lower[..end];
+            let listed =
+                self.common_english.contains(head_lower) || self.proper.contains(head_lower);
+            if lower_start && !(end >= 3 && listed) {
+                continue;
+            }
+            let upper = head.bytes().take_while(u8::is_ascii_uppercase).count();
+            if upper >= 2
+                && upper < head.len()
+                && head[upper..].bytes().all(|c| c.is_ascii_lowercase())
+                && !listed
+            {
+                continue;
+            }
+            let rest = &raw[end..];
+            let particle = [
+                "kara", "made", "yori", "ga", "wo", "ni", "de", "no", "to", "mo", "ha", "wa", "ya",
+            ]
+            .iter()
+            .find(|p| rest.starts_with(**p));
+            if rest.len() < 3 && particle.is_none_or(|p| rest != *p)
+                || !rest.bytes().all(|c| c.is_ascii_lowercase())
+            {
+                continue;
+            }
+            let acronym = head.len() >= 2
+                && head.as_bytes()[head.len() - 1].is_ascii_uppercase()
+                && !(head.len() < 4 && head.as_bytes()[head.len() - 2].is_ascii_lowercase());
+            let known = acronym
+                || end >= 3 && listed
+                || end >= 4 && (self.english.contains(head_lower) || self.spell_word(head_lower));
+            if known && particle.is_some() {
+                return Some(end);
+            }
+            let fragment = romaji::analyze(rest, true);
+            if !fragment.valid || final_input && !["", "n"].contains(&fragment.partial.as_str()) {
+                continue;
+            }
+            if known || end == 1 && particle.is_some() {
+                return Some(end);
+            }
+            if end == 1
+                && !b"AIUEON".contains(&raw.as_bytes()[0])
+                && !romaji::analyze(&lower, true).valid
+            {
+                let strict = romaji::analyze(rest, false);
+                let reading: String = strict.tokens.iter().map(|t| t.kana.as_str()).collect();
+                if strict.valid
+                    && ["", "n"].contains(&strict.partial.as_str())
+                    && reading.chars().count() >= 3
+                    && crate::typo::Corrector::bundled().is_common_japanese(rest)
+                {
+                    return Some(end);
+                }
+            }
+        }
+        None
+    }
+    fn allows_mixed_case(raw: &str) -> bool {
+        !raw.starts_with(|c: char| c.is_ascii_lowercase())
+            || !raw.bytes().skip(1).any(|c| c.is_ascii_uppercase())
+            || words(include_str!("../../../dictionaries/propernouns.txt")).any(|name| name == raw)
     }
     pub(crate) fn unknown_english_word(&self, lower: &str) -> bool {
         if lower.len() < 4 || !lower.bytes().all(|b| b.is_ascii_alphabetic()) {

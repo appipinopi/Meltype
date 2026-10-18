@@ -225,10 +225,11 @@ pub(crate) fn unit_boundaries(
     raw: &str,
     known_english: impl Fn(&str) -> bool,
     whole_english: impl Fn(&str) -> bool,
-) -> Vec<bool> {
+) -> (Vec<bool>, Option<usize>) {
     let mut bounds = vec![false; raw.len() + 1];
     bounds[0] = true;
     let mut at = 0;
+    let mut pending_start = None;
     while at < raw.len() {
         let analysis = analyze(&raw[at..], true);
         let mut restart = false;
@@ -268,6 +269,9 @@ pub(crate) fn unit_boundaries(
         }
         if analysis.valid {
             bounds[raw.len()] = true;
+            if !analysis.partial.is_empty() {
+                pending_start = Some(at);
+            }
             break;
         }
         let Some(c) = raw[at..].chars().next() else {
@@ -276,7 +280,7 @@ pub(crate) fn unit_boundaries(
         at += c.len_utf8();
         bounds[at] = true;
     }
-    bounds
+    (bounds, pending_start)
 }
 
 /// Incremental conversion. An incomplete consonant is preserved until commit.
