@@ -160,3 +160,12 @@ parent verifies the result while its cached selection stays unchanged. Children
 use only the UUID suite and finish within a 30-second termination bound. They do
 not create an IMK server or register an input source. Restarting an installed
 input method and using it in real editors remain separate integration checks.
+
+
+The Rust input menu is compared with the former Swift construction for all eight
+direct/code/indicator combinations. Actual NSMenu items are compared for title,
+order, separator, check state, key-equivalent/modifiers, and explicit versus nil
+targets. Five explicitly targeted actions are dispatched only to an owned probe;
+folder/report actions with nil targets are inspected without invoking them. The
+fixture also checks autorelease ownership and background-thread rejection. It
+does not prove presentation or action delivery from the installed OS input menu.

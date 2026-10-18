@@ -389,3 +389,6 @@ acd350cではミニモード表示のビュー生成、文字／選択色／フ�
 
 
 bdd6704では設定の復元試験を別プロセスへ拡張しました。私用UUID suiteへ親がRust経由で保存した値を、新規プロセス1が復元・更新し、新規プロセス2が再び復元・更新して親が確認します。既存親インスタンスの選択キャッシュは維持します。子は設定操作だけを実行して終了し、IMEサーバー起動・入力ソース登録・実アプリ入力は行いません。各子の終了は30秒で打ち切る境界を設けています。[bdd6704のmacOS SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39097858665)で両ジョブ成功。子1がcode／falseを復元してdirect／trueを保存し、子2がdirect／trueを復元してautomatic／falseを保存、親が最終値と既存キャッシュ維持を確認した保存ログを確認済み。既存スタブ22操作・実変換器28操作と全Swiftコンパイルも通過。[同じ版のfcitx SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39097858885)も成功。インストール済みIME全体の再起動・実アプリ入力と全画面一致は未確認です。
+
+
+a0e5210では入力メニューの生成とチェック状態設定をRustのAppKit呼出しへ移しました。元の文言・順序・区切り・キー相当なし・明示targetとresponder chainの使い分けを保持し、Swiftはモード／設定と操作の受信先を渡します。Apple Silicon／Intel型チェック、Clippyと実ABI拒否試験が成功。[a0e5210のmacOS SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39098365913)で両ジョブ成功。実NSMenuの8状態で文言・順序・区切り・チェック・キー相当／修飾・targetを旧Swiftと比較し、試験所有者への5操作配送、自動解放区間を越えた所有権と背景生成拒否を確認。既存スタブ22操作・実変換器28操作と全Swiftコンパイルの保存ログも確認済み。[同じ版のfcitx SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39098365925)も成功。OS入力メニューでの実操作や全画面一致は未検証で、辞書取込み等の操作本体と残るOS連携も移植対象です。
