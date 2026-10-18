@@ -487,12 +487,7 @@ impl Dictionary {
             return false;
         }
         let growing = at_end && !final_input;
-        let prefix = || {
-            self.common_english
-                .iter()
-                .chain(&self.proper)
-                .any(|s| s.starts_with(&lower))
-        };
+        let prefix = || self.common_index.contains(&lower) || self.proper_index.contains(&lower);
         if lower.len() >= 2
             && !first_upper
             && !strong
@@ -592,7 +587,7 @@ impl Dictionary {
             && lower.len() >= 4
             && !conservative
             && !small
-            && self.proper.iter().any(|s| s.starts_with(&lower))
+            && self.proper_index.contains(&lower)
             && !self.japanese_prefix(&lower)
         {
             return true;
@@ -619,16 +614,14 @@ impl Dictionary {
                         && at_end
                         && growing
                         && lower.len() >= 3
-                        && self.common_english.iter().any(|s| s.starts_with(&lower))
+                        && self.common_index.contains(&lower)
             }
             "Conservative" => (exact || spell_word) && (lower.len() >= 3 || before >= 2),
             _ if start && at_end => {
                 exact
                     || spell_word
                     || lower.len() == 1
-                    || growing
-                        && !small
-                        && self.common_english.iter().any(|s| s.starts_with(&lower))
+                    || growing && !small && self.common_index.contains(&lower)
             }
             _ => (exact || spell_word) && lower.len() >= 3,
         };

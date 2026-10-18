@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Yukishiro, appipinopi
-use std::{collections::HashMap, sync::OnceLock};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::OnceLock,
+};
 mod custom;
 pub(crate) use custom::current as custom_table;
 pub use custom::CustomTable;
@@ -12,6 +15,25 @@ fn table() -> &'static HashMap<&'static str, &'static str> {
         include_str!("romaji.tsv")
             .lines()
             .filter_map(|s| s.split_once('\t'))
+            .collect()
+    })
+}
+
+// Detection probes many non-words while segmenting a composition. Checking
+// every spelling for each unreadable suffix makes long inputs expensive.
+// Keep the built-in prefixes separate from the active custom table: custom
+// prefixes must continue to be resolved inside their thread-local scope.
+fn prefixes(
+    composition: bool,
+    spellings: &'static HashMap<&'static str, &'static str>,
+) -> &'static HashSet<&'static str> {
+    static STRICT: OnceLock<HashSet<&str>> = OnceLock::new();
+    static COMPOSITION: OnceLock<HashSet<&str>> = OnceLock::new();
+    let cache = if composition { &COMPOSITION } else { &STRICT };
+    cache.get_or_init(|| {
+        spellings
+            .keys()
+            .flat_map(|word| (1..=word.len()).filter_map(|end| word.get(..end)))
             .collect()
     })
 }
@@ -137,7 +159,7 @@ pub fn analyze(raw: &str, composition: bool) -> Analysis {
             let rest = &raw[i..];
             if rest == "n"
                 || rest == "tc"
-                || spellings.keys().any(|s| s.starts_with(rest))
+                || prefixes(composition, spellings).contains(rest)
                 || custom.as_ref().is_some_and(|table| table.partial(rest))
             {
                 result.valid = true;
@@ -336,7 +358,7 @@ pub fn hiragana(raw: &str, final_input: bool) -> String {
             continue;
         }
         if !final_input
-            && (table().keys().any(|key| key.starts_with(rest))
+            && (prefixes(true, table()).contains(rest)
                 || custom.as_ref().is_some_and(|table| table.partial(rest)))
         {
             out.push_str(rest);

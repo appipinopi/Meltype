@@ -25,13 +25,14 @@
 
 ## 確認できた範囲
 
-- 共通Coreの個別テストは `cargo +stable test -p meltype-core -p meltype-native --locked`。
+- 共通Coreの個別テストは `cargo +stable test -p meltype-core -p meltype-native --locked`。2026-10-18の長文境界修正後は137テストが成功。長文・境界の63入力（2,530打鍵）を元版の固定期待値と比較する。
 - 入力品質は `cargo +stable run -p meltype-core --example quality -- dist/quality.json --check`。2026-10-18時点で削除可能216/216、削除不可215/216。削除不可の1件は未解消で、完全一致とはしない。
 - `tests/data/upstream-backspace.json` は元コミットのC# NativeAOTから採取した20入力の連続削除結果。`upstream_backspace.rs` が各操作のconsumedと表示文字を比較する。入力全般・再入力・全候補の一致を示すものではない。
 - `tests/data/upstream-unknown-words.json` は同じ元版から採取した9入力の各キーの表示・確定・消費状態。未知語、未知語＋助詞、小書きかな、`nn`をRustの期待値に書き換えずに比較する。
 - `tests/data/upstream-custom-romaji.json` は同梱スペル辞書を有効にした元版から採取した独自ローマ字表の12入力。全打鍵が一致し、実際のWindows DLLのABI経由でも12件と2プロファイルの分離を確認した。表の上書き、長い綴り、削除、再読込、Undo、UTF-16、破損時の設定保持も個別テストで確認。独自表を使用中のキャッシュが通常表・別セッションへ漏れないことを確認する。
 - `tools/check-core-parity.py` の61ケースは、両版の同梱スペル辞書を有効にして再照合。修正前は確定文字60/61・途中状態44/61、修正後は確定文字61/61・途中状態61/61（2026-10-18、`dist/core-parity-61-final/report.json`）。大文字・日本語接続の追加17ケースも17/17・17/17（`dist/core-parity-adversarial-japanese/report.json`）、独自表は12/12・12/12。学習・ライブ変換・予測は無効。異なる設定・候補一覧・全Core機能の一致は示さない。
 - 61件と追加17件の重複を除いた75入力を `tests/data/upstream-balanced-keys.json` に固定。`cargo +stable test -p meltype-core --test upstream_balanced_keys --locked` で元版のconsumed・確定編集・表示文字・変換状態を全打鍵比較できる。未知語、大文字、保留子音、製品名＋助詞、日本語＋製品名、削除後の再入力を含む。元版C#の実行ファイルハッシュも保存。候補・注釈・全設定・実OSの描画は比較対象外。
+- 長文の21入力と境界追加42入力を元版C# NativeAOTと全打鍵照合し、63/63の表示・消費・確定編集・変換状態が一致（`dist/long-boundary-parity-v3/report.json`）。末尾の短い英単語、途中の`n`、確定時の保留子音、英語直後の単独a/i/u/rを修正した。元版から採取した期待値を `tests/data/upstream-long-keys.json` に固定し、通常のRust試験とDLL経由のCI検査に追加。Windows Release DLLの実APIでも63/63を確認済み。[再現方法と限定条件](../tools/parity/long/README.md)。全Core機能の一致を示すものではない。
 - 英数入力中の判定は、元版の実際のScoreEngineと時刻付き32ケースを照合し、全打鍵の消費状態・編集・表示・英数モード・英語語の継続状態・文書が一致（`dist/direct-parity-32/report.json`）。699／700／701ms、英語判定後の継続、未通知の区切り、キャレット・モード変更、修飾キー、文脈不一致、絵文字、長音・ハイフンを含む。`tests/data/upstream-direct-time.json` を固定し、通常のRustテストで検査する。[再現方法](../tools/parity/direct/README.md)。既存の文字を再入力履歴として推定して削除する処理を除去し、今回のセッションで追跡した文字だけを照合・削除する。
 - `rust/native/tests/direct_time_smoke.py` はWindows DLLの実APIと単調時計で、連続入力の日本語切替・750ms停止後の英数継続・同じモード設定の反復・削除対象の照合を確認済み。既存ABI、独自表、OSスペル証拠、混在変換の回帰試験も成功。秘密欄・文脈不一致で削除しない試験をCoreに追加。実アプリでのTSF操作確認とは区別する。
 - スコア区切りの採点・経路探索をRustに追加。元版の12回帰入力と既存75入力をONで実行し、計87件の確定文字・全打鍵の途中状態が一致（`dist/core-parity-scored-12-final/report.json`、`dist/core-parity-scored-broad-final/report.json`）。元版の期待値を `tests/data/upstream-scored-keys.json` に固定し、通常のCore試験と `rust/native/tests/scored_smoke.py` でDLL経由でも検査する。記号等の強制区間ルールの採点経路への全移植、全判定レベル・文脈・区間別学習との照合は残るため、ScoredSegmentation全体は未完了。[再現方法と残件](../tools/parity/scored/README.md)。
@@ -44,5 +45,5 @@
 1. 入力途中の区切り・保留子音・英語候補・音単位編集を、元版のCompositionText/CompositionDetectorと各キーで比較する。
 2. 独自ローマ字表の基本入力・編集・Undoは実装済み。独自表と全判定辞書の組合せの照合は続ける。TSFの英数判定停止（元版固定700ms）は移植し32ケースを照合。スコア区切りの採点経路は87入力を照合済みだが、記号等の強制区間・全レベル・文脈・区間別学習との統合は未完了。旧フック方式InputSessionの4状態と各時間設定・学習は182入力列を照合済み。Windowsのフック／再入力ワーカーへの接続と実配送は別途確認する。別の経路の時間設定をTSFの700msへ置き換えて完了扱いしない。
 3. ライブ変換の最短4 UTF-16単位と区間ごとの適用は修正済み。元版の全文節・再変換テストとキャッシュ挙動の照合を続ける。
-4. 固定版9b28322の限定測定は記録済み。長文の7つの途中表示不一致（うち2件は確定も不一致）と長い入力の遅さを解消し、同条件で再測定する。変更途中の結果を最終版の性能として扱わない。
+4. 固定版9b28322の限定測定は記録済み。そこで見つかった7ケースの途中表示・確定の差は修正し、追加42ケースと合わせ63入力を照合済み。辞書・ローマ字の前方一致索引、判定1回内の解析結果の再利用、保護入力の不要な判定省略を追加した。固定版を同条件で再測定し、長い入力の遅さを継続して調べる。変更途中の結果を最終版の性能として扱わない。
 5. 既定Balancedの75入力と独自表12入力は固定試験済み。全判定レベル・JISかな・文脈・候補・直接入力・削除不可欄・その他の編集操作へ元版との全打鍵照合を拡大する。限定条件の成功で全Coreの移行完了とはしない。

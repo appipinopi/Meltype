@@ -18,6 +18,26 @@ pub struct Dictionary {
     readable_english: HashSet<String>,
     proper: HashSet<String>,
     japanese_origin: HashSet<String>,
+    english_index: PrefixIndex,
+    japanese_index: PrefixIndex,
+    common_index: PrefixIndex,
+    proper_index: PrefixIndex,
+}
+
+/// Sorted dictionary keys keep prefix queries logarithmic without materializing
+/// every prefix. Build once with the immutable bundled dictionary.
+#[derive(Default)]
+struct PrefixIndex(Vec<String>);
+impl PrefixIndex {
+    fn new(words: &HashSet<String>) -> Self {
+        let mut keys: Vec<_> = words.iter().cloned().collect();
+        keys.sort_unstable();
+        Self(keys)
+    }
+    fn contains(&self, prefix: &str) -> bool {
+        let i = self.0.partition_point(|word| word.as_str() < prefix);
+        self.0.get(i).is_some_and(|word| word.starts_with(prefix))
+    }
 }
 
 fn words(text: &str) -> impl Iterator<Item = &str> {
@@ -32,6 +52,10 @@ impl Dictionary {
             let _builtins = romaji::Scope::new(None);
             let mut dict = Self {
                 english: HashSet::new(),
+                english_index: PrefixIndex::default(),
+                japanese_index: PrefixIndex::default(),
+                common_index: PrefixIndex::default(),
+                proper_index: PrefixIndex::default(),
                 japanese_origin: {
                     let mut section = false;
                     let mut result = HashSet::new();
@@ -116,6 +140,10 @@ impl Dictionary {
                     }
                 }
             }
+            dict.english_index = PrefixIndex::new(&dict.english);
+            dict.japanese_index = PrefixIndex::new(&dict.japanese);
+            dict.common_index = PrefixIndex::new(&dict.common_english);
+            dict.proper_index = PrefixIndex::new(&dict.proper);
             dict
         })
     }
@@ -370,12 +398,8 @@ impl Dictionary {
         if !final_input
             && canonical_case
             && lower.len() >= 4
-            && (self.proper.iter().any(|word| word.starts_with(&lower))
-                || !romaji::analyze(&lower, false).valid
-                    && self
-                        .common_english
-                        .iter()
-                        .any(|word| word.starts_with(&lower)))
+            && (self.proper_index.contains(&lower)
+                || !romaji::analyze(&lower, false).valid && self.common_index.contains(&lower))
             && !self.japanese_prefix(&lower)
             && (romaji::analyze(&lower, false).valid || {
                 let fragment = romaji::analyze(&lower, true);
@@ -504,29 +528,36 @@ impl Dictionary {
         let mut costs = vec![f64::INFINITY; n + 1];
         let mut paths = vec![(0, false); n + 1];
         costs[0] = 0.0;
+        // Repeated syllables/words share probes within this composition only.
+        // Never retain results across custom romaji or spelling scopes. Avoid
+        // the map overhead on short interactive inputs.
+        let mut analyses = HashMap::new();
         for i in 0..n {
             for end in i + 1..=n.min(i + 40) {
                 let piece = &lower[i..end];
-                let piece_reading = romaji::hiragana(piece, true);
+                let computed;
+                let (piece_reading, strict) = if n >= 64 {
+                    analyses.entry(piece).or_insert_with(|| {
+                        (romaji::hiragana(piece, true), romaji::analyze(piece, false))
+                    })
+                } else {
+                    computed = (romaji::hiragana(piece, true), romaji::analyze(piece, false));
+                    &computed
+                };
                 let jp = !raw[i..end].bytes().any(|c| c.is_ascii_uppercase())
                     && (self.japanese.contains(piece)
-                        || self.kana_words.contains(&piece_reading)
+                        || self.kana_words.contains(piece_reading)
                         || [
                             "ha", "wa", "wo", "ga", "no", "ni", "de", "to", "mo", "he", "ya",
                         ]
                         .contains(&piece));
                 let acronym =
                     piece.len() >= 2 && raw[i..end].bytes().all(|c| c.is_ascii_uppercase());
-                let strict = romaji::analyze(piece, false);
                 let growing_english = !final_input
                     && end == n
                     && piece.len() >= 4
                     && !strict.valid
-                    && (self
-                        .common_english
-                        .iter()
-                        .any(|word| word.starts_with(piece))
-                        || self.proper.iter().any(|word| word.starts_with(piece)))
+                    && (self.common_index.contains(piece) || self.proper_index.contains(piece))
                     && {
                         let fragment = romaji::analyze(piece, true);
                         !fragment.valid || !fragment.partial.is_empty()
@@ -546,11 +577,24 @@ impl Dictionary {
                     && boundaries[end]
                     // In FindSpans, a span ending at the final completed unit
                     // must include Pending. It cannot stop just before it.
-                    && (final_input || pending_start != Some(end) || end == n)
+                    && (pending_start != Some(end) || end == n)
                     && Self::allows_mixed_case(&raw[i..end])
                     && ((piece.len() >= 3
                         && !jp
                         && (self.english.contains(piece) || self.spell_word(piece)))
+                        // A listed trailing word with a pending consonant
+                        // remains English even when it is only two letters
+                        // (gakuse|id). Completed two-letter syllables keep the
+                        // ordinary Japanese/context rules.
+                        || end == n
+                            && self.common_english.contains(piece)
+                            && strict.valid
+                            && !strict.partial.is_empty()
+                            && strict.partial != "n"
+                            && (final_input || !self.japanese_prefix(piece))
+                        // Chat abbreviations are independent single-letter
+                        // words only at the end, immediately after English.
+                        || end == n && i > 0 && paths[i].1 && ["a", "i", "u", "r"].contains(&piece)
                         || acronym
                         || growing_english
                         || capitalized);
@@ -561,7 +605,7 @@ impl Dictionary {
                     && !paths[i].1
                     && end < n
                     && piece.len() <= 4
-                    && !romaji::analyze(piece, false).valid
+                    && !strict.valid
                     && {
                         let fragment = romaji::analyze(piece, true);
                         fragment.valid
@@ -577,7 +621,7 @@ impl Dictionary {
                     && !strict.partial.is_empty()
                     && !self.proper.contains(piece)
                     && !self.readable_english.contains(piece)
-                    && (strict.partial == "n" && !paths[i].1
+                    && (strict.partial == "n" && (end < n || !paths[i].1)
                         || !final_input && !paths[i].1 && self.japanese_prefix(piece)
                         || i > 0 && !paths[i].1 && !self.common_english.contains(piece));
                 let en = english_piece && !japanese_continuation && !partial_japanese;
@@ -902,11 +946,11 @@ impl Dictionary {
     }
     pub fn english_prefix(&self, raw: &str) -> bool {
         let raw = raw.to_ascii_lowercase();
-        self.english.iter().any(|w| w.starts_with(&raw))
+        self.english_index.contains(&raw)
     }
     pub fn japanese_prefix(&self, raw: &str) -> bool {
         let raw = raw.to_ascii_lowercase();
-        self.japanese.iter().any(|w| w.starts_with(&raw))
+        self.japanese_index.contains(&raw)
     }
     pub fn predict_english(&self, raw: &str) -> Vec<String> {
         if raw.len() < 3 || !raw.bytes().all(|c| c.is_ascii_alphabetic()) {

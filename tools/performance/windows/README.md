@@ -46,6 +46,7 @@ python tools/check-core-parity.py --csharp dist/windows-common-benchmark/csharp/
 `--cases` には通常の配列と、固定試験JSONの `cases` オブジェクトを指定できます。
 `--scored` で両ホストの全入力にスコア区切りを適用します。各入力の `scored` が無ければ従来どおりOFFです。
 スコア区切りONの87入力は[専用の再現手順](../../parity/scored/README.md)を参照してください。
+長文21入力と境界追加42入力の63件は[長文・境界の再現手順](../../parity/long/README.md)を参照してください。元版の2,530打鍵を固定期待値とし、通常のRust試験とDLLのABI試験で照合します。
 比較ホストは `-p:CoreProject=<基準コミットから取り出したCoreプロジェクトの絶対パス>` にも対応します。
 
 ## 固定版の測定結果

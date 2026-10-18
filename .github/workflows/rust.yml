@@ -64,6 +64,8 @@ jobs:
         run: python rust/native/tests/custom_romaji_smoke.py
       - name: Scored segmentation original key traces through native ABI
         run: python rust/native/tests/scored_smoke.py
+      - name: Long and boundary original key traces through native ABI
+        run: python rust/native/tests/scored_smoke.py --golden rust/core/tests/data/upstream-long-keys.json
       - name: Direct-input timeout through native ABI
         run: python rust/native/tests/direct_time_smoke.py
       - name: Legacy input state, replay and prefix learning through native ABI

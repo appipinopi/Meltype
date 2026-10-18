@@ -592,16 +592,16 @@ impl Session {
             }
         }
         let dictionary = Dictionary::bundled();
-        let detected = || self.detect_composition(&self.raw, final_input);
-        let text = match self.preferences.english.get(&self.raw.to_ascii_lowercase()) {
-            _ if self.settings.text("DetectionLevel") == "Manual" => detected(),
+        let detect_whole = || self.detect_composition(&self.raw, final_input);
+        let detected = || match self.preferences.english.get(&self.raw.to_ascii_lowercase()) {
+            _ if self.settings.text("DetectionLevel") == "Manual" => detect_whole(),
             Some(true) => self.raw.clone(),
             Some(false) => romaji::hiragana(&self.raw, final_input),
-            None => detected(),
+            None => detect_whole(),
         };
         let text = crate::protection::transform(&self.raw, |part| {
             if part == self.raw {
-                text.clone()
+                detected()
             } else if self.settings.text("DetectionLevel") == "Balanced"
                 && !Dictionary::uses_scored(self.settings.boolean("ScoredSegmentation"))
             {

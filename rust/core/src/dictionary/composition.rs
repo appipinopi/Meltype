@@ -159,7 +159,7 @@ impl Dictionary {
             && lower.len() >= 3
             && !fragment.partial.is_empty()
             && fragment.partial != "n"
-            && (final_input || !self.japanese.iter().any(|w| w.starts_with(&lower)))
+            && (final_input || !self.japanese_index.contains(&lower))
         {
             return true;
         }
