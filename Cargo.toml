@@ -1,5 +1,5 @@
 [workspace]
-members = ["rust/core", "rust/native", "rust/cli", "rust/settings-app", "rust/ibus", "rust/tip-worker"]
+members = ["rust/core", "rust/native", "rust/cli", "rust/settings-app", "rust/ibus", "rust/tip-worker", "rust/mac-register"]
 resolver = "2"
 
 [workspace.package]

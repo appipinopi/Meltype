@@ -1850,6 +1850,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "meltype-mac-register"
+version = "0.1.0"
+dependencies = [
+ "objc2 0.6.5",
+ "objc2-foundation 0.3.2",
+ "unicode-normalization",
+]
+
+[[package]]
 name = "meltype-native"
 version = "0.1.0"
 dependencies = [

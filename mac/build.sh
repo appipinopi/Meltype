@@ -55,7 +55,14 @@ fi
 
 echo "== 2/3 IME (Swift) をビルド (初回は azooKey の変換エンジンと辞書のダウンロードに時間がかかります)"
 SWIFT_FLAGS=(-c release)
-if [[ "${MELTYPE_RUST_CORE:-0}" == 1 ]]; then SWIFT_FLAGS+=(-Xswiftc -DMELTYPE_RUST_CORE); fi
+if [[ "${MELTYPE_RUST_CORE:-0}" == 1 ]]; then
+    SWIFT_FLAGS+=(--product MeltypeIME -Xswiftc -DMELTYPE_RUST_CORE)
+    if [[ -z "${MELTYPE_RUST_REGISTER_HELPER:-}" ]]; then
+        cargo build --manifest-path ../Cargo.toml --locked --release -p meltype-mac-register --target-dir "$PWD/../target"
+        MELTYPE_RUST_REGISTER_HELPER="$PWD/../target/release/meltype-register-input-source"
+    fi
+    [[ -x "$MELTYPE_RUST_REGISTER_HELPER" ]] || { echo "Rust製入力ソース登録ツールがありません: $MELTYPE_RUST_REGISTER_HELPER" >&2; exit 1; }
+fi
 swift build "${SWIFT_FLAGS[@]}"
 
 echo "== 3/3 Meltype.app を組み立て"
@@ -63,7 +70,11 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Framewor
 BIN="$(swift build "${SWIFT_FLAGS[@]}" --show-bin-path)"
 cp "$BIN/MeltypeIME" "$APP/Contents/MacOS/Meltype"
 # 入力ソースの登録をやり直す小さな道具 (#134)。install.sh が入れ替えたあとに呼ぶ。
-cp "$BIN/RegisterInputSource" "$APP/Contents/MacOS/MeltypeRegisterInputSource"
+if [[ "${MELTYPE_RUST_CORE:-0}" == 1 ]]; then
+    cp "$MELTYPE_RUST_REGISTER_HELPER" "$APP/Contents/MacOS/MeltypeRegisterInputSource"
+else
+    cp "$BIN/RegisterInputSource" "$APP/Contents/MacOS/MeltypeRegisterInputSource"
+fi
 # azooKey が使う llama.framework などの動的なフレームワークも同梱する。
 # 入れていなかったため、1.0.0 は起動できなかった (dyld: Library not loaded: @rpath/llama.framework、#13)。
 for framework in "$BIN"/*.framework; do
