@@ -238,7 +238,7 @@ pub unsafe extern "C" fn meltype_tsf_would_eat(
                 return mods & (CONTROL | ALT) == 0;
             }
             let s = state();
-            if s.open == 0 && s.detection == 0 {
+            if s.open == 0 && s.detection == 0 && vk != 0x1c {
                 return reject(1);
             }
             if mods & (CONTROL | ALT | WIN) != 0 {
@@ -256,7 +256,10 @@ pub unsafe extern "C" fn meltype_tsf_would_eat(
                 }
                 update(c.owner, 2, 0, 0);
             }
-            if !((0x21..=0x7e).contains(&ch) || vk == 0x20 && modifiers() & SHIFT != 0) {
+            if !(vk == 0x1c
+                || (0x21..=0x7e).contains(&ch)
+                || vk == 0x20 && modifiers() & SHIFT != 0)
+            {
                 return false;
             }
             if ready(c.owner) == 0 {

@@ -65,6 +65,32 @@ class ReplyTests(CommitTests):
         self.assertEqual(self.reply(active=True,view=view),1)
         self.assertEqual(self.events[0],(0,1,None));self.assertEqual(self.host.attributes,[(0,1,22),(1,2,33)])
 
+    def test_reply_reconversion_matches_selected_utf16_before_preedit(self):
+        self.host.document=units('前😀日本後');self.host.selection=(1,5)
+        self.assertEqual(self.reply(active=True,selectionExpect='😀日本',view={'text':'再変換','converting':True}),1)
+        self.assertEqual(self.host.document,units('前再変換後'))
+        self.assertEqual([e[0] for e in self.events],[0,1,2])
+
+    def test_reply_reconversion_guard_rejects_stale_prefix_and_malformed_expectations(self):
+        for expected in ['new','ol','','old extra',None,42,True,{},'a'*2049]:
+            self.events.clear()
+            self.assertEqual(self.reply(active=True,selectionExpect=expected,commits=[{'text':'BAD'}],view={'text':'BAD'}),0)
+            self.assertEqual([e[0] for e in self.events],[5])
+            self.assertEqual(self.host.document,units('old'));self.assertEqual(self.writes,[])
+
+    def test_reply_reconversion_guard_rejects_unreadable_or_existing_composition(self):
+        self.host.fail_read=True
+        self.assertEqual(self.reply(active=True,selectionExpect='old',view={'text':'BAD'}),0)
+        self.host.fail_read=False;self.begin();self.events.clear()
+        self.assertEqual(self.reply(active=True,selectionExpect='old',view={'text':'BAD'}),0)
+        self.assertEqual([e[0] for e in self.events],[5]);self.assertEqual(self.host.document,units('old'))
+
+    def test_reply_partial_read_of_longer_selection_does_not_satisfy_original_text_guard(self):
+        self.host.document=units('old extra');self.host.selection=(0,9);self.host.read_limit=3
+        self.assertEqual(self.reply(active=True,selectionExpect='old',view={'text':'BAD'}),0)
+        self.assertEqual([e[0] for e in self.events],[5])
+        self.assertEqual(self.host.document,units('old extra'));self.assertEqual(self.writes,[])
+
     def test_reply_inactive_empty_view_preserves_existing_preedit(self):
         self.begin();self.assertEqual(self.reply(active=False,commits=[],view=None),1)
         self.assertEqual(self.host.document,units('old'));self.assertEqual(self.writes,[])

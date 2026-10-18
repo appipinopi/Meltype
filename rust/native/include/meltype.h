@@ -314,7 +314,10 @@ typedef struct MeltypeTsfKeyEditCallbacks {
      empty commits=32,null view=64. write borrows range and returns success.
    log kinds: secret=0,direct write failed=1,edit failed=2,core unavailable=3.
    Delayed SYNC session destruction retains lifetime but never calls owner state
-   after this function returns; callback storage need only live until return. */
+   after this function returns; callback storage need only live until return.
+   Explicit Convert over a selection sends {op:reconvert,text}. The captured
+   range/text are checked after the request and mode application. Invalidated
+   operations are consumed without reinjection; a newer composition is kept. */
 int32_t meltype_tsf_handle_key(void *context, uint32_t client, void *key_state, uint32_t key, uint16_t character, const char *metadata, const MeltypeTsfKeyEditCallbacks *callbacks);
 typedef struct MeltypeTsfCommitCallbacks {
     void *owner,*lifetime;
@@ -344,8 +347,10 @@ typedef struct MeltypeTsfApplyReplyCallbacks {
     void (*action)(void *, uint32_t operation, uint32_t cookie, void *context, const char *json, int32_t value);
 } MeltypeTsfApplyReplyCallbacks;
 /* TSF-thread-only live borrowed interfaces, valid READWRITE cookie and non-null
-   callbacks which never throw. reply={active,commits,view}; metadata={sid,direct}.
-   Applies commits first. Guard failure calls action 5 with reset JSON and stops.
+   callbacks which never throw. reply={active,commits,view,selectionExpect?};
+   metadata={sid,direct}. Optional selectionExpect must be nonempty text matching
+   the selected UTF-16 range, with no existing composition, before any edits.
+   Then applies commits. Guard failure calls action 5 with reset JSON and stops.
    action: 0 set converting(value),1 update composition(view JSON),2 show
    candidates(view JSON),3 end composition,4 hide candidates,5 reset core and
    mark key failed/unconsumed. JSON/range/text are borrowed only during callbacks.

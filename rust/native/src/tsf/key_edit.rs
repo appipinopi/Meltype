@@ -103,6 +103,42 @@ impl Work {
             self.ch,
         ) != 0
     }
+    unsafe fn selection_matches(&self, cookie: u32, selected: &Option<(ITfRange, String)>) -> bool {
+        let Some((original, text)) = selected else {
+            return true;
+        };
+        self.flags() & COMPOSING == 0
+            && ranges::selection(&self.context, cookie).is_some_and(|current| {
+                current
+                    .CompareStart(cookie, original, TF_ANCHOR_START)
+                    .is_ok_and(|n| n == 0)
+                    && current
+                        .CompareEnd(cookie, original, TF_ANCHOR_END)
+                        .is_ok_and(|n| n == 0)
+                    && ranges::matches_text(
+                        &current,
+                        cookie,
+                        &text.encode_utf16().collect::<Vec<_>>(),
+                    )
+            })
+    }
+    unsafe fn cancel_selection(&self, outcome: Outcome) {
+        // A nested key may already own a new composition. Do not reset it.
+        if self.flags() & COMPOSING == 0 {
+            let reset = CString::new(
+                json!({"op":"reset","sid":self.metadata["sid"],"direct":self.flags()&OPEN==0})
+                    .to_string(),
+            )
+            .unwrap();
+            let mut ignored = 0;
+            if (self.c.request)(self.c.owner, reset.as_ptr(), &mut ignored) == 0 {
+                self.update(SERVER_OFF, 0);
+            }
+        }
+        // Replaying Convert would act on the newly selected document.
+        self.update(OUTCOME, 2);
+        self.result.set(outcome);
+    }
     unsafe fn run(&self, cookie: u32) -> HRESULT {
         if !self.active.get() {
             return E_ABORT;
@@ -123,9 +159,33 @@ impl Work {
         }
         self.update(OWN, 1);
         let mut request = json!({"op":"key","sid":self.metadata["sid"],"process":self.metadata["process"],"vk":self.key,"ch":self.ch,"mods":self.mods,"code":true,"direct":self.flags()&OPEN==0});
-        let can_delete = ranges::selection(&self.context, cookie)
+        let selection = ranges::selection(&self.context, cookie);
+        let can_delete = selection
+            .as_ref()
             .and_then(|r| r.IsEmpty(cookie).ok())
             .is_some_and(|b| b.as_bool());
+        // Hold a cloned range as well as its text: another range containing
+        // the same word must not become the target after a reentrant request.
+        let reconversion = if self.key == 0x1c
+            && self.mods & 14 == 0
+            && self.flags() & (COMPOSING | PRIVATE) == 0
+            && !can_delete
+        {
+            selection.and_then(|range| {
+                let units = ranges::read(&range, cookie, 2049)?;
+                let text = String::from_utf16(&units).ok()?;
+                if text.is_empty() || text.chars().count() > 1024 {
+                    return None;
+                }
+                Some((range.Clone().ok()?, text))
+            })
+        } else {
+            None
+        };
+        if let Some((_, text)) = &reconversion {
+            request["op"] = json!("reconvert");
+            request["text"] = json!(text);
+        }
         request["canDelete"] = json!(can_delete);
         let flags = self.flags();
         if flags & MOVED != 0 {
@@ -159,7 +219,12 @@ impl Work {
             return E_FAIL;
         };
         let mut reply = 0;
-        if (self.c.request)(self.c.owner, request.as_ptr(), &mut reply) == 0 {
+        let responded = (self.c.request)(self.c.owner, request.as_ptr(), &mut reply) != 0;
+        if !self.selection_matches(cookie, &reconversion) {
+            self.cancel_selection(outcome);
+            return S_OK;
+        }
+        if !responded {
             // Keep the existing consumed flag, as the original branch does.
             self.update(
                 OUTCOME,
@@ -188,6 +253,10 @@ impl Work {
             u32::from(self.flags() & FAILED != 0) | if reply & 16 != 0 { 2 } else { 0 },
         );
         self.edit(APPLY_MODE, cookie);
+        if !self.selection_matches(cookie, &reconversion) {
+            self.cancel_selection(outcome);
+            return S_OK;
+        }
         if !active && self.flags() & COMPOSING != 0 {
             self.update(HELLO_AGAIN, 0);
         }

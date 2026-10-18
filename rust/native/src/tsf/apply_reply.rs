@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 lnkiai, appipinopi
 //! Ordered reply application, guarded-edit failure recovery and preedit cleanup.
-use super::commits;
+use super::{commits, ranges};
 use serde_json::{json, Value};
 use std::{
     ffi::{c_char, c_void, CStr, CString},
@@ -71,14 +71,30 @@ pub unsafe extern "C" fn meltype_tsf_apply_reply(
             let Ok(edits) = CString::new(edits.to_string()) else {
                 return false;
             };
-            if commits::meltype_tsf_apply_commits(
-                context.as_raw(),
-                cookie,
-                edits.as_ptr(),
-                c.owner,
-                c.current,
-                c.write,
-            ) == 0
+            // A reconversion starts only over the exact selected UTF-16 text,
+            // before any commits, preedit or candidate UI can be published.
+            let selected = match reply.get("selectionExpect") {
+                None => true,
+                Some(expected) => expected
+                    .as_str()
+                    .filter(|s| !s.is_empty())
+                    .is_some_and(|text| {
+                        let expected: Vec<_> = text.encode_utf16().collect();
+                        expected.len() <= 2048
+                            && (c.current)(c.owner).is_null()
+                            && ranges::selection(&context, cookie)
+                                .is_some_and(|r| ranges::matches_text(&r, cookie, &expected))
+                    }),
+            };
+            if !selected
+                || commits::meltype_tsf_apply_commits(
+                    context.as_raw(),
+                    cookie,
+                    edits.as_ptr(),
+                    c.owner,
+                    c.current,
+                    c.write,
+                ) == 0
             {
                 let Ok(reset) = CString::new(
                     json!({"op":"reset","sid":metadata["sid"],"direct":metadata["direct"]==true})

@@ -2179,6 +2179,20 @@ class StateTests(unittest.TestCase):
             self.assertEqual(result,0);self.assertEqual(request,{'op':'reset','sid':'reset"😀','direct':True})
             self.assertTrue(state.key_failed);self.assertFalse(state.consumed);self.assertTrue(state.last_converting);self.assertEqual(host.document,units('old'));self.assertFalse(state.composition)
         finally:self.cleanup_recovered(state,host)
+    def test_apply_native_preserves_selection_guard_through_value_projection(self):
+        state=self.create();host=DeferredHost();host.selection=(0,3)
+        try:
+            result,request=self.fixture_recovery(state,'{}',lambda worker:self.service_apply(state,host,{'active':True,'selectionExpect':'different','commits':[{'text':'BAD'}],'view':{'text':'BAD'}},worker=worker))
+            self.assertEqual(result,0);self.assertEqual(request['op'],'reset')
+            self.assertEqual(host.document,units('old'));self.assertFalse(state.composition)
+            self.assertTrue(state.key_failed);self.assertFalse(state.consumed)
+        finally:self.cleanup_recovered(state,host)
+    def test_apply_native_matching_selection_starts_reconversion(self):
+        state=self.create();host=DeferredHost();host.document=units('前😀old後');host.selection=(3,6)
+        try:
+            self.assertEqual(self.service_apply(state,host,{'active':True,'selectionExpect':'old','view':{'text':'再変換','converting':True}}),1)
+            self.assertEqual(host.document,units('前😀再変換後'));self.assertTrue(state.composition)
+        finally:self.cleanup_recovered(state,host)
     def test_apply_native_guarded_replacement_checks_expected_text(self):
         state=self.create();host=DeferredHost()
         try:

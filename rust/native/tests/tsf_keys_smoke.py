@@ -273,6 +273,14 @@ class AcceptanceTests(KeyboardTests):
         self.assertEqual(self.dispatch(), (True, 0x20))
         self.assertTrue(self.checked)
 
+    def test_explicit_convert_is_available_in_direct_mode_but_obeys_field_and_privacy(self):
+        self.s.open=0;self.s.detection=0
+        self.assertTrue(self.dispatch(0x1c)[0]);self.assertTrue(self.checked)
+        self.mods(2);self.assertFalse(self.dispatch(0x1c)[0])
+        self.mods(0);self.secret_result=1;self.assertFalse(self.dispatch(0x1c)[0])
+        self.secret_result=0;self.host.integers[bytes(DISABLED)]=1
+        self.assertFalse(self.dispatch(0x1c)[0])
+
     def test_secret_scope_blocks_and_unknown_scope_is_checked_during_edit(self):
         self.mods(1)
         self.secret_result = 1

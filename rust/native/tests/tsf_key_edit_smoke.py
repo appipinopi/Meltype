@@ -77,7 +77,7 @@ class KeyEditTests(unittest.TestCase):
         self.host=KeyHost();self.token=self.api.meltype_tsf_key_state_create()
         self.flags=6;self.own=False;self.reply=113;self.responds=True;self.secret=False;self.write_success=True
         self.events,self.requests,self.errors=[],[],[]
-        self.on_secret=self.on_request=self.on_apply=None
+        self.on_secret=self.on_request=self.on_apply=self.on_mode=None
         self.metadata=json.dumps({"sid":'入力"😀',"process":'C:\\app.exe'},ensure_ascii=False).encode()
         def protect(function,fallback):
             def guarded(*args):
@@ -113,6 +113,7 @@ class KeyEditTests(unittest.TestCase):
             if self.on_secret:self.on_secret()
             return int(self.secret)
         if op in [1,2]:self.flags&=~1
+        if op==3 and self.on_mode:self.on_mode()
         if op==4 and self.on_apply:self.on_apply()
         return 0
 
@@ -202,6 +203,72 @@ class KeyEditTests(unittest.TestCase):
         self.call()
         self.assertFalse(self.requests[0]['canDelete'])
         self.assertEqual(self.host.document,units('前😀後'))
+
+    def selection(self,text,start=0,end=None):
+        self.host.document=units(text)
+        self.host.selection=(start,len(self.host.document) if end is None else end)
+        self.host.ranges[self.host.original][:2]=self.host.selection
+
+    def test_convert_sends_bounded_selection_in_direct_mode(self):
+        self.selection('前nihongo後',1,8);self.flags=4
+        self.call(28,0)
+        self.assertEqual(self.requests[0]['op'],'reconvert')
+        self.assertEqual(self.requests[0]['text'],'nihongo')
+        self.assertTrue(self.requests[0]['direct']);self.assertFalse(self.requests[0]['canDelete'])
+        self.assertEqual((self.requests[0]['before'],self.requests[0]['after']),('前','後'))
+        self.assertIn(('edit',4),self.events)
+
+    def test_convert_does_not_reconvert_caret_private_or_existing_composition(self):
+        self.call(28,0);self.assertEqual(self.requests[-1]['op'],'key')
+        self.selection('nihongo');self.flags|=32
+        self.call(28,0);self.assertEqual(self.requests[-1]['op'],'key')
+        self.flags=(self.flags&~32)|1
+        self.call(28,0);self.assertEqual(self.requests[-1]['op'],'key')
+
+    def test_convert_rejects_overlong_unreadable_or_invalid_utf16_selection(self):
+        for text in ['a'*1025,'\ud800']:
+            self.selection(text);self.call(28,0)
+            self.assertEqual(self.requests[-1]['op'],'key')
+        self.selection('nihongo');self.host.fail_read=True
+        self.call(28,0);self.assertEqual(self.requests[-1]['op'],'key')
+
+    def test_changed_selection_resets_without_applying_or_replaying_convert(self):
+        self.selection('go go',0,2)
+        def moved():
+            if self.requests[-1]['op']=='reconvert':
+                self.host.selection=(3,5);self.host.ranges[self.host.original][:2]=[3,5]
+        self.on_request=moved
+        self.call(28,0)
+        self.assertEqual([r['op'] for r in self.requests],['reconvert','reset'])
+        self.assertFalse(self.replayed());self.assertTrue(self.flags&128)
+        self.assertNotIn(('edit',3),self.events);self.assertNotIn(('edit',4),self.events)
+        self.assertEqual(self.host.document,units('go go'));self.assertEqual(self.host.writes,[])
+
+    def test_changed_selected_text_cancels_even_when_transport_failed(self):
+        self.selection('nihongo');self.responds=False
+        def changed():
+            if self.requests[-1]['op']=='reconvert': self.host.document=units('changed')
+        self.on_request=changed
+        self.call(28,0)
+        self.assertEqual([r['op'] for r in self.requests],['reconvert','reset'])
+        self.assertFalse(self.replayed());self.assertNotIn(('edit',4),self.events)
+        self.assertFalse(self.flags&64);self.assertEqual(self.host.writes,[])
+
+    def test_mode_notification_cannot_retarget_to_identical_text(self):
+        self.selection('go go',0,2)
+        def moved():self.host.ranges[self.host.original][:2]=[3,5]
+        self.on_mode=moved
+        self.call(28,0)
+        self.assertEqual([r['op'] for r in self.requests],['reconvert','reset'])
+        self.assertNotIn(('edit',4),self.events);self.assertFalse(self.replayed())
+
+    def test_nested_composition_is_not_reset_by_cancelled_reconversion(self):
+        self.selection('nihongo')
+        self.on_request=lambda:setattr(self,'flags',self.flags|1)
+        self.call(28,0)
+        self.assertEqual([r['op'] for r in self.requests],['reconvert'])
+        self.assertTrue(self.flags&1);self.assertNotIn(('edit',4),self.events)
+        self.assertFalse(self.replayed())
 
     def test_failed_core_and_failed_write_replay_once(self):
         self.responds=False;self.write_success=False

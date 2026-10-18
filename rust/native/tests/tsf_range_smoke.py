@@ -41,6 +41,8 @@ class Host:
         self.bind(self.range_table,9,HR,[U32,HR,c.POINTER(HR),P],self.shift_end)
         self.bind(self.range_table,14,HR,[U32,c.POINTER(HR)],self.empty)
         self.bind(self.range_table,15,HR,[U32,HR],self.collapse)
+        self.bind(self.range_table,18,HR,[U32,P,HR,c.POINTER(HR)],self.compare_start)
+        self.bind(self.range_table,19,HR,[U32,P,HR,c.POINTER(HR)],self.compare_end)
         self.bind(self.range_table,23,HR,[c.POINTER(P)],self.clone)
         self.bind(self.context_table,5,HR,[U32,U32,U32,c.POINTER(Selection),c.POINTER(U32)],self.get_selection)
         self.bind(self.context_table,6,HR,[U32,U32,c.POINTER(Selection)],self.set_selection)
@@ -71,7 +73,7 @@ class Host:
         count[0]=0
         if self.fail_read: return FAIL
         start,end,_=self.ranges[this]
-        text=self.document[start:end][:limit]
+        text=self.document[start:end][:min(limit,getattr(self,'read_limit',limit))]
         for index,value in enumerate(text): out[index]=value
         count[0]=len(text);return 0
     def write(self,this,cookie,flags,text,length):
@@ -103,6 +105,14 @@ class Host:
         return 0
     def clone(self,this,out):
         start,end,_=self.ranges[this];out[0]=self.new_range(start,end);return 0
+    def compare_start(self,this,cookie,other,anchor,out):
+        assert cookie==7
+        left=self.ranges[this][0];right=self.ranges[other][anchor]
+        out[0]=(left>right)-(left<right);return 0
+    def compare_end(self,this,cookie,other,anchor,out):
+        assert cookie==7
+        left=self.ranges[this][1];right=self.ranges[other][anchor]
+        out[0]=(left>right)-(left<right);return 0
     def get_selection(self,this,cookie,index,count,out,fetched):
         assert cookie==7 and count==1
         out[0].range=self.original;self.ref(self.original,1)

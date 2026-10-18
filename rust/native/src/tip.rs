@@ -81,7 +81,7 @@ unsafe fn request_inner(connection: *mut c_void, request: *const c_char) -> Opti
     if !sessions.contains_key(sid) {
         if request["composing"] == true
             || sessions.len() >= 16
-            || !["key", "mode", "toggle"].contains(&op)
+            || !["key", "mode", "toggle", "reconvert"].contains(&op)
         {
             return Some(inactive());
         }
@@ -116,6 +116,21 @@ unsafe fn request_inner(connection: *mut c_void, request: *const c_char) -> Opti
         }
     });
     let result = match op {
+        "reconvert" => {
+            meltype_set_direct(handle, i32::from(request["direct"] == true));
+            meltype_set_private(handle, i32::from(request["private"] == true));
+            let text = request["text"]
+                .as_str()
+                .and_then(|s| CString::new(s).ok())?;
+            let reading = request["reading"]
+                .as_str()
+                .and_then(|s| CString::new(s).ok());
+            meltype_reconvert_selection(
+                handle,
+                text.as_ptr(),
+                reading.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
+            )
+        }
         "key" => {
             meltype_set_direct(handle, i32::from(request["direct"] == true));
             meltype_set_private(handle, i32::from(request["private"] == true));
@@ -178,6 +193,36 @@ unsafe fn request_inner(connection: *mut c_void, request: *const c_char) -> Opti
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn selected_text_reconversion_reaches_core_and_preserves_cancel_in_direct_mode() {
+        unsafe {
+            let connection = meltype_tip_create();
+            let call = |request: Value| -> Value {
+                let request = CString::new(request.to_string()).unwrap();
+                serde_json::from_str(
+                    &take(meltype_tip_request(connection, request.as_ptr())).unwrap(),
+                )
+                .unwrap()
+            };
+            let result =
+                call(json!({"op":"reconvert","sid":"selected","text":"nihongo","direct":true}));
+            assert_eq!(result["selectionExpect"], "nihongo");
+            assert_eq!(result["consumed"], true);
+            assert_eq!(result["commits"], json!([]));
+            assert!(result["view"]["candidates"]
+                .as_array()
+                .unwrap()
+                .contains(&json!("nihongo")));
+            let cancelled = call(json!({"op":"key","sid":"selected","vk":27,"direct":true}));
+            assert_eq!(cancelled["commits"][0]["text"], "nihongo");
+            assert!(cancelled["view"].is_null());
+            let private =
+                call(json!({"op":"reconvert","sid":"private","text":"nihongo","private":true}));
+            assert_eq!(private["consumed"], false);
+            assert!(private["view"].is_null());
+            meltype_tip_destroy(connection);
+        }
+    }
     #[test]
     fn direct_detection_requires_deletion_capability_and_switches_mode() {
         // Exclude debug-build dictionary initialization from the user's

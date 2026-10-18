@@ -77,6 +77,23 @@ pub(super) unsafe fn read(range: &ITfRange, cookie: u32, limit: usize) -> Option
     text.truncate(count as usize);
     Some(text)
 }
+/// Check the full extent as well as the text. A provider may return fewer
+/// characters than requested even when the selected range is longer.
+pub(super) unsafe fn matches_text(range: &ITfRange, cookie: u32, expected: &[u16]) -> bool {
+    let Ok(length) = i32::try_from(expected.len()) else {
+        return false;
+    };
+    let Ok(remaining) = range.Clone() else {
+        return false;
+    };
+    let mut moved = 0;
+    remaining
+        .ShiftStart(cookie, length, &mut moved, ptr::null())
+        .is_ok()
+        && moved == length
+        && remaining.IsEmpty(cookie).is_ok_and(|empty| empty.as_bool())
+        && read(range, cookie, expected.len() + 1).is_some_and(|actual| actual == expected)
+}
 /// # Safety
 /// `context` is a borrowed ITfContext. Callback buffers are valid only during the
 /// callback; use on the TSF thread with a valid read/write cookie.

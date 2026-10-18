@@ -327,7 +327,15 @@ pub(crate) fn application_reply(input: &[u8]) -> Option<serde_json::Value> {
             serde_json::Value::Object(fields)
         }
     };
-    Some(serde_json::json!({"active":boolean(get(&value,"active")),"commits":commits,"view":view}))
+    let mut reply =
+        serde_json::json!({"active":boolean(get(&value,"active")),"commits":commits,"view":view});
+    if let Some(expected) = get(&value, "selectionExpect") {
+        reply["selectionExpect"] = match expected {
+            Value::String(_) => serde_json::json!(text(Some(expected))),
+            _ => serde_json::Value::Null,
+        };
+    }
+    Some(reply)
 }
 unsafe fn emit(value: &Value, owner: *mut c_void, callback: Emit) -> bool {
     let empty = std::ptr::null();
@@ -480,6 +488,38 @@ mod tests {
         assert_eq!(value["view"]["predictions"], serde_json::json!(["", "�"]));
         assert_eq!(value["view"]["selectedIndex"], 0);
         assert_eq!(value["view"]["converting"], false);
+    }
+    #[cfg(windows)]
+    #[test]
+    fn application_projection_preserves_selection_guard_and_rejectable_types() {
+        let expected = "原文😀";
+        let value = application_reply(
+            serde_json::json!({"selectionExpect":expected})
+                .to_string()
+                .as_bytes(),
+        )
+        .unwrap();
+        assert_eq!(value["selectionExpect"], expected);
+        assert!(application_reply(b"{}")
+            .unwrap()
+            .get("selectionExpect")
+            .is_none());
+        for value in [
+            serde_json::Value::Null,
+            serde_json::json!(true),
+            serde_json::json!(123),
+            serde_json::json!([]),
+        ] {
+            let reply = application_reply(
+                serde_json::json!({"selectionExpect":value})
+                    .to_string()
+                    .as_bytes(),
+            )
+            .unwrap();
+            assert!(reply
+                .get("selectionExpect")
+                .is_some_and(serde_json::Value::is_null));
+        }
     }
     #[cfg(windows)]
     #[test]

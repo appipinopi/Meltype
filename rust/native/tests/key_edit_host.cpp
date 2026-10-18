@@ -241,6 +241,31 @@ int wmain() {
     assert(service->ServiceInterface<ITfKeyEventSink>()->OnTestKeyDown(reinterpret_cast<ITfContext*>(&context),VK_PACKET,0,&eaten)==S_OK && !eaten);
     assert(doc.text==L"前😀　ああ" && composition.refs==0 && composition.ended==endedBeforePacket+1);
     assert(doc.selectionStart==0 && doc.selectionEnd==0);
+    // Selected-text reconversion must travel through the real key sink and
+    // framed Rust worker, and update only the original selected UTF-16 range.
+    auto press=[&](UINT key) {
+        auto* events=service->ServiceInterface<ITfKeyEventSink>();
+        assert(events->OnTestKeyDown(doc.context,key,0,&eaten)==S_OK && eaten);
+        assert(events->OnKeyDown(doc.context,key,0,&eaten)==S_OK && eaten);
+        assert(events->OnTestKeyUp(doc.context,key,0,&eaten)==S_OK && eaten);
+        assert(events->OnKeyUp(doc.context,key,0,&eaten)==S_OK && eaten);
+    };
+    const std::wstring selectedOriginal=L"前😀nihongo後";
+    for (int action=0;action<3;++action) {
+        doc.text=selectedOriginal;doc.selectionStart=3;doc.selectionEnd=10;
+        press(VK_CONVERT);
+        if (doc.text!=L"前😀にほんご後" || composition.refs!=1) {
+            fprintf(stderr,"Reconversion mismatch action=%d refs=%lu, UTF16:",action,composition.refs);
+            for (wchar_t unit:doc.text) fprintf(stderr," %04X",static_cast<unsigned int>(unit));
+            fprintf(stderr,"\n");
+        }
+        // This private worker has no external kanji converter installed.
+        assert(doc.text==L"前😀にほんご後" && composition.refs==1);
+        if (action==2) press(VK_DOWN);
+        press(action==1?VK_ESCAPE:VK_RETURN);
+        assert(composition.refs==0);
+        assert(doc.text==(action==0?L"前😀にほんご後":selectedOriginal));
+    }
     const auto beforeTermination=doc.text;
     doc.selectionStart=doc.selectionEnd=static_cast<LONG>(doc.text.size());
     assert(service->ServiceInterface<ITfKeyEventSink>()->OnTestKeyDown(doc.context,'A',0,&eaten)==S_OK && eaten);
