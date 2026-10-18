@@ -24,12 +24,13 @@ func testDictionaryDialog(_ editor:NativeEditorPolicy) throws {
             method_setImplementation(method,original);imp_removeBlock(replacement)
         }
     }
+    func optionalText(_ value:String?)->String {value.map {"value:"+$0} ?? "nil"}
     let panelBlock:@convention(block)(AnyObject)->Int = {object in
         guard let panel=object as? NSOpenPanel else {fatalError("not actual NSOpenPanel")}
         trace.append("choose")
         panelState=[String(panel.allowsMultipleSelection),String(panel.canChooseDirectories),String(panel.canChooseFiles),
             String(panel.resolvesAliases),String(panel.showsHiddenFiles),String(panel.canCreateDirectories),
-            panel.title,panel.prompt,panel.nameFieldLabel]
+            optionalText(panel.title),optionalText(panel.prompt),optionalText(panel.nameFieldLabel)]
         return response.rawValue
     }
     let urlBlock:@convention(block)(AnyObject)->NSURL? = {_ in trace.append("url");return selected as NSURL?}
