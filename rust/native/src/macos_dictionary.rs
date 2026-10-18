@@ -290,10 +290,10 @@ mod native {
             } else {
                 std::slice::from_raw_parts(pointer, byte_count)
             };
-            // Match Swift Foundation String+IO's UTF8 branch: strip one BOM,
+            // Match the actual macOS SDK Swift file initializer: preserve BOM,
             // validate the complete bytes (including NUL), else corrupt-file 259.
-            // https://github.com/swiftlang/swift-foundation/blob/main/Sources/FoundationEssentials/String/String%2BIO.swift
-            let buffer = buffer.strip_prefix(&[0xef, 0xbb, 0xbf]).unwrap_or(buffer);
+            // Foundation main's newer BOM policy differs; the independent SDK
+            // fixture pins the behavior of the original frontend on this SDK.
             let Ok(text) = std::str::from_utf8(buffer) else {
                 let domain = NSString::from_str("NSCocoaErrorDomain");
                 let failure: Retained<AnyObject> = msg_send![class(c"NSError"),errorWithDomain:&*domain,code:259isize,userInfo:std::ptr::null::<AnyObject>()];
