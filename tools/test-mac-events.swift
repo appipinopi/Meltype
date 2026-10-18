@@ -153,6 +153,9 @@ struct EventTests {
   precondition(FileManager.default.fileExists(atPath:directory+"/azooKey"),"converter ignored isolated data directory")
   passed+=3
   print("PASS: actual azooKey candidates, clause reading coverage, isolated data directory")
+  precondition(NativeCore.shared.spellCheckCount > 0,"Rust did not invoke the registered NSSpellChecker callback")
+  passed+=1
+  print("PASS: registered NSSpellChecker through Rust (\(NativeCore.shared.spellCheckCount) actual checks)")
   #endif
   print("\(passed) Mac event/integration cases passed (synthetic client; OS IME registration and app GUI NOT_RUN)")
  }

@@ -147,7 +147,26 @@ pub unsafe extern "C" fn meltype_macos_handle_key(
     after: *const std::ffi::c_char,
 ) -> *mut std::ffi::c_char {
     let Some(scalar) = u32::try_from(ch).ok().and_then(char::from_u32) else {
+        let Ok(_spelling) = super::word_checker::prepare(
+            handle as usize,
+            0,
+            0,
+            0,
+            std::ptr::null(),
+            std::ptr::null(),
+        ) else {
+            return std::ptr::null_mut();
+        };
         return super::run(handle, |s| s.result(false));
+    };
+    let special = unicode_normalization::char::is_combining_mark(scalar) || ch > 0xffff;
+    let _spelling = if special {
+        match super::word_checker::prepare(handle as usize, vk, ch, modifiers, before, after) {
+            Ok(scope) => scope,
+            Err(()) => return std::ptr::null_mut(),
+        }
+    } else {
+        None
     };
     if unicode_normalization::char::is_combining_mark(scalar) {
         return super::run(handle, |s| {

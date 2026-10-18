@@ -40,3 +40,16 @@ conversion rather than prediction selection. Other settings remain explicit in
 the private profile. Candidate Tab/Shift+Tab navigation must not refetch the
 backend. macOS external candidates retain the registered converter's order
 rather than being displaced by bundled dictionary/context candidates.
+
+The OS English spelling callback is now resolved by Rust before acquiring the
+session lock. Resolved evidence has a thread-local scope with restoration on
+nested calls/unwind; no host callback runs from dictionary evaluation. Rust caches
+positive and negative checks for five minutes (4096 entries), invalidates the
+cache on callback registration, and rejects results if the provider was replaced
+or the session was destroyed while the callback ran. Private/direct/disabled/
+manual/kana paths do not request OS evidence. Swift Rust builds keep only the
+NSSpellChecker OS call; the cache and check counter are native. The portable real
+ABI test covers classification, commit/Undo, cache behavior, callback replacement,
+reentrant session access and destruction. The real-converter SDK host requires
+an actual NSSpellChecker invocation through the registered product callback.
+This is evidence integration, not proof of full upstream detector parity.

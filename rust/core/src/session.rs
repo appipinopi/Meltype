@@ -329,6 +329,55 @@ impl Session {
             self.code_japanese = false;
         }
     }
+    pub fn spelling_probe(
+        &self,
+        vk: i32,
+        ch: i32,
+        modifiers: i32,
+        before: Option<&str>,
+        after: Option<&str>,
+    ) -> Option<crate::spelling::Probe> {
+        if self.private
+            || self.direct
+            || self.code_english()
+            || self.uses_kana()
+            || !self.settings.boolean("Enabled")
+            || self.settings.text("DetectionLevel") == "Manual"
+        {
+            return None;
+        }
+        let mut words = vec![self.raw.clone()];
+        if vk == -1 {
+            words.extend(self.last_commit.iter().map(|commit| commit.raw.clone()));
+        }
+        if modifiers & 14 == 0 {
+            if vk == 8 {
+                let mut raw = self.raw.clone();
+                raw.pop();
+                words.push(raw);
+            } else if let Some(c) = u32::try_from(ch)
+                .ok()
+                .and_then(char::from_u32)
+                .filter(|c| *c >= ' ' && *c != '\u{7f}')
+            {
+                words.push(format!("{}{c}", self.raw));
+            }
+        }
+        Some(crate::spelling::Probe {
+            words,
+            before: before
+                .unwrap_or(&self.before)
+                .chars()
+                .rev()
+                .take(4000)
+                .collect::<String>()
+                .chars()
+                .rev()
+                .collect(),
+            after: after.unwrap_or(&self.after).chars().take(4000).collect(),
+            level: self.settings.text("DetectionLevel").to_owned(),
+        })
+    }
     pub fn raw(&self) -> &str {
         &self.raw
     }
@@ -586,7 +635,7 @@ impl Session {
         if self.settings.text("DetectionLevel") == "Manual"
             || self.raw.len() < 2
             || !self.raw.bytes().all(|c| c.is_ascii_alphabetic())
-            || !Dictionary::bundled().is_english(&self.raw)
+            || !Dictionary::bundled().known_english(&self.raw)
         {
             return false;
         }
@@ -1494,7 +1543,7 @@ impl Session {
                                     "open", "run",
                                 ]
                                 .contains(&self.raw.to_ascii_lowercase().as_str())))
-                    && (Dictionary::bundled().is_english(&self.raw)
+                    && (Dictionary::bundled().known_english(&self.raw)
                         || Dictionary::bundled().english_context(&self.before)
                             && self.raw.bytes().all(|c| c.is_ascii_alphabetic()))
                 {

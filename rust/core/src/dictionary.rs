@@ -366,6 +366,20 @@ impl Dictionary {
         if self.english.contains(&lower) {
             return raw.to_owned();
         }
+        if self.spell_word(&lower) {
+            let analysis = romaji::analyze(&lower, false);
+            let fragment = romaji::analyze(&lower, true);
+            let small_kana =
+                !analysis.valid && fragment.valid && fragment.partial.is_empty() && lower.len() < 6;
+            if !small_kana
+                && (!fragment.valid
+                    || !analysis.partial.is_empty()
+                        && analysis.partial != "n"
+                        && analysis.partial != "nn")
+            {
+                return raw.to_owned();
+            }
+        }
         // Preserve case-sensitive product names while separating an attached particle.
         for particle in [
             "no", "ga", "wo", "ni", "de", "to", "ha", "mo", "wa", "he", "ya",
@@ -528,6 +542,12 @@ impl Dictionary {
                         .is_some_and(|tail| tail.len() >= 3 && self.english.contains(tail))
                 })
         })
+    }
+    pub fn spell_word(&self, raw: &str) -> bool {
+        crate::spelling::is_word(raw)
+    }
+    pub fn known_english(&self, raw: &str) -> bool {
+        self.is_english(raw) || self.spell_word(raw)
     }
     pub fn is_english(&self, raw: &str) -> bool {
         self.english.contains(&raw.to_ascii_lowercase())

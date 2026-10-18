@@ -18,6 +18,7 @@ private typealias SelectFunction = @convention(c) (UnsafeMutableRawPointer?, Int
 private typealias SetDirectFunction = @convention(c) (UnsafeMutableRawPointer?, Int32) -> Void
 private typealias DataDirectoryFunction = @convention(c) () -> UnsafeMutablePointer<CChar>?
 private typealias ReportUrlFunction = @convention(c) (UnsafePointer<CChar>?) -> UnsafeMutablePointer<CChar>?
+private typealias WordCountFunction = @convention(c) () -> UInt64
 private typealias FreeFunction = @convention(c) (UnsafeMutableRawPointer?) -> Void
 
 // ---- 本体から呼ばれる関数 (文字列は strdup したものを返し、本体が free する) ----
@@ -38,13 +39,16 @@ private let candidatesCallback: CandidatesCallback = { reading in
 }
 
 /// 英単語として正しい綴りか (macOS のスペルチェッカー、英語で調べる)。
+#if !MELTYPE_RUST_CORE
 private let spellCacheLock = NSLock()
 nonisolated(unsafe) private var spellCache: [String: Bool] = [:]
 nonisolated(unsafe) private var spellCacheExpiration = Date.distantPast
 nonisolated(unsafe) private var spellChecks = 0
+#endif
 private let isWordCallback: IsWordCallback = { word in
     guard let word else { return 0 }
     let text = String(cString: word)
+#if !MELTYPE_RUST_CORE
     let cached: Bool? = spellCacheLock.withLock {
         if Date() >= spellCacheExpiration {
             spellCache.removeAll(keepingCapacity: true)
@@ -53,13 +57,16 @@ private let isWordCallback: IsWordCallback = { word in
         return spellCache[text]
     }
     if let cached { return cached ? 1 : 0 }
+#endif
     let misspelled = NSSpellChecker.shared.checkSpelling(of: text, startingAt: 0, language: "en", wrap: false, inSpellDocumentWithTag: 0, wordCount: nil)
     let valid = misspelled.location == NSNotFound
+#if !MELTYPE_RUST_CORE
     spellCacheLock.withLock {
         spellChecks += 1
         if spellCache.count >= 4096 { spellCache.removeAll(keepingCapacity: true) }
         spellCache[text] = valid
     }
+#endif
     return valid ? 1 : 0
 }
 
@@ -92,7 +99,14 @@ struct CompositionView: Decodable {
 /// libMeltypeNative.dylib を読み込んで呼ぶ。Meltype.app/Contents/Frameworks に置く (build.sh)。
 final class NativeCore {
     static let shared = NativeCore()
-    var spellCheckCount: Int { spellCacheLock.withLock { spellChecks } }
+    var spellCheckCount: Int {
+#if MELTYPE_RUST_CORE
+        Int(clamping: wordCountFunction?() ?? 0)
+#else
+        spellCacheLock.withLock { spellChecks }
+#endif
+    }
+    private let wordCountFunction: WordCountFunction?
 
     let keyPolicy: NativeKeyPolicy?
     let editorPolicy: NativeEditorPolicy?
@@ -148,6 +162,7 @@ final class NativeCore {
         dataDirectoryFunction = symbol("meltype_data_directory", as: DataDirectoryFunction.self)
         reportUrlFunction = symbol("meltype_report_url", as: ReportUrlFunction.self)
         freeFunction = symbol("meltype_free", as: FreeFunction.self)
+        wordCountFunction = symbol("meltype_word_check_count", as: WordCountFunction.self)
     }
 
     func initialize() {

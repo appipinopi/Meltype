@@ -61,7 +61,7 @@ impl Dictionary {
                 .unwrap_or_default(),
         )
     }
-    pub(crate) fn composition(
+    pub fn composition(
         &self,
         raw: &str,
         final_input: bool,
@@ -128,11 +128,14 @@ impl Dictionary {
         // Compound English words can be joined by the span search below.
         // Avoid repeatedly re-segmenting unknown fragments inside that search.
         let abbreviation = lower.len() >= 3 && lower.bytes().all(|c| !b"aiueo".contains(&c));
-        if !self.english.contains(&lower) && !abbreviation {
-            return false;
-        }
         let strict = romaji::analyze(&lower, false);
         let fragment = romaji::analyze(&lower, true);
+        let small_kana =
+            !strict.valid && fragment.valid && fragment.partial.is_empty() && lower.len() < 6;
+        let spell_word = self.spell_word(&lower) && !small_kana && !self.is_japanese(&lower);
+        if !self.english.contains(&lower) && !abbreviation && !spell_word {
+            return false;
+        }
         if !fragment.valid {
             return lower.len() >= 3 || self.common_english.contains(&lower);
         }
@@ -152,7 +155,9 @@ impl Dictionary {
         }
         // A readable proper name requires context in Conservative, too.
         // Aggressive otherwise uses the existing dictionary rendering rules.
-        let needed = if evidence.level == "Conservative" {
+        let needed = if evidence.level == "Conservative"
+            || spell_word && strict.valid && fragment.partial.is_empty()
+        {
             2
         } else {
             1

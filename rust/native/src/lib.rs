@@ -15,6 +15,7 @@ pub mod tip;
 pub mod tip_transport;
 #[cfg(windows)]
 mod tsf;
+mod word_checker;
 use std::{
     collections::HashMap,
     ffi::{c_char, c_void, CStr, CString},
@@ -93,7 +94,7 @@ unsafe fn take(pointer: *mut c_char) -> Option<String> {
 pub extern "C" fn meltype_init(
     clauses: Option<ClausesCallback>,
     candidates: Option<CandidatesCallback>,
-    _is_word: Option<WordCallback>,
+    is_word: Option<WordCallback>,
 ) -> i32 {
     let Ok(mut callbacks) = CALLBACKS.lock() else {
         return 0;
@@ -102,6 +103,7 @@ pub extern "C" fn meltype_init(
         clauses,
         candidates,
     };
+    word_checker::configure(is_word);
     1
 }
 
@@ -305,6 +307,11 @@ pub unsafe extern "C" fn meltype_handle_key(
     after: *const c_char,
 ) -> *mut c_char {
     catch_unwind(AssertUnwindSafe(|| {
+        let Ok(_spelling) =
+            word_checker::prepare(handle as usize, vk, ch, modifiers, before, after)
+        else {
+            return std::ptr::null_mut();
+        };
         let reading = sessions().lock().ok().and_then(|all| {
             all.get(&(handle as usize))
                 .filter(|s| {
@@ -372,10 +379,34 @@ pub unsafe extern "C" fn meltype_handle_key(
 
 #[no_mangle]
 pub extern "C" fn meltype_commit(handle: *mut c_void) -> *mut c_char {
+    let Ok(_spelling) = (unsafe {
+        word_checker::prepare(
+            handle as usize,
+            13,
+            0,
+            0,
+            std::ptr::null(),
+            std::ptr::null(),
+        )
+    }) else {
+        return std::ptr::null_mut();
+    };
     run(handle, Session::commit)
 }
 #[no_mangle]
 pub extern "C" fn meltype_commit_preedit(handle: *mut c_void) -> *mut c_char {
+    let Ok(_spelling) = (unsafe {
+        word_checker::prepare(
+            handle as usize,
+            13,
+            0,
+            0,
+            std::ptr::null(),
+            std::ptr::null(),
+        )
+    }) else {
+        return std::ptr::null_mut();
+    };
     run(handle, Session::commit_preedit)
 }
 /// # Safety
@@ -401,7 +432,13 @@ pub unsafe extern "C" fn meltype_undo_commit(
     handle: *mut c_void,
     before: *const c_char,
 ) -> *mut c_char {
+    let before_pointer = before;
     let Some(before) = read(before) else {
+        return std::ptr::null_mut();
+    };
+    let Ok(_spelling) =
+        word_checker::prepare(handle as usize, -1, 0, 0, before_pointer, std::ptr::null())
+    else {
         return std::ptr::null_mut();
     };
     run(handle, |s| {
@@ -418,6 +455,11 @@ pub extern "C" fn meltype_reset(handle: *mut c_void) -> *mut c_char {
 }
 #[no_mangle]
 pub extern "C" fn meltype_select_candidate(handle: *mut c_void, index: i32) -> *mut c_char {
+    let Ok(_spelling) = (unsafe {
+        word_checker::prepare(handle as usize, 0, 0, 0, std::ptr::null(), std::ptr::null())
+    }) else {
+        return std::ptr::null_mut();
+    };
     run(handle, |s| s.select(index as usize))
 }
 #[no_mangle]
