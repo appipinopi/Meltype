@@ -225,6 +225,13 @@ pub extern "C" fn meltype_destroy(handle: *mut c_void) {
 }
 
 unsafe fn external_conversion(reading: &str, before: *const c_char) -> (Vec<Clause>, Vec<String>) {
+    external_conversion_min(reading, before, 0)
+}
+unsafe fn external_conversion_min(
+    reading: &str,
+    before: *const c_char,
+    minimum: usize,
+) -> (Vec<Clause>, Vec<String>) {
     let mut spans = meltype_core::protection::scan(reading);
     // Detected English within a Japanese reading is literal composition text,
     // not romaji for the external converter. Keep complete alphanumeric runs.
@@ -258,6 +265,9 @@ unsafe fn external_conversion(reading: &str, before: *const c_char) -> (Vec<Clau
         .unwrap_or(false);
     let backend = MOZC.lock().map(|m| m.is_some()).unwrap_or(false);
     if spans.is_empty() || !callbacks && !backend {
+        if reading.encode_utf16().count() < minimum {
+            return (Vec::new(), Vec::new());
+        }
         return external_conversion_unprotected(reading, before);
     }
     let mut segments = Vec::new();
@@ -269,7 +279,11 @@ unsafe fn external_conversion(reading: &str, before: *const c_char) -> (Vec<Clau
     {
         if offset < start {
             let gap = &reading[offset..start];
-            let (clauses, candidates) = external_conversion_unprotected(gap, before);
+            let (clauses, candidates) = if gap.encode_utf16().count() < minimum {
+                (Vec::new(), Vec::new())
+            } else {
+                external_conversion_unprotected(gap, before)
+            };
             if clauses.is_empty() {
                 segments.push(Clause::new(gap.to_owned(), candidates));
             } else {
@@ -393,7 +407,9 @@ pub unsafe extern "C" fn meltype_handle_key(
             None
         };
         if let Some(reading) = live {
-            let (mut clauses, candidates) = external_conversion(&reading, before);
+            // CompositionController.LiveConvert applies this threshold to
+            // each Japanese segment, excluding protected/English islands.
+            let (mut clauses, candidates) = external_conversion_min(&reading, before, 4);
             if clauses.is_empty() && !candidates.is_empty() {
                 clauses.push(Clause::new(reading, candidates));
             }

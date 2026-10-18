@@ -1,5 +1,7 @@
 # 全機能移植の作業表
 
+ユーザー指定の15項目の完了条件と未確認範囲は [ACCEPTANCE.md](ACCEPTANCE.md) にまとめる。Windows・共通Coreを優先する。下位の実装済みチェックだけでは、上位の元版互換・全OS実動確認を完了にしない。
+
 基準: upstream `45e14f86558aa6ea34f2c2ecd038ba95ca8c3c46`。
 チェックは機能の実装と必要な検証が済んだ時点で更新する。ビルドだけで機能互換とはしない。
 
@@ -236,3 +238,5 @@
 - [x] macOS辞書取込みの選択／結果ダイアログと変更通知をRustへ移した版のSDK確認（[9eb73edのmacOS SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39104520853)で両ジョブ成功。旧Swiftの9経路の順序・実SDK既定値／日本語表示・成功0件を含む通知引数と私用ファイルを比較。自プロセスの実NSAlertの標準ボタン承認、実NSOpenPanelの取消、背景表示拒否も保存ログで確認。既存スタブ22操作・実変換器28操作と全Swiftコンパイルも通過。[同じ版のfcitx SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39104520866)も成功。NSOpenPanel・NSAlertの生成／設定／実行、選択後の保存先取得、通知と元の日本語表示はRust。実選択からの承認・OS通知配送・IME実入力・全画面一致は未確認）
 
 - [x] macOSのIME本体による入力ソース重複修復・バックアップ・Carbon登録／有効化をRustへ移した版のSDK確認（[5a36cf9のmacOS SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39105438244)で両ジョブ成功。旧Swiftの324配列（結合文字／ZWJ／NUL境界を含む）と私用NSUserDefaults11条件、背景拒否、SDKヘッダーの7関数ABIと型幅の保存ログを確認。既存スタブ22操作・実変換器28操作と全Swiftコンパイルも通過。[同じ版のfcitx SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39105438250)も成功。6条件の模擬APIでOSStatus・正確なID・中断順序と一覧解放も確認。実OS登録／有効化は未実行。別実行ファイルRegisterInputSourceのSwift、IME実入力・全画面一致の確認は残る）
+
+- [ ] macOSの登録・選択補助ツールとRust版パッケージの接続（721bd57／59a6ffc／802f174。旧Swiftの待機・終了コード・メッセージ・反映確認をRustへ移し、installerは同梱選択ツールを優先。6制御試験・Apple Silicon／Intel型チェックとClippy成功。SDKのFoundation試験・旧CLI4条件比較、署名後の同梱／実行と製品自己試験全体をCI確認中。実OS登録・選択・メニュー再起動は未実行）

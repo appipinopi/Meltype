@@ -55,6 +55,13 @@ with tempfile.TemporaryDirectory(prefix="meltype-product-abi-") as directory:
     finally:api.meltype_destroy(handle)
     handle=session()
     try:
+        seen.clear()
+        _,last=type_text(handle,"googlede")
+        assert last["view"]["text"]=="googleで",last
+        assert seen==[],("live conversion must exclude short Japanese gaps",seen)
+    finally:api.meltype_destroy(handle)
+    handle=session()
+    try:
         text,last=type_text(handle,"seeyouagain\n")
         assert text=="see you again",(text,last)
     finally:api.meltype_destroy(handle)

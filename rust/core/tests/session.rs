@@ -48,8 +48,8 @@ fn edit_cancel_and_function_keys() {
     let mut s = Session::default();
     type_text(&mut s, "kya");
     s.key(8, 0, 0);
-    assert_eq!(s.display(false), "ky");
-    s.key(0, 97, 0);
+    assert_eq!(s.display(false), "");
+    type_text(&mut s, "kya");
     assert_eq!(s.key(0x76, 0, 0).view.unwrap().text, "キャ");
     assert_eq!(s.key(13, 0, 0).commits[0].text, "キャ");
     type_text(&mut s, "test");
@@ -88,7 +88,7 @@ fn typing_after_conversion_keeps_commit() {
     s.key(32, 32, 0);
     let r = s.key(0, 97, 0);
     assert_eq!(r.commits.len(), 1);
-    assert_eq!(r.view.unwrap().text, "a");
+    assert_eq!(r.view.unwrap().text, "あ");
 }
 
 #[test]
@@ -151,31 +151,37 @@ fn live_preview_retains_reading_promotes_to_clauses_and_respects_settings() {
     use meltype_core::session::Clause;
     let mut s = Session::default();
     type_text(&mut s, "hashi");
-    assert_eq!(s.live_reading().as_deref(), Some("はし"));
-    let clause = || Clause::new("はし".into(), vec!["橋".into(), "箸".into()]);
+    assert!(
+        s.live_reading().is_none(),
+        "upstream requires four UTF-16 units"
+    );
+    s.reset();
+    type_text(&mut s, "nihongo");
+    assert_eq!(s.live_reading().as_deref(), Some("にほんご"));
+    let clause = || Clause::new("にほんご".into(), vec!["日本語".into(), "ニホンゴ".into()]);
     assert!(s.update_live_conversion(vec![clause()]));
     assert!(!s.is_converting());
-    assert_eq!(s.display(false), "橋");
-    assert_eq!(s.reading(), "はし");
+    assert_eq!(s.display(false), "日本語");
+    assert_eq!(s.reading(), "にほんご");
     s.begin_conversion(vec![]);
     assert!(s.is_converting());
-    assert_eq!(s.result(false).view.unwrap().clauses, ["橋"]);
+    assert_eq!(s.result(false).view.unwrap().clauses, ["日本語"]);
     s.select(1);
-    type_text(&mut s, "hashi");
+    type_text(&mut s, "nihongo");
     s.update_live_conversion(vec![clause()]);
-    assert_eq!(s.display(false), "箸");
+    assert_eq!(s.display(false), "ニホンゴ");
     s.key(8, 0, 0);
-    assert_eq!(s.display(false), "hash");
+    assert_eq!(s.display(false), "にほん");
     s.reset();
     type_text(&mut s, "hello");
     assert!(s.live_reading().is_none());
     s.reset();
-    type_text(&mut s, "hashi");
+    type_text(&mut s, "nihongo");
     s.settings
         .set("LiveConversion", serde_json::json!(false))
         .unwrap();
     assert!(!s.update_live_conversion(vec![clause()]));
-    assert_eq!(s.display(false), "はし");
+    assert_eq!(s.display(false), "にほんご");
     s.settings
         .set("LiveConversion", serde_json::json!(true))
         .unwrap();

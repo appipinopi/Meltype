@@ -129,6 +129,7 @@ pub struct Session {
     space_started_conversion: bool,
     chosen_conversion: bool,
     sigil: crate::sigil::Sigil,
+    edited_units: Option<crate::composition_units::Units>,
 }
 
 impl Default for Session {
@@ -172,6 +173,7 @@ impl Default for Session {
             space_started_conversion: false,
             chosen_conversion: false,
             sigil: Default::default(),
+            edited_units: None,
         }
     }
 }
@@ -386,6 +388,12 @@ impl Session {
     pub fn reading(&self) -> String {
         if self.uses_kana() {
             self.kana_text.clone()
+        } else if let Some(units) = self.edited_units.as_ref().filter(|u| u.raw() == self.raw) {
+            if self.external_converter_only {
+                units.render(&self.mixed_reading(true), true)
+            } else {
+                units.kana(true)
+            }
         } else if let Some(fix) = self.romaji_fix() {
             fix.kana
         } else if self.external_converter_only
@@ -641,6 +649,11 @@ impl Session {
                 )
             }
         });
+        let text = self
+            .edited_units
+            .as_ref()
+            .filter(|u| u.raw() == self.raw)
+            .map_or(text.clone(), |u| u.render(&text, final_input));
         self.punctuate(text)
     }
     fn language_suggestion(&self) -> Option<String> {
@@ -696,6 +709,7 @@ impl Session {
                         '!' if !latin_punctuation => '！',
                         '?' if !latin_punctuation => '？',
                         '~' if !latin_punctuation => '～',
+                        '\\' => '￥',
                         '/' if self.settings.boolean("SlashAsMiddleDot") => '・',
                         _ => c,
                     };
@@ -805,6 +819,7 @@ impl Session {
         self.composition_kana = false;
         self.context_is_fresh = false;
         self.raw.clear();
+        self.edited_units = None;
         self.typed_keys.clear();
         self.candidates.clear();
         self.clauses.clear();
@@ -1236,12 +1251,12 @@ impl Session {
         let reading = self.reading();
         if self.external_converter_only {
             let pending = self.mixed_reading(false);
-            return (reading.chars().count() >= 2
+            return (reading.encode_utf16().count() >= 4
                 && pending == reading
                 && reading.chars().any(crate::linguistics::kana))
             .then_some(reading);
         }
-        if reading.chars().count() < 2
+        if reading.encode_utf16().count() < 4
             || romaji::hiragana(&self.raw, false) != reading
             || Dictionary::bundled()
                 .mixed(&self.raw, false)
@@ -1513,6 +1528,31 @@ impl Session {
                     self.correctable.clear();
                     return self.result(false);
                 }
+                let displayed = self.display(false);
+                let english_tail = matches!(self.function_key, 0x78 | 0x79)
+                    || self.function_key == 0
+                        && displayed
+                            .chars()
+                            .next_back()
+                            .is_some_and(|c| c.is_ascii_alphabetic());
+                let previous_keys = self.raw.chars().count();
+                if self.uses_kana() || self.protects_tail() {
+                    self.raw.pop();
+                    self.edited_units = None;
+                } else {
+                    if self
+                        .edited_units
+                        .as_ref()
+                        .is_none_or(|u| u.raw() != self.raw)
+                    {
+                        self.edited_units = Some(crate::composition_units::Units::capture(
+                            &self.raw, &displayed,
+                        ));
+                    }
+                    let units = self.edited_units.as_mut().expect("captured composition");
+                    units.remove_last(english_tail, displayed == self.raw);
+                    self.raw = units.raw().to_owned();
+                }
                 self.candidates.clear();
                 self.clauses.clear();
                 self.live_clauses.clear();
@@ -1522,8 +1562,9 @@ impl Session {
                 self.selected_prediction = -1;
                 self.function_key = 0;
                 self.case_cycle = 0;
-                self.raw.pop();
-                self.typed_keys.pop();
+                let removed_keys = previous_keys - self.raw.chars().count();
+                self.typed_keys
+                    .truncate(self.typed_keys.len().saturating_sub(removed_keys));
                 self.refresh_kana();
                 self.result(true)
             }
@@ -1691,27 +1732,35 @@ impl Session {
                     _ => self.raw.clone(),
                 };
                 let reading = self.reading();
-                self.explicit = Some(if self.uses_kana() && vk <= 0x77 {
-                    match vk {
-                        0x75 => reading,
-                        0x76 => romaji::katakana(&reading),
-                        _ => crate::kana::halfwidth(&romaji::katakana(&reading)),
-                    }
-                } else if vk == 0x78 {
-                    crate::kana::fullwidth(&raw)
-                } else if vk == 0x79 {
-                    raw.clone()
-                } else {
-                    crate::protection::transform(&raw, |part| match vk {
-                        0x75 => romaji::hiragana(part, true),
-                        0x76 => romaji::katakana(&romaji::hiragana(part, true)),
-                        0x77 => {
-                            crate::kana::halfwidth(&romaji::katakana(&romaji::hiragana(part, true)))
+                self.explicit = Some(
+                    if (self.uses_kana()
+                        || self
+                            .edited_units
+                            .as_ref()
+                            .is_some_and(|u| u.raw() == self.raw))
+                        && vk <= 0x77
+                    {
+                        match vk {
+                            0x75 => reading,
+                            0x76 => romaji::katakana(&reading),
+                            _ => crate::kana::halfwidth(&romaji::katakana(&reading)),
                         }
-                        0x78 => crate::kana::fullwidth(part),
-                        _ => part.into(),
-                    })
-                });
+                    } else if vk == 0x78 {
+                        crate::kana::fullwidth(&raw)
+                    } else if vk == 0x79 {
+                        raw.clone()
+                    } else {
+                        crate::protection::transform(&raw, |part| match vk {
+                            0x75 => romaji::hiragana(part, true),
+                            0x76 => romaji::katakana(&romaji::hiragana(part, true)),
+                            0x77 => crate::kana::halfwidth(&romaji::katakana(&romaji::hiragana(
+                                part, true,
+                            ))),
+                            0x78 => crate::kana::fullwidth(part),
+                            _ => part.into(),
+                        })
+                    },
+                );
                 self.result(true)
             }
             _ if ch >= 0x20 && ch != 0x7f => {
@@ -1734,7 +1783,15 @@ impl Session {
                     result.consumed = false;
                     return result;
                 }
-                self.raw.push(char::from_u32(ch as u32).unwrap());
+                let character = char::from_u32(ch as u32).unwrap();
+                if let Some(units) = self.edited_units.as_mut() {
+                    if units.raw() == self.raw {
+                        units.push(&character.to_string());
+                    } else {
+                        self.edited_units = None;
+                    }
+                }
+                self.raw.push(character);
                 self.typed_keys
                     .push((vk, char::from_u32(ch as u32).unwrap(), modifiers & 1 != 0));
                 self.refresh_kana();

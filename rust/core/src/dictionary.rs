@@ -340,6 +340,15 @@ impl Dictionary {
     }
     fn mixed_word(&self, raw: &str, final_input: bool) -> String {
         let lower = raw.to_ascii_lowercase();
+        // CompositionDetector.IsEnglishSpan: a growing proper-name prefix at
+        // the start of input is English unless it is also a Japanese prefix.
+        if !final_input
+            && lower.len() >= 4
+            && self.proper.iter().any(|word| word.starts_with(&lower))
+            && !self.japanese_prefix(&lower)
+        {
+            return raw.to_owned();
+        }
         if !raw.is_empty() && raw.bytes().all(|c| c.is_ascii_uppercase()) {
             return raw.to_owned();
         }
@@ -364,6 +373,14 @@ impl Dictionary {
             return reading;
         }
         if self.english.contains(&lower) {
+            let fragment = romaji::analyze(&lower, true);
+            if lower.len() <= 3
+                && fragment.valid
+                && fragment.partial.is_empty()
+                && !self.readable_english.contains(&lower)
+            {
+                return romaji::hiragana(raw, final_input);
+            }
             return raw.to_owned();
         }
         if self.spell_word(&lower) {
@@ -435,16 +452,17 @@ impl Dictionary {
                     .contains(&piece);
                 let acronym =
                     piece.len() >= 2 && raw[i..end].bytes().all(|c| c.is_ascii_uppercase());
-                let suffix_ok = end == n
-                    || [
-                        "no", "ga", "wo", "ni", "de", "to", "ha", "mo", "wa", "he", "ya", "sa",
-                        "shi", "si", "su",
-                    ]
-                    .iter()
-                    .any(|p| lower[end..].starts_with(p))
-                    || self.english_atom(&lower[end..]);
-                let en =
-                    ((piece.len() >= 3 && self.english_atom(piece) && !jp) || acronym) && suffix_ok;
+                let english_piece =
+                    (piece.len() >= 3 && !jp && self.english_atom(piece)) || acronym;
+                let en = english_piece
+                    && (end == n
+                        || [
+                            "no", "ga", "wo", "ni", "de", "to", "ha", "mo", "wa", "he", "ya", "sa",
+                            "shi", "si", "su",
+                        ]
+                        .iter()
+                        .any(|p| lower[end..].starts_with(p))
+                        || self.english_atom(&lower[end..]));
                 let cost = if jp {
                     0.3
                 } else if en {

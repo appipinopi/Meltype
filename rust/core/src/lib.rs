@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 appipinopi
 mod commit_correction;
+mod composition_units;
 pub mod context;
 pub mod control;
 pub mod detection;

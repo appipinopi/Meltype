@@ -81,7 +81,7 @@ def main(library):
 
             for letter in "hashi":
                 value = key(scalar=ord(letter))
-            assert value["view"]["text"] == "橋"
+            assert value["view"]["text"] == "はし", "live conversion starts at four UTF-16 units"
             assert not value["view"]["converting"]
             assert key(32, 32)["view"]["clauses"] == ["橋"]
             value = key(scalar=ord("k"))
@@ -101,7 +101,7 @@ def main(library):
             for letter in "hashi":
                 key(scalar=ord(letter))
             value = key(32,32,1)
-            assert [edit["text"] for edit in value["commits"]] == ["橋","　"]
+            assert [edit["text"] for edit in value["commits"]] == ["はし","　"]
             assert value["view"] is None
             api.meltype_set_private(handle, 1)
             assert not key(scalar=ord("a"))["consumed"]
