@@ -596,7 +596,7 @@ for visible in [NSRect(x:-1200,y:0,width:1200,height:800),NSRect(x:200,y:100,wid
 for caret in [NSRect(x:Double.infinity,y:0,width:1,height:20),NSRect(x:Double.nan,y:0,width:1,height:20),NSRect(x:2,y:2,width:1,height:-2)] {
     precondition(ModeIndicator.validCaret(caret)==LegacyModeIndicator.validCaret(caret))
 }
-print("macOS Rust indicator: six complete AppKit view trees and \(indicatorFrames) legacy layout frames, fonts/colors/layers/accessibility/caption and caret validation passed (timing/panel lifecycle still Swift)")
+print("macOS Rust indicator: six complete AppKit view trees and \(indicatorFrames) legacy layout frames, fonts/colors/layers/accessibility/caption and caret validation passed (lifecycle tested separately below)")
 
 func pumpIndicator(_ seconds:Double) {RunLoop.main.run(until:Date(timeIntervalSinceNow:seconds))}
 var indicatorEnabled=true

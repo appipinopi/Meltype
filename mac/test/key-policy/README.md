@@ -139,7 +139,10 @@ Mode-indicator view generation and layout now live in Rust. A test-only copy of
 the former Swift implementation compares six complete AppKit view trees and ten
 layout frames. The comparison includes effect material/blending/state, font and
 label frames, selected accent colors, layer radii, accessibility radio roles,
-labels/values, compact/central caption and caret validation. The production Swift
-implementation retains deferred presentation, panel management and the one-second
-hide timer; those are separate remaining migrations. Full-screen visual parity
+labels/values, compact/central caption and caret validation. Deferred presentation, panel management and the one-second NSTimer now live in
+Rust too. The lifecycle fixture compares actual panel settings with the former
+Swift panel and checks queue supersession, hide-before-presentation, preference
+queries at presentation time, timer replacement, panel reuse, missing screens,
+and destruction while pending/visible. Both queue and timer target hold only
+weak owners. Swift provides the preference read callback and bridge entry point. Full-screen visual parity
 and actual editor input are not established by these property comparisons.

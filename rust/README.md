@@ -380,3 +380,6 @@ e2e7cb1ではIMKServerと候補パネルの作成をRustのSDK initializerへ移
 
 
 acd350cではミニモード表示のビュー生成、文字／選択色／フォント／角丸、アクセシビリティとcaption、compact／通常レイアウトと画面内配置計算をRustへ移しました。旧Swiftを試験専用fixtureとして保持し、6種類の実ビュー全体と10配置、caret検証を比較しました。[acd350cのmacOS SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39096216914)で両ジョブ成功。実AppKitの6種類のビュー全体と10配置、フォント・色・レイヤー・アクセシビリティ・captionとcaret検証を旧Swiftと比較し、保存ログを確認。既存スタブ22操作・実変換器28操作と全Swiftコンパイルも通過。[同じ版のfcitx SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39096216770)も成功。Apple Silicon／Intel型チェック、Clippyと実ABI拒否試験は通過。表示予約・パネル管理・1秒後の非表示と設定はSwiftに残ります。実アプリ入力・全画面の外観一致も未検証です。
+
+
+79fae1aではミニ表示の遅延予約、パネル管理・画面選択・1秒のNSTimerもRustへ移しました。main queueの予約とタイマーのtargetは所有者を弱参照し、連続切替／hideで予約世代を無効化します。設定は表示時にSwiftコールバックへ問い合わせ、所有者破棄でタイマーを取消し、パネルを隠します。Apple Silicon／Intel型チェック・Clippyと実ABI拒否試験は通過。[e29162aのmacOS SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39096959822)で両ジョブ成功。実main queueと1秒のNSTimer、旧SDKパネル設定／ビューとの比較、予約の上書き・hide前取消し・表示時の設定確認・タイマー置換・パネル再利用・画面なし・待機中／表示中の所有者破棄・背景拒否の保存ログを確認。既存スタブ22操作・実変換器28操作と全Swiftコンパイルも通過。[同じ版のfcitx SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39096959847)も成功。設定の保存と呼出しブリッジのSwift、全画面外観一致・実アプリ入力の検証は残ります。
