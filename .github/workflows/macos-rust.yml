@@ -73,6 +73,7 @@ jobs:
             MELTYPE_RUST_CORE=1 MELTYPE_VERSION=0.1.0 bash mac/build.sh --no-install
           codesign --verify --deep --strict mac/build/Meltype.app
           mkdir -p dist/macos-package
+          MELTYPE_RUST_DATA_DIR="$RUNNER_TEMP/meltype-package-data" mac/build/Meltype.app/Contents/MacOS/Meltype --self-test | tee dist/macos-package/product-self-test.txt
           bash mac/test/register-helper/run.sh "$PWD/mac/build/Meltype.app/Contents/MacOS/MeltypeRegisterInputSource" | tee dist/macos-package/register-helper.txt
           otool -L mac/build/Meltype.app/Contents/MacOS/MeltypeRegisterInputSource > dist/macos-package/helper-libraries.txt
           test -x mac/build/Meltype.app/Contents/MacOS/MeltypeSelectInputSource
