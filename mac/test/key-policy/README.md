@@ -112,3 +112,15 @@ the private SDK panel, and stops/wakes its own app. A watchdog bounds the loop.
 Background loop/registration calls and invalid service names are rejected. The
 SDK Services function returns void: the fixture proves the registration call,
 not delivery of an installed service shortcut from another application.
+
+
+The mode Services receiver itself is now an Objective-C class implemented in Rust.
+The SDK host invokes its actual changeInputMode:userData:error: implementation
+through the production Swift bridge. It exercises all four identifiers, exact
+legacy errors, inactive/dead targets, identity-checked old deactivation, weak pure
+Swift targets, reentrant deactivation, owner disposal during the source callback,
+first-call background rejection and a retained receiver after owner destruction.
+A private pasteboard remains unchanged. The Carbon source query is compared with
+the SDK current source without selecting or registering any input source. The
+remaining Swift callbacks perform mode selection and indicator display; direct
+receiver invocation does not prove OS delivery of an installed Services shortcut.
