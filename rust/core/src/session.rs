@@ -1347,15 +1347,50 @@ impl Session {
             self.selected = clause.selected;
         }
     }
+    /// Snapshot converter readings before a native host releases its registry
+    /// lock to obtain fresh candidates. These are conversion clauses only.
+    pub fn clause_readings(&self) -> Vec<String> {
+        if self.clauses.is_empty() && self.is_converting() {
+            vec![self.reading()]
+        } else {
+            self.clauses.iter().map(|c| c.reading.clone()).collect()
+        }
+    }
+    /// Apply converter replies only to the unchanged composition snapshot.
+    /// Callbacks run outside the native registry lock and may return no result.
+    pub fn refresh_clause_candidates(
+        &mut self,
+        expected: &[String],
+        external: Vec<(usize, Vec<String>)>,
+    ) -> bool {
+        if self.clause_readings() != expected || !self.is_converting() {
+            return false;
+        }
+        for (index, candidates) in external {
+            if candidates.is_empty() || index >= self.clauses.len() {
+                continue;
+            }
+            let reading = self.clauses[index].reading.clone();
+            self.clauses[index] = self.local_clause_with_external(reading, candidates);
+        }
+        self.sync_clause();
+        true
+    }
     fn local_clause(&self, reading: String) -> Clause {
+        self.local_clause_with_external(reading, vec![])
+    }
+    fn local_clause_with_external(&self, reading: String, external: Vec<String>) -> Clause {
         let mut candidates = self
             .preferences
             .user_dictionary
             .get(&reading)
             .cloned()
             .unwrap_or_default();
-        candidates.extend(Dictionary::bundled().candidates(&reading));
-        candidates.extend(Linguistics::bundled().words(&reading));
+        candidates.extend(external);
+        if !self.external_converter_only {
+            candidates.extend(Dictionary::bundled().candidates(&reading));
+            candidates.extend(Linguistics::bundled().words(&reading));
+        }
         if let Some(learned) = self.preferences.selected.get(&reading) {
             candidates.insert(0, learned.clone());
         }

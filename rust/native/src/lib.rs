@@ -48,10 +48,12 @@ pub type WordCallback = unsafe extern "C" fn(*const c_char) -> i32;
 struct Callbacks {
     clauses: Option<ClausesCallback>,
     candidates: Option<CandidatesCallback>,
+    convert: Option<CandidatesCallback>,
 }
 static CALLBACKS: Mutex<Callbacks> = Mutex::new(Callbacks {
     clauses: None,
     candidates: None,
+    convert: None,
 });
 static NEXT: AtomicUsize = AtomicUsize::new(1);
 static MOZC: Mutex<Option<meltype_core::mozc::Mozc>> = Mutex::new(None);
@@ -116,8 +118,22 @@ pub extern "C" fn meltype_init(
     *callbacks = Callbacks {
         clauses,
         candidates,
+        convert: None,
     };
     word_checker::configure(is_word);
+    1
+}
+
+/// Optional standalone conversion for resized clauses. A segmented sentence
+/// conversion can differ from converting the same reading as one clause.
+/// Register after meltype_init; returned UTF-8 strings follow its malloc/free
+/// ownership contract. Passing None restores the legacy segmented fallback.
+#[no_mangle]
+pub extern "C" fn meltype_set_converter(convert: Option<CandidatesCallback>) -> i32 {
+    let Ok(mut callbacks) = CALLBACKS.lock() else {
+        return 0;
+    };
+    callbacks.convert = convert;
     1
 }
 
@@ -348,6 +364,31 @@ unsafe fn external_conversion_unprotected(
     (segments, external)
 }
 
+unsafe fn external_reconversion(reading: &str) -> Vec<String> {
+    let callbacks = CALLBACKS.lock().map(|c| *c).unwrap_or_default();
+    if let Some(convert) = callbacks.convert {
+        let input = CString::new(reading).unwrap();
+        // Upstream Convert falls back to the reading when the engine has no
+        // result. A candidate-list reply must not replace this fallback.
+        let text = take(convert(input.as_ptr()))
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| reading.to_owned());
+        let mut candidates = vec![text];
+        if let Some(more) = callbacks.candidates {
+            if let Some(text) = take(more(input.as_ptr())) {
+                candidates.extend(text.lines().filter(|s| !s.is_empty()).map(str::to_owned));
+            }
+        }
+        candidates
+    } else {
+        let (clauses, mut candidates) = external_conversion_unprotected(reading, std::ptr::null());
+        if !clauses.is_empty() {
+            candidates.insert(0, clauses.iter().map(Clause::text).collect());
+        }
+        candidates
+    }
+}
+
 /// # Safety
 /// before/after, when non-null, must point to valid NUL-terminated UTF-8.
 /// Calls for one session must be serialized. Registered callbacks must remain
@@ -387,6 +428,17 @@ pub unsafe extern "C" fn meltype_handle_key(
             .as_deref()
             .map(|r| external_conversion(r, before))
             .unwrap_or_default();
+        // Resize reconverts both affected clauses using their new readings.
+        // Keep callbacks outside the registry mutex, as for initial conversion.
+        let resize_before = if matches!(vk, 0x25 | 0x27) && modifiers & 15 == 1 {
+            sessions().lock().ok().and_then(|all| {
+                all.get(&(handle as usize))
+                    .filter(|s| s.is_converting())
+                    .map(Session::clause_readings)
+            })
+        } else {
+            None
+        };
         let result = run(handle, |s| {
             s.set_context(read(before).as_deref(), read(after).as_deref());
             if !segments.is_empty() && s.begin_clauses(segments) {
@@ -398,6 +450,59 @@ pub unsafe extern "C" fn meltype_handle_key(
                 s.key(vk, ch, modifiers)
             }
         });
+        let result = if let Some(previous) = resize_before {
+            let current = sessions()
+                .lock()
+                .ok()
+                .and_then(|all| all.get(&(handle as usize)).map(Session::clause_readings))
+                .unwrap_or_default();
+            let mut refreshed = Vec::new();
+            if current != previous {
+                let start = current
+                    .iter()
+                    .zip(&previous)
+                    .take_while(|(a, b)| a == b)
+                    .count();
+                let suffix = current[start..]
+                    .iter()
+                    .rev()
+                    .zip(previous[start..].iter().rev())
+                    .take_while(|(a, b)| a == b)
+                    .count();
+                for (index, reading) in current
+                    .iter()
+                    .enumerate()
+                    .take(current.len() - suffix)
+                    .skip(start)
+                {
+                    let candidates = external_reconversion(reading);
+                    if !candidates.is_empty() {
+                        refreshed.push((index, candidates));
+                    }
+                }
+            }
+            if refreshed.is_empty() {
+                result
+            } else if let Some(text) = take(result) {
+                if let Ok(previous_result) =
+                    serde_json::from_str::<meltype_core::SessionResult>(&text)
+                {
+                    run(handle, |s| {
+                        s.refresh_clause_candidates(&current, refreshed);
+                        let mut next = s.result(previous_result.consumed);
+                        next.commits = previous_result.commits;
+                        next.selection_expect = previous_result.selection_expect;
+                        next
+                    })
+                } else {
+                    allocate(&text)
+                }
+            } else {
+                std::ptr::null_mut()
+            }
+        } else {
+            result
+        };
         let live = if modifiers & 14 == 0 && (ch >= 0x20 || vk == 8) {
             sessions()
                 .lock()

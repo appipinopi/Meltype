@@ -24,6 +24,8 @@ int32_t meltype_json_visit(const uint8_t *,uint32_t,void *,meltype_json_emit);
    result belongs to meltype_free. Null result means invalid input/allocation. */
 char *meltype_json_quote(const uint16_t *,uint32_t);
 int32_t meltype_init(meltype_clauses_callback, meltype_candidates_callback, meltype_word_callback);
+/* Optional one-clause conversion; call after meltype_init. Same ownership. */
+int32_t meltype_set_converter(meltype_candidates_callback);
 int32_t meltype_init_mozc(const char *, const char *);
 void *meltype_create(void);
 void *meltype_create_at(const char *directory);
