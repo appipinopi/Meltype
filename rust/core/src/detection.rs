@@ -26,6 +26,7 @@ pub struct Result {
     pub japanese: i32,
     pub english: i32,
     pub contributions: Vec<Contribution>,
+    pub summary: String,
 }
 struct Lexicon {
     japanese: HashSet<String>,
@@ -101,6 +102,15 @@ pub(crate) fn japanese_typo(text: &str) -> bool {
         })
 }
 pub fn evaluate(raw: &str, keys: &[i32], final_input: bool, settings: &Settings) -> Result {
+    evaluate_with_model(raw, keys, final_input, settings, None)
+}
+pub fn evaluate_with_model(
+    raw: &str,
+    keys: &[i32],
+    final_input: bool,
+    settings: &Settings,
+    model: Option<&crate::prefix_learning::Model>,
+) -> Result {
     let lower = raw.to_ascii_lowercase();
     let mut bytes = lower.as_bytes().to_vec();
     for i in 0..bytes.len().saturating_sub(1) {
@@ -110,12 +120,13 @@ pub fn evaluate(raw: &str, keys: &[i32], final_input: bool, settings: &Settings)
     }
     let text = String::from_utf8(bytes).unwrap_or(lower.clone());
     let mut contributions = Vec::new();
-    let result = |verdict, contributions: Vec<Contribution>| Result {
+    let result = |verdict, contributions: Vec<Contribution>, summary: &str| Result {
         verdict,
         text: text.clone(),
         japanese: contributions.iter().map(|c| c.japanese).sum(),
         english: contributions.iter().map(|c| c.english).sum(),
         contributions,
+        summary: summary.into(),
     };
     if text.is_empty() {
         return result(
@@ -125,12 +136,13 @@ pub fn evaluate(raw: &str, keys: &[i32], final_input: bool, settings: &Settings)
                 Verdict::Undecided
             },
             contributions,
+            "入力なし",
         );
     }
     let use_romaji = settings.text("InputStyle") != "Kana";
     let use_kana = settings.text("InputStyle") != "Romaji";
     if use_romaji && !use_kana && ["l", "q", "v", "x"].contains(&text.as_str()) {
-        return result(Verdict::English, contributions);
+        return result(Verdict::English, contributions, "明らかな英字キー");
     }
     let lex = lexicon();
     let mut add = |source: &str, japanese, english, reason: &str| {
@@ -265,6 +277,11 @@ pub fn evaluate(raw: &str, keys: &[i32], final_input: bool, settings: &Settings)
             add("English", 0, 3, "英語辞書の語の先頭と一致");
         }
     }
+    if settings.boolean("LearningEnabled") {
+        if let Some(contribution) = model.and_then(|m| m.contribution(&lower)) {
+            contributions.push(contribution);
+        }
+    }
     let japanese: i32 = contributions.iter().map(|c| c.japanese).sum();
     let english: i32 = contributions.iter().map(|c| c.english).sum();
     let threshold = (settings.integer("JapaneseThreshold") as i32
@@ -280,10 +297,10 @@ pub fn evaluate(raw: &str, keys: &[i32], final_input: bool, settings: &Settings)
             .iter()
             .find(|p| text.starts_with(**p))
             .is_some_and(|p| (1..4).contains(&(text.len() - p.len())));
-    let verdict = if !romaji_valid && !kana_plausible {
-        Verdict::English
+    let (verdict, summary) = if !romaji_valid && !kana_plausible {
+        (Verdict::English, "日本語の入力として成立しない")
     } else if japanese >= threshold && japanese - english >= threshold {
-        Verdict::Japanese
+        (Verdict::Japanese, "日本語スコアが閾値を超えた")
     } else if english >= 3
         && japanese < threshold
         && !jp_prefix
@@ -291,11 +308,11 @@ pub fn evaluate(raw: &str, keys: &[i32], final_input: bool, settings: &Settings)
         && !(use_kana && kana_plausible)
         && text.len() >= 2
     {
-        Verdict::English
+        (Verdict::English, "英語の語と一致")
     } else if final_input || text.len() >= settings.integer("MaxPendingKeys") as usize {
-        Verdict::Unknown
+        (Verdict::Unknown, "判断できない")
     } else {
-        Verdict::Undecided
+        (Verdict::Undecided, "判定材料を収集中")
     };
-    result(verdict, contributions)
+    result(verdict, contributions, summary)
 }

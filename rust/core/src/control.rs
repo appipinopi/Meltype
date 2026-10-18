@@ -39,12 +39,16 @@ pub fn execute(store: &Store, r: &Value) -> io::Result<Value> {
             } else {
                 raw.chars().map(|c| c.to_ascii_uppercase() as i32).collect()
             };
-            Ok(serde_json::to_value(crate::detection::evaluate(
-                raw,
-                &keys,
-                r["final"].as_bool().unwrap_or(true),
-                &store.settings()?,
-            ))?)
+            let state = store.load()?;
+            Ok(serde_json::to_value(
+                crate::detection::evaluate_with_model(
+                    raw,
+                    &keys,
+                    r["final"].as_bool().unwrap_or(true),
+                    &store.settings()?,
+                    Some(&state.prefix_model),
+                ),
+            )?)
         }
         "settings_get" => Ok(serde_json::to_value(store.settings()?)?),
         "settings_merge" => {
@@ -206,8 +210,25 @@ pub fn execute(store: &Store, r: &Value) -> io::Result<Value> {
                 })
                 .collect();
             Ok(
-                json!({"languages":languages,"conversions":s.preferences.selected,"translations":s.translations,"phrases":s.phrases}),
+                json!({"languages":languages,"conversions":s.preferences.selected,"translations":s.translations,"phrases":s.phrases,"prefixes":s.prefix_model.prefixes}),
             )
+        }
+        "prefix_learn" => {
+            let letters = field(r, "letters")?;
+            let outcome = serde_json::from_value(r["outcome"].clone())?;
+            let settings = store.settings()?;
+            if !settings.boolean("LearningEnabled") {
+                return Ok(json!({"saved":false}));
+            }
+            let saved = store.update(|state| {
+                Ok(state.prefix_model.learn(
+                    letters,
+                    outcome,
+                    r["decidedEnglish"].as_bool().unwrap_or(false),
+                    chrono::Utc::now(),
+                ))
+            })?;
+            Ok(json!({"saved":saved}))
         }
         "learning_clear" => {
             store.update(|s| {

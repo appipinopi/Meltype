@@ -138,6 +138,7 @@ pub struct Session {
     key_time_ms: u64,
     direct_pending: String,
     direct_last_key_ms: Option<u64>,
+    hook_session: crate::input_session::InputSession,
 }
 
 impl Default for Session {
@@ -187,6 +188,7 @@ impl Default for Session {
             key_time_ms: 0,
             direct_pending: String::new(),
             direct_last_key_ms: None,
+            hook_session: Default::default(),
         }
     }
 }
@@ -200,7 +202,10 @@ impl Session {
                 Ok(table) => (table, None),
                 Err(error) => (None, Some(format!("romaji.txt: {error}"))),
             };
+        let mut hook_session = crate::input_session::InputSession::default();
+        hook_session.set_model(state.prefix_model.clone());
         Ok(Self {
+            hook_session,
             preferences: state.preferences.clone(),
             state,
             settings,
@@ -242,6 +247,7 @@ impl Session {
         if let Some(store) = &self.store {
             self.settings = store.settings()?.for_app(&self.process);
             self.state = store.load()?;
+            self.hook_session.set_model(self.state.prefix_model.clone());
             self.preferences = self.state.preferences.clone();
             if self.raw.is_empty() {
                 match romaji::CustomTable::load(&store.directory.join("dictionaries")) {
@@ -253,6 +259,16 @@ impl Session {
         Ok(())
     }
     pub fn control(&mut self, request: &serde_json::Value) -> std::io::Result<serde_json::Value> {
+        if request["op"] == "prefix_learn" && self.private {
+            return Ok(serde_json::json!({"saved":false}));
+        }
+        if request["op"] == "hook_session" {
+            let command = serde_json::from_value(request["command"].clone())?;
+            let _romaji = romaji::Scope::new(self.custom_romaji.clone());
+            return Ok(serde_json::to_value(
+                self.hook_session.execute(command, &self.settings),
+            )?);
+        }
         let store = self
             .store
             .as_ref()

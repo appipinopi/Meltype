@@ -66,6 +66,8 @@ jobs:
         run: python rust/native/tests/scored_smoke.py
       - name: Direct-input timeout through native ABI
         run: python rust/native/tests/direct_time_smoke.py
+      - name: Legacy input state, replay and prefix learning through native ABI
+        run: python rust/native/tests/hook_smoke.py
       - name: Settings UI labels match upstream
         run: python tools/extract-rust-settings-ui.py --check
       - name: Package standalone Rust IBus engine

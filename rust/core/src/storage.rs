@@ -45,6 +45,7 @@ impl Drop for Lock {
 #[derive(Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct State {
+    pub prefix_model: crate::prefix_learning::Model,
     pub preferences: Preferences,
     pub language_counts: BTreeMap<String, LanguageEntry>,
     pub translations: BTreeMap<String, BTreeMap<String, u32>>,
@@ -217,6 +218,9 @@ impl State {
         }
     }
     pub fn remove_learned(&mut self, key: &str) {
+        if let Some(prefix) = key.strip_prefix("prefix:") {
+            self.prefix_model.prefixes.remove(prefix);
+        }
         if let Some(raw) = key.strip_prefix("language:") {
             self.preferences.english.remove(raw);
             self.language_counts.remove(raw);
@@ -246,6 +250,7 @@ impl State {
         count + old - self.phrases.len()
     }
     pub fn clear_learning(&mut self) {
+        self.prefix_model.prefixes.clear();
         self.preferences.english.clear();
         self.preferences.selected.clear();
         self.language_counts.clear();
@@ -324,11 +329,26 @@ impl Store {
     pub fn load(&self) -> io::Result<State> {
         let path = self.directory.join("state.json");
         let mut state: State = match fs::read(&path) {
-            Ok(bytes) => serde_json::from_slice(&bytes).map_err(io::Error::other),
+            Ok(bytes) => {
+                let mut document: Value = serde_json::from_slice(&bytes)?;
+                let object = document
+                    .as_object_mut()
+                    .ok_or_else(|| io::Error::other("invalid state document"))?;
+                if !object.contains_key("prefix_model") {
+                    object.insert(
+                        "prefix_model".into(),
+                        serde_json::to_value(self.legacy_prefix_model()?)?,
+                    );
+                }
+                serde_json::from_value(document).map_err(io::Error::other)
+            }
             Err(e) if e.kind() == io::ErrorKind::NotFound => self.import_legacy(),
             Err(e) => Err(e),
         }?;
         state.rebuild_language_preferences();
+        for (key, stats) in &state.prefix_model.prefixes {
+            state.used.insert(format!("prefix:{key}"), stats.used());
+        }
         Ok(state)
     }
     pub fn update<T>(&self, f: impl FnOnce(&mut State) -> io::Result<T>) -> io::Result<T> {
@@ -350,7 +370,10 @@ impl Store {
         })
     }
     fn import_legacy(&self) -> io::Result<State> {
-        let mut state = State::default();
+        let mut state = State {
+            prefix_model: self.legacy_prefix_model()?,
+            ..Default::default()
+        };
         let read = |name: &str| -> io::Result<Value> {
             match fs::read(self.directory.join(name)) {
                 Ok(bytes) => serde_json::from_slice(&bytes).map_err(io::Error::other),
@@ -445,6 +468,20 @@ impl Store {
             state.used.insert(format!("language:{raw}"), entry.used);
         }
         Ok(state)
+    }
+    fn legacy_prefix_model(&self) -> io::Result<crate::prefix_learning::Model> {
+        let path = self.directory.join("model.json");
+        match fs::read(&path) {
+            Ok(bytes) => match crate::prefix_learning::Model::parse(&bytes) {
+                Ok(model) => Ok(model),
+                Err(_) => {
+                    let _ = atomic_write(&self.directory.join("model.json.broken"), &bytes);
+                    Ok(Default::default())
+                }
+            },
+            Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(Default::default()),
+            Err(e) => Err(e),
+        }
     }
     pub fn backup(&self) -> io::Result<Vec<u8>> {
         let _lock = self.lock()?;

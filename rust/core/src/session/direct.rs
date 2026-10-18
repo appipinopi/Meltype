@@ -43,7 +43,13 @@ impl Session {
             .bytes()
             .map(|b| b.to_ascii_uppercase() as i32)
             .collect();
-        let decision = crate::detection::evaluate(part, &part_keys, true, &self.settings);
+        let decision = crate::detection::evaluate_with_model(
+            part,
+            &part_keys,
+            true,
+            &self.settings,
+            Some(&self.state.prefix_model),
+        );
         if decision.verdict == crate::detection::Verdict::Japanese
             && self.context_is_fresh
             && self.can_delete
@@ -198,7 +204,13 @@ impl Session {
             .bytes()
             .map(|b| b.to_ascii_uppercase() as i32)
             .collect();
-        let mut result = crate::detection::evaluate(part, &part_keys, false, &self.settings);
+        let mut result = crate::detection::evaluate_with_model(
+            part,
+            &part_keys,
+            false,
+            &self.settings,
+            Some(&self.state.prefix_model),
+        );
         if Self::hyphenated_word(&typed) {
             result.verdict = crate::detection::Verdict::English;
         }
