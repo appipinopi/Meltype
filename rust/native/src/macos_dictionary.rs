@@ -283,18 +283,24 @@ mod native {
                 capture(failure, error);
                 return -1;
             };
-            let allocated: objc2::rc::Allocated<NSString> = msg_send![class(c"NSString"), alloc];
-            let text: Option<Retained<NSString>> =
-                msg_send![allocated,initWithData:&*bytes,encoding:4usize];
-            let Some(text) = text else {
-                // Swift String(contentsOf:encoding:) reports corrupt-file (259)
-                // for failed Data->String decoding, unlike NSString URL read 261.
+            let byte_count: usize = msg_send![&bytes, length];
+            let pointer: *const u8 = msg_send![&bytes, bytes];
+            let buffer = if byte_count == 0 {
+                &[][..]
+            } else {
+                std::slice::from_raw_parts(pointer, byte_count)
+            };
+            // Match Swift Foundation String+IO's UTF8 branch: strip one BOM,
+            // validate the complete bytes (including NUL), else corrupt-file 259.
+            // https://github.com/swiftlang/swift-foundation/blob/main/Sources/FoundationEssentials/String/String%2BIO.swift
+            let buffer = buffer.strip_prefix(&[0xef, 0xbb, 0xbf]).unwrap_or(buffer);
+            let Ok(text) = std::str::from_utf8(buffer) else {
                 let domain = NSString::from_str("NSCocoaErrorDomain");
                 let failure: Retained<AnyObject> = msg_send![class(c"NSError"),errorWithDomain:&*domain,code:259isize,userInfo:std::ptr::null::<AnyObject>()];
                 capture(Retained::as_ptr(&failure).cast_mut(), error);
                 return -1;
             };
-            text.to_string()
+            text.to_owned()
         } else {
             String::new()
         };

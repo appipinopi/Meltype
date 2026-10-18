@@ -933,7 +933,7 @@ for (index,bytes) in [Data([0xef,0xbb,0xbf])+Data("かな\t単語\n".utf8),Data(
     let expected=Result{try LegacyMacUserDictionary.importFile(importIOSource,directory:oldFolder.path)}
     let actual=Result{try MacUserDictionary.importFile(importIOSource,directory:nativeFolder.path)}
     switch (expected,actual) {
-    case (.success(let e),.success(let a)):precondition(a==e)
+    case (.success(let e),.success(let a)):precondition(a==e,"UTF8 fixture \(index): native added \(a), original \(e)")
     case (.failure(let e),.failure(let a)):
         precondition((a as NSError).domain==(e as NSError).domain && (a as NSError).code==(e as NSError).code)
         precondition((a as NSError).userInfo.isEmpty && (e as NSError).userInfo.isEmpty)
