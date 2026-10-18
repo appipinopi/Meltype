@@ -169,3 +169,13 @@ targets. Five explicitly targeted actions are dispatched only to an owned probe;
 folder/report actions with nil targets are inspected without invoking them. The
 fixture also checks autorelease ownership and background-thread rejection. It
 does not prove presentation or action delivery from the installed OS input menu.
+
+
+The macOS dictionary bridge now parses plist rows and merges text in Rust. The
+SDK fixture keeps the former Swift implementation as a test-only reference and
+compares twelve XML/binary plist shapes, normalization/filtering and original
+Foundation error domain/code, thirty-two merges (including canonical duplicates,
+CRLF grapheme semantics and NUL), and repeated imports into separate private
+folders. The production path still uses Swift file IO/atomic writing and the
+open/alert UI; those are remaining migration work. No personal dictionary is
+read or modified. Portable ABI coverage checks actual merge/malformed requests.

@@ -392,3 +392,6 @@ bdd6704では設定の復元試験を別プロセスへ拡張しました。私�
 
 
 a0e5210では入力メニューの生成とチェック状態設定をRustのAppKit呼出しへ移しました。元の文言・順序・区切り・キー相当なし・明示targetとresponder chainの使い分けを保持し、Swiftはモード／設定と操作の受信先を渡します。Apple Silicon／Intel型チェック、Clippyと実ABI拒否試験が成功。[a0e5210のmacOS SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39098365913)で両ジョブ成功。実NSMenuの8状態で文言・順序・区切り・チェック・キー相当／修飾・targetを旧Swiftと比較し、試験所有者への5操作配送、自動解放区間を越えた所有権と背景生成拒否を確認。既存スタブ22操作・実変換器28操作と全Swiftコンパイルの保存ログも確認済み。[同じ版のfcitx SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39098365925)も成功。OS入力メニューでの実操作や全画面一致は未検証で、辞書取込み等の操作本体と残るOS連携も移植対象です。
+
+
+ffb5698ではmacOSユーザー辞書のplist解析、かな変換・トリム・行の検証、既存辞書とのマージをRustへ移しました。Foundationの同じAPIをRustから呼び、XML／binary plist、列の優先順位と型判定、UTF16長、元Swift Characterに基づくCRLFの扱い、正規等価な重複を保持します。解析エラーはSDKのNSErrorをSwiftへ渡します。ローカル型チェック・Clippyと実ABIの重複／改行／NUL／不正入力試験が成功。[ffb5698のmacOS SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39098954313)で両ジョブ成功。旧SwiftとのXML／binary plist12形式・元のFoundationエラー／正規化／除外、正規等価・CRLF・NULを含む32マージと私用ファイルへの繰返し取込みの保存ログを確認。実ABIの重複／追記／不正入力、既存スタブ22操作・実変換器28操作と全Swiftコンパイルも通過。[同じ版のfcitx SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39098954331)も成功。ファイルIOとダイアログのSwift、実入力・全UI一致は残ります。
