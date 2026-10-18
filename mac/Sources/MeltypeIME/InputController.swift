@@ -258,27 +258,30 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
 
     // ---- 結果を入力欄に反映する ----
 
-    private func apply(_ result: SessionResult?, to client: IMKTextInput) {
+    func apply(_ result: SessionResult?, to client: IMKTextInput) {
         guard let result else { return }
+#if MELTYPE_RUST_CORE
+        NativeCore.shared.editorPolicy?.apply(result,
+            marked: { client.markedRange() }, selected: { client.selectedRange() },
+            substring: { client.attributedSubstring(from: $0)?.string },
+            insert: { text, range in
+                client.insertText(NSAttributedString(string: text), replacementRange: range)
+                self.hasMarkedText = false
+            }, render: {
+                if let view = result.view { self.showComposition(view, client: client) }
+                else { self.hideComposition(client: client) }
+            })
+#else
         for edit in result.commits {
             var range = NSRange(location: NSNotFound, length: 0)
             if edit.deleteBefore > 0 {
                 // 確定し直し: キャレット (変換中の文字があればその先頭) の前の文字を置き換える。
                 let marked = client.markedRange()
-#if MELTYPE_RUST_CORE
-                let selection = marked.location != NSNotFound && marked.length > 0 ? NSRange(location: NSNotFound, length: 0) : client.selectedRange()
-                guard let policy = NativeCore.shared.editorPolicy,
-                      let expected = edit.expect,
-                      let replacement = policy.replacementRange(marked: marked, selected: selection, remove: edit.deleteBefore, expected: expected) else { return }
-                range = replacement
-                guard let actual = client.attributedSubstring(from: range)?.string, policy.expectedEqual(actual, expected) else { return }
-#else
                 let caret = marked.location != NSNotFound && marked.length > 0 ? marked.location : client.selectedRange().location
                 guard caret != NSNotFound, caret >= edit.deleteBefore,
                       let expected = edit.expect, (expected as NSString).length == edit.deleteBefore else { return }
                 range = NSRange(location: caret - edit.deleteBefore, length: edit.deleteBefore)
                 guard client.attributedSubstring(from: range)?.string == expected else { return }
-#endif
             }
             client.insertText(NSAttributedString(string: edit.text), replacementRange: range)
             hasMarkedText = false
@@ -288,6 +291,7 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
         } else {
             hideComposition(client: client)
         }
+#endif
     }
 
     /// 変換中の文字を入力欄に下線付きで出す (変換中は文節ごと、選んでいる文節は太い下線)。

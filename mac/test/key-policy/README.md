@@ -53,3 +53,15 @@ ABI test covers classification, commit/Undo, cache behavior, callback replacemen
 reentrant session access and destruction. The real-converter SDK host requires
 an actual NSSpellChecker invocation through the registered product callback.
 This is evidence integration, not proof of full upstream detector parity.
+
+The Rust response-application ABI now owns the edit loop and publishes the view
+only after successful edits. Its Swift sink supplies live marked/selected ranges,
+UTF-16 substrings, attributed insertion and the existing view renderer. Substring
+buffers are explicitly owned through the next callback. Each dependent edit
+queries the current client, not a cached initial range; mismatch stops later edits
+and rendering. No core/session lock spans SDK callbacks. The old loop remains in
+the explicit legacy build. Independent Foundation replay compares traces and final
+documents, while controlled IMK tests exercise dependent replacement and mismatch.
+Portable ABI tests cover each host-failure point and malformed-response rejection
+before any callback. Objective-C exception recovery, actual external client input
+and moving the remaining rendering/OS bridge to Rust still require work.

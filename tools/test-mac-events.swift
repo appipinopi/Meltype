@@ -124,6 +124,19 @@ struct EventTests {
   check("Command shortcut commits once") { controller,client in
    type(controller,client,"@kuraido");precondition(!key(controller,client,"a",flags:.command));equal(client.document,"@kuraido");equal(client.marked,"")
   }
+  #if MELTYPE_RUST_CORE
+  check("Rust response loop dependent replacement") { controller,client in
+   client.document="前😀"
+   controller.apply(SessionResult(consumed:true,commits:[TextEdit(deleteBefore:3,text:"仮名",expect:"前😀"),TextEdit(deleteBefore:2,text:"終",expect:"仮名")],view:nil),to:client)
+   equal(client.document,"終");equal(client.marked,"")
+  }
+  check("Rust response loop mismatch stops later edits and view") { controller,client in
+   client.document="原文"
+   let view=CompositionView(text:"表示禁止",converting:false,selectedIndex:0,selectedClause:0,hint:"",candidates:[],clauses:[],meaning:nil,suggestion:nil)
+   controller.apply(SessionResult(consumed:true,commits:[TextEdit(deleteBefore:1,text:"変更禁止",expect:"違"),TextEdit(deleteBefore:0,text:"後続禁止",expect:nil)],view:view),to:client)
+   equal(client.document,"原文");equal(client.marked,"")
+  }
+  #endif
   #if REAL_CONVERTER
   let converter=MeltypeConverter.shared
   let expectedConversion=converter.clauses(for:"きょう",context:nil).map(\.text).joined()

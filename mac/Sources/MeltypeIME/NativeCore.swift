@@ -71,19 +71,19 @@ private let isWordCallback: IsWordCallback = { word in
 }
 
 /// Swift 側で扱う結果 (本体の SessionResult.ToJson と同じ形)。
-struct SessionResult: Decodable {
+struct SessionResult: Codable {
     let consumed: Bool
     let commits: [TextEdit]
     let view: CompositionView?
 }
 
-struct TextEdit: Decodable {
+struct TextEdit: Codable {
     let deleteBefore: Int
     let text: String
     let expect: String?
 }
 
-struct CompositionView: Decodable {
+struct CompositionView: Codable {
     let text: String
     let converting: Bool
     let selectedIndex: Int
