@@ -9,6 +9,7 @@ pub mod kana;
 pub mod linguistics;
 pub mod math_candidates;
 pub mod mozc;
+mod phrase_spacing;
 pub mod protection;
 pub mod romaji;
 pub mod session;

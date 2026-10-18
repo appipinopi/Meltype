@@ -120,6 +120,7 @@ fn macos_session(handle: *mut std::ffi::c_void) -> *mut std::ffi::c_void {
         .get_mut(&(handle as usize))
     {
         session.external_converter_only = true;
+        session.automatic_english_spacing = true;
     }
     handle
 }
@@ -134,6 +135,19 @@ pub unsafe extern "C" fn meltype_macos_create_at(
     directory: *const std::ffi::c_char,
 ) -> *mut std::ffi::c_void {
     macos_session(super::meltype_create_at(directory))
+}
+/// Match upstream macOS selection: keep the selected candidate composing.
+#[no_mangle]
+pub extern "C" fn meltype_macos_select_candidate(
+    handle: *mut std::ffi::c_void,
+    index: i32,
+) -> *mut std::ffi::c_char {
+    let Ok(_spelling) = (unsafe {
+        super::word_checker::prepare(handle as usize, 0, 0, 0, std::ptr::null(), std::ptr::null())
+    }) else {
+        return std::ptr::null_mut();
+    };
+    super::run(handle, |session| session.select_composing(index as usize))
 }
 /// Legacy macOS scalar boundary; other frontends retain full scalar input.
 /// # Safety

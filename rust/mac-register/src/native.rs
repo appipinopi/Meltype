@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 appipinopi
+// Copyright (C) 2026 Yukishiro, appipinopi
 use crate::{run, select, SelectionSystem, System};
 use objc2::{
     msg_send,

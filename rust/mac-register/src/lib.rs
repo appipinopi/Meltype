@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 appipinopi
+// Copyright (C) 2026 Yukishiro, appipinopi
 //! Standalone installer registration helper; no IME/native-core/Swift dependency.
 #[cfg(target_os = "macos")]
 mod native;

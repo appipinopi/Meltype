@@ -225,7 +225,33 @@ pub extern "C" fn meltype_destroy(handle: *mut c_void) {
 }
 
 unsafe fn external_conversion(reading: &str, before: *const c_char) -> (Vec<Clause>, Vec<String>) {
-    let spans = meltype_core::protection::scan(reading);
+    let mut spans = meltype_core::protection::scan(reading);
+    // Detected English within a Japanese reading is literal composition text,
+    // not romaji for the external converter. Keep complete alphanumeric runs.
+    if reading.chars().any(meltype_core::linguistics::kana) {
+        let mut at = 0;
+        while at < reading.len() {
+            let ch = reading[at..].chars().next().unwrap();
+            if !ch.is_ascii_alphanumeric() {
+                at += ch.len_utf8();
+                continue;
+            }
+            let end = reading[at..]
+                .find(|c: char| !c.is_ascii_alphanumeric())
+                .map_or(reading.len(), |n| at + n);
+            if reading[at..end].bytes().any(|c| c.is_ascii_alphabetic())
+                && !spans.iter().any(|span| at < span.end && end > span.start)
+            {
+                spans.push(meltype_core::protection::Span {
+                    start: at,
+                    end,
+                    kind: "detected_english",
+                });
+            }
+            at = end;
+        }
+        spans.sort_by_key(|span| span.start);
+    }
     let callbacks = CALLBACKS
         .lock()
         .map(|c| c.clauses.is_some() || c.candidates.is_some())

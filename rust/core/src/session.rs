@@ -100,6 +100,7 @@ pub struct Session {
     explicit: Option<String>,
     pub direct: bool,
     pub external_converter_only: bool,
+    pub automatic_english_spacing: bool,
     pub direct_detection: bool,
     pub direct_english_word: bool,
     pub code_input: bool,
@@ -142,6 +143,7 @@ impl Default for Session {
             explicit: None,
             direct: false,
             external_converter_only: false,
+            automatic_english_spacing: false,
             direct_detection: false,
             direct_english_word: false,
             code_input: false,
@@ -386,9 +388,28 @@ impl Session {
             self.kana_text.clone()
         } else if let Some(fix) = self.romaji_fix() {
             fix.kana
+        } else if self.external_converter_only
+            && self.function_key == 0
+            && self.settings.text("DetectionLevel") != "Manual"
+            && self.preferences.english.get(&self.raw.to_ascii_lowercase()) != Some(&false)
+        {
+            // Classify only unprotected gaps; a mention must not make the
+            // surrounding Japanese sentence look like one protected token.
+            self.mixed_reading(true)
         } else {
             crate::protection::transform(&self.raw, |part| romaji::hiragana(part, true))
         }
+    }
+    fn mixed_reading(&self, final_input: bool) -> String {
+        crate::protection::transform(&self.raw, |part| {
+            Dictionary::bundled().composition(
+                part,
+                final_input,
+                &self.before,
+                &self.after,
+                self.settings.text("DetectionLevel"),
+            )
+        })
     }
     fn refresh_kana(&mut self) {
         if !["Kana", "Both"].contains(&self.settings.text("InputStyle")) {
@@ -688,7 +709,16 @@ impl Session {
                 .collect()
         })
     }
+    fn preview_candidates(&self) -> Option<Vec<String>> {
+        (!self.is_converting()
+            && self.function_key == 0
+            && self.explicit.is_none()
+            && !self.uses_kana()
+            && self.raw.eq_ignore_ascii_case("go"))
+        .then(|| vec![self.raw.clone(), "ご".into()])
+    }
     pub fn result(&self, consumed: bool) -> SessionResult {
+        let preview = self.preview_candidates();
         let language_suggestion = self.language_suggestion();
         SessionResult {
             consumed,
@@ -700,14 +730,21 @@ impl Session {
                 Some(View {
                     text: self.display(false),
                     converting: self.is_converting(),
-                    selected_index: self.selected,
+                    selected_index: preview
+                        .as_ref()
+                        .and_then(|values| {
+                            values
+                                .iter()
+                                .position(|value| value == &self.display(false))
+                        })
+                        .unwrap_or(self.selected),
                     selected_clause: self.selected_clause,
                     hint: language_suggestion
                         .as_ref()
                         .map(|s| format!("Tab → {s}"))
                         .unwrap_or_default(),
                     clauses: self.clauses.iter().map(|c| c.text().to_owned()).collect(),
-                    candidates: self.candidates.clone(),
+                    candidates: preview.clone().unwrap_or_else(|| self.candidates.clone()),
                     meaning: if self.settings.boolean("ShowCandidateMeanings")
                         && self.is_converting()
                     {
@@ -824,7 +861,10 @@ impl Session {
                 selection_expect: None,
             }
         } else {
-            self.commit_with_spacing(!preserve_text && self.settings.boolean("SpaceAroundEnglish"))
+            self.commit_with_options(
+                !preserve_text && self.settings.boolean("SpaceAroundEnglish"),
+                !preserve_text,
+            )
         };
         self.before.clear();
         self.after.clear();
@@ -838,6 +878,9 @@ impl Session {
         self.commit_with_spacing(self.settings.boolean("SpaceAroundEnglish"))
     }
     fn commit_with_spacing(&mut self, space_around: bool) -> SessionResult {
+        self.commit_with_options(space_around, true)
+    }
+    fn commit_with_options(&mut self, space_around: bool, format_phrases: bool) -> SessionResult {
         let mut text = self.display(true);
         if self.selected_prediction >= 0 {
             if let Some(prediction) = self.predictions().get(self.selected_prediction as usize) {
@@ -882,6 +925,9 @@ impl Session {
                 });
             }
             self.learn(changes);
+        }
+        if format_phrases && self.automatic_english_spacing && self.function_key == 0 {
+            text = crate::phrase_spacing::format(&text);
         }
         if space_around {
             text = space_english(&text, &self.before, &self.after);
@@ -1071,7 +1117,35 @@ impl Session {
         });
         result
     }
+    /// macOS candidate clicks select a composition; Enter commits afterward.
+    pub fn select_composing(&mut self, index: usize) -> SessionResult {
+        if let Some(preview) = self.preview_candidates() {
+            if index >= preview.len() {
+                return self.result(false);
+            }
+            self.candidates = preview;
+            self.clauses = vec![Clause::new("ご".into(), self.candidates.clone())];
+            self.live_clauses.clear();
+        }
+        if index >= self.candidates.len() {
+            return self.result(false);
+        }
+        self.chosen_conversion = true;
+        self.selected = index;
+        if let Some(clause) = self.clauses.get_mut(self.selected_clause) {
+            clause.selected = index;
+        }
+        self.result(true)
+    }
     pub fn select(&mut self, index: usize) -> SessionResult {
+        if self.preview_candidates().is_some() {
+            let result = self.select_composing(index);
+            return if result.consumed {
+                self.commit()
+            } else {
+                result
+            };
+        }
         if index >= self.candidates.len() {
             return self.result(false);
         }
@@ -1160,6 +1234,13 @@ impl Session {
             return None;
         }
         let reading = self.reading();
+        if self.external_converter_only {
+            let pending = self.mixed_reading(false);
+            return (reading.chars().count() >= 2
+                && pending == reading
+                && reading.chars().any(crate::linguistics::kana))
+            .then_some(reading);
+        }
         if reading.chars().count() < 2
             || romaji::hiragana(&self.raw, false) != reading
             || Dictionary::bundled()

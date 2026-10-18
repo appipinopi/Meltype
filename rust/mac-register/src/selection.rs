@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 appipinopi
+// Copyright (C) 2026 hrmcngs, appipinopi
 const TARGET: &str = "io.github.yksr-melt.inputmethod.Meltype.Japanese";
 pub trait SelectionSystem {
     type List;

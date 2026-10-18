@@ -85,11 +85,20 @@ impl Probe {
     pub fn evaluate(&self) {
         let dictionary = crate::dictionary::Dictionary::bundled();
         for word in &self.words {
-            for final_input in [false, true] {
-                dictionary.composition(word, final_input, &self.before, &self.after, &self.level);
-            }
-            dictionary.mixed_context(word, true, false);
-            dictionary.known_english(word);
+            crate::protection::transform(word, |part| {
+                for final_input in [false, true] {
+                    dictionary.composition(
+                        part,
+                        final_input,
+                        &self.before,
+                        &self.after,
+                        &self.level,
+                    );
+                }
+                dictionary.mixed_context(part, true, false);
+                dictionary.known_english(part);
+                String::new()
+            });
         }
     }
 }
