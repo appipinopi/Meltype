@@ -6,9 +6,11 @@ loads the actual Rust library through the production NativeCore initializer,
 and uses production KeyMapping/NativeKeyPolicy with the former SDK implementation
 as an independent reference. It compares all UInt16 key codes, a Unicode/control/
 punctuation corpus, and modifier combinations including device/ignored bits.
-NSEvents are constructed only in the test process; no event is posted and no
-input source is registered or activated. The converter fixture is test-only and
-is not called or packaged. This does not prove actual IMK input or UI parity.
+Key-comparison NSEvents are constructed only in the test process. The AppKit
+loop fixture posts an application-defined wake event to its own app after stop;
+no key event is posted and no input source is registered or activated. The
+converter fixture is test-only and is not shipped with the product. This does
+not prove actual IMK input or UI parity.
 
 Rust packaging enables MELTYPE_RUST_CORE=1 in mac/build.sh. Explicit legacy
 NativeAOT builds retain the original Swift mapping. OS lowercase normalization
@@ -85,16 +87,28 @@ selection-notification suppression, including a failed traversal. The old update
 and move loops remain only in legacy builds. The independent SDK host compares
 list/selection traces across visibility, content, index and selector support;
 portable ABI tests stop at each callback failure and reject malformed input.
-Meaning timer/stale-key management and actual candidate-window pixels still need
-migration/verification, along with other direct OS integration.
+Actual candidate-window pixels and complete IMK input still need verification,
+along with other remaining direct OS integration.
 
 Meaning reservation keys, duplicate scheduling, canonical matching, delay policy
-(1500 ms) and session cleanup now live in Rust. Swift schedules the OS queue and
-checks the original session token/key with Rust before querying window visibility
-and presenting the annotation. Clear/hide invalidates the current key; core
+(1500 ms) and session cleanup now live in Rust. Rust schedules the libdispatch main queue. Swift checks the original session
+token/key with Rust, then Rust queries window visibility and sends the annotation
+through Objective-C. Clear/hide invalidates the current key; core
 session destruction removes it and stale callbacks cannot match a new session.
 The A->B->A key behavior deliberately matches the former Swift equality policy.
 SDK and portable ABI tests compare original key rules, empty versus absent text,
 NUL, independent sessions, malformed UTF-16 and repeated destruction/recreation.
-Actual delayed annotation presentation and its pixels remain unverified; the
-DispatchQueue and IMK window calls are still Swift OS bridges.
+The SDK host checks actual delayed delivery on the main queue, one-shot callback
+lifetime, and annotation delivery to a controlled Objective-C object. It checks
+the actual IMKCandidates selectors, including Swift update() mapping to the
+Objective-C updateCandidates selector. Candidate-window pixels remain unverified.
+
+The temporary app also creates an actual private IMKServer and IMKCandidates
+through the Rust initializers and compares panel type, selection keys, automatic
+dismissal and visibility with the SDK initializer. No input source is registered.
+The AppKit fixture calls the original named Services registration through Rust,
+then runs the real NSApplication event loop, delivers a native timer, operates
+the private SDK panel, and stops/wakes its own app. A watchdog bounds the loop.
+Background loop/registration calls and invalid service names are rejected. The
+SDK Services function returns void: the fixture proves the registration call,
+not delivery of an installed service shortcut from another application.
