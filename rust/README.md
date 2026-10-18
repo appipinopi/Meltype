@@ -357,3 +357,6 @@ macOS候補の更新分岐・選択移動ループをRustへ移しました。�
 
 
 macOS意味表示の予約キー・重複予約抑止・1500msの遅延値・発火時のキー照合をRustへ移しました。正規等価な文字列を同じキーとして扱い、破棄済みセッションの予約が再作成後の入力欄へ一致しないようにします。53134b6の[macOS SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39087947099)で両ジョブ成功。元Swift予約キー規則との43比較、実ABIの53照合・100再作成、既存スタブ22操作・実azooKey／NSSpellChecker28操作と全Swiftコンパイルが通過し、保存ログを確認しました。[同じ版のfcitx SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39087947068)も成功。OSキューへの予約、可視性の確認、注釈ウィンドウ表示はSwiftに残ります。実際に1.5秒後に表示される画面と、実アプリ入力・全UI一致は未確認です。
+
+
+2c2aa8dでは意味表示のOS予約もRustへ移し、`dispatch_time`／`dispatch_after_f`でメインキューへ配送します。Swiftは保持したコールバックを配送時に1回解放し、失敗時は即時に解放します。SDK試験では実際のキューとランループで1500ms以降の実行、メインスレッド、2予約の各1回実行、キャプチャ寿命と破棄後の拒否を確認しました。[2c2aa8dのmacOS SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39088364705)で両ジョブ成功。実メインキューの1500ms以降の配送、2予約の各1回実行、保持したオブジェクトの配送後解放、破棄済みセッションの拒否と保存ログを確認済み。既存スタブ22操作・実変換器28操作と全Swiftコンパイルも通過。[同じ版のfcitx SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39088364728)も成功。公開キューの取得規約は[libdispatchのqueue.h](https://github.com/swiftlang/swift-corelibs-libdispatch/blob/main/dispatch/queue.h)に従います。候補ウィンドウの可視性確認と注釈描画は引き続きSwiftです。
