@@ -65,3 +65,13 @@ documents, while controlled IMK tests exercise dependent replacement and mismatc
 Portable ABI tests cover each host-failure point and malformed-response rejection
 before any callback. Objective-C exception recovery, actual external client input
 and moving the remaining rendering/OS bridge to Rust still require work.
+
+Composition decoration is now planned by Rust: UTF-16 clause offsets, raw/
+converted/selected style, valid nonempty attribute ranges, and cursor-at-end
+publication. The Swift sink maps styles to actual Carbon marks and sends the
+attributed string through IMK; candidate and suggestion widgets still use Swift.
+The independent SDK reference compares the old plan across empty/mismatched
+clauses, selection boundaries, combining text, NUL and supplementary characters.
+The controlled product IMK host verifies attributed UTF-16 payload/selection and
+clear. A portable ABI test ensures callback failures stop before publication and
+malformed replies do not start callbacks. This does not establish pixel parity.

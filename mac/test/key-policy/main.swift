@@ -140,3 +140,29 @@ precondition(editor.apply(response([(1,"x","e\u{301}")]),marked:{NSRange(locatio
 precondition(editor.apply(response([(2,"x","e\u{301}")]),marked:{NSRange(location:2,length:1)},selected:{fatalError("marked caret must suppress selectedRange")},substring:{_ in canonicalDocument},insert:{text,_ in canonicalDocument=text},render:{canonicalRendered=true}))
 precondition(canonicalDocument=="x" && canonicalRendered)
 print("macOS Rust apply: \(applyCount) independent legacy edit traces/final documents, current ranges, Unicode/NUL, ordered edits, mismatch stop and canonical comparison passed")
+
+var compositionCount=0
+for text in ["", "前😀後", "e\u{301}", "a\u{0}b"] {
+ for clauses in [[], ["前", "😀", "後"], ["",text], [text+"外"], ["a", "b"]] {
+  for converting in [false,true] {
+   for selected in [-1,0,1,8] {
+    let view=CompositionView(text:text,converting:converting,selectedIndex:0,selectedClause:selected,hint:"",candidates:[],clauses:clauses,meaning:nil,suggestion:nil)
+    let length=(text as NSString).length
+    var expected:[String]=[],actual:[String]=[]
+    if converting && !clauses.isEmpty {
+     var location=0
+     for (index,clause) in clauses.enumerated() {
+      let size=(clause as NSString).length
+      if size>0 && location+size<=length {expected.append("\(index==selected ? 2 : 1):\(location):\(size)")}
+      location+=size
+     }
+    } else if length>0 {expected.append("0:0:\(length)")}
+    expected.append("publish:\(length)")
+    precondition(editor.composition(view,mark:{style,range in actual.append("\(style):\(range.location):\(range.length)")},publish:{actual.append("publish:\($0)")}))
+    precondition(actual==expected,"composition decoration trace differs from former Swift")
+    compositionCount+=1
+   }
+  }
+ }
+}
+print("macOS Rust composition: \(compositionCount) legacy SDK decoration plans, UTF16 clauses, selected/raw styles, empty/outside ranges and publication order passed")

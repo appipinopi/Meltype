@@ -6,9 +6,10 @@ import InputMethodKit
 import Carbon.HIToolbox
 final class EventClient: NSObject, IMKTextInput {
  var document=""; var marked=""
+ var lastMarkedValue:NSAttributedString?; var lastMarkedSelection:NSRange?
  func text(_ value:Any?)->String { (value as? NSAttributedString)?.string ?? (value as? String ?? "") }
  func insertText(_ string: Any!, replacementRange: NSRange) { let value=text(string); if replacementRange.location != NSNotFound { document=(document as NSString).replacingCharacters(in:replacementRange,with:value) } else {document+=value}; marked="" }
- func setMarkedText(_ string: Any!, selectionRange: NSRange, replacementRange: NSRange) {marked=text(string)}
+ func setMarkedText(_ string: Any!, selectionRange: NSRange, replacementRange: NSRange) {marked=text(string);lastMarkedValue=string as? NSAttributedString;lastMarkedSelection=selectionRange}
  func selectedRange()->NSRange {NSRange(location:(document as NSString).length,length:0)}
  func markedRange()->NSRange {marked.isEmpty ? NSRange(location:NSNotFound,length:0):NSRange(location:(document as NSString).length,length:(marked as NSString).length)}
  func attributedSubstring(from range:NSRange)->NSAttributedString! { let text=document as NSString; guard range.location != NSNotFound && range.location<=text.length else{return nil}; return NSAttributedString(string:text.substring(with:NSRange(location:range.location,length:min(range.length,text.length-range.location)))) }
@@ -125,6 +126,15 @@ struct EventTests {
    type(controller,client,"@kuraido");precondition(!key(controller,client,"a",flags:.command));equal(client.document,"@kuraido");equal(client.marked,"")
   }
   #if MELTYPE_RUST_CORE
+  check("Rust UTF16 marked composition and clear through actual IMK bridge") { controller,client in
+   let view=CompositionView(text:"前😀後",converting:true,selectedIndex:0,selectedClause:1,hint:"",candidates:[],clauses:["前","😀","後"],meaning:nil,suggestion:nil)
+   controller.apply(SessionResult(consumed:true,commits:[],view:view),to:client)
+   equal(client.marked,"前😀後")
+   precondition(client.lastMarkedValue?.length==4 && client.lastMarkedSelection==NSRange(location:4,length:0),"UTF16 marked payload/selection mismatch")
+   controller.apply(SessionResult(consumed:true,commits:[],view:nil),to:client)
+   equal(client.marked,"")
+   precondition(client.lastMarkedValue?.length==0 && client.lastMarkedSelection==NSRange(location:0,length:0),"marked clear must retain attributed payload type")
+  }
   check("Rust response loop dependent replacement") { controller,client in
    client.document="前😀"
    controller.apply(SessionResult(consumed:true,commits:[TextEdit(deleteBefore:3,text:"仮名",expect:"前😀"),TextEdit(deleteBefore:2,text:"終",expect:"仮名")],view:nil),to:client)

@@ -297,6 +297,15 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
     /// 変換中の文字を入力欄に下線付きで出す (変換中は文節ごと、選んでいる文節は太い下線)。
     private func showComposition(_ view: CompositionView, client: IMKTextInput) {
         let text = NSMutableAttributedString(string: view.text)
+#if MELTYPE_RUST_CORE
+        guard NativeCore.shared.editorPolicy?.composition(view, mark: { style, range in
+            let carbonStyle = [kTSMHiliteRawText, kTSMHiliteConvertedText, kTSMHiliteSelectedConvertedText][style]
+            self.addMark(carbonStyle, to: text, range: range)
+        }, publish: { length in
+            client.setMarkedText(NSAttributedString(attributedString: text), selectionRange: NSRange(location: length, length: 0), replacementRange: NSRange(location: NSNotFound, length: 0))
+            self.hasMarkedText = length > 0
+        }) == true else { return }
+#else
         let length = (view.text as NSString).length
         if view.converting && !view.clauses.isEmpty {
             var location = 0
@@ -311,6 +320,7 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
         }
         client.setMarkedText(NSAttributedString(attributedString: text), selectionRange: NSRange(location: length, length: 0), replacementRange: NSRange(location: NSNotFound, length: 0))
         hasMarkedText = length > 0
+#endif
         updateCandidates(view)
         showSuggestion(view.suggestion, client: client)
     }
