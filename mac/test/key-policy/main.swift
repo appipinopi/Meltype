@@ -4,6 +4,23 @@ import AppKit
 import Carbon.HIToolbox
 import InputMethodKit
 
+// Restart fixture: run only preference operations in a fresh process. The
+// UUID suite is created by the parent; no standard user preference is modified.
+if CommandLine.arguments.dropFirst().first == "--preferences-child" {
+    let args=Array(CommandLine.arguments.dropFirst(2))
+    precondition(args.count==5 && args[0].hasPrefix("MeltypeRustPreferences."))
+    guard let defaults=UserDefaults(suiteName:args[0]),let expected=MacInputMode(rawValue:args[1]),
+          let next=MacInputMode(rawValue:args[3]) else {fatalError("child preference arguments")}
+    let indicator=ModeIndicatorSettings(defaults:defaults)
+    let selection=ModeSelection(defaults:defaults)
+    precondition(selection.current==expected,"new process failed to restore mode")
+    precondition(indicator.isEnabled==(args[2]=="true"),"new process failed to restore indicator preference")
+    selection.select(next);indicator.isEnabled=args[4]=="true"
+    precondition(defaults.synchronize(),"child preferences did not synchronize")
+    print("macOS Rust preferences child: restored \(expected.rawValue)/\(args[2]), persisted \(next.rawValue)/\(args[4]) in fresh process")
+    exit(0)
+}
+
 precondition(NativeCore.shared.keyPolicy != nil, "real NativeCore did not resolve Rust key ABI")
 precondition(NativeKeyPolicy(lookup: { _ in nil }) == nil, "missing ABI accepted")
 func event(_ code: UInt16, _ text: String) -> NSEvent {
@@ -709,5 +726,31 @@ func testPrivateModePreferences() {
     precondition(editor.modeAfter(action:0,current:99)==(-1))
 }
 testPrivateModePreferences()
+func restartPreferenceChild(expected:MacInputMode,enabled:Bool,next:MacInputMode,nextEnabled:Bool) {
+    let process=Process()
+    process.executableURL=Bundle.main.executableURL!
+    process.arguments=["--preferences-child",preferencesSuite,expected.rawValue,String(enabled),next.rawValue,String(nextEnabled)]
+    let finished=DispatchSemaphore(value:0)
+    process.terminationHandler={_ in finished.signal()}
+    do {try process.run()} catch {fatalError("cannot launch owned preference child: \(error)")}
+    if finished.wait(timeout:.now()+30) != .success {
+        process.terminate();process.waitUntilExit();fatalError("owned preference child timed out")
+    }
+    process.waitUntilExit()
+    precondition(process.terminationReason == .exit && process.terminationStatus==0,"owned preference child failed")
+}
+let restartSelection=ModeSelection(defaults:preferences)
+let restartIndicator=ModeIndicatorSettings(defaults:preferences)
+restartSelection.select(.code);restartIndicator.isEnabled=false
+precondition(preferences.synchronize())
+restartPreferenceChild(expected:.code,enabled:false,next:.direct,nextEnabled:true)
+restartPreferenceChild(expected:.direct,enabled:true,next:.automatic,nextEnabled:false)
+precondition(preferences.synchronize())
+guard let restoredDefaults=UserDefaults(suiteName:preferencesSuite) else {fatalError("parent restore defaults")}
+precondition(ModeSelection(defaults:restoredDefaults).current == .automatic)
+precondition(!ModeIndicatorSettings(defaults:restoredDefaults).isEnabled)
+// The existing Rust state intentionally keeps the pre-restart selection.
+precondition(restartSelection.current == .code)
+print("macOS Rust preferences restart: parent -> first fresh process -> second fresh process -> parent, mode and indicator values survived, cached parent selection preserved (private suite only)")
 preferences.removePersistentDomain(forName:preferencesSuite)
 print("macOS Rust preferences: \(preferenceCases) legacy preference/mode comparisons, absent defaults, bool coercion, persisted roundtrip, cached selection, invalid stored values unchanged and all mode actions passed (private suite only)")
