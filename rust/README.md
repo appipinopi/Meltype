@@ -377,3 +377,6 @@ e2e7cb1ではIMKServerと候補パネルの作成をRustのSDK initializerへ移
 
 
 3339d11では提案パネルの作成、フォント・ラベル・装飾、画面選択とカーソル下への配置、更新時の再利用と非表示をRustのAppKit呼出しへ移しました。元の13pt文字・左右12／上下8pt・カーソル下6pt、非活性floatingパネル・マウス無視を保ちます。SwiftはIMKクライアントから選択範囲とcaretを取得し、借用した既存パネルを渡します。Apple Silicon／Intel型チェック、ClippyとWindows実ABI拒否試験は通過。[3339d11のmacOS SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39095747711)で両ジョブ成功。実AppKitパネルを旧Swiftと20条件で比較し、UTF16本文・フォント・寸法／位置・装飾・更新時の再利用、不正caret／未選択時の非表示と背景スレッド拒否を確認。既存スタブ22操作・実変換器28操作と全Swiftコンパイルの保存ログも確認済み。[同じ版のfcitx SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39095747644)も成功。画面全体の外観一致・実アプリ入力は未検証です。
+
+
+acd350cではミニモード表示のビュー生成、文字／選択色／フォント／角丸、アクセシビリティとcaption、compact／通常レイアウトと画面内配置計算をRustへ移しました。旧Swiftを試験専用fixtureとして保持し、6種類の実ビュー全体と10配置、caret検証を比較しました。[acd350cのmacOS SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39096216914)で両ジョブ成功。実AppKitの6種類のビュー全体と10配置、フォント・色・レイヤー・アクセシビリティ・captionとcaret検証を旧Swiftと比較し、保存ログを確認。既存スタブ22操作・実変換器28操作と全Swiftコンパイルも通過。[同じ版のfcitx SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39096216770)も成功。Apple Silicon／Intel型チェック、Clippyと実ABI拒否試験は通過。表示予約・パネル管理・1秒後の非表示と設定はSwiftに残ります。実アプリ入力・全画面の外観一致も未検証です。
