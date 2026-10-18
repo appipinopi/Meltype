@@ -176,6 +176,17 @@ SDK fixture keeps the former Swift implementation as a test-only reference and
 compares twelve XML/binary plist shapes, normalization/filtering and original
 Foundation error domain/code, thirty-two merges (including canonical duplicates,
 CRLF grapheme semantics and NUL), and repeated imports into separate private
-folders. The production path still uses Swift file IO/atomic writing and the
-open/alert UI; those are remaining migration work. No personal dictionary is
+folders. The production import path now calls Foundation source/read/create/atomic NSData write
+operations from Rust too. The IO fixture checks nested Unicode paths, no-op file
+mtime, seven failures against the former Swift errors/content, and five UTF-8 decoding cases (BOM, malformed sequences and NUL). Atomic NSData writes preserve the UTF-8 bytes without a converting NSString initializer. A bare word is
+a valid OpenStep plist, so malformed-input cases use broken syntax. The open/alert
+UI and dictionary-change notification remain separate migration work. No personal dictionary is
 read or modified. Portable ABI coverage checks actual merge/malformed requests.
+
+
+Dictionary IO UTF-8 decoding is checked against the actual original Swift SDK
+file initializer, including BOM preservation, invalid-sequence error 259 and
+embedded NUL. Newer Swift Foundation source branches can have a different BOM
+policy; a source branch alone is not evidence for the SDK/runtime under test.
+
+Verified with both jobs in [8ddae69 macOS SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39103797071).

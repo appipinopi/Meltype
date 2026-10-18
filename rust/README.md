@@ -395,3 +395,6 @@ a0e5210では入力メニューの生成とチェック状態設定をRustのApp
 
 
 ffb5698ではmacOSユーザー辞書のplist解析、かな変換・トリム・行の検証、既存辞書とのマージをRustへ移しました。Foundationの同じAPIをRustから呼び、XML／binary plist、列の優先順位と型判定、UTF16長、元Swift Characterに基づくCRLFの扱い、正規等価な重複を保持します。解析エラーはSDKのNSErrorをSwiftへ渡します。ローカル型チェック・Clippyと実ABIの重複／改行／NUL／不正入力試験が成功。[ffb5698のmacOS SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39098954313)で両ジョブ成功。旧SwiftとのXML／binary plist12形式・元のFoundationエラー／正規化／除外、正規等価・CRLF・NULを含む32マージと私用ファイルへの繰返し取込みの保存ログを確認。実ABIの重複／追記／不正入力、既存スタブ22操作・実変換器28操作と全Swiftコンパイルも通過。[同じ版のfcitx SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39098954331)も成功。ファイルIOとダイアログのSwift、実入力・全UI一致は残ります。
+
+
+fdd67d6では辞書取込みの読込元NSData、保存先のUTF8読込、親フォルダー作成、原子的保存をRustからFoundationへ接続しました。追加0件の無書込とNSError返却を維持します。保存はUTF8バイト列をNSDataで渡し、NSString初期化による先頭BOMの消失を防ぎます。ローカル型チェック・Clippy・実ABI拒否試験が成功。[8ddae69のmacOS SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39103797071)で両ジョブ成功。旧Swiftとの7失敗時のNSError・既存内容保持、Unicode階層パス、重複時の更新時刻維持、BOM／不正UTF8／NULを含む5境界の保存バイト列比較を確認。既存スタブ22操作・実変換器28操作と全Swiftコンパイルも通過。[同じ版のfcitx SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39103797136)も成功。ダイアログ・変更通知のSwiftと、実辞書利用・実入力・全画面一致は残ります。
