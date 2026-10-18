@@ -14,6 +14,14 @@ assert not api.meltype_macos_candidate_window(P(1),99,0,None,0)
 if sys.platform!="darwin":
     for operation in range(6):
         assert not api.meltype_macos_candidate_window(P(1),operation,1,None,0)
+api.meltype_macos_server_create.argtypes=[c.POINTER(c.c_uint16),U,c.POINTER(c.c_uint16),U]
+api.meltype_macos_server_create.restype=P
+api.meltype_macos_candidates_create.argtypes=[P,c.c_uint64]
+api.meltype_macos_candidates_create.restype=P
+assert not api.meltype_macos_server_create(None,0,None,0)
+assert not api.meltype_macos_candidates_create(None,1)
+if sys.platform!="darwin":
+    assert not api.meltype_macos_candidates_create(P(1),1)
 callback_type=c.CFUNCTYPE(None,P)
 api.meltype_macos_meaning_schedule.argtypes=[P,callback_type]
 api.meltype_macos_meaning_schedule.restype=c.c_int

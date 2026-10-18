@@ -13,8 +13,9 @@ cp "$library" "$app/Contents/Frameworks/libMeltypeNative.dylib"
 cat > "$app/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0"><dict><key>CFBundleExecutable</key><string>KeyPolicy</string><key>CFBundleIdentifier</key><string>moe.meltype.tests.keypolicy</string><key>CFBundlePackageType</key><string>APPL</string></dict></plist>
+<plist version="1.0"><dict><key>CFBundleExecutable</key><string>KeyPolicy</string><key>CFBundleIdentifier</key><string>moe.meltype.tests.keypolicy</string><key>CFBundlePackageType</key><string>APPL</string><key>LSBackgroundOnly</key><true/><key>NSPrincipalClass</key><string>NSApplication</string><key>InputMethodServerControllerClass</key><string>MeltypePolicyController</string><key>InputMethodServerDelegateClass</key><string>MeltypePolicyController</string></dict></plist>
 PLIST
+plutil -insert InputMethodConnectionName -string "MeltypePolicy_$(basename "$temporary")" "$app/Contents/Info.plist"
 swiftc -swift-version 5 -DMELTYPE_RUST_CORE -DMELTYPE_POLICY_TEST \
   "$root/mac/Sources/MeltypeIME/NativeKeyPolicy.swift" \
   "$root/mac/Sources/MeltypeIME/NativeCore.swift" \

@@ -342,3 +342,36 @@ for selector in [#selector(IMKCandidates.update), #selector(IMKCandidates.show(_
     precondition(IMKCandidates.instancesRespond(to:selector),"actual IMKCandidates lacks \(selector)")
 }
 print("macOS Rust window: actual IMKCandidates SDK selectors checked, including Swift update -> Objective-C updateCandidates")
+
+// A private SDK server/panel in this temporary test bundle. No input-source
+// registration or activation, no connection to another application's editor.
+@objc(MeltypePolicyController) final class PolicyInputController: IMKInputController {}
+_ = NSApplication.shared
+precondition(editor.createServer(name:"",bundleIdentifier:"local.empty")==nil)
+precondition(editor.createCandidates(server:NSObject(),panelType:1)==nil,"non-IMK server accepted")
+guard let policyBundle=Bundle.main.bundleIdentifier,
+      let policyConnection=Bundle.main.object(forInfoDictionaryKey:"InputMethodConnectionName") as? String,
+      let policyServer=editor.createServer(name:policyConnection,bundleIdentifier:policyBundle) as? IMKServer else {
+    fatalError("private Rust IMKServer creation failed")
+}
+var ownedPanel: IMKCandidates?
+autoreleasepool {
+    ownedPanel=editor.createCandidates(server:policyServer,panelType:UInt64(kIMKSingleColumnScrollingCandidatePanel)) as? IMKCandidates
+}
+guard let activePanel=ownedPanel else {fatalError("private Rust IMKCandidates creation failed")}
+guard let swiftPanel=IMKCandidates(server:policyServer,panelType:kIMKSingleColumnScrollingCandidatePanel) else {fatalError("reference SDK panel creation failed")}
+precondition(activePanel.panelType()==swiftPanel.panelType(),"panel type differs from SDK")
+precondition(activePanel.selectionKeys() as? [NSNumber] == swiftPanel.selectionKeys() as? [NSNumber],"default selection keys differ")
+precondition(activePanel.dismissesAutomatically()==swiftPanel.dismissesAutomatically(),"default dismiss policy differs")
+precondition(editor.candidateWindow(activePanel,operation:0)==(swiftPanel.isVisible() ? 1 : 0))
+precondition(editor.candidateWindow(activePanel,operation:4)==1)
+swiftPanel.hide()
+precondition(!activePanel.isVisible() && !swiftPanel.isVisible())
+let creationDone=DispatchSemaphore(value:0)
+DispatchQueue.global().async {
+    precondition(editor.createServer(name:policyConnection+"_background",bundleIdentifier:policyBundle)==nil)
+    precondition(editor.createCandidates(server:policyServer,panelType:1)==nil)
+    creationDone.signal()
+}
+precondition(creationDone.wait(timeout:.now()+5) == .success)
+print("macOS Rust startup: private actual IMKServer and IMKCandidates created, ARC transfer through autorelease pool, SDK default panel/keys/dismiss/visibility and background/non-server rejection passed (no input-source registration)")

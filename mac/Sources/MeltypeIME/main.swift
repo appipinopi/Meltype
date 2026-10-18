@@ -159,11 +159,21 @@ if CommandLine.arguments.contains("--self-test") || CommandLine.arguments.contai
 }
 
 let connectionName = Bundle.main.object(forInfoDictionaryKey: "InputMethodConnectionName") as? String ?? "Meltype_Connection"
-guard let bundleIdentifier = Bundle.main.bundleIdentifier,
-      let server = IMKServer(name: connectionName, bundleIdentifier: bundleIdentifier) else {
+#if MELTYPE_RUST_CORE
+let nativeServer = Bundle.main.bundleIdentifier.flatMap {
+    NativeCore.shared.editorPolicy?.createServer(name: connectionName, bundleIdentifier: $0) as? IMKServer
+}
+#else
+let nativeServer = Bundle.main.bundleIdentifier.flatMap { IMKServer(name: connectionName, bundleIdentifier: $0) }
+#endif
+guard let server = nativeServer else {
     NSLog("Meltype: IMKServer を起動できませんでした (Meltype.app から起動してください)")
     exit(1)
 }
+#if MELTYPE_RUST_CORE
+candidatesWindow = NativeCore.shared.editorPolicy?.createCandidates(server: server, panelType: UInt64(kIMKSingleColumnScrollingCandidatePanel)) as? IMKCandidates
+#else
 candidatesWindow = IMKCandidates(server: server, panelType: kIMKSingleColumnScrollingCandidatePanel)
+#endif
 NSRegisterServicesProvider(ModeServices.shared, ModeServices.portName)
 NSApplication.shared.run()

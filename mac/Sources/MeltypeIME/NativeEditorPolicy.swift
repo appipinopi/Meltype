@@ -14,6 +14,10 @@ struct NativeEditorPolicy {
     private typealias MeaningDelay = @convention(c) () -> UInt32
     private typealias MeaningSchedule = @convention(c) (UnsafeMutableRawPointer?, NativeMeaningCallback) -> Int32
     private typealias WindowFunction = @convention(c) (UnsafeMutableRawPointer?, UInt32, Int64, UnsafePointer<UInt16>?, UInt32) -> Int32
+    private typealias ServerCreate = @convention(c) (UnsafePointer<UInt16>?, UInt32, UnsafePointer<UInt16>?, UInt32) -> UnsafeMutableRawPointer?
+    private typealias CandidatesCreate = @convention(c) (UnsafeMutableRawPointer?, UInt64) -> UnsafeMutableRawPointer?
+    private let serverCreate: ServerCreate
+    private let candidatesCreate: CandidatesCreate
     private let windowFunction: WindowFunction
     private let meaningSchedule: MeaningSchedule
     private let meaningDelay: MeaningDelay
@@ -37,7 +41,11 @@ struct NativeEditorPolicy {
               let meaningMatches = lookup("meltype_macos_meaning_matches"),
               let meaningDelay = lookup("meltype_macos_meaning_delay_ms"),
               let meaningSchedule = lookup("meltype_macos_meaning_schedule"),
-              let windowFunction = lookup("meltype_macos_candidate_window") else { return nil }
+              let windowFunction = lookup("meltype_macos_candidate_window"),
+              let serverCreate = lookup("meltype_macos_server_create"),
+              let candidatesCreate = lookup("meltype_macos_candidates_create") else { return nil }
+        self.serverCreate = unsafeBitCast(serverCreate, to: ServerCreate.self)
+        self.candidatesCreate = unsafeBitCast(candidatesCreate, to: CandidatesCreate.self)
         self.windowFunction = unsafeBitCast(windowFunction, to: WindowFunction.self)
         self.meaningSchedule = unsafeBitCast(meaningSchedule, to: MeaningSchedule.self)
         self.meaningDelay = unsafeBitCast(meaningDelay, to: MeaningDelay.self)
@@ -80,6 +88,20 @@ struct NativeEditorPolicy {
         return withExtendedLifetime(sink) {
             data.withUnsafeBytes { candidatesFunction($0.bindMemory(to: UInt8.self).baseAddress, count, Unmanaged.passUnretained(sink).toOpaque(), nativeCandidatesHost) != 0 }
         }
+    }
+    func createServer(name: String, bundleIdentifier: String) -> AnyObject? {
+        let nameUnits=Array(name.utf16), bundleUnits=Array(bundleIdentifier.utf16)
+        guard let nameCount=UInt32(exactly:nameUnits.count), let bundleCount=UInt32(exactly:bundleUnits.count) else { return nil }
+        let pointer=nameUnits.withUnsafeBufferPointer { name in
+            bundleUnits.withUnsafeBufferPointer { bundle in serverCreate(name.baseAddress,nameCount,bundle.baseAddress,bundleCount) }
+        }
+        guard let pointer else { return nil }
+        return Unmanaged<AnyObject>.fromOpaque(pointer).takeRetainedValue()
+    }
+    func createCandidates(server: AnyObject, panelType: UInt64) -> AnyObject? {
+        let pointer=withExtendedLifetime(server) { candidatesCreate(Unmanaged.passUnretained(server).toOpaque(),panelType) }
+        guard let pointer else { return nil }
+        return Unmanaged<AnyObject>.fromOpaque(pointer).takeRetainedValue()
     }
     func candidateWindow(_ window: AnyObject, operation: UInt32, argument: Int = 0, text: String? = nil) -> Int32 {
         let units = Array((text ?? "").utf16)
