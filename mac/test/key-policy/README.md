@@ -190,3 +190,25 @@ embedded NUL. Newer Swift Foundation source branches can have a different BOM
 policy; a source branch alone is not evidence for the SDK/runtime under test.
 
 Verified with both jobs in [8ddae69 macOS SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39103797071).
+
+
+Dictionary chooser/result workflow
+---------------------------------
+The Rust production path allocates/configures `NSOpenPanel`, runs it, resolves
+its URL before asking the host for the current data directory, imports the
+file, posts the original distributed notification (including zero additions),
+and runs `NSAlert` with the original success/error text. Swift only commits
+composition before calling Rust and supplies the current directory afterward.
+
+`fixtures/DictionaryDialog.swift` compares nine paths with a copy of the former
+Swift workflow. Scoped Objective-C intercepts replace the two blocking modal
+calls, selected URL and distributed post; actual SDK objects and defaults,
+short-circuit/callback ordering, alert text/style, notification parameters and
+private destination bytes are compared. No external notification is sent by
+these comparisons. An additional owned `NSAlert` modal loop is acknowledged
+through its actual default button. After intercept restoration, another case
+cancels a real owned `NSOpenPanel` without selecting any file. Both modal tests
+have a process watchdog. Background-thread presentation must reject before
+creating UI or querying the directory. These cases do not prove OS-wide
+notification delivery, an accepted real file chooser, installed IME behavior,
+or complete visual parity. Both jobs in [9eb73ed SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39104520853) passed; the saved keys log contains both real modal-loop results and the nine comparisons.

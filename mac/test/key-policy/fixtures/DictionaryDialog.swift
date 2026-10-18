@@ -5,7 +5,7 @@ import ObjectiveC
 
 // Intercept only the blocking SDK calls in this private test process. Actual
 // NSOpenPanel/NSAlert objects are still allocated/configured by the product.
-// No chooser is driven and no system-wide dictionary notification is posted.
+// Separate real modal tests follow. No system-wide notification is posted.
 func testDictionaryDialog(_ editor:NativeEditorPolicy) throws {
     var trace:[String]=[]
     var selected:URL?
@@ -141,7 +141,7 @@ func testDictionaryDialog(_ editor:NativeEditorPolicy) throws {
         done.signal()
     }
     precondition(done.wait(timeout:.now()+5) == .success)
-    print("macOS Rust dictionary dialog: 9 legacy comparisons with actual SDK panel/alert configuration, short-circuit order, zero/nonzero notifications, errors and private file bytes; background rejection passed (modal responses and distributed post intercepted, real chooser/OS delivery NOT_RUN)")
+    print("macOS Rust dictionary dialog: 9 legacy comparisons with actual SDK panel/alert configuration, short-circuit order, zero/nonzero notifications, errors and private file bytes; background rejection passed (comparison modal responses/distributed post intercepted; real modal loops tested separately, OS delivery NOT_RUN)")
 }
 
 // A separate real chooser cancellation, after all scoped SDK intercepts restore.

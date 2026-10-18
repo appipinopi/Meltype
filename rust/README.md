@@ -398,3 +398,6 @@ ffb5698ではmacOSユーザー辞書のplist解析、かな変換・トリム・
 
 
 fdd67d6では辞書取込みの読込元NSData、保存先のUTF8読込、親フォルダー作成、原子的保存をRustからFoundationへ接続しました。追加0件の無書込とNSError返却を維持します。保存はUTF8バイト列をNSDataで渡し、NSString初期化による先頭BOMの消失を防ぎます。ローカル型チェック・Clippy・実ABI拒否試験が成功。[8ddae69のmacOS SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39103797071)で両ジョブ成功。旧Swiftとの7失敗時のNSError・既存内容保持、Unicode階層パス、重複時の更新時刻維持、BOM／不正UTF8／NULを含む5境界の保存バイト列比較を確認。既存スタブ22操作・実変換器28操作と全Swiftコンパイルも通過。[同じ版のfcitx SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39103797136)も成功。ダイアログ・変更通知のSwiftと、実辞書利用・実入力・全画面一致は残ります。
+
+
+d378494では辞書取込みの選択・結果ダイアログと変更通知をRustからAppKit／Foundationへ接続しました。選択取消・選択URLなし・保存先なしでは早期終了し、追加0件でも成功通知を出す元の順序を維持します。Swiftは未確定文字の確定と現在の保存先の通知だけを担当します。Apple Silicon／Intel型チェック、ClippyとWindowsでの実ABI拒否試験が成功。[9eb73edのmacOS SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39104520853)で両ジョブ成功。旧Swiftの9経路の順序・実SDK既定値／日本語表示・成功0件を含む通知引数と私用ファイルを比較。自プロセスの実NSAlertの標準ボタン承認、実NSOpenPanelの取消、背景表示拒否も保存ログで確認。既存スタブ22操作・実変換器28操作と全Swiftコンパイルも通過。[同じ版のfcitx SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39104520866)も成功。OS通知の実配送・実選択承認・インストール済みIMEの実入力と全画面一致は引き続き未確認です。
