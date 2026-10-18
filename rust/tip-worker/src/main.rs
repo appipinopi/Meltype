@@ -6,6 +6,8 @@ use std::{
     io::{self, Read, Write},
 };
 fn serve(input: &mut impl Read, output: &mut impl Write) -> io::Result<()> {
+    #[cfg(windows)]
+    let _converters = meltype_native::windows_converter::install_worker();
     let connection = meltype_native::tip::meltype_tip_create();
     if connection.is_null() {
         return Err(io::Error::other("cannot create TIP connection"));

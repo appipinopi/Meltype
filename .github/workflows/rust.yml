@@ -2,7 +2,7 @@ name: Rust preview
 on:
   workflow_dispatch:
   pull_request:
-    paths: ['rust/**', 'android/**', 'Cargo.*', 'dictionaries/**', 'native/tip/**', 'linux/fcitx5/**', '.github/workflows/rust.yml']
+    paths: ['rust/**', 'android/**', 'Cargo.*', 'dictionaries/**', 'native/tip/**', 'linux/fcitx5/**', 'tools/parity/windows-converter/**', '.github/workflows/rust.yml']
 permissions:
   contents: read
 jobs:
@@ -70,6 +70,26 @@ jobs:
         run: python rust/native/tests/clause_resize_smoke.py
       - name: Selected-text reconversion matches original controller workflows
         run: python rust/native/tests/reconversion_smoke.py
+      - uses: actions/setup-dotnet@v4
+        if: runner.os == 'Windows'
+        with:
+          dotnet-version: '10.0.x'
+      - name: Original Windows converter and actual framed worker
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+          PYTHONUTF8: '1'
+        run: |
+          dotnet run --project tools/parity/windows-converter/WindowsConverter.csproj -- tools/parity/windows-converter/cases.json > windows-converter-reference.jsonl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/windows_converter_smoke.py target/release/meltype_native.dll windows-converter-reference.jsonl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          New-Item -ItemType Directory -Force dist/windows-converter-fixture | Out-Null
+          rustc --edition=2021 -O rust/native/tests/fixtures/windows_mozc.rs -o dist/windows-converter-fixture/helper.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/windows_worker_converter_smoke.py target/release/meltype-tip-worker.exe dist/windows-converter-fixture/helper.exe windows-converter-reference.jsonl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Direct-input timeout through native ABI
         run: python rust/native/tests/direct_time_smoke.py
       - name: Legacy input state, replay and prefix learning through native ABI
@@ -156,6 +176,11 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           ./rust/native/tests/build-edit-session-host.ps1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $systemReference = Get-Content windows-converter-reference.jsonl | Where-Object { $_.StartsWith('{') } | ForEach-Object { $_ | ConvertFrom-Json } | Where-Object name -eq 'plain:にほんご'
+          $env:MELTYPE_TEST_SYSTEM_NIHONGO = if ($systemReference.converted) { $systemReference.converted } else { 'にほんご' }
+          ./dist/edit-session-host/x64/native_key_owner_host.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Remove-Item Env:MELTYPE_TEST_SYSTEM_NIHONGO
           python rust/native/tests/tsf_server_smoke.py native/tip/bin/rust-x64/MeltypeTip.dll
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Original key helper comparison DLLs

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 appipinopi
-param([string]$NativeX64, [string]$NativeX86)
+param([string]$NativeX64, [string]$NativeX86, [string]$OutputDirectory)
 $ErrorActionPreference = 'Stop'
 $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../../..'))
 # Compatibility-owner SDK hosts need these objects; the production DLL is Rust.
@@ -13,7 +13,7 @@ $vs = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.
 if (-not $vs) { throw 'MSVC tools are required for the shell edit-session test.' }
 $vcvars = Join-Path $vs 'VC/Auxiliary/Build/vcvarsall.bat'
 foreach ($arch in 'x64','x86') {
-    $out = Join-Path $root "dist/edit-session-host/$arch"
+    $out = if ($OutputDirectory) { Join-Path $OutputDirectory $arch } else { Join-Path $root "dist/edit-session-host/$arch" }
     New-Item -ItemType Directory -Force -Path $out | Out-Null
     $native = if ($arch -eq 'x64') { $NativeX64 } else { $NativeX86 }
     $linkMap = Get-Content -LiteralPath (Join-Path $root "native/tip/obj/rust-$arch/MeltypeTip.map") -Raw
@@ -32,5 +32,8 @@ foreach ($arch in 'x64','x86') {
         if ($LASTEXITCODE -ne 0) { throw "$test failed to build: $arch" }
         & (Join-Path $out 'test.exe')
         if ($LASTEXITCODE -ne 0) { throw "$test failed: $arch (exit $LASTEXITCODE)" }
+        if ($test -eq 'native_key_owner_host') {
+            Copy-Item -LiteralPath (Join-Path $out 'test.exe') -Destination (Join-Path $out 'native_key_owner_host.exe')
+        }
     }
 }

@@ -29,6 +29,8 @@ pub mod tip;
 pub mod tip_transport;
 #[cfg(windows)]
 mod tsf;
+#[cfg(windows)]
+pub mod windows_converter;
 mod word_checker;
 use std::{
     collections::HashMap,

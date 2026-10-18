@@ -168,7 +168,7 @@ impl Work {
         // the same word must not become the target after a reentrant request.
         let reconversion = if self.key == 0x1c
             && self.mods & 14 == 0
-            && self.flags() & (COMPOSING | PRIVATE) == 0
+            && self.flags() & COMPOSING == 0
             && !can_delete
         {
             selection.and_then(|range| {

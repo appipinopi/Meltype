@@ -61,6 +61,11 @@ unsafe fn request_inner(connection: *mut c_void, request: *const c_char) -> Opti
     let settings = meltype_core::settings::Settings::default()
         .for_app(request["process"].as_str().unwrap_or(""));
     let code = settings.text("AppProfile") == "Code";
+    #[cfg(windows)]
+    let _engine = crate::windows_converter::scope(
+        settings.text("ConversionEngine"),
+        settings.boolean("Enabled"),
+    );
     let direct_detection = settings.boolean("DirectModeAutoDetect") && !code;
     if op == "hello" {
         if !settings.boolean("Enabled") {
@@ -100,6 +105,9 @@ unsafe fn request_inner(connection: *mut c_void, request: *const c_char) -> Opti
     };
     set(handle, |s| {
         s.set_process(request["process"].as_str().unwrap_or(""));
+        if matches!(op, "key" | "reconvert") {
+            s.no_learning = request["private"] == true;
+        }
         // Older TSF clients cannot notify caret movements or toggle code lines.
         s.code_input &= request["code"] == true;
         s.direct_detection = direct_detection;
@@ -118,7 +126,6 @@ unsafe fn request_inner(connection: *mut c_void, request: *const c_char) -> Opti
     let result = match op {
         "reconvert" => {
             meltype_set_direct(handle, i32::from(request["direct"] == true));
-            meltype_set_private(handle, i32::from(request["private"] == true));
             let text = request["text"]
                 .as_str()
                 .and_then(|s| CString::new(s).ok())?;
@@ -133,7 +140,6 @@ unsafe fn request_inner(connection: *mut c_void, request: *const c_char) -> Opti
         }
         "key" => {
             meltype_set_direct(handle, i32::from(request["direct"] == true));
-            meltype_set_private(handle, i32::from(request["private"] == true));
             let before = request["before"]
                 .as_str()
                 .and_then(|s| CString::new(s).ok());
@@ -218,8 +224,9 @@ mod tests {
             assert!(cancelled["view"].is_null());
             let private =
                 call(json!({"op":"reconvert","sid":"private","text":"nihongo","private":true}));
-            assert_eq!(private["consumed"], false);
-            assert!(private["view"].is_null());
+            assert_eq!(private["consumed"], true);
+            assert_eq!(private["selectionExpect"], "nihongo");
+            assert!(private["view"].is_object());
             meltype_tip_destroy(connection);
         }
     }

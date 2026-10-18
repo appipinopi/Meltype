@@ -125,6 +125,8 @@ pub struct Session {
     pub code_input: bool,
     code_japanese: bool,
     pub private: bool,
+    /// InputScope.PRIVATE permits conversion while suppressing learning.
+    pub no_learning: bool,
     pub preferences: Preferences,
     pub settings: Settings,
     pub state: State,
@@ -175,6 +177,7 @@ impl Default for Session {
             code_input: false,
             code_japanese: false,
             private: false,
+            no_learning: false,
             preferences: Preferences::default(),
             settings: Settings::default(),
             state: State::default(),
@@ -275,7 +278,7 @@ impl Session {
         Ok(())
     }
     pub fn control(&mut self, request: &serde_json::Value) -> std::io::Result<serde_json::Value> {
-        if request["op"] == "prefix_learn" && self.private {
+        if request["op"] == "prefix_learn" && (self.private || self.no_learning) {
             return Ok(serde_json::json!({"saved":false}));
         }
         if request["op"] == "hook_session" {
@@ -311,7 +314,7 @@ impl Session {
         self.code_input = self.settings.text("AppProfile") == "Code";
     }
     fn learn(&mut self, changes: Vec<Change>) {
-        if self.private || !self.settings.boolean("LearningEnabled") {
+        if self.private || self.no_learning || !self.settings.boolean("LearningEnabled") {
             return;
         }
         self.state.preferences = self.preferences.clone();

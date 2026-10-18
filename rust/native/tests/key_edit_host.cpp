@@ -181,8 +181,14 @@ int wmain() {
     wchar_t executable[32768]={};assert(GetModuleFileNameW(nullptr,executable,ARRAYSIZE(executable)));
     PrivateProfile isolated;
     const auto& profile=isolated.path;
-    {std::ofstream config(profile/L"config.json");config<<"{\"DetectionLevel\":\"Manual\"}";}
+    {std::ofstream config(profile/L"config.json");config<<"{\"DetectionLevel\":\"Manual\",\"ConversionEngine\":\"System\",\"LearningEnabled\":false}";}
     assert(SetEnvironmentVariableW(L"MELTYPE_RUST_DATA_DIR",profile.c_str()));
+    wchar_t systemExpected[512]={};
+    DWORD systemCount=GetEnvironmentVariableW(L"MELTYPE_TEST_SYSTEM_NIHONGO",systemExpected,ARRAYSIZE(systemExpected));
+    assert(systemCount<ARRAYSIZE(systemExpected));
+    if (!systemCount) assert(SetEnvironmentVariableW(L"MELTYPE_TEST_TIP_NO_CONVERTERS",L"1"));
+    else if (GetEnvironmentVariableW(L"MELTYPE_TEST_TIP_NO_CONVERTERS",nullptr,0))
+        assert(SetEnvironmentVariableW(L"MELTYPE_TEST_TIP_NO_CONVERTERS",nullptr));
     BYTE saved[256]={};assert(GetKeyboardState(saved));BYTE shifted[256]={};shifted[VK_SHIFT]=shifted[VK_LSHIFT]=0x80;assert(SetKeyboardState(shifted));
     rangeMethods[1]=reinterpret_cast<void*>(Range::Add);rangeMethods[2]=reinterpret_cast<void*>(Range::Release);
     rangeMethods[3]=reinterpret_cast<void*>(Range::Read);rangeMethods[4]=reinterpret_cast<void*>(Range::Write);
@@ -251,20 +257,21 @@ int wmain() {
         assert(events->OnKeyUp(doc.context,key,0,&eaten)==S_OK && eaten);
     };
     const std::wstring selectedOriginal=L"前😀nihongo後";
+    const std::wstring selectedConverted=L"前😀"+std::wstring(systemCount?systemExpected:L"にほんご")+L"後";
     for (int action=0;action<3;++action) {
         doc.text=selectedOriginal;doc.selectionStart=3;doc.selectionEnd=10;
         press(VK_CONVERT);
-        if (doc.text!=L"前😀にほんご後" || composition.refs!=1) {
+        if (doc.text!=selectedConverted || composition.refs!=1) {
             fprintf(stderr,"Reconversion mismatch action=%d refs=%lu, UTF16:",action,composition.refs);
             for (wchar_t unit:doc.text) fprintf(stderr," %04X",static_cast<unsigned int>(unit));
             fprintf(stderr,"\n");
         }
-        // This private worker has no external kanji converter installed.
-        assert(doc.text==L"前😀にほんご後" && composition.refs==1);
+        // The optional expectation comes from the original C# system adapter.
+        assert(doc.text==selectedConverted && composition.refs==1);
         if (action==2) press(VK_DOWN);
         press(action==1?VK_ESCAPE:VK_RETURN);
         assert(composition.refs==0);
-        assert(doc.text==(action==0?L"前😀にほんご後":selectedOriginal));
+        assert(doc.text==(action==0?selectedConverted:selectedOriginal));
     }
     const auto beforeTermination=doc.text;
     doc.selectionStart=doc.selectionEnd=static_cast<LONG>(doc.text.size());

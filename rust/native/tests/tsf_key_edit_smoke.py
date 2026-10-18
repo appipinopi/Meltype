@@ -218,10 +218,11 @@ class KeyEditTests(unittest.TestCase):
         self.assertEqual((self.requests[0]['before'],self.requests[0]['after']),('前','後'))
         self.assertIn(('edit',4),self.events)
 
-    def test_convert_does_not_reconvert_caret_private_or_existing_composition(self):
+    def test_convert_reconverts_private_selection_but_not_caret_or_existing_composition(self):
         self.call(28,0);self.assertEqual(self.requests[-1]['op'],'key')
         self.selection('nihongo');self.flags|=32
-        self.call(28,0);self.assertEqual(self.requests[-1]['op'],'key')
+        self.call(28,0);self.assertEqual(self.requests[-1]['op'],'reconvert')
+        self.assertTrue(self.requests[-1]['private'])
         self.flags=(self.flags&~32)|1
         self.call(28,0);self.assertEqual(self.requests[-1]['op'],'key')
 

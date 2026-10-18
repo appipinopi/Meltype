@@ -15,6 +15,11 @@ pub struct Mozc {
     input: ChildStdin,
     output: Receiver<io::Result<String>>,
 }
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Segment {
+    pub reading: String,
+    pub candidates: Vec<String>,
+}
 impl Mozc {
     pub fn start(helper: &Path, profile: Option<&Path>) -> io::Result<Self> {
         let mut command = Command::new(helper);
@@ -22,6 +27,11 @@ impl Mozc {
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::null());
+        if helper.is_absolute() {
+            if let Some(parent) = helper.parent() {
+                command.current_dir(parent);
+            }
+        }
         #[cfg(windows)]
         {
             use std::os::windows::process::CommandExt;
@@ -29,8 +39,15 @@ impl Mozc {
         }
         if let Some(profile) = profile {
             std::fs::create_dir_all(profile)?;
-            command.arg(profile);
+            command.arg(if helper.is_absolute() && profile.is_relative() {
+                std::env::current_dir()?.join(profile)
+            } else {
+                profile.to_path_buf()
+            });
         }
+        #[cfg(windows)]
+        let mut child = windows_launch::spawn(&mut command)?;
+        #[cfg(not(windows))]
         let mut child = command.spawn()?;
         let input = child.stdin.take().unwrap();
         let stdout = child.stdout.take().unwrap();
@@ -84,11 +101,55 @@ impl Mozc {
         }
     }
     pub fn clauses(&mut self, reading: &str, context: &str) -> io::Result<Vec<Clause>> {
+        self.query(reading, context)?
+            .map(|segments| {
+                segments
+                    .into_iter()
+                    .map(|s| Clause::new(s.reading, s.candidates))
+                    .collect()
+            })
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "empty Mozc result"))
+    }
+    /// Preserve raw candidate order for HybridConverter. An empty successful
+    /// response is not an engine failure and must not trigger System fallback
+    /// while a Mozc-only engine remains available.
+    pub fn query(&mut self, reading: &str, context: &str) -> io::Result<Option<Vec<Segment>>> {
         let clean = |s: &str| s.replace(['\t', '\n', '\r', '\x1e', '\x1f'], " ");
         writeln!(self.input, "C\t{}\t{}", clean(context), clean(reading))?;
         self.input.flush()?;
         let response = self.receive(Duration::from_millis(1500))?;
-        parse_clauses(reading, &response)
+        if response.is_empty() {
+            return Ok(None);
+        }
+        parse_segments(reading, &response).map(Some)
+    }
+}
+#[cfg(windows)]
+mod windows_launch {
+    use super::*;
+    use std::sync::Mutex;
+    #[link(name = "kernel32")]
+    unsafe extern "system" {
+        fn GetErrorMode() -> u32;
+        fn SetErrorMode(mode: u32) -> u32;
+    }
+    static LAUNCH: Mutex<()> = Mutex::new(());
+    struct Restore(u32);
+    impl Drop for Restore {
+        fn drop(&mut self) {
+            unsafe {
+                SetErrorMode(self.0);
+            }
+        }
+    }
+    pub(super) fn spawn(command: &mut Command) -> io::Result<Child> {
+        let _launch = LAUNCH.lock().unwrap_or_else(|error| error.into_inner());
+        let previous = unsafe { GetErrorMode() };
+        unsafe {
+            SetErrorMode(previous | 0x0001 | 0x8000);
+        }
+        let _restore = Restore(previous);
+        command.spawn()
     }
 }
 impl Drop for Mozc {
@@ -97,7 +158,7 @@ impl Drop for Mozc {
         let _ = self.child.wait();
     }
 }
-fn parse_clauses(reading: &str, response: &str) -> io::Result<Vec<Clause>> {
+fn parse_segments(reading: &str, response: &str) -> io::Result<Vec<Segment>> {
     let clauses: Vec<Vec<&str>> = response
         .split('\x1e')
         .map(|s| s.split('\x1f').collect())
@@ -115,16 +176,40 @@ fn parse_clauses(reading: &str, response: &str) -> io::Result<Vec<Clause>> {
     Ok(clauses
         .into_iter()
         .map(|c| {
-            Clause::new(
-                c[0].to_owned(),
-                c[1..].iter().map(|s| (*s).to_owned()).collect(),
-            )
+            let mut candidates = Vec::new();
+            for candidate in &c[1..] {
+                if !candidate.is_empty() && !candidates.iter().any(|s| s == candidate) {
+                    candidates.push((*candidate).to_owned());
+                }
+            }
+            Segment {
+                reading: c[0].to_owned(),
+                candidates,
+            }
         })
         .collect())
 }
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn parse_clauses(reading: &str, response: &str) -> io::Result<Vec<Clause>> {
+        parse_segments(reading, response).map(|segments| {
+            segments
+                .into_iter()
+                .map(|s| Clause::new(s.reading, s.candidates))
+                .collect()
+        })
+    }
+    #[test]
+    fn raw_candidates_do_not_inject_a_reading_or_duplicate_backend_values() {
+        assert_eq!(
+            parse_segments("はし", "はし\x1f橋\x1f橋\x1f\x1f箸").unwrap(),
+            vec![Segment {
+                reading: "はし".into(),
+                candidates: vec!["橋".into(), "箸".into()]
+            }]
+        );
+    }
     #[test]
     fn protocol_validation() {
         assert_eq!(

@@ -42,6 +42,14 @@ char *meltype_undo_commit(void *, const char *before);
 /* Verify result.selectionExpect against the current selection before applying
  * view. reading may be NULL; dictionary/history inference can fail safely. */
 char *meltype_reconvert_selection(void *, const char *text, const char *reading);
+#ifdef _WIN32
+/* Read-only MSIME/WinRT comparison diagnostic on an uninitialized or STA
+   calling thread. JSON {text:string,context?:string,trace?:bool}, text/context
+   each <=8192 UTF-16 units. trace adds a candidateTimedOut boolean.
+   Returns {available,converted,clauses,candidates}; no IME activation or document
+   access. COM/WinRT ownership ends before return; free with meltype_free. */
+char *meltype_windows_converter_probe(const char *request);
+#endif
 char *meltype_reset(void *);
 char *meltype_select_candidate(void *, int32_t index);
 char *meltype_select_prediction(void *, int32_t index);
