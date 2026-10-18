@@ -7,6 +7,13 @@ api=c.CDLL(str(Path(sys.argv[1]).resolve()))
 P=c.c_void_p;U=c.c_uint32
 api.meltype_macos_meaning_delay_ms.restype=U
 assert api.meltype_macos_meaning_delay_ms()==1500
+api.meltype_macos_candidate_window.argtypes=[P,U,c.c_int64,c.POINTER(c.c_uint16),U]
+api.meltype_macos_candidate_window.restype=c.c_int
+assert not api.meltype_macos_candidate_window(None,0,0,None,0)
+assert not api.meltype_macos_candidate_window(P(1),99,0,None,0)
+if sys.platform!="darwin":
+    for operation in range(6):
+        assert not api.meltype_macos_candidate_window(P(1),operation,1,None,0)
 callback_type=c.CFUNCTYPE(None,P)
 api.meltype_macos_meaning_schedule.argtypes=[P,callback_type]
 api.meltype_macos_meaning_schedule.restype=c.c_int

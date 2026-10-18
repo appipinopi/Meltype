@@ -13,6 +13,8 @@ struct NativeEditorPolicy {
     private typealias MeaningMatches = @convention(c) (UnsafeMutableRawPointer?, Int64, UnsafePointer<UInt16>?, UInt32) -> Int32
     private typealias MeaningDelay = @convention(c) () -> UInt32
     private typealias MeaningSchedule = @convention(c) (UnsafeMutableRawPointer?, NativeMeaningCallback) -> Int32
+    private typealias WindowFunction = @convention(c) (UnsafeMutableRawPointer?, UInt32, Int64, UnsafePointer<UInt16>?, UInt32) -> Int32
+    private let windowFunction: WindowFunction
     private let meaningSchedule: MeaningSchedule
     private let meaningDelay: MeaningDelay
     var meaningDelayMilliseconds: Int { Int(meaningDelay()) }
@@ -34,7 +36,9 @@ struct NativeEditorPolicy {
               let meaningUpdate = lookup("meltype_macos_meaning_update"),
               let meaningMatches = lookup("meltype_macos_meaning_matches"),
               let meaningDelay = lookup("meltype_macos_meaning_delay_ms"),
-              let meaningSchedule = lookup("meltype_macos_meaning_schedule") else { return nil }
+              let meaningSchedule = lookup("meltype_macos_meaning_schedule"),
+              let windowFunction = lookup("meltype_macos_candidate_window") else { return nil }
+        self.windowFunction = unsafeBitCast(windowFunction, to: WindowFunction.self)
         self.meaningSchedule = unsafeBitCast(meaningSchedule, to: MeaningSchedule.self)
         self.meaningDelay = unsafeBitCast(meaningDelay, to: MeaningDelay.self)
         self.meaningUpdate = unsafeBitCast(meaningUpdate, to: MeaningUpdate.self)
@@ -75,6 +79,13 @@ struct NativeEditorPolicy {
         let sink = NativeCandidatesSink(operation)
         return withExtendedLifetime(sink) {
             data.withUnsafeBytes { candidatesFunction($0.bindMemory(to: UInt8.self).baseAddress, count, Unmanaged.passUnretained(sink).toOpaque(), nativeCandidatesHost) != 0 }
+        }
+    }
+    func candidateWindow(_ window: AnyObject, operation: UInt32, argument: Int = 0, text: String? = nil) -> Int32 {
+        let units = Array((text ?? "").utf16)
+        guard let count = UInt32(exactly: units.count) else { return 0 }
+        return withExtendedLifetime(window) {
+            units.withUnsafeBufferPointer { windowFunction(Unmanaged.passUnretained(window).toOpaque(), operation, Int64(argument), $0.baseAddress, count) }
         }
     }
     @discardableResult

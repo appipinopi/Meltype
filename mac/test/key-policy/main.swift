@@ -227,6 +227,8 @@ final class MeaningLifetimeProbe {}
 var probe: MeaningLifetimeProbe? = MeaningLifetimeProbe()
 weak var weakProbe = probe
 var deliveries = 0
+let timedWindow = CandidateWindowProbe()
+precondition(editor.candidateWindow(timedWindow,operation:1,argument:1)==1)
 let timerStarted = ProcessInfo.processInfo.systemUptime
 guard let liveTimerSession = NativeCore.shared.createSession(),
       let deadTimerSession = NativeCore.shared.createSession() else { fatalError("timer sessions") }
@@ -237,6 +239,7 @@ precondition(editor.scheduleMeaning { [held = probe!] in
     precondition(Thread.isMainThread,"Rust timer left main thread")
     precondition(ProcessInfo.processInfo.systemUptime-timerStarted>=1.5,"meaning fired early")
     precondition(editor.matchesMeaning(liveTimerSession,index:0,text:"意味😀"))
+    precondition(editor.candidateWindow(timedWindow,operation:5,text:"意味😀")==1)
     deliveries+=1
 })
 precondition(editor.scheduleMeaning {
@@ -252,8 +255,83 @@ while deliveries<2 && Date()<timerTimeout {
     RunLoop.main.run(until:Date(timeIntervalSinceNow:0.02))
 }
 precondition(deliveries==2,"Rust main queue timer missing")
+precondition(timedWindow.receivedUnits==Array("意味😀".utf16),"timer annotation lost")
 precondition(weakProbe == nil,"callback capture leaked after delivery")
 RunLoop.main.run(until:Date(timeIntervalSinceNow:0.1))
 precondition(deliveries==2,"timer delivered more than once")
 NativeCore.shared.destroySession(liveTimerSession)
 print("macOS Rust dispatch: real 1500ms main-queue delivery, two callbacks exactly once, capture lifetime and destroyed-session rejection passed")
+
+// A real Objective-C SDK object records messages from the Rust production bridge.
+// It does not create/register an input method or send input to another app.
+@objc final class CandidateWindowProbe: NSObject {
+    var visible = false
+    var trace: [String] = []
+    var supportsUp = true
+    var receivedUnits: [UInt16] = []
+    @objc func isVisible() -> Bool { trace.append("visible"); return visible }
+    @objc func update() { trace.append("update") }
+    @objc(show:) func show(_ hint: UInt) { trace.append("show:\(hint)"); visible = true }
+    @objc func hide() { trace.append("hide"); visible = false }
+    @objc(moveDown:) func down(_ sender: Any?) { trace.append("down") }
+    @objc(moveUp:) func up(_ sender: Any?) { trace.append("up") }
+    @objc(showAnnotation:) func annotate(_ value: NSAttributedString) {
+        trace.append("annotation")
+        receivedUnits = Array(value.string.utf16)
+        if value.length > 0 { precondition(value.attributes(at:0,effectiveRange:nil).isEmpty) }
+    }
+    override func responds(to selector: Selector!) -> Bool {
+        if !supportsUp && selector == NSSelectorFromString("moveUp:") { return false }
+        return super.responds(to: selector)
+    }
+}
+var windowChecks = 0
+for initiallyVisible in [false,true] {
+ for supportsUp in [false,true] {
+  for text in ["", "意味😀", "e\u{301}", "a\u{0}b", "👩‍💻"] {
+   let original = CandidateWindowProbe(), native = CandidateWindowProbe()
+   original.visible=initiallyVisible;native.visible=initiallyVisible
+   original.supportsUp=supportsUp;native.supportsUp=supportsUp
+   precondition(editor.candidateWindow(native,operation:0)==(original.isVisible() ? 1 : 0))
+   // Original annotation is only sent while visible.
+   if original.isVisible() { original.annotate(NSAttributedString(string:text)) }
+   precondition(editor.candidateWindow(native,operation:5,text:text)==(initiallyVisible ? 1 : 0))
+   original.update();original.show(1)
+   precondition(editor.candidateWindow(native,operation:1,argument:1)==1)
+   for direction in [-1,1] {
+    let step=NSSelectorFromString(direction>0 ? "moveDown:" : "moveUp:")
+    let supported=original.responds(to:step)
+    precondition(editor.candidateWindow(native,operation:2,argument:direction)==(supported ? 1 : 0))
+    if supported { original.perform(step,with:nil) }
+    precondition(editor.candidateWindow(native,operation:3,argument:direction)==(supported ? 1 : 0))
+   }
+   original.annotate(NSAttributedString(string:text))
+   precondition(editor.candidateWindow(native,operation:5,text:text)==1)
+   original.hide();precondition(editor.candidateWindow(native,operation:4)==1)
+   precondition(editor.candidateWindow(native,operation:5,text:text)==0)
+   // Last hidden query is shared by the original annotation guard.
+   _=original.isVisible()
+   precondition(original.trace==native.trace,"direct Objective-C candidate sequence differs")
+   precondition(original.receivedUnits==native.receivedUnits,"annotation UTF16 changed")
+   let before=native.trace
+   precondition(editor.candidateWindow(native,operation:1,argument:-1)==0)
+   precondition(editor.candidateWindow(native,operation:2,argument:0)==0)
+   precondition(editor.candidateWindow(native,operation:3,argument:2)==0)
+   precondition(editor.candidateWindow(native,operation:99)==0)
+   precondition(native.trace==before,"invalid request changed window")
+   windowChecks+=1
+  }
+ }
+}
+precondition(editor.candidateWindow(NSObject(),operation:0)==0,"missing SDK selector accepted")
+print("macOS Rust window: \(windowChecks) original Objective-C message traces, visible/hidden annotation, direction support, Unicode/NUL/empty payloads and invalid request rejection passed")
+
+let backgroundWindow = CandidateWindowProbe()
+let backgroundDone = DispatchSemaphore(value:0)
+DispatchQueue.global().async {
+    precondition(editor.candidateWindow(backgroundWindow,operation:1,argument:1)==0,"background window call accepted")
+    backgroundDone.signal()
+}
+precondition(backgroundDone.wait(timeout:.now()+5) == .success)
+precondition(backgroundWindow.trace.isEmpty,"background SDK call changed window")
+print("macOS Rust window: off-main-thread operation rejected before Objective-C UI call")

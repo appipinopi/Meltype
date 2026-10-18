@@ -117,7 +117,7 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
     override func deactivateServer(_ sender: Any!) {
         ModeServices.shared.deactivate(self)
         commitComposition(sender)
-        candidatesWindow?.hide()
+        hideCandidatesWindow()
         suggestionPanel?.orderOut(nil)
         displayedSuggestion = nil
         clearMeaning()
@@ -332,7 +332,7 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
             hasMarkedText = false
         }
         candidateList = []
-        candidatesWindow?.hide()
+        hideCandidatesWindow()
         suggestionPanel?.orderOut(nil)
         displayedSuggestion = nil
         clearMeaning()
@@ -395,6 +395,13 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
 #if !MELTYPE_RUST_CORE
     private var meaningKey: String?
 #endif
+    private func hideCandidatesWindow() {
+#if MELTYPE_RUST_CORE
+        if let window = candidatesWindow { _ = NativeCore.shared.editorPolicy?.candidateWindow(window, operation: 4) }
+#else
+        candidatesWindow?.hide()
+#endif
+    }
     private func clearMeaning() {
 #if MELTYPE_RUST_CORE
         _ = NativeCore.shared.editorPolicy?.reserveMeaning(session, index: 0, text: nil)
@@ -411,8 +418,8 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
               policy.reserveMeaning(token, index: index, text: view.meaning), let meaning = view.meaning else { return }
         policy.scheduleMeaning { [weak self] in
             guard self != nil, policy.matchesMeaning(token, index: index, text: meaning),
-                  let window = candidatesWindow, window.isVisible() else { return }
-            window.showAnnotation(NSAttributedString(string: meaning))
+                  let window = candidatesWindow else { return }
+            _ = policy.candidateWindow(window, operation: 5, text: meaning)
         }
 #else
         let key = view.meaning.map { "\(view.selectedIndex):\($0)" }
@@ -431,23 +438,23 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
 #if MELTYPE_RUST_CORE
         var beganSuppression = false
         defer { if beganSuppression { selectingFromCore = false } }
-        NativeCore.shared.editorPolicy?.candidates(view, previous: candidateList, visible: window.isVisible(), windowIndex: windowIndex) { operation, argument in
+        guard let policy = NativeCore.shared.editorPolicy else { return }
+        policy.candidates(view, previous: candidateList, visible: policy.candidateWindow(window, operation: 0) == 1, windowIndex: windowIndex) { operation, argument in
             switch operation {
             case 0: beganSuppression = true; self.selectingFromCore = true
             case 1:
                 self.candidateList = view.candidates
-                window.update(); window.show(kIMKLocateCandidatesBelowHint)
+                guard policy.candidateWindow(window, operation: 1, argument: Int(kIMKLocateCandidatesBelowHint)) != 0 else { return 0 }
                 self.windowIndex = 0
             case 2:
-                let step = argument > 0 ? #selector(NSResponder.moveDown(_:)) : #selector(NSResponder.moveUp(_:))
-                return window.responds(to: step) ? 1 : 0
+                return policy.candidateWindow(window, operation: 2, argument: argument)
             case 3:
-                let step = argument > 0 ? #selector(NSResponder.moveDown(_:)) : #selector(NSResponder.moveUp(_:))
-                window.perform(step, with: nil)
+                return policy.candidateWindow(window, operation: 3, argument: argument)
             case 4: self.windowIndex = argument
             case 5: self.scheduleMeaning(view)
             case 6:
-                self.clearMeaning(); self.candidateList = []; window.hide()
+                self.clearMeaning(); self.candidateList = []
+                return policy.candidateWindow(window, operation: 4)
             default: return -1
             }
             return 1

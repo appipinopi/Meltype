@@ -14,6 +14,7 @@ mod macos_editor;
 mod macos_key;
 mod macos_meaning;
 mod macos_view;
+mod macos_window;
 pub mod tip;
 #[cfg(windows)]
 pub mod tip_transport;
