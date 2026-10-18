@@ -10,6 +10,10 @@ enum MacUserDictionary {
     }
 
     static func entries(from data: Data) throws -> [(String, String)] {
+#if MELTYPE_RUST_CORE
+        guard let policy=NativeCore.shared.editorPolicy else {throw ImportError.unsupported}
+        return try policy.dictionaryEntries(data)
+#else
         let plist = try PropertyListSerialization.propertyList(from: data, options: [], format: nil)
         let rows = (plist as? [[String: Any]]) ?? (plist as? [String: Any])?["UserDictionary"] as? [[String: Any]] ?? []
         let entries = rows.compactMap { row -> (String, String)? in
@@ -24,9 +28,14 @@ enum MacUserDictionary {
         }
         guard !entries.isEmpty else { throw ImportError.unsupported }
         return entries
+#endif
     }
 
     static func merge(_ entries: [(String, String)], into existing: String) -> (String, Int) {
+#if MELTYPE_RUST_CORE
+        guard let policy=NativeCore.shared.editorPolicy else {preconditionFailure("Rust dictionary merge unavailable")}
+        return policy.dictionaryMerge(entries,existing:existing)
+#else
         var seen = Set(existing.split(separator: "\n").map { String($0).trimmingCharacters(in: .newlines) })
         var lines: [String] = []
         for (reading, word) in entries {
@@ -36,6 +45,7 @@ enum MacUserDictionary {
         guard !lines.isEmpty else { return (existing, 0) }
         let separator = existing.isEmpty || existing.hasSuffix("\n") ? "" : "\n"
         return (existing + separator + lines.joined(separator: "\n") + "\n", lines.count)
+#endif
     }
 
     static func importFile(_ source: URL, directory: String) throws -> Int {

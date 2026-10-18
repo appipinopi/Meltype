@@ -20,6 +20,7 @@ swiftc -swift-version 5 -DMELTYPE_RUST_CORE -DMELTYPE_POLICY_TEST \
   "$root/mac/Sources/MeltypeIME/NativeKeyPolicy.swift" \
   "$root/mac/Sources/MeltypeIME/NativeCore.swift" \
   "$root/mac/Sources/MeltypeIME/NativeEditorPolicy.swift" \
+  "$root/mac/Sources/MeltypeIME/MacUserDictionary.swift" \
   "$root/mac/Sources/MeltypeIME/ModeServices.swift" \
   "$root/mac/Sources/MeltypeIME/ModeShortcuts.swift" \
   "$root/mac/Sources/MeltypeIME/ModeIndicator.swift" \
@@ -27,6 +28,7 @@ swiftc -swift-version 5 -DMELTYPE_RUST_CORE -DMELTYPE_POLICY_TEST \
   "$root/mac/Sources/MeltypeIME/KeyMapping.swift" \
   "$root/mac/Sources/MeltypeIME/LegacyKeyMapping.swift" \
   "$root/mac/test/key-policy/fixtures/LegacyModeIndicator.swift" \
+  "$root/mac/test/key-policy/fixtures/LegacyMacUserDictionary.swift" \
   "$root/mac/test/key-policy/fixtures/Converter.swift" \
   "$root/mac/test/key-policy/main.swift" \
   -framework AppKit -framework Carbon -framework InputMethodKit -o "$app/Contents/MacOS/KeyPolicy"

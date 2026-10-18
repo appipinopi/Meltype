@@ -11,6 +11,7 @@ pub mod json_bridge;
 mod macos_application;
 mod macos_apply;
 mod macos_candidates;
+mod macos_dictionary;
 mod macos_editor;
 mod macos_indicator;
 mod macos_key;

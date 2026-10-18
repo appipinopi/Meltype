@@ -806,3 +806,61 @@ DispatchQueue.global().async {
 }
 precondition(menuBackgroundDone.wait(timeout:.now()+5) == .success)
 print("macOS Rust menu: \(menuCases) actual NSMenus compared with former Swift, title/order/separator/checks/key equivalents/targets and five owned target actions, autorelease ownership and background rejection passed (OS input-menu presentation not tested)")
+
+let dictionaryRows:[[String:Any]]=[
+    ["reading":" カタカナ ","phrase":" 単語 "], ["shortcut":"ｶﾅ","word":"半角"],
+    ["reading":"カ\u{3099}ク","phrase":"合成"], ["reading":"😀","phrase":"補助面"],
+    ["reading":"a","phrase":"短すぎ"], ["reading":42,"shortcut":"カナ","phrase":"型優先"],
+    ["reading":"カナ","phrase":42,"word":"型優先"], ["reading":"カナ","phrase":"a\r\nb"],
+    ["reading":"ab\r\ncd","phrase":"CRLF"], ["reading":"ab\ncd","phrase":"LF"],
+    ["reading":"ab\tcd","phrase":"tab"], ["reading":"ヷ","phrase":"変換"],
+    ["reading":"e\u{301}x","phrase":"a\u{0}b"], ["reading":"\u{2028} カナ \u{2029}","phrase":"\u{a0}単語\u{a0}"]
+]
+var dictionaryParseCases=0
+for root in [dictionaryRows,["UserDictionary":dictionaryRows],[dictionaryRows[0],"bad"] as [Any],["UserDictionary":["bad"]],[],["other":dictionaryRows]] as [Any] {
+ for format in [PropertyListSerialization.PropertyListFormat.xml,.binary] {
+    let data=try PropertyListSerialization.data(fromPropertyList:root,format:format,options:0)
+    let expected=Result {try LegacyMacUserDictionary.entries(from:data)}
+    let actual=Result {try MacUserDictionary.entries(from:data)}
+    switch (expected,actual) {
+    case (.success(let e),.success(let a)):
+        precondition(a.count==e.count)
+        for (a,e) in zip(a,e) {precondition(Array(a.0.utf16)==Array(e.0.utf16) && Array(a.1.utf16)==Array(e.1.utf16),"plist normalization differs")}
+    case (.failure(let e),.failure(let a)):
+        precondition(a.localizedDescription==e.localizedDescription,"plist rejection differs")
+    default:fatalError("plist accepted/rejected differently")
+    }
+    dictionaryParseCases+=1
+ }
+}
+for data in [Data(),Data("invalid plist".utf8),Data([0,255,17])] {
+    do {_=try MacUserDictionary.entries(from:data);fatalError("bad plist accepted")} catch {
+        do {_=try LegacyMacUserDictionary.entries(from:data);fatalError("reference accepted bad plist")} catch let original {
+            precondition((error as NSError).domain==(original as NSError).domain && (error as NSError).code==(original as NSError).code)
+        }
+    }
+}
+var dictionaryMergeCases=0
+for existing in ["","かな\t単語","かな\t単語\n","かな\t単語\r\n","a\tb\r\nc\td\r\n","éx\t漢\n","e\u{301}x\t漢\n","\u{85}かな\t単語\u{2028}\n"] {
+ for entries in [[],[("かな","単語")],[("かな","単語"),("かな","単語"),("あたらしい","追加")],[("éx","漢"),("e\u{301}x","漢"),("a\u{0}b","😀")]] as [[(String,String)]] {
+    let e=LegacyMacUserDictionary.merge(entries,into:existing),a=MacUserDictionary.merge(entries,into:existing)
+    precondition(Array(a.0.utf16)==Array(e.0.utf16) && a.1==e.1,"dictionary merge changed original bytes/count")
+    dictionaryMergeCases+=1
+ }
+}
+let dictionaryRoot=FileManager.default.temporaryDirectory.appendingPathComponent("MeltypeRustDictionary-"+UUID().uuidString,isDirectory:true)
+try FileManager.default.createDirectory(at:dictionaryRoot,withIntermediateDirectories:true)
+let dictionarySource=dictionaryRoot.appendingPathComponent("source.plist")
+try PropertyListSerialization.data(fromPropertyList:dictionaryRows,format:.binary,options:0).write(to:dictionarySource)
+let originalDirectory=dictionaryRoot.appendingPathComponent("original",isDirectory:true)
+let actualDirectory=dictionaryRoot.appendingPathComponent("actual",isDirectory:true)
+for _ in 0..<2 {
+    let e=try LegacyMacUserDictionary.importFile(dictionarySource,directory:originalDirectory.path)
+    let a=try MacUserDictionary.importFile(dictionarySource,directory:actualDirectory.path)
+    precondition(a==e)
+    let expectedBytes=try Data(contentsOf:originalDirectory.appendingPathComponent("userdict.txt"))
+    let actualBytes=try Data(contentsOf:actualDirectory.appendingPathComponent("userdict.txt"))
+    precondition(actualBytes==expectedBytes)
+}
+try FileManager.default.removeItem(at:dictionaryRoot)
+print("macOS Rust dictionary: \(dictionaryParseCases) XML/binary plist shapes, original Foundation errors/normalization/filtering, \(dictionaryMergeCases) canonical/CRLF/NUL merge cases and private repeated file import comparison passed (file IO/UI still Swift)")

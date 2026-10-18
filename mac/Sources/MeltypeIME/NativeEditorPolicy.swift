@@ -50,6 +50,12 @@ struct NativeEditorPolicy {
     private let selectionUpdateFunction: SelectionUpdate
     private typealias MenuCreate = @convention(c) (UnsafeMutableRawPointer?,Int32,Int32,Int32) -> UnsafeMutableRawPointer?
     private let menuCreateFunction: MenuCreate
+    private typealias DictionaryEntries = @convention(c) (UnsafePointer<UInt8>?,UInt32,UnsafeMutablePointer<UnsafeMutableRawPointer?>?) -> UnsafeMutablePointer<CChar>?
+    private typealias DictionaryMerge = @convention(c) (UnsafePointer<UInt8>?,UInt32) -> UnsafeMutablePointer<CChar>?
+    private typealias FreeDictionaryJSON = @convention(c) (UnsafeMutablePointer<CChar>?) -> Void
+    private let dictionaryEntriesFunction: DictionaryEntries
+    private let dictionaryMergeFunction: DictionaryMerge
+    private let dictionaryFreeFunction: FreeDictionaryJSON
     private let applicationRun: ApplicationRun
     private let servicesRegister: ServicesRegister
     private let serverCreate: ServerCreate
@@ -97,7 +103,10 @@ struct NativeEditorPolicy {
               let indicatorPreference=lookup("meltype_macos_indicator_preference"),
               let selectionCreate=lookup("meltype_macos_mode_selection_create"),
               let selectionUpdate=lookup("meltype_macos_mode_selection"),
-              let menuCreate=lookup("meltype_macos_menu") else { return nil }
+              let menuCreate=lookup("meltype_macos_menu"),
+              let dictionaryEntries=lookup("meltype_macos_dictionary_entries"),
+              let dictionaryMerge=lookup("meltype_macos_dictionary_merge"),
+              let dictionaryFree=lookup("meltype_free") else { return nil }
         self.modeServicesCreate=unsafeBitCast(modeServicesCreate,to:ModeServicesCreate.self)
         self.modeServicesTargetFunction=unsafeBitCast(modeServicesTarget,to:ModeServicesTarget.self)
         self.modeServicesDispatch=unsafeBitCast(modeServicesDispatch,to:ModeServicesDispatch.self)
@@ -114,6 +123,9 @@ struct NativeEditorPolicy {
         self.selectionCreateFunction=unsafeBitCast(selectionCreate,to:SelectionCreate.self)
         self.selectionUpdateFunction=unsafeBitCast(selectionUpdate,to:SelectionUpdate.self)
         self.menuCreateFunction=unsafeBitCast(menuCreate,to:MenuCreate.self)
+        self.dictionaryEntriesFunction=unsafeBitCast(dictionaryEntries,to:DictionaryEntries.self)
+        self.dictionaryMergeFunction=unsafeBitCast(dictionaryMerge,to:DictionaryMerge.self)
+        self.dictionaryFreeFunction=unsafeBitCast(dictionaryFree,to:FreeDictionaryJSON.self)
         self.applicationRun = unsafeBitCast(applicationRun, to: ApplicationRun.self)
         self.servicesRegister = unsafeBitCast(servicesRegister, to: ServicesRegister.self)
         self.serverCreate = unsafeBitCast(serverCreate, to: ServerCreate.self)
@@ -243,6 +255,28 @@ struct NativeEditorPolicy {
     func inputMenu(target:AnyObject,direct:Bool,code:Bool,indicator:Bool)->AnyObject? {
         guard let pointer=withExtendedLifetime(target,{menuCreateFunction(Unmanaged.passUnretained(target).toOpaque(),direct ? 1 : 0,code ? 1 : 0,indicator ? 1 : 0)}) else {return nil}
         return Unmanaged<AnyObject>.fromOpaque(pointer).takeRetainedValue()
+    }
+    func dictionaryEntries(_ data:Data) throws -> [(String,String)] {
+        guard let count=UInt32(exactly:data.count) else {throw MacUserDictionary.ImportError.unsupported}
+        var failure:UnsafeMutableRawPointer?
+        let pointer=data.withUnsafeBytes {dictionaryEntriesFunction($0.bindMemory(to:UInt8.self).baseAddress,count,&failure)}
+        guard let pointer else {
+            if let failure {throw Unmanaged<NSError>.fromOpaque(failure).takeRetainedValue()}
+            throw MacUserDictionary.ImportError.unsupported
+        }
+        defer {dictionaryFreeFunction(pointer)}
+        let rows=try JSONDecoder().decode([[String]].self,from:Data(String(cString:pointer).utf8))
+        guard !rows.isEmpty else {throw MacUserDictionary.ImportError.unsupported}
+        return rows.map {($0[0],$0[1])}
+    }
+    func dictionaryMerge(_ entries:[(String,String)],existing:String)->(String,Int) {
+        struct Request:Encodable {let entries:[[String]];let existing:String}
+        struct Reply:Decodable {let text:String;let count:Int}
+        guard let data=try? JSONEncoder().encode(Request(entries:entries.map {[$0.0,$0.1]},existing:existing)),let count=UInt32(exactly:data.count),
+              let pointer=data.withUnsafeBytes({dictionaryMergeFunction($0.bindMemory(to:UInt8.self).baseAddress,count)}) else {preconditionFailure("Rust dictionary merge unavailable")}
+        defer {dictionaryFreeFunction(pointer)}
+        guard let reply=try? JSONDecoder().decode(Reply.self,from:Data(String(cString:pointer).utf8)) else {preconditionFailure("Rust dictionary merge invalid result")}
+        return (reply.text,reply.count)
     }
     func runApplication() -> Bool { applicationRun() != 0 }
     func registerServices(provider: AnyObject, portName: String) -> Bool {
