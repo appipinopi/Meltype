@@ -12,6 +12,7 @@ mod macos_apply;
 mod macos_candidates;
 mod macos_editor;
 mod macos_key;
+mod macos_meaning;
 mod macos_view;
 pub mod tip;
 #[cfg(windows)]
@@ -207,6 +208,7 @@ pub unsafe extern "C" fn meltype_control(
 #[no_mangle]
 pub extern "C" fn meltype_destroy(handle: *mut c_void) {
     fcitx::forget(handle);
+    macos_meaning::forget(handle);
     if let Ok(mut all) = sessions().lock() {
         all.remove(&(handle as usize));
     }

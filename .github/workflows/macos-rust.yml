@@ -30,6 +30,7 @@ jobs:
       - name: Controlled IMK and Unicode boundary integration
         run: |
           set -euo pipefail
+          python3 rust/native/tests/macos_meaning_smoke.py target/release/libmeltype_native.dylib | tee dist/macos-sdk/meaning.txt
           python3 rust/native/tests/macos_candidates_smoke.py target/release/libmeltype_native.dylib | tee dist/macos-sdk/candidates.txt
           python3 rust/native/tests/macos_view_smoke.py target/release/libmeltype_native.dylib | tee dist/macos-sdk/composition.txt
           python3 rust/native/tests/macos_apply_smoke.py target/release/libmeltype_native.dylib | tee dist/macos-sdk/apply.txt

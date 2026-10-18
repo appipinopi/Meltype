@@ -120,7 +120,7 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
         candidatesWindow?.hide()
         suggestionPanel?.orderOut(nil)
         displayedSuggestion = nil
-        meaningKey = nil
+        clearMeaning()
         candidateList = []
         super.deactivateServer(sender)
     }
@@ -335,7 +335,7 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
         candidatesWindow?.hide()
         suggestionPanel?.orderOut(nil)
         displayedSuggestion = nil
-        meaningKey = nil
+        clearMeaning()
     }
 
     private func showSuggestion(_ suggestion: String?, client: IMKTextInput) {
@@ -392,9 +392,29 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
     }
 
     /// 候補で少し (1.5 秒) 止まったら、その候補の意味を候補ウィンドウの注釈に出す (Windows 版と同じ)。
+#if !MELTYPE_RUST_CORE
     private var meaningKey: String?
+#endif
+    private func clearMeaning() {
+#if MELTYPE_RUST_CORE
+        _ = NativeCore.shared.editorPolicy?.reserveMeaning(session, index: 0, text: nil)
+#else
+        meaningKey = nil
+#endif
+    }
 
     private func scheduleMeaning(_ view: CompositionView) {
+#if MELTYPE_RUST_CORE
+        let token = session
+        let index = view.selectedIndex
+        guard let policy = NativeCore.shared.editorPolicy,
+              policy.reserveMeaning(token, index: index, text: view.meaning), let meaning = view.meaning else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(policy.meaningDelayMilliseconds)) { [weak self] in
+            guard self != nil, policy.matchesMeaning(token, index: index, text: meaning),
+                  let window = candidatesWindow, window.isVisible() else { return }
+            window.showAnnotation(NSAttributedString(string: meaning))
+        }
+#else
         let key = view.meaning.map { "\(view.selectedIndex):\($0)" }
         guard key != meaningKey else { return }
         meaningKey = key
@@ -403,6 +423,7 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
             guard let self, self.meaningKey == key, let window = candidatesWindow, window.isVisible() else { return }
             window.showAnnotation(NSAttributedString(string: meaning))
         }
+#endif
     }
 
     private func updateCandidates(_ view: CompositionView) {
@@ -426,7 +447,7 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
             case 4: self.windowIndex = argument
             case 5: self.scheduleMeaning(view)
             case 6:
-                self.meaningKey = nil; self.candidateList = []; window.hide()
+                self.clearMeaning(); self.candidateList = []; window.hide()
             default: return -1
             }
             return 1
@@ -448,7 +469,7 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
             }
             scheduleMeaning(view)
         } else {
-            meaningKey = nil
+            clearMeaning()
             candidateList = []
             window.hide()
         }

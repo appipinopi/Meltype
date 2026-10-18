@@ -200,3 +200,24 @@ for candidates in [[], ["一"], ["一","二","😀"], ["a\u{0}b","e\u{301}"]] {
  }
 }
 print("macOS Rust candidates: \(candidatePlans) legacy update/selection plans, unchanged/hidden/rebuilt lists, unsupported selectors and invalid selection passed")
+
+precondition(editor.meaningDelayMilliseconds==1500,"meaning delay differs from original")
+guard let meaningSession=NativeCore.shared.createSession() else {fatalError("private meaning session creation")}
+var previousMeaning:String?=nil
+var timers:[(Int,String)]=[]
+var meaningChecks=0
+for (index,meaning) in [(0,nil),(0,""),(0,""),(1,"意味😀"),(1,"é"),(1,"e\u{301}"),(2,"e\u{301}"),(2,"a\u{0}b"),(0,nil),(1,"意味😀")] as [(Int,String?)] {
+ let key=meaning.map {"\(index):\($0)"}
+ let expected=key != previousMeaning && key != nil
+ precondition(editor.reserveMeaning(meaningSession,index:index,text:meaning)==expected,"meaning schedule differs from Swift key comparison")
+ previousMeaning=key
+ if let meaning {timers.append((index,meaning))}
+ for (priorIndex,priorMeaning) in timers {
+  precondition(editor.matchesMeaning(meaningSession,index:priorIndex,text:priorMeaning)==(previousMeaning=="\(priorIndex):\(priorMeaning)"),"stale meaning callback match differs")
+  meaningChecks+=1
+ }
+}
+NativeCore.shared.destroySession(meaningSession)
+precondition(!editor.matchesMeaning(meaningSession,index:1,text:"意味😀"),"destroyed meaning handle matched")
+precondition(!editor.reserveMeaning(meaningSession,index:1,text:"意味😀"),"destroyed meaning handle resurrected")
+print("macOS Rust meaning SDK: \(meaningChecks) Swift reservation/timer-key comparisons, canonical equality, NUL, clear and destroyed handle passed")

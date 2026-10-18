@@ -9,6 +9,13 @@ struct NativeEditorPolicy {
     private typealias ApplyFunction = @convention(c) (UnsafePointer<UInt8>?, UInt32, UnsafeMutableRawPointer?, NativeEditHost) -> Int32
     private typealias CompositionFunction = @convention(c) (UnsafePointer<UInt8>?, UInt32, UnsafeMutableRawPointer?, NativeCompositionHost) -> Int32
     private typealias CandidatesFunction = @convention(c) (UnsafePointer<UInt8>?, UInt32, UnsafeMutableRawPointer?, NativeCandidatesHost) -> Int32
+    private typealias MeaningUpdate = @convention(c) (UnsafeMutableRawPointer?, Int64, UnsafePointer<UInt16>?, UInt32, Int32) -> Int32
+    private typealias MeaningMatches = @convention(c) (UnsafeMutableRawPointer?, Int64, UnsafePointer<UInt16>?, UInt32) -> Int32
+    private typealias MeaningDelay = @convention(c) () -> UInt32
+    private let meaningDelay: MeaningDelay
+    var meaningDelayMilliseconds: Int { Int(meaningDelay()) }
+    private let meaningUpdate: MeaningUpdate
+    private let meaningMatches: MeaningMatches
     private let candidatesFunction: CandidatesFunction
     private let compositionFunction: CompositionFunction
     private let applyFunction: ApplyFunction
@@ -21,7 +28,13 @@ struct NativeEditorPolicy {
               let equal = lookup("meltype_macos_expected_equal"),
               let apply = lookup("meltype_macos_apply_utf8"),
               let composition = lookup("meltype_macos_composition_utf8"),
-              let candidates = lookup("meltype_macos_candidates_utf8") else { return nil }
+              let candidates = lookup("meltype_macos_candidates_utf8"),
+              let meaningUpdate = lookup("meltype_macos_meaning_update"),
+              let meaningMatches = lookup("meltype_macos_meaning_matches"),
+              let meaningDelay = lookup("meltype_macos_meaning_delay_ms") else { return nil }
+        self.meaningDelay = unsafeBitCast(meaningDelay, to: MeaningDelay.self)
+        self.meaningUpdate = unsafeBitCast(meaningUpdate, to: MeaningUpdate.self)
+        self.meaningMatches = unsafeBitCast(meaningMatches, to: MeaningMatches.self)
         self.candidatesFunction = unsafeBitCast(candidates, to: CandidatesFunction.self)
         self.compositionFunction = unsafeBitCast(composition, to: CompositionFunction.self)
         self.applyFunction = unsafeBitCast(apply, to: ApplyFunction.self)
@@ -59,6 +72,16 @@ struct NativeEditorPolicy {
         return withExtendedLifetime(sink) {
             data.withUnsafeBytes { candidatesFunction($0.bindMemory(to: UInt8.self).baseAddress, count, Unmanaged.passUnretained(sink).toOpaque(), nativeCandidatesHost) != 0 }
         }
+    }
+    func reserveMeaning(_ handle: UnsafeMutableRawPointer?, index: Int, text: String?) -> Bool {
+        let units = Array((text ?? "").utf16)
+        guard let count = UInt32(exactly: units.count) else { return false }
+        return units.withUnsafeBufferPointer { meaningUpdate(handle, Int64(index), $0.baseAddress, count, text == nil ? 0 : 1) != 0 }
+    }
+    func matchesMeaning(_ handle: UnsafeMutableRawPointer?, index: Int, text: String) -> Bool {
+        let units = Array(text.utf16)
+        guard let count = UInt32(exactly: units.count) else { return false }
+        return units.withUnsafeBufferPointer { meaningMatches(handle, Int64(index), $0.baseAddress, count) != 0 }
     }
     func contextRanges(selection: NSRange, code: Bool) -> (NSRange, NSRange)? {
         guard let location = UInt64(exactly: selection.location), let length = UInt64(exactly: selection.length) else { return nil }

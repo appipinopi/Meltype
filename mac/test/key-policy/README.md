@@ -87,3 +87,14 @@ list/selection traces across visibility, content, index and selector support;
 portable ABI tests stop at each callback failure and reject malformed input.
 Meaning timer/stale-key management and actual candidate-window pixels still need
 migration/verification, along with other direct OS integration.
+
+Meaning reservation keys, duplicate scheduling, canonical matching, delay policy
+(1500 ms) and session cleanup now live in Rust. Swift schedules the OS queue and
+checks the original session token/key with Rust before querying window visibility
+and presenting the annotation. Clear/hide invalidates the current key; core
+session destruction removes it and stale callbacks cannot match a new session.
+The A->B->A key behavior deliberately matches the former Swift equality policy.
+SDK and portable ABI tests compare original key rules, empty versus absent text,
+NUL, independent sessions, malformed UTF-16 and repeated destruction/recreation.
+Actual delayed annotation presentation and its pixels remain unverified; the
+DispatchQueue and IMK window calls are still Swift OS bridges.

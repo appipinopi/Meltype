@@ -113,6 +113,7 @@ pub unsafe extern "C" fn meltype_macos_expected_equal(
     i32::from(actual.nfd().eq(expected.nfd()))
 }
 fn macos_session(handle: *mut std::ffi::c_void) -> *mut std::ffi::c_void {
+    super::macos_meaning::attach(handle);
     if let Some(session) = super::sessions()
         .lock()
         .unwrap_or_else(|e| e.into_inner())
