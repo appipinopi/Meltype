@@ -312,9 +312,12 @@ mod native {
                 capture(failure, error);
                 return -1;
             }
-            let text = NSString::from_str(&merged);
+            // Preserve the UTF-8 bytes, including a leading BOM. NSString's
+            // initWithBytes UTF-8 conversion can consume that marker.
+            let data: Retained<AnyObject> = msg_send![class(c"NSData"),dataWithBytes:merged.as_ptr().cast::<c_void>(),length:merged.len()];
             failure = std::ptr::null_mut();
-            let written: bool = msg_send![&text,writeToURL:&*destination,atomically:true,encoding:4usize,error:&mut failure];
+            let written: bool =
+                msg_send![&data,writeToURL:&*destination,options:1usize,error:&mut failure];
             if !written {
                 capture(failure, error);
                 return -1;

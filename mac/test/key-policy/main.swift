@@ -954,7 +954,7 @@ for (index,bytes) in [Data([0xef,0xbb,0xbf])+Data("かな\t単語\n".utf8),Data(
     }
     let e=try Data(contentsOf:oldFolder.appendingPathComponent("userdict.txt"))
     let a=try Data(contentsOf:nativeFolder.appendingPathComponent("userdict.txt"))
-    precondition(a==e,"UTF8 file import bytes differ")
+    precondition(a==e,"UTF8 fixture \(index) bytes differ: native \(a as NSData), original \(e as NSData)")
 }
 try FileManager.default.removeItem(at:importIORoot)
 print("macOS Rust dictionary IO: Foundation source/read/create/atomic-write compared with former Swift, nested Unicode path, no-op mtime, \(importIOFailures) error-domain/code and previous-content preservation cases passed (dialog/notification still Swift)")
