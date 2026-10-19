@@ -122,10 +122,18 @@ mod tests {
             serde_json::from_str(include_str!("../../tests/data/upstream-engine-keys.json"))
                 .unwrap();
         let cases = golden["cases"].as_array().unwrap();
-        assert_eq!(cases.len(), 30);
+        assert_eq!(cases.len(), 50);
         for row in cases {
             let c = &row["case"];
             let raw = c["raw"].as_str().unwrap();
+            // The reference enables BuiltInWordChecker. Core-only sessions
+            // receive resolved spelling facts from their native embedding.
+            let _spelling = (c["level"] == "Balanced").then(|| {
+                crate::spelling::Scope::new(std::collections::HashMap::from([(
+                    "camera".into(),
+                    true,
+                )]))
+            });
             for structured in [false, true] {
                 // The English single-clause classification is exercised by the
                 // unsegmented path. Mixed/structured English generation has its
@@ -149,7 +157,10 @@ mod tests {
                     s.settings.set(name, serde_json::json!(value)).unwrap();
                 }
                 s.settings
-                    .set("DetectionLevel", serde_json::json!("Manual"))
+                    .set(
+                        "DetectionLevel",
+                        serde_json::json!(c["level"].as_str().unwrap_or("Manual")),
+                    )
                     .unwrap();
                 s.collect_engine_learning(true);
                 let mut committed = String::new();
@@ -175,7 +186,7 @@ mod tests {
                     let started = s.key(
                         if separate { 28 } else { 32 },
                         if separate { 0 } else { 32 },
-                        0,
+                        i32::from(c["action"] == "shift-space"),
                     );
                     converting = started.view.as_ref().is_some_and(|v| v.converting);
                     append(started);
@@ -188,7 +199,13 @@ mod tests {
                             .map(str::to_owned)
                             .unwrap_or_else(|| format!("【{reading}】"));
                         if structured {
-                            assert!(s.begin_clauses(vec![Clause::new(reading, vec![target])]));
+                            let expected = s.conversion_reading();
+                            let mut clause = Clause::new(expected.clone(), vec![target]);
+                            if expected != reading && expected.is_ascii() {
+                                clause.english = true;
+                                clause.kana = Some(reading);
+                            }
+                            assert!(s.begin_clauses(vec![clause]));
                         } else {
                             s.candidates = vec![target];
                             s.selected = 0;

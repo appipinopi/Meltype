@@ -18,7 +18,7 @@ with tempfile.TemporaryDirectory(prefix='meltype-windows-converter-') as directo
     shutil.copy2(worker,root/worker.name)
     (root/'mozc').mkdir();shutil.copy2(helper,root/'mozc/meltype_mozc_helper.exe')
     config=profile/'config.json'
-    def configure(mode,enabled=True,learning=False,separate=False):config.write_text(json.dumps(dict(Enabled=enabled,ConversionEngine=mode,LiveConversion=False,PredictiveCandidates=False,LearningEnabled=learning,SeparateKeyRoles=separate,DetectionLevel='Manual')),encoding='utf-8')
+    def configure(mode,enabled=True,learning=False,separate=False,level='Manual'):config.write_text(json.dumps(dict(Enabled=enabled,ConversionEngine=mode,LiveConversion=False,PredictiveCandidates=False,LearningEnabled=learning,SeparateKeyRoles=separate,DetectionLevel=level)),encoding='utf-8')
     configure('System')
     env=dict(os.environ,MELTYPE_RUST_DATA_DIR=str(profile));env.pop('MELTYPE_TEST_TIP_NO_CONVERTERS',None)
     process=subprocess.Popen([str(root/worker.name),'--stdio-tip-worker'],stdin=subprocess.PIPE,stdout=subprocess.PIPE,env=env)
@@ -129,6 +129,26 @@ with tempfile.TemporaryDirectory(prefix='meltype-windows-converter-') as directo
             call('commit')
             reconvert('nihongo');call('reset')
             assert len([line for line in calls.read_text(encoding='utf-8').splitlines() if line.startswith('L\t')])==count+1
+        configure('Mozc',learning=True)
+        for ch in 'ame':call('key',vk=ord(ch.upper()),ch=ord(ch))
+        count=len([line for line in calls.read_text(encoding='utf-8').splitlines() if line.startswith('L\t')])
+        shifted=call('key',vk=32,ch=32,mods=1)
+        assert shifted['commits']==[] and shifted['view']['text']=='MOZC:あめ',shifted
+        candidate_count=len(shifted['view']['candidates'])
+        backwards=call('key',vk=32,ch=32,mods=1)
+        assert backwards['commits']==[] and backwards['view']['selectedIndex']==candidate_count-1,backwards
+        assert call('key',vk=32,ch=32)['view']['selectedIndex']==0
+        assert call('commit')['commits'][0]['text']=='MOZC:あめ'
+        reconvert('nihongo');call('reset')
+        assert len([line for line in calls.read_text(encoding='utf-8').splitlines() if line.startswith('L\t')])==count+1
+        configure('Mozc',learning=True,level='Balanced')
+        count=len([line for line in calls.read_text(encoding='utf-8').splitlines() if line.startswith('L\t')])
+        for ch in 'camera':call('key',vk=ord(ch.upper()),ch=ord(ch))
+        english_shift=call('key',vk=32,ch=32,mods=1)
+        assert english_shift['commits']==[] and english_shift['view']['text']=='MOZC:かめら',english_shift
+        assert call('commit')['commits'][0]['text']=='MOZC:かめら'
+        reconvert('nihongo');call('reset')
+        assert len([line for line in calls.read_text(encoding='utf-8').splitlines() if line.startswith('L\t')])==count,'English clause must not notify Mozc'
         configure('Hybrid')
         assert reconvert('nihongo')=='MOZC:にほんご';call('reset')
         configure('System');count=len(calls.read_text(encoding='utf-8').splitlines())

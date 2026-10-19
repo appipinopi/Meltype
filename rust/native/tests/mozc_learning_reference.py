@@ -46,6 +46,6 @@ if len(sys.argv)>6:
     fixture=Path(__file__).resolve().parents[2]/'core/tests/data/upstream-engine-keys.json'
     expected=json.loads(fixture.read_text(encoding='utf-8'))['cases']
     actual=[json.loads(line) for line in Path(sys.argv[6]).read_text(encoding='utf-8-sig').splitlines() if line.startswith('{')]
-    assert len(actual)==len(expected)==30
+    assert len(actual)==len(expected)==50
     for got,want in zip(actual,expected):assert got==want,(want['case']['name'],want,got)
-    print('Original public session: 30 function-key conversion/commit/engine-learning operations reproduced')
+    print('Original public session: 50 function-key conversion/commit/engine-learning operations reproduced')

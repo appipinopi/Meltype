@@ -274,5 +274,189 @@
     "private": false,
     "target": null,
     "separate": true
+  },
+  {
+    "name": "shift-space-hashi-0",
+    "raw": "hashi",
+    "force": 0,
+    "action": "shift-space",
+    "learning": true,
+    "private": false,
+    "target": null
+  },
+  {
+    "name": "shift-space-hashi-117",
+    "raw": "hashi",
+    "force": 117,
+    "action": "shift-space",
+    "learning": true,
+    "private": false,
+    "target": null
+  },
+  {
+    "name": "shift-space-hashi-120",
+    "raw": "hashi",
+    "force": 120,
+    "action": "shift-space",
+    "learning": true,
+    "private": false,
+    "target": null
+  },
+  {
+    "name": "shift-space-hashi-121",
+    "raw": "hashi",
+    "force": 121,
+    "action": "shift-space",
+    "learning": true,
+    "private": false,
+    "target": null
+  },
+  {
+    "name": "shift-space-nihongo-0",
+    "raw": "nihongo",
+    "force": 0,
+    "action": "shift-space",
+    "learning": true,
+    "private": false,
+    "target": null
+  },
+  {
+    "name": "shift-space-nihongo-117",
+    "raw": "nihongo",
+    "force": 117,
+    "action": "shift-space",
+    "learning": true,
+    "private": false,
+    "target": null
+  },
+  {
+    "name": "shift-space-nihongo-120",
+    "raw": "nihongo",
+    "force": 120,
+    "action": "shift-space",
+    "learning": true,
+    "private": false,
+    "target": null
+  },
+  {
+    "name": "shift-space-nihongo-121",
+    "raw": "nihongo",
+    "force": 121,
+    "action": "shift-space",
+    "learning": true,
+    "private": false,
+    "target": null
+  },
+  {
+    "name": "shift-space-go-0",
+    "raw": "go",
+    "force": 0,
+    "action": "shift-space",
+    "learning": true,
+    "private": false,
+    "target": null
+  },
+  {
+    "name": "shift-space-go-117",
+    "raw": "go",
+    "force": 117,
+    "action": "shift-space",
+    "learning": true,
+    "private": false,
+    "target": null
+  },
+  {
+    "name": "shift-space-go-120",
+    "raw": "go",
+    "force": 120,
+    "action": "shift-space",
+    "learning": true,
+    "private": false,
+    "target": null
+  },
+  {
+    "name": "shift-space-go-121",
+    "raw": "go",
+    "force": 121,
+    "action": "shift-space",
+    "learning": true,
+    "private": false,
+    "target": null
+  },
+  {
+    "name": "shift-space-camera-0",
+    "raw": "camera",
+    "force": 0,
+    "action": "shift-space",
+    "learning": true,
+    "private": false,
+    "target": null
+  },
+  {
+    "name": "shift-space-camera-117",
+    "raw": "camera",
+    "force": 117,
+    "action": "shift-space",
+    "learning": true,
+    "private": false,
+    "target": null
+  },
+  {
+    "name": "shift-space-camera-120",
+    "raw": "camera",
+    "force": 120,
+    "action": "shift-space",
+    "learning": true,
+    "private": false,
+    "target": null
+  },
+  {
+    "name": "shift-space-camera-121",
+    "raw": "camera",
+    "force": 121,
+    "action": "shift-space",
+    "learning": true,
+    "private": false,
+    "target": null
+  },
+  {
+    "name": "shift-english-camera-0",
+    "raw": "camera",
+    "force": 0,
+    "action": "shift-space",
+    "learning": true,
+    "private": false,
+    "target": null,
+    "level": "Balanced"
+  },
+  {
+    "name": "shift-english-camera-117",
+    "raw": "camera",
+    "force": 117,
+    "action": "shift-space",
+    "learning": true,
+    "private": false,
+    "target": null,
+    "level": "Balanced"
+  },
+  {
+    "name": "shift-english-camera-120",
+    "raw": "camera",
+    "force": 120,
+    "action": "shift-space",
+    "learning": true,
+    "private": false,
+    "target": null,
+    "level": "Balanced"
+  },
+  {
+    "name": "shift-english-camera-121",
+    "raw": "camera",
+    "force": 121,
+    "action": "shift-space",
+    "learning": true,
+    "private": false,
+    "target": null,
+    "level": "Balanced"
   }
 ]

@@ -264,3 +264,5 @@
 - F6〜F10後のEnter／Space／変換キーとエンジン学習を元版24操作で照合。F6〜F8後の通知を回復し、F9／F10のSpaceはnativeの先行変換も抑止。全187テスト、最後のnative修正後の関連36＋native41テスト・Clippy、両ABIの最終Release回帰と学習ワーカーが成功。全候補源・全編集・TSF適用失敗時の学習整合、実Mozcの永続学習は継続。[手順](../tools/parity/mozc-lifecycle/README.md)。
 
 - SeparateKeyRoles ONのF9／F10後Spaceを候補開始へ修正。OFFの英字確定と区別し、元版比較30操作・関連36テスト・Clippyと両ABIの実通信／既存回帰が成功。全設定組合せ・実Mozc保存・TSF適用失敗時の学習整合は継続。[条件](../tools/parity/mozc-lifecycle/README.md)。
+
+- Shift＋Spaceの変換開始／前候補／空入力スペースを元版へ一致。Fキー後の区間分類と既知c行英語の条件も修正。元版比較50操作・全187テスト・Clippy、両ABIの専用20操作と学習worker／既存回帰が成功。保護入力・独自表・スコア判定・全候補順と実アプリの確認は継続。[範囲](../tools/parity/mozc-lifecycle/README.md)。

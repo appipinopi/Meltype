@@ -244,15 +244,11 @@ fn composition_control_shortcuts_and_shift_space_match_native_key_roles() {
     assert_eq!(s.raw(), "ky");
     s.key(0, 'a' as i32, 0);
     let result = s.key(32, 32, 1);
-    assert_eq!(
-        result
-            .commits
-            .iter()
-            .map(|e| e.text.as_str())
-            .collect::<String>(),
-        "きゃ　"
-    );
-    assert!(result.view.is_none());
+    assert!(result.commits.is_empty());
+    assert!(result.view.unwrap().converting);
+    let count = s.result(false).view.unwrap().candidates.len();
+    assert_eq!(s.key(32, 32, 1).view.unwrap().selected_index, count - 1);
+    s.commit();
     assert_eq!(s.key(32, 32, 1).commits[0].text, "　");
     assert!(!s.key(32, 32, 0).consumed);
 }

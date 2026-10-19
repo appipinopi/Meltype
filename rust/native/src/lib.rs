@@ -498,25 +498,35 @@ pub unsafe extern "C" fn meltype_handle_key(
             all.get(&(handle as usize))
                 .filter(|s| {
                     (vk == 0x20 || vk == 0x1c && s.settings.boolean("SeparateKeyRoles"))
-                        && !(vk == 0x20 && s.space_commits_alphanumeric())
+                        && !(vk == 0x20 && modifiers & 1 == 0 && s.space_commits_alphanumeric())
                         && !(vk == 0x20
+                            && modifiers & 1 == 0
                             && !s.settings.boolean("SeparateKeyRoles")
                             && s.ends_in_english())
-                        && !s.protects_tail()
+                        && (!s.protects_tail() || vk == 0x20 && modifiers & 1 != 0)
                         && !s.is_converting()
                         && !s.raw().is_empty()
                         && !s.direct
                         && !s.private
                         && s.settings.boolean("Enabled")
                         && !s.code_english()
-                        && (s.display(true) != s.raw() || s.settings.boolean("SeparateKeyRoles"))
-                        && modifiers & 15 == 0
+                        && (s.display(true) != s.raw()
+                            || s.settings.boolean("SeparateKeyRoles")
+                            || vk == 0x20 && modifiers & 1 != 0)
+                        && modifiers & 14 == 0
+                        && (modifiers & 1 == 0 || vk == 0x20)
                 })
                 .map(Session::conversion_reading)
         });
         let (segments, external) = reading
             .as_deref()
-            .map(|r| external_conversion(r, before))
+            .map(|r| {
+                if vk == 0x20 && modifiers & 1 != 0 {
+                    (external_selection_conversion(r, true), Vec::new())
+                } else {
+                    external_conversion(r, before)
+                }
+            })
             .unwrap_or_default();
         // Resize reconverts both affected clauses using their new readings.
         // Keep callbacks outside the registry mutex, as for initial conversion.

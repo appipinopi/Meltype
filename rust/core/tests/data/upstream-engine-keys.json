@@ -1,9 +1,9 @@
 {
   "baseline": "45e14f86558aa6ea34f2c2ecd038ba95ca8c3c46",
   "sha256": {
-    "tools/parity/mozc-lifecycle/EngineKeys.cs": "07a78512262c0e6bdae78f717cf9c43ac3e6e7ffd758310e530fa7f8cfa14533",
+    "tools/parity/mozc-lifecycle/EngineKeys.cs": "e7cfdce9adbb0ed91980f8c3df883711e57fabae880ae137f13ec13178939a06",
     "tools/parity/mozc-lifecycle/Program.cs": "1b48429638320ffd58647fbdca221ace63a9432c756d73021b00e956d2ec0134",
-    "tools/parity/mozc-lifecycle/engine-key-cases.json": "07cbd8cc7ce447fc205b9c974758f97429802cd3c6a23462e5d9e629fb52fa48",
+    "tools/parity/mozc-lifecycle/engine-key-cases.json": "dc52482b4a734be8731353b6617f7d0e64e8d626bcdef932787f1d267406b2c6",
     "src/Meltype.Core/Composition/CompositionController.cs": "0b35121785c14431093c3a9b493030fc0483e2d7716f21e232e9c54686f68a03",
     "src/Meltype.Core/Composition/MeltypeSession.cs": "b0f2c0044a73f5c39b01cc324d79ed160396069a64bb5d1035308eed262f6479"
   },
@@ -652,6 +652,490 @@
             ]
           }
         ]
+      }
+    },
+    {
+      "case": {
+        "name": "shift-space-hashi-0",
+        "raw": "hashi",
+        "force": 0,
+        "action": "shift-space",
+        "learning": true,
+        "private": false,
+        "target": null
+      },
+      "expected": {
+        "converting": true,
+        "committed": "【はし】",
+        "batches": [
+          {
+            "context": "",
+            "clauses": [
+              {
+                "reading": "はし",
+                "text": "【はし】"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "case": {
+        "name": "shift-space-hashi-117",
+        "raw": "hashi",
+        "force": 117,
+        "action": "shift-space",
+        "learning": true,
+        "private": false,
+        "target": null
+      },
+      "expected": {
+        "converting": true,
+        "committed": "【はし】",
+        "batches": [
+          {
+            "context": "",
+            "clauses": [
+              {
+                "reading": "はし",
+                "text": "【はし】"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "case": {
+        "name": "shift-space-hashi-120",
+        "raw": "hashi",
+        "force": 120,
+        "action": "shift-space",
+        "learning": true,
+        "private": false,
+        "target": null
+      },
+      "expected": {
+        "converting": true,
+        "committed": "【はし】",
+        "batches": [
+          {
+            "context": "",
+            "clauses": [
+              {
+                "reading": "はし",
+                "text": "【はし】"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "case": {
+        "name": "shift-space-hashi-121",
+        "raw": "hashi",
+        "force": 121,
+        "action": "shift-space",
+        "learning": true,
+        "private": false,
+        "target": null
+      },
+      "expected": {
+        "converting": true,
+        "committed": "【はし】",
+        "batches": [
+          {
+            "context": "",
+            "clauses": [
+              {
+                "reading": "はし",
+                "text": "【はし】"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "case": {
+        "name": "shift-space-nihongo-0",
+        "raw": "nihongo",
+        "force": 0,
+        "action": "shift-space",
+        "learning": true,
+        "private": false,
+        "target": null
+      },
+      "expected": {
+        "converting": true,
+        "committed": "【にほんご】",
+        "batches": [
+          {
+            "context": "",
+            "clauses": [
+              {
+                "reading": "にほんご",
+                "text": "【にほんご】"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "case": {
+        "name": "shift-space-nihongo-117",
+        "raw": "nihongo",
+        "force": 117,
+        "action": "shift-space",
+        "learning": true,
+        "private": false,
+        "target": null
+      },
+      "expected": {
+        "converting": true,
+        "committed": "【にほんご】",
+        "batches": [
+          {
+            "context": "",
+            "clauses": [
+              {
+                "reading": "にほんご",
+                "text": "【にほんご】"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "case": {
+        "name": "shift-space-nihongo-120",
+        "raw": "nihongo",
+        "force": 120,
+        "action": "shift-space",
+        "learning": true,
+        "private": false,
+        "target": null
+      },
+      "expected": {
+        "converting": true,
+        "committed": "【にほんご】",
+        "batches": [
+          {
+            "context": "",
+            "clauses": [
+              {
+                "reading": "にほんご",
+                "text": "【にほんご】"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "case": {
+        "name": "shift-space-nihongo-121",
+        "raw": "nihongo",
+        "force": 121,
+        "action": "shift-space",
+        "learning": true,
+        "private": false,
+        "target": null
+      },
+      "expected": {
+        "converting": true,
+        "committed": "【にほんご】",
+        "batches": [
+          {
+            "context": "",
+            "clauses": [
+              {
+                "reading": "にほんご",
+                "text": "【にほんご】"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "case": {
+        "name": "shift-space-go-0",
+        "raw": "go",
+        "force": 0,
+        "action": "shift-space",
+        "learning": true,
+        "private": false,
+        "target": null
+      },
+      "expected": {
+        "converting": true,
+        "committed": "【ご】",
+        "batches": [
+          {
+            "context": "",
+            "clauses": [
+              {
+                "reading": "ご",
+                "text": "【ご】"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "case": {
+        "name": "shift-space-go-117",
+        "raw": "go",
+        "force": 117,
+        "action": "shift-space",
+        "learning": true,
+        "private": false,
+        "target": null
+      },
+      "expected": {
+        "converting": true,
+        "committed": "【ご】",
+        "batches": [
+          {
+            "context": "",
+            "clauses": [
+              {
+                "reading": "ご",
+                "text": "【ご】"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "case": {
+        "name": "shift-space-go-120",
+        "raw": "go",
+        "force": 120,
+        "action": "shift-space",
+        "learning": true,
+        "private": false,
+        "target": null
+      },
+      "expected": {
+        "converting": true,
+        "committed": "【ご】",
+        "batches": [
+          {
+            "context": "",
+            "clauses": [
+              {
+                "reading": "ご",
+                "text": "【ご】"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "case": {
+        "name": "shift-space-go-121",
+        "raw": "go",
+        "force": 121,
+        "action": "shift-space",
+        "learning": true,
+        "private": false,
+        "target": null
+      },
+      "expected": {
+        "converting": true,
+        "committed": "【ご】",
+        "batches": [
+          {
+            "context": "",
+            "clauses": [
+              {
+                "reading": "ご",
+                "text": "【ご】"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "case": {
+        "name": "shift-space-camera-0",
+        "raw": "camera",
+        "force": 0,
+        "action": "shift-space",
+        "learning": true,
+        "private": false,
+        "target": null
+      },
+      "expected": {
+        "converting": true,
+        "committed": "【かめら】",
+        "batches": [
+          {
+            "context": "",
+            "clauses": [
+              {
+                "reading": "かめら",
+                "text": "【かめら】"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "case": {
+        "name": "shift-space-camera-117",
+        "raw": "camera",
+        "force": 117,
+        "action": "shift-space",
+        "learning": true,
+        "private": false,
+        "target": null
+      },
+      "expected": {
+        "converting": true,
+        "committed": "【かめら】",
+        "batches": [
+          {
+            "context": "",
+            "clauses": [
+              {
+                "reading": "かめら",
+                "text": "【かめら】"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "case": {
+        "name": "shift-space-camera-120",
+        "raw": "camera",
+        "force": 120,
+        "action": "shift-space",
+        "learning": true,
+        "private": false,
+        "target": null
+      },
+      "expected": {
+        "converting": true,
+        "committed": "【かめら】",
+        "batches": [
+          {
+            "context": "",
+            "clauses": [
+              {
+                "reading": "かめら",
+                "text": "【かめら】"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "case": {
+        "name": "shift-space-camera-121",
+        "raw": "camera",
+        "force": 121,
+        "action": "shift-space",
+        "learning": true,
+        "private": false,
+        "target": null
+      },
+      "expected": {
+        "converting": true,
+        "committed": "【かめら】",
+        "batches": [
+          {
+            "context": "",
+            "clauses": [
+              {
+                "reading": "かめら",
+                "text": "【かめら】"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "case": {
+        "name": "shift-english-camera-0",
+        "raw": "camera",
+        "force": 0,
+        "action": "shift-space",
+        "learning": true,
+        "private": false,
+        "target": null,
+        "level": "Balanced"
+      },
+      "expected": {
+        "converting": true,
+        "committed": "【かめら】",
+        "batches": []
+      }
+    },
+    {
+      "case": {
+        "name": "shift-english-camera-117",
+        "raw": "camera",
+        "force": 117,
+        "action": "shift-space",
+        "learning": true,
+        "private": false,
+        "target": null,
+        "level": "Balanced"
+      },
+      "expected": {
+        "converting": true,
+        "committed": "【かめら】",
+        "batches": []
+      }
+    },
+    {
+      "case": {
+        "name": "shift-english-camera-120",
+        "raw": "camera",
+        "force": 120,
+        "action": "shift-space",
+        "learning": true,
+        "private": false,
+        "target": null,
+        "level": "Balanced"
+      },
+      "expected": {
+        "converting": true,
+        "committed": "【かめら】",
+        "batches": []
+      }
+    },
+    {
+      "case": {
+        "name": "shift-english-camera-121",
+        "raw": "camera",
+        "force": 121,
+        "action": "shift-space",
+        "learning": true,
+        "private": false,
+        "target": null,
+        "level": "Balanced"
+      },
+      "expected": {
+        "converting": true,
+        "committed": "【かめら】",
+        "batches": []
       }
     }
   ]

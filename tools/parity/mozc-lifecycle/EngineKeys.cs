@@ -10,8 +10,9 @@ internal static class EngineKeys {
             var learner=new Learner();
             var detector=CompositionDetector.CreateDefault();detector.SpellChecker=BuiltInWordChecker.Shared;
             var separate=row.TryGetProperty("separate",out var mode)?mode.GetBoolean():row.GetProperty("action").GetString()=="convert";
-            var settings=new Settings { DetectionLevel=DetectionLevel.Manual, LiveConversion=false, PredictiveCandidates=false, SeparateKeyRoles=separate };
-            var options=new CompositionOptions { Learning=()=>row.GetProperty("learning").GetBoolean(), Level=()=>DetectionLevel.Manual,
+            var level=row.TryGetProperty("level",out var detection)?Enum.Parse<DetectionLevel>(detection.GetString()!):DetectionLevel.Manual;
+            var settings=new Settings { DetectionLevel=level, LiveConversion=false, PredictiveCandidates=false, SeparateKeyRoles=separate };
+            var options=new CompositionOptions { Learning=()=>row.GetProperty("learning").GetBoolean(), Level=()=>level,
                 SeparateKeyRoles=()=>separate, LiveConversion=()=>false, RomajiTypos=RomajiTypoCorrector.Load(detector.Romaji) };
             var session=new MeltypeSession(detector,learner,options,()=>settings) { Private=row.GetProperty("private").GetBoolean() };
             var committed=new List<string>();
@@ -24,7 +25,7 @@ internal static class EngineKeys {
             var converting=false;
             if(row.GetProperty("action").GetString()!="enter") {
                 var convert=row.GetProperty("action").GetString()=="convert";
-                var start=Press(convert?28:32,convert?null:' ');converting=start.View?.Converting==true;
+                var start=Press(convert?28:32,convert?null:' ',row.GetProperty("action").GetString()=="shift-space");converting=start.View?.Converting==true;
                 if(converting && row.GetProperty("target").GetString() is {} target) {
                     var index=start.View!.Candidates.ToList().IndexOf(target);if(index<0)throw new Exception("Missing target "+target);
                     session.SelectCandidate(index);

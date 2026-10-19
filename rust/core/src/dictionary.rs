@@ -512,6 +512,18 @@ impl Dictionary {
         if suffix > 0 && (lower.len() == suffix || lower.len() >= suffix + 3) {
             return raw.to_owned();
         }
+        // Original IsEnglishSpan accepts known c-row English spellings before
+        // matching their kana against Japanese readings (camera vs kamera).
+        if lower.len() >= 5
+            && lower.contains('c')
+            && !lower.contains("ch")
+            && self.known_english(&lower)
+            && !self.japanese_prefix(&lower)
+            && !self.proper.contains(&lower)
+            && romaji::analyze(&lower, true).valid
+        {
+            return raw.to_owned();
+        }
         if self.japanese.contains(&lower) {
             return romaji::hiragana(raw, final_input);
         }

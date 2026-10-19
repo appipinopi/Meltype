@@ -103,8 +103,10 @@ def main(library):
             for letter in "hashi":
                 key(scalar=ord(letter))
             value = key(32,32,1)
-            assert [edit["text"] for edit in value["commits"]] == ["はし","　"]
-            assert value["view"] is None
+            assert value["commits"] == []
+            assert value["view"]["converting"] and value["view"]["text"] == "橋"
+            assert result(api.meltype_commit(handle))["commits"][0]["text"] == "橋"
+            assert key(32,32,1)["commits"] == [{"deleteBefore":0,"text":"　"}]
             api.meltype_set_private(handle, 1)
             assert not key(scalar=ord("a"))["consumed"]
         finally:

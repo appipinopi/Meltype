@@ -82,6 +82,8 @@
 
 - SeparateKeyRolesがONの場合、F9／F10後のSpaceを元版どおり候補開始へ修正。OFFの場合は英字＋空白で確定する。Fキー比較を30操作へ拡張し、先行24操作の期待値は不変。関連Core／session 36テストとRust 1.99の全体／TSF-server Clippy、最終Releaseのx64／x86で設定ON/OFFの実フレーム通信と既存ABI・文節伸縮20入力列・選択再変換28操作が成功。全設定・全キー・全候補源や実Mozcの永続学習・TSF適用失敗時の整合は未完了。今回の速度は未測定。[条件](../tools/parity/mozc-lifecycle/README.md)。
 
+- Shift＋Spaceを元版どおり、入力中は日本語候補を優先して変換開始、変換中は前候補、空入力は全角スペースへ修正。nativeの外部呼出しにもShiftを渡し、Fキー後も変換用の区間分類を保持。cameraなど既知のc行英語の判定条件も移植した。元版キー比較を50操作へ拡張し、先行30操作は不変。全187テスト・Rust 1.99の全体／TSF-server Clippyが成功。最終Releaseのx64／x86で元版Shift＋Space20操作の確定と変換表示・候補循環・空入力スペース、workerの日本語学習通知と英語文節の通知除外、既存ABI・文節伸縮20入力列・選択再変換28操作が成功。限定語とManual／Balancedの試験で、保護入力・独自表・スコア判定・全候補順の組合せは継続確認。今回の速度は未測定。[手順](../tools/parity/mozc-lifecycle/README.md)。
+
 ## 次に埋めるCoreの差
 
 1. 入力途中の区切り・保留子音・英語候補・音単位編集を、元版のCompositionText/CompositionDetectorと各キーで比較する。

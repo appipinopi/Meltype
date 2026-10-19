@@ -498,7 +498,7 @@ impl Session {
     /// This is separate from the reading used by edit and repair operations.
     pub fn conversion_reading(&self) -> String {
         let _romaji = romaji::Scope::new(self.custom_romaji.clone());
-        if self.reconversion_origin.is_some() || self.uses_kana() || self.function_key != 0 {
+        if self.reconversion_origin.is_some() || self.uses_kana() {
             self.reading()
         } else {
             self.mixed_reading(true)
@@ -1666,6 +1666,15 @@ impl Session {
             return result;
         }
         match vk {
+            0x20 if modifiers & 1 != 0 && !self.raw.is_empty() => {
+                if self.is_converting() {
+                    self.cycle(-1);
+                } else {
+                    self.space_started_conversion = true;
+                    self.begin_conversion(vec![]);
+                }
+                self.result(true)
+            }
             0x20 if modifiers & 1 != 0 => {
                 let mut result = self.commit();
                 self.correctable.clear();
