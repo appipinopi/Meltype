@@ -164,7 +164,9 @@ def main(library):
                 value = key(scalar=ord(letter))
             assert value["view"]["text"] == "ごおgぇ"
             assert "Tab → google" in value["view"]["hint"]
-            assert value["view"]["suggestion"] == "google"
+            # Upstream reserves suggestion for the formatted misspelling
+            # message; the English proposal is already in hint.
+            assert value["view"]["suggestion"] is None
             value = key(9)
             assert value["consumed"] and value["view"]["text"] == "google"
             assert result(api.meltype_commit(handle))["commits"][0]["text"] == "google"

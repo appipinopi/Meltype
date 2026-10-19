@@ -3,6 +3,7 @@
 mod clause_metadata;
 mod direct;
 mod engine_learning;
+mod misspelling;
 mod reconversion;
 use crate::{
     dictionary::Dictionary,
@@ -125,6 +126,7 @@ struct CommittedInput {
 }
 
 pub struct Session {
+    probe_cache: std::sync::Arc<romaji::probes::Cache>,
     raw: String,
     candidates: Vec<String>,
     selected: usize,
@@ -181,6 +183,7 @@ pub struct Session {
 impl Default for Session {
     fn default() -> Self {
         Self {
+            probe_cache: Default::default(),
             raw: String::new(),
             candidates: vec![],
             selected: 0,
@@ -365,10 +368,7 @@ impl Session {
             || self.function_key != 0
             || self.explicit.is_some()
             || self.language_suggestion().is_some()
-            || self.settings.boolean("CorrectTypos")
-                && Linguistics::bundled()
-                    .misspelling(&self.reading())
-                    .is_some()
+            || self.composition_misspelling().is_some()
         {
             return vec![];
         }
@@ -545,6 +545,7 @@ impl Session {
         crate::protection::transform(&self.raw, |part| self.detect_composition(part, final_input))
     }
     fn detect_composition(&self, raw: &str, final_input: bool) -> String {
+        let _probes = romaji::probes::Scope::new(self.probe_cache.clone());
         let dictionary = Dictionary::bundled();
         let level = if self.balanced_override {
             "Balanced"
@@ -657,6 +658,7 @@ impl Session {
         !self.candidates.is_empty()
     }
     pub fn display(&self, final_input: bool) -> String {
+        let _probes = romaji::probes::Scope::new(self.probe_cache.clone());
         let _romaji = romaji::Scope::new(self.custom_romaji.clone());
         if let Some(text) = &self.explicit {
             return text.clone();
@@ -862,13 +864,7 @@ impl Session {
                     } else {
                         None
                     },
-                    suggestion: if let Some(suggestion) = language_suggestion {
-                        Some(suggestion)
-                    } else if self.settings.boolean("CorrectTypos") && !self.is_converting() {
-                        Linguistics::bundled().misspelling(&self.reading())
-                    } else {
-                        None
-                    },
+                    suggestion: self.misspelling_suggestion(),
                     predictions,
                     selected_prediction: if self.selected_prediction >= 0 {
                         self.selected_prediction
@@ -896,6 +892,7 @@ impl Session {
         }
     }
     pub fn reset(&mut self) {
+        self.probe_cache.clear();
         self.forget_direct_input();
         self.sigil = Default::default();
         self.correctable.clear();
@@ -1486,6 +1483,14 @@ impl Session {
             if clause.english {
                 if clause.kana.is_some() {
                     clause.kana = Some(romaji::hiragana(&clause.reading, true));
+                    // A literal English island needs case choices. Explicit
+                    // Shift+Space/reconversion may carry Japanese converter
+                    // choices while still excluding this clause from learning.
+                    if clause.candidates.len() == 1 && clause.candidates[0] == clause.reading {
+                        clause.candidates =
+                            Dictionary::bundled().english_candidates(&clause.reading);
+                        clause.selected = 0;
+                    }
                 }
                 preceding.push_str(clause.text());
                 previous_english = true;
@@ -1715,6 +1720,7 @@ impl Session {
     /// Monotonic milliseconds, for hosts with an event clock and deterministic
     /// replay tests. Use one clock consistently for a session.
     pub fn key_at(&mut self, vk: i32, ch: i32, modifiers: i32, now_ms: u64) -> SessionResult {
+        let _probes = romaji::probes::Scope::new(self.probe_cache.clone());
         let _romaji = romaji::Scope::new(self.custom_romaji.clone());
         if ch < 0 || char::from_u32(ch as u32).is_none() {
             return self.result(false);
@@ -1803,6 +1809,15 @@ impl Session {
             }
         }
         match vk {
+            0x09 if self.composition_misspelling().is_some() => {
+                let converting = self.is_converting();
+                let edit = self.composition_misspelling().expect("checked spelling");
+                self.repair_misspelling(edit);
+                if converting {
+                    self.begin_conversion(vec![]);
+                }
+                self.result(true)
+            }
             0x08 if self.is_converting() => {
                 // The first Backspace cancels conversion without editing the
                 // retained input. A subsequent Backspace removes a sound unit.
@@ -1953,6 +1968,15 @@ impl Session {
                 self.commit()
             }
             0x20 | 0x09 if self.protects_tail() => {
+                if vk == 0x09
+                    && self.settings.text("DetectionLevel") == "Manual"
+                    && !self.balanced_override
+                {
+                    // Protected text renders literally in both levels, but
+                    // Manual's first Tab still accepts its English proposal.
+                    self.balanced_override = true;
+                    return self.result(true);
+                }
                 let suffix = if vk == 0x20 { " " } else { "" };
                 self.explicit = Some(self.display(true) + suffix);
                 let mut result = self.commit_with_spacing(false);
@@ -1974,10 +1998,6 @@ impl Session {
                     self.balanced_override = true;
                     self.explicit = None;
                     self.selected_prediction = -1;
-                    return self.result(true);
-                }
-                if let Some(suggestion) = self.result(false).view.and_then(|v| v.suggestion) {
-                    self.explicit = Some(crate::user_dictionary::hiragana(&suggestion));
                     return self.result(true);
                 }
                 let predictions = self.predictions();

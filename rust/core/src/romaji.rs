@@ -5,6 +5,7 @@ use std::{
     sync::OnceLock,
 };
 mod custom;
+pub(crate) mod probes;
 pub(crate) use custom::current as custom_table;
 pub use custom::CustomTable;
 pub(crate) use custom::Scope;

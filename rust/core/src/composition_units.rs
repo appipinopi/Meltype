@@ -3,7 +3,7 @@
 //! turn an already established small tsu back into a pending consonant.
 use crate::romaji::{self, Token};
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub(crate) struct Units {
     raw: String,
     units: Vec<Token>,
@@ -12,6 +12,35 @@ pub(crate) struct Units {
     japanese_edit: bool,
 }
 impl Units {
+    pub fn from_tokens(units: Vec<Token>) -> Self {
+        let raw = units.iter().map(|u| u.spelling.as_str()).collect();
+        Self {
+            raw,
+            units,
+            ..Self::default()
+        }
+    }
+    pub fn replace_reading(&mut self, start: usize, end: usize, right: &str) {
+        if end > self.units.len() {
+            self.pending.clear();
+        }
+        let end = end.min(self.units.len());
+        self.units.splice(
+            start..end,
+            right.chars().map(|c| Token {
+                spelling: c.to_string(),
+                kana: c.to_string(),
+            }),
+        );
+        self.raw = self
+            .units
+            .iter()
+            .map(|u| u.spelling.as_str())
+            .collect::<String>()
+            + &self.pending;
+        self.english_edit = false;
+        self.japanese_edit = false;
+    }
     pub fn capture(raw: &str, display: &str) -> Self {
         let mut value = Self::default();
         let mut cursor = 0;
@@ -107,7 +136,7 @@ impl Units {
             let first = self.pending.chars().next().expect("unreadable input");
             self.units.push(Token {
                 spelling: first.to_string(),
-                kana: first.to_string(),
+                kana: romaji::hiragana(&first.to_string(), true),
             });
             self.pending.drain(..first.len_utf8());
         }

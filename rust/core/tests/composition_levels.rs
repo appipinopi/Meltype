@@ -111,7 +111,9 @@ fn manual_tab_is_an_explicit_english_choice_even_with_correction_and_conversion_
     let view = s.result(false).view.unwrap();
     assert_eq!(view.text, "ごおgぇ");
     assert!(view.hint.contains("Tab → google"));
-    assert_eq!(view.suggestion.as_deref(), Some("google"));
+    // Original UpdateView reserves Suggestion for dictionary misspellings;
+    // Manual's language proposal is presented in Hint.
+    assert!(view.suggestion.is_none());
     let result = s.key(9, 0, 0);
     assert!(result.consumed);
     assert!(result.commits.is_empty());

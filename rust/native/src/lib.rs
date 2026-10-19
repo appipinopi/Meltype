@@ -554,6 +554,15 @@ pub unsafe extern "C" fn meltype_handle_key(
                 all.get(&(handle as usize))
                     .is_some_and(|s| !s.is_converting())
             });
+        let tab_raw = if vk == 0x09 {
+            sessions().lock().ok().and_then(|all| {
+                all.get(&(handle as usize))
+                    .filter(|s| s.is_converting())
+                    .map(|s| s.raw().to_owned())
+            })
+        } else {
+            None
+        };
         let result = run(handle, |s| {
             s.set_context(read(before).as_deref(), read(after).as_deref());
             if !segments.is_empty() && s.begin_clauses(segments) {
@@ -568,10 +577,14 @@ pub unsafe extern "C" fn meltype_handle_key(
         // Let Core decide whether Tab starts conversion: suggestions,
         // predictions and protected input take precedence. Only then request
         // converter clauses, outside the session mutex as for Space.
-        let tab_reading = if starting_tab {
+        let tab_reading = if starting_tab || tab_raw.is_some() {
             sessions().lock().ok().and_then(|all| {
                 all.get(&(handle as usize))
-                    .filter(|s| s.tab_conversion_started())
+                    .filter(|s| {
+                        starting_tab && s.tab_conversion_started()
+                            || s.is_converting()
+                                && tab_raw.as_deref().is_some_and(|raw| raw != s.raw())
+                    })
                     .map(Session::conversion_reading)
             })
         } else {

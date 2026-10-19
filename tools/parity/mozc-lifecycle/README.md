@@ -220,3 +220,13 @@ python rust/native/tests/prediction_keys_smoke.py target/release/meltype_native.
 最終Release x64／x86では予測110入力列と保存後の語句、数字48列・変換操作84列、既存ABI・ケース切替96列・Shift＋Space20操作・文節伸縮20列・選択再変換28操作・結合文字8入力が成功しました。Windows workerでも予測Enter／クリック4列の表示・確定・完全な読みの学習と、既存のSystem／Mozc／Hybrid通信が成功。元版の110列と訂正器20入力の再採取照合、Rust 1.99の全体／TSF-server Clippyも成功しています。先行失敗ログは保持し、ローカル結果は`dist/prediction-keys-*.log`へ記録しています。
 
 予測修正後の最終ワークスペース全190テストと、Rust 1.99の全体／TSF-server Clippyが成功しました。途中の古い単体・学習期待値による失敗ログも保持しています。
+# 誤字修正の公開キー比較（追加）
+
+`--misspelling-keys misspelling-key-cases.json` は、入力中・変換中のTab修正、Shift+Tab、修正後の削除・字種切替・確定、Manual/Balanced、CorrectTypos/TabConversionの設定、JISかな、URL・英語の除外を104入力列で採取します。Unicodeの8列は通常の `a` キーで組成を開始してから続けます。元版の公開Sessionは空入力で直接Unicode文字を開始しないためです。先行96列の期待値は不変です。
+
+このホストはTranslationDictionaryを接続しないため、native比較側もTranslationCandidatesをOFFにします。その他の候補源を含む全設定の比較ではありません。`rust/core/tests/data/upstream-misspelling-keys.json` が元版の採取結果とソースハッシュを保持し、非変換の75列をCore、全104列の編集・表示・誤字案内・変換中の候補一覧をnative ABIで検査します。`mozc_learning_reference.py` の13番目の引数に再採取したJSONLを渡すと全行を照合できます。
+
+```
+dotnet run --project tools/parity/mozc-lifecycle/MozcLifecycle.csproj -- --misspelling-keys tools/parity/mozc-lifecycle/misspelling-key-cases.json
+python rust/native/tests/number_keys_smoke.py target/release/meltype_native.dll rust/core/tests/data/upstream-misspelling-keys.json
+```

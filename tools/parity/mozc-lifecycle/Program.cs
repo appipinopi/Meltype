@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 using System.Text.Json;
 using Meltype.Composition;
+if(args[0]=="--misspelling-keys") { MisspellingKeys.Write(args[1]); return; }
 if(args[0]=="--direct-typos") { DirectTypos.Write(args[1]); return; }
 if(args[0]=="--prediction-keys") { PredictionKeys.Write(args[1]); return; }
 if(args[0]=="--conversion-keys") { ConversionKeys.Write(args[1]); return; }

@@ -18,7 +18,11 @@ from pathlib import Path
 import shutil
 import statistics
 import subprocess
+import sys
 import tarfile
+
+sys.path.insert(0, str(Path(__file__).resolve().parent / "performance/windows"))
+from resources import measure_process
 
 BASELINE = "45e14f86558aa6ea34f2c2ecd038ba95ca8c3c46"
 REPO = Path(__file__).resolve().parent.parent
@@ -95,7 +99,7 @@ def main():
     if (output / "report.json").exists():
         parser.error("choose a new output directory to preserve previous measurements")
     baseline = command(["git", "rev-parse", args.baseline_ref])
-    source_paths = sorted({"tools/benchmark-windows.py", "tools/performance/windows/Program.cs",
+    source_paths = sorted({"tools/benchmark-windows.py", "tools/performance/windows/resources.py", "tools/performance/windows/Program.cs",
                            "tools/performance/windows/Compare.csproj", "Cargo.toml", "Cargo.lock",
                            "rust/core/Cargo.toml"} | {
         p.relative_to(REPO).as_posix()
@@ -148,13 +152,16 @@ def main():
     rows = []
     evidence = {}
     order = []
+    resources = []
     for round_index in range(args.rounds):
         for label in (("csharp", "rust") if round_index % 2 == 0 else ("rust", "csharp")):
             print(f"Measuring round {round_index + 1}/{args.rounds}: {label}", flush=True)
             order.append(label)
             with (output / f"{label}-{round_index}.jsonl").open("w", encoding="utf-8") as raw:
-                subprocess.run(programs[label] + [str(fixture_file), str(args.samples), str(args.warmups)],
-                               cwd=REPO, env=env, stdout=raw, check=True)
+                usage = measure_process(programs[label] + [str(fixture_file), str(args.samples), str(args.warmups)],
+                                        cwd=REPO, env=env, stdout=raw)
+                resources.append(dict(version=label, round=round_index, **usage))
+                (output / "resources.json").write_text(json.dumps(resources, indent=2) + "\n", encoding="utf-8")
             for line in (output / f"{label}-{round_index}.jsonl").read_text(encoding="utf-8-sig").splitlines():
                 row = json.loads(line)
                 case = next(c for c in cases if c["name"] == row["case"])
@@ -196,7 +203,7 @@ def main():
                                 CanDeleteSurrounding=True, BuiltInSpelling=True, OsSpelling=False),
                   scope=__doc__, dictionaries=hashes, fixtures_sha256=sha(fixture_file),
                   source_sha256=source_hashes,
-                  comparisons=comparisons, rows=rows,
+                  process_resources=resources, comparisons=comparisons, rows=rows,
                   evidence={v: {c["name"]: evidence[v, c["name"]] for c in cases} for v in programs})
     (output / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"Saved {output / 'report.json'}")

@@ -97,3 +97,11 @@ if len(sys.argv)>12:
     assert len(actual)==len(expected)==20
     for got,want in zip(actual,expected):assert got==want,(want['raw'],want,got)
     print('Original pure corrector: 20 independent repair results reproduced')
+
+if len(sys.argv)>13:
+    fixture=Path(__file__).resolve().parents[2]/'core/tests/data/upstream-misspelling-keys.json'
+    expected=json.loads(fixture.read_text(encoding='utf-8'))['cases']
+    actual=[json.loads(line) for line in Path(sys.argv[13]).read_text(encoding='utf-8-sig').splitlines() if line.startswith('{')]
+    assert len(actual)==len(expected)==104
+    for got,want in zip(actual,expected):assert got==want,(want['case']['name'],want,got)
+    print('Original public session: 104 misspelling suggestion/repair/continuation traces reproduced')

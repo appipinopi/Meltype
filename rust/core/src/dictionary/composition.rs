@@ -69,6 +69,20 @@ impl Dictionary {
         after: &str,
         level: &str,
     ) -> String {
+        let compute = || self.composition_uncached(raw, final_input, before, after, level);
+        match romaji::probes::Cache::current() {
+            Some(cache) => cache.composition(raw, final_input, before, after, level, compute),
+            None => compute(),
+        }
+    }
+    fn composition_uncached(
+        &self,
+        raw: &str,
+        final_input: bool,
+        before: &str,
+        after: &str,
+        level: &str,
+    ) -> String {
         if !["Aggressive", "Conservative", "Manual"].contains(&level) {
             // IsEnglishSpan requires two sides for a two-letter spelling
             // which also reads as Japanese. One preceding Latin word is not

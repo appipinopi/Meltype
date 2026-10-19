@@ -62,20 +62,23 @@ assert api.meltype_init(clauses, candidates, None) == 1
 
 def projection(result):
     view = result['view']
-    fields = ('text', 'converting', 'clauses') + (('selectedClause', 'selectedIndex', 'candidates') if view and view['converting'] else ())
+    fields = ('text', 'converting', 'clauses') + (('suggestion',) if fixture.stem == 'upstream-misspelling-keys' else ()) + (('selectedClause', 'selectedIndex', 'candidates') if view and view['converting'] else ())
     return dict(consumed=result['consumed'], commits=result['commits'],
                 view={k: view[k] for k in fields} if view else None)
 
 
 fixture = Path(sys.argv[2]) if len(sys.argv) > 2 else Path(__file__).resolve().parents[2] / 'core/tests/data/upstream-public-number-keys.json'
 golden = json.loads(fixture.read_text(encoding='utf-8'))
-assert len(golden['cases']) == (84 if fixture.stem == 'upstream-conversion-keys' else 48)
+assert len(golden['cases']) == dict([('upstream-conversion-keys',84),('upstream-public-number-keys',48),('upstream-misspelling-keys',104)])[fixture.stem]
 with tempfile.TemporaryDirectory(prefix='meltype-number-keys-') as directory:
     for number, row in enumerate(golden['cases']):
         profile = Path(directory, str(number))
         profile.mkdir()
         (profile / 'config.json').write_text(json.dumps(dict(LiveConversion=False, PredictiveCandidates=False,
-            LearningEnabled=False, DetectionLevel='Manual', ScoredSegmentation=False,
+            LearningEnabled=False, DetectionLevel=row['case'].get('level','Manual'), ScoredSegmentation=False,
+            CorrectTypos=row['case'].get('correct',True), InputStyle='Kana' if row['case'].get('kana',False) else 'Romaji',
+            # This C# comparison host does not attach a TranslationDictionary.
+            TranslationCandidates=fixture.stem != 'upstream-misspelling-keys',
             TabConversion=row['case'].get('tab', False))), encoding='utf-8')
         handle = api.meltype_create_at(str(profile).encode())
         assert handle
@@ -89,7 +92,7 @@ with tempfile.TemporaryDirectory(prefix='meltype-number-keys-') as directory:
                 finally:
                     api.meltype_free(pointer)
                 assert projection(actual) == projection(expected), (row['case']['name'], index, key, projection(expected), projection(actual))
-            if row['case'].get('converts', True):
+            if fixture.stem != 'upstream-misspelling-keys' and row['case'].get('converts', True):
                 assert 'はし' in queries, (row['case'], queries)
             if row['case']['raw'] == 'hashikami' and row['case'].get('converts', True):
                 assert 'かみ' in queries, (row['case'], queries)

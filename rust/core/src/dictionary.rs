@@ -46,6 +46,41 @@ fn words(text: &str) -> impl Iterator<Item = &str> {
 }
 
 impl Dictionary {
+    pub(crate) fn english_candidates(&self, raw: &str) -> Vec<String> {
+        static CANONICAL: OnceLock<HashMap<String, String>> = OnceLock::new();
+        let names = CANONICAL.get_or_init(|| {
+            let mut names = HashMap::new();
+            for word in words(include_str!("../../../dictionaries/propernouns.txt"))
+                .flat_map(|s| s.split(','))
+                .filter(|s| !s.is_empty() && s.bytes().all(|b| b.is_ascii_alphanumeric()))
+            {
+                names
+                    .entry(word.to_ascii_lowercase())
+                    .or_insert_with(|| word.to_owned());
+            }
+            names
+        });
+        let mut values = vec![raw.to_owned()];
+        if let Some(name) = names.get(&raw.to_ascii_lowercase()) {
+            values.push(name.clone());
+        }
+        let mut capitalized = raw.to_owned();
+        if let Some(first) = capitalized.get_mut(..1) {
+            first.make_ascii_uppercase();
+        }
+        values.extend([
+            capitalized,
+            raw.to_ascii_uppercase(),
+            crate::kana::fullwidth(raw),
+        ]);
+        let mut unique = vec![];
+        for value in values {
+            if !unique.contains(&value) {
+                unique.push(value);
+            }
+        }
+        unique
+    }
     pub fn bundled() -> &'static Self {
         static DICT: OnceLock<Dictionary> = OnceLock::new();
         DICT.get_or_init(|| {
@@ -622,17 +657,23 @@ impl Dictionary {
         // Never retain results across custom romaji or spelling scopes. Avoid
         // the map overhead on short interactive inputs.
         let mut analyses = HashMap::new();
+        let probe_cache = romaji::probes::Cache::current();
         for i in 0..n {
             for end in i + 1..=n.min(i + 40) {
                 let piece = &lower[i..end];
                 let computed;
-                let (piece_reading, strict) = if n >= 64 {
-                    analyses.entry(piece).or_insert_with(|| {
+                let shared;
+                let (piece_reading, strict) = if let Some(cache) = &probe_cache {
+                    shared = cache.get(piece);
+                    (&shared.reading, &shared.strict)
+                } else if n >= 64 {
+                    let probe = analyses.entry(piece).or_insert_with(|| {
                         (romaji::hiragana(piece, true), romaji::analyze(piece, false))
-                    })
+                    });
+                    (&probe.0, &probe.1)
                 } else {
                     computed = (romaji::hiragana(piece, true), romaji::analyze(piece, false));
-                    &computed
+                    (&computed.0, &computed.1)
                 };
                 let jp = !raw[i..end].bytes().any(|c| c.is_ascii_uppercase())
                     && !((piece.len() >= 5

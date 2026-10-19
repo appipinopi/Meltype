@@ -19,6 +19,11 @@ pub struct Linguistics {
     ascii_misspellings: bool,
     pub readings: BTreeMap<String, Vec<String>>,
 }
+pub struct Misspelling {
+    pub start: usize,
+    pub end: usize,
+    pub right: String,
+}
 pub fn kanji(c: char) -> bool {
     ('㐀'..='䶿').contains(&c) || ('一'..='鿿').contains(&c) || c == '々'
 }
@@ -234,6 +239,12 @@ impl Linguistics {
         vec![]
     }
     pub fn misspelling(&self, reading: &str) -> Option<String> {
+        let found = self.find_misspelling(reading)?;
+        let text = romaji::katakana(reading);
+        Some(text[..found.start].to_owned() + &found.right + &text[found.end..])
+    }
+    /// Byte boundaries in the katakana reading, for replacing only the typo.
+    pub fn find_misspelling(&self, reading: &str) -> Option<Misspelling> {
         if reading.is_ascii() && !self.ascii_misspellings {
             return None;
         }
@@ -249,7 +260,11 @@ impl Linguistics {
         for (wrong, right) in &self.misspellings {
             if let Some(i) = text.find(wrong) {
                 if !inside_correct(i, wrong.len()) {
-                    return Some(text[..i].to_owned() + right + &text[i + wrong.len()..]);
+                    return Some(Misspelling {
+                        start: i,
+                        end: i + wrong.len(),
+                        right: right.clone(),
+                    });
                 }
             }
         }
@@ -295,7 +310,11 @@ impl Linguistics {
             for (end, right) in matches.iter().rev() {
                 let end = bounds[*end];
                 if !inside_correct(bounds[start], end - bounds[start]) {
-                    return Some(text[..bounds[start]].to_owned() + right.as_str() + &text[end..]);
+                    return Some(Misspelling {
+                        start: bounds[start],
+                        end,
+                        right: (*right).clone(),
+                    });
                 }
             }
         }
