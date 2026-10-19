@@ -1,0 +1,615 @@
+{
+  "measured_at": "2026-10-19T11:28:02.692380+00:00",
+  "machine": "Windows-11-10.0.26300-SP0",
+  "cpu": "AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD",
+  "baseline": "45e14f86558aa6ea34f2c2ecd038ba95ca8c3c46",
+  "rust_commit": "ed34fde3ba48f4bc77a7adf4f60a2ea1a63e23c7",
+  "working_tree": "M rust/README.md\n?? rust/mac-register/README.md",
+  "binary_sha256": {
+    "rust": "757f84530722e8434dd5ab2305b9488879c70ad21f31687ad7f44bde0ddfc13f",
+    "csharp": "fac01be2113c6bb0dcb24894fff1f607ac627768936c0db595deff3501daaed8"
+  },
+  "binaries_unchanged": true,
+  "sources_unchanged": true,
+  "accepted_performance_baseline": true,
+  "rustc": "rustc 1.94.1 (e408947bf 2026-03-25)\nbinary: rustc\ncommit-hash: e408947bfd200af42db322daf0fadfe7e26d3bd1\ncommit-date: 2026-03-25\nhost: x86_64-pc-windows-msvc\nrelease: 1.94.1\nLLVM version: 21.1.8",
+  "dotnet": "10.0.402",
+  "csharp_runtime": "NativeAOT",
+  "samples_per_round": 3,
+  "warmups_per_case": 1,
+  "order": [
+    "csharp",
+    "rust",
+    "rust",
+    "csharp"
+  ],
+  "settings": {
+    "LiveConversion": false,
+    "PredictiveCandidates": false,
+    "LearningEnabled": false,
+    "CanDeleteSurrounding": true,
+    "BuiltInSpelling": true,
+    "OsSpelling": false
+  },
+  "dictionaries": {
+    "csharp": {
+      "brands.txt": "9c4f76c0addf3642b080e77b68b9c1c61f72e1d20efa7af6f4e036342358379b",
+      "candidates.txt": "48a0ae1ec90e463e79234f71805d96ede0a7d6078e865e24a9442b28dff95b29",
+      "contexts.txt": "7bddf3cad1f06fe8cba1d6321e6f6d33bf1a649884a55250c944f669a82efe9d",
+      "emoji-cldr.txt": "ae155ee64e70b69e4eb4c1b3084da909a87d3af27f535056fe0fc6da78934ddf",
+      "emoji.txt": "b704d99820deda042caeeb17ffb5e235caceb32bedede84bac42dd876fdafdf7",
+      "english-phrases.txt": "613d29f62e823b07ae4a5db6dfc76a1ee1cbf216d1daad0420a629de0658097d",
+      "english-readable.txt": "f0b7c45a19c42792af8e8f4811e672d7f09f2acb552883507fc6c0dd128fd865",
+      "english-words.txt": "3c07f812ea72fdfbb0f244caf9d203a39107b4318cd45e7947418f8e9edbfea5",
+      "english.txt": "79d7b32d752f41447540a13a58f47da3d9e8e02d7fe1a86542620c344021cef8",
+      "japanese.txt": "4d1803491c0186913113ccd567023b498755fc3d0e5225a9ab99caaccca54296",
+      "loanwords.txt": "bc7cb145a083cd534db9f56db30b03737163eb35e21f4a93e7bfa46ce2f345e2",
+      "meanings.txt": "09e416af20369e281452ab128aba6c2508c09de61882b66f835c4dbba5f38e8c",
+      "misspellings.txt": "a5ae4a63d361552b25d2385878ee8391e8b98f722a7d4a721baf8bc4b947dc36",
+      "phrases.txt": "354410de6df14a94248ac114cf873c466ad0e05127d553db4b241986ace6d6c2",
+      "propernouns.txt": "bd07c046996701b1fd59de230e11cc63f926af9f6b5a6f8f5910f2507a0b55f1",
+      "readings.txt": "0015c37875e9b622cbc5746c645956c4543ecdcd2b993a73b795968ffaf5cf92",
+      "translations.txt": "37b56eb24e11fb7de71d97b2d5c954c9f21cfdb72f183eeafde210e9c553b7c1"
+    },
+    "rust": {
+      "brands.txt": "9c4f76c0addf3642b080e77b68b9c1c61f72e1d20efa7af6f4e036342358379b",
+      "candidates.txt": "48a0ae1ec90e463e79234f71805d96ede0a7d6078e865e24a9442b28dff95b29",
+      "contexts.txt": "7bddf3cad1f06fe8cba1d6321e6f6d33bf1a649884a55250c944f669a82efe9d",
+      "emoji-cldr.txt": "ae155ee64e70b69e4eb4c1b3084da909a87d3af27f535056fe0fc6da78934ddf",
+      "emoji.txt": "b704d99820deda042caeeb17ffb5e235caceb32bedede84bac42dd876fdafdf7",
+      "english-phrases.txt": "613d29f62e823b07ae4a5db6dfc76a1ee1cbf216d1daad0420a629de0658097d",
+      "english-readable.txt": "f0b7c45a19c42792af8e8f4811e672d7f09f2acb552883507fc6c0dd128fd865",
+      "english-words.txt": "3c07f812ea72fdfbb0f244caf9d203a39107b4318cd45e7947418f8e9edbfea5",
+      "english.txt": "79d7b32d752f41447540a13a58f47da3d9e8e02d7fe1a86542620c344021cef8",
+      "japanese.txt": "4d1803491c0186913113ccd567023b498755fc3d0e5225a9ab99caaccca54296",
+      "loanwords.txt": "bc7cb145a083cd534db9f56db30b03737163eb35e21f4a93e7bfa46ce2f345e2",
+      "meanings.txt": "09e416af20369e281452ab128aba6c2508c09de61882b66f835c4dbba5f38e8c",
+      "misspellings.txt": "a5ae4a63d361552b25d2385878ee8391e8b98f722a7d4a721baf8bc4b947dc36",
+      "phrases.txt": "354410de6df14a94248ac114cf873c466ad0e05127d553db4b241986ace6d6c2",
+      "propernouns.txt": "bd07c046996701b1fd59de230e11cc63f926af9f6b5a6f8f5910f2507a0b55f1",
+      "readings.txt": "0015c37875e9b622cbc5746c645956c4543ecdcd2b993a73b795968ffaf5cf92",
+      "translations.txt": "37b56eb24e11fb7de71d97b2d5c954c9f21cfdb72f183eeafde210e9c553b7c1"
+    }
+  },
+  "fixtures_sha256": "0cb23e871186ce61beb0c18dee254d17b397ed1b259d44c23d560ee56a5e89ae",
+  "source_sha256": {
+    "Cargo.lock": "88a4d2ff6a1e5184a9b59d0885aa9a83b18c85c60bd943e6016fccbc0c5d5a10",
+    "Cargo.toml": "77f8fee04b82ab03f812ed49c71fd416fd237fbde39d6c4dec35be12778cc056",
+    "dictionaries/brands.txt": "9c4f76c0addf3642b080e77b68b9c1c61f72e1d20efa7af6f4e036342358379b",
+    "dictionaries/candidates.txt": "48a0ae1ec90e463e79234f71805d96ede0a7d6078e865e24a9442b28dff95b29",
+    "dictionaries/contexts.txt": "7bddf3cad1f06fe8cba1d6321e6f6d33bf1a649884a55250c944f669a82efe9d",
+    "dictionaries/emoji-cldr.txt": "ae155ee64e70b69e4eb4c1b3084da909a87d3af27f535056fe0fc6da78934ddf",
+    "dictionaries/emoji.txt": "b704d99820deda042caeeb17ffb5e235caceb32bedede84bac42dd876fdafdf7",
+    "dictionaries/english-phrases.txt": "613d29f62e823b07ae4a5db6dfc76a1ee1cbf216d1daad0420a629de0658097d",
+    "dictionaries/english-readable.txt": "f0b7c45a19c42792af8e8f4811e672d7f09f2acb552883507fc6c0dd128fd865",
+    "dictionaries/english-words.txt": "3c07f812ea72fdfbb0f244caf9d203a39107b4318cd45e7947418f8e9edbfea5",
+    "dictionaries/english.txt": "79d7b32d752f41447540a13a58f47da3d9e8e02d7fe1a86542620c344021cef8",
+    "dictionaries/japanese.txt": "4d1803491c0186913113ccd567023b498755fc3d0e5225a9ab99caaccca54296",
+    "dictionaries/loanwords.txt": "bc7cb145a083cd534db9f56db30b03737163eb35e21f4a93e7bfa46ce2f345e2",
+    "dictionaries/meanings.txt": "09e416af20369e281452ab128aba6c2508c09de61882b66f835c4dbba5f38e8c",
+    "dictionaries/misspellings.txt": "a5ae4a63d361552b25d2385878ee8391e8b98f722a7d4a721baf8bc4b947dc36",
+    "dictionaries/phrases.txt": "354410de6df14a94248ac114cf873c466ad0e05127d553db4b241986ace6d6c2",
+    "dictionaries/propernouns.txt": "bd07c046996701b1fd59de230e11cc63f926af9f6b5a6f8f5910f2507a0b55f1",
+    "dictionaries/readings.txt": "0015c37875e9b622cbc5746c645956c4543ecdcd2b993a73b795968ffaf5cf92",
+    "dictionaries/translations.txt": "37b56eb24e11fb7de71d97b2d5c954c9f21cfdb72f183eeafde210e9c553b7c1",
+    "rust/core/Cargo.toml": "23ad224d0524ebd9c4b741c42cdd6acfd532d7eab9e8a3e2d1654ed35a40baec",
+    "rust/core/examples/benchmark.rs": "d649ff4ee9b51982dee32286e2e6fc063133d7c6d82cbbc81207caf14a6099dd",
+    "rust/core/examples/direct_trace.rs": "1189213b741b0459939e04685c3ae86e7848a9529b5c9beb2c4b14625d0ab1ae",
+    "rust/core/examples/hook_trace.rs": "be324f6b2964732d74e8c7e3ce5dab665418139d15de6c409cdae01c87c6d8d7",
+    "rust/core/examples/input_latency.rs": "736247ba4e69f4a490fb05f3b93e95d2aade97079d20d866c7322d5b1d0052cf",
+    "rust/core/examples/mozc_lifecycle.rs": "0f04cabde96efe41e59ed15dd72ad67c34f26941dfa595505380a01643881850",
+    "rust/core/examples/profile_composition.rs": "5b3ab72b397f40f148e3410569d59dd4320df452909860b5409686a51d57f30a",
+    "rust/core/examples/quality.rs": "bed6d0e0a184170612e077e393df7b99a603efe84282618b17dc754280fcf8f6",
+    "rust/core/src/commit_correction.rs": "c12a8dbcd87468b9ac382bca9aadcbf0b46bb9474efaea3d6acd987aa2fa496c",
+    "rust/core/src/composition_units.rs": "0b5d918407ff2e72453e7d224d50f9acf426ec89dae7951cd9e7e95760b31ddf",
+    "rust/core/src/context.rs": "9d2bad79c7201877842dd064b5654ca2acdda8643493fda41fdb24254f6ab914",
+    "rust/core/src/control.rs": "14561e850b615ddcd3c2b0492407649bc67f8a80ea4afac8067cf77cbbe4450a",
+    "rust/core/src/detection.rs": "63a5ff5dded0c0011dd053fb532deedf2a132ce2d531d98621493b8b4b6d9c2d",
+    "rust/core/src/dictionary.rs": "de601bc96899fdcc3aed4e4fe9e18ef86406a3b826ef921fc24c6a4d88f9d31c",
+    "rust/core/src/dictionary/composition.rs": "67ce3e97f5f6aa4cf65c44409325630bca374ad0e60714fc0f94db23aac45953",
+    "rust/core/src/dictionary/scored.rs": "808a5616161c4e1983ae5f3664410b29d92828377cf4a5f262e51edf4246c738",
+    "rust/core/src/input_session.rs": "6d1d5c639227e3831b4847cb64f7364527d9ec5ceea2b03ec376eddd429486b1",
+    "rust/core/src/kana.rs": "abb05407f745dc3b2e38f3ae1e642f53f7ea2bd71da5fe0e7418a0e7ab0df338",
+    "rust/core/src/lib.rs": "dd9706795cfd35d1d9fcc4983a61b08a3ba80d5978e20952f4f37d30c258f774",
+    "rust/core/src/linguistics.rs": "07580a4d01dbb744a5125793afcc45a6b96855b289e3acd87e928599f355de14",
+    "rust/core/src/linguistics/normalization_marks.rs": "34c421e9cb25e05072bfc4f469fdcbf5f86b8e173015be2704097de446053a93",
+    "rust/core/src/math_candidates.rs": "b88e637166e5e5da00ddb494a07e711d04148149ff6d36c83aaf8379304978ae",
+    "rust/core/src/mozc.rs": "650c4383ea740c03ad68e915043cff13cf6ae58c581dd5e7a35872d6e618be95",
+    "rust/core/src/phrase_spacing.rs": "a099af5f7612bd053b4064300c389240f5a564730a352cbc400e519852561f4b",
+    "rust/core/src/prefix_learning.rs": "12f482f9d7e570c52c5837649f9db88e3a0b00bfb4806b163d92c34b822dfeb3",
+    "rust/core/src/protection.rs": "913c30a4f23aebb33e3f0804feadb20b8b33ff681d384a7784553ed5d44bf750",
+    "rust/core/src/romaji-strict.tsv": "fc75cdadaf2c0aa89dd319a4d86296686db501319d28d1983a02ad4f271dfedf",
+    "rust/core/src/romaji.rs": "0248858402171c7720bcdd9c124ec48c21068e98465caec239f9b3e5fcf82914",
+    "rust/core/src/romaji.tsv": "7ecfe38c1a5df420f416acaae895e126faa36a13dc64629a65838ee3bb7716e9",
+    "rust/core/src/romaji/custom.rs": "edd325169fed45ea4af23060595f93cbe44dedd7de26c46b476aea0f2875ecce",
+    "rust/core/src/romaji/probes.rs": "5ed0a678b95deffd65ccde803c7717b578bf98c25a05140cdf2f2a0824c66285",
+    "rust/core/src/session.rs": "720784518d5ceb07ddfe6bbb81aae3445f4182677b10c0f1cb6c7af3d2ed5a85",
+    "rust/core/src/session/clause_metadata.rs": "3c32cc239c812dc8931208d42cc930eea57ea13715822c163787485e34a79607",
+    "rust/core/src/session/direct.rs": "de5083aa22ce52ce351f909d17e5d1691b40a7122c343a904b5413bf300033bd",
+    "rust/core/src/session/engine_learning.rs": "0a50e8988c4647d00e40d4d80dc5265c28b58f49f048081dbdc4c63e3a8e0c47",
+    "rust/core/src/session/misspelling.rs": "9cc3c795f55c9f27db3e85c3144b196cc70f6566d1f5bb0bd876d04a00d10d2e",
+    "rust/core/src/session/reconversion.rs": "efd4c2fb176f8159033728956598d36bf6ca2d4fd4184641753c64f660b8234e",
+    "rust/core/src/settings.rs": "bb505e7c83374640902a63abd6f52d51e548856b178b998cca8f062beaf86a0f",
+    "rust/core/src/sigil.rs": "c7704057a48f07941749f6631d5183ff6491be1c3b3584a052fd1d803fa246cb",
+    "rust/core/src/spelling.rs": "7e87b9fdbd92455cd86de3d0afa1c5bcfb73e5e98121f07a0ddf669eb5994637",
+    "rust/core/src/storage.rs": "47dcc09c95873e4a1ec4255793010e5b6a21cc4e598121db931f454f713de09e",
+    "rust/core/src/time_candidates.rs": "0a056684f58630849947da6589ffa5fc27df032bf8f17c45d2ab0205549e5223",
+    "rust/core/src/typo.rs": "e2266618d8ec43f16b3263e4b5d360fc3a95596a31631fc118126ddb5df51545",
+    "rust/core/src/user_dictionary.rs": "11c3068b48afb1cd07815e9d9f9875c4d97343400aa0ed4f11ffa897ebf16513",
+    "tools/benchmark-windows.py": "9de14ffac694a80cd23ea8e4b1707a0966418fe3742f651555b3430c3d9a4a31",
+    "tools/performance/windows/Compare.csproj": "f386aa256a30e25ffbfb172dd979ae35a3ba03121ecbac6503ac34f78ee375dc",
+    "tools/performance/windows/Program.cs": "ca99d9c1b9286a54e2f9c661bf78874cd390e0e1f465b828b3f8c86b08a8fea3",
+    "tools/performance/windows/resources.py": "7b7cb1292684585f01ccf6565b256dbbf56b5987fba7abee9aa8afce7bb3dc11"
+  },
+  "comparisons": [
+    {
+      "case": "japanese_32",
+      "keys": 33,
+      "median_total_ms": {
+        "rust": 6.7593499999999995,
+        "csharp": 9.52245
+      },
+      "p95_key_ms": {
+        "rust": 0.5356,
+        "csharp": 0.5739
+      },
+      "rust_over_csharp": 0.7098330786719804,
+      "output_matches": true,
+      "trace_matches": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "japanese_64",
+      "keys": 65,
+      "median_total_ms": {
+        "rust": 38.02645,
+        "csharp": 58.8012
+      },
+      "p95_key_ms": {
+        "rust": 1.3117,
+        "csharp": 1.6483
+      },
+      "rust_over_csharp": 0.6466951354734256,
+      "output_matches": true,
+      "trace_matches": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "japanese_128",
+      "keys": 129,
+      "median_total_ms": {
+        "rust": 173.0627,
+        "csharp": 276.29505
+      },
+      "p95_key_ms": {
+        "rust": 2.8282,
+        "csharp": 4.7665
+      },
+      "rust_over_csharp": 0.6263691658609157,
+      "output_matches": true,
+      "trace_matches": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "japanese_256",
+      "keys": 257,
+      "median_total_ms": {
+        "rust": 944.9349,
+        "csharp": 1502.7166000000002
+      },
+      "p95_key_ms": {
+        "rust": 9.2665,
+        "csharp": 15.6094
+      },
+      "rust_over_csharp": 0.628817769098977,
+      "output_matches": true,
+      "trace_matches": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "mixed_32",
+      "keys": 33,
+      "median_total_ms": {
+        "rust": 7.5534,
+        "csharp": 8.07115
+      },
+      "p95_key_ms": {
+        "rust": 0.5321,
+        "csharp": 0.5174
+      },
+      "rust_over_csharp": 0.9358517683353674,
+      "output_matches": true,
+      "trace_matches": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "mixed_64",
+      "keys": 65,
+      "median_total_ms": {
+        "rust": 40.983200000000004,
+        "csharp": 43.305949999999996
+      },
+      "p95_key_ms": {
+        "rust": 1.4369999999999998,
+        "csharp": 1.2022
+      },
+      "rust_over_csharp": 0.9463641832126996,
+      "output_matches": true,
+      "trace_matches": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "mixed_128",
+      "keys": 129,
+      "median_total_ms": {
+        "rust": 192.09195,
+        "csharp": 245.08985
+      },
+      "p95_key_ms": {
+        "rust": 3.9068,
+        "csharp": 4.5926
+      },
+      "rust_over_csharp": 0.7837613430339934,
+      "output_matches": true,
+      "trace_matches": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "mixed_256",
+      "keys": 257,
+      "median_total_ms": {
+        "rust": 752.2428,
+        "csharp": 1653.3708
+      },
+      "p95_key_ms": {
+        "rust": 6.0529,
+        "csharp": 18.1734
+      },
+      "rust_over_csharp": 0.4549752541898043,
+      "output_matches": true,
+      "trace_matches": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "english_32",
+      "keys": 33,
+      "median_total_ms": {
+        "rust": 4.76215,
+        "csharp": 10.27655
+      },
+      "p95_key_ms": {
+        "rust": 0.40049999999999997,
+        "csharp": 0.5463
+      },
+      "rust_over_csharp": 0.4633996817998258,
+      "output_matches": true,
+      "trace_matches": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "english_64",
+      "keys": 65,
+      "median_total_ms": {
+        "rust": 20.448500000000003,
+        "csharp": 62.1999
+      },
+      "p95_key_ms": {
+        "rust": 0.6152,
+        "csharp": 1.5299
+      },
+      "rust_over_csharp": 0.3287545478368937,
+      "output_matches": true,
+      "trace_matches": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "english_128",
+      "keys": 129,
+      "median_total_ms": {
+        "rust": 104.3125,
+        "csharp": 227.4717
+      },
+      "p95_key_ms": {
+        "rust": 2.1247000000000003,
+        "csharp": 4.8947
+      },
+      "rust_over_csharp": 0.4585735280476648,
+      "output_matches": true,
+      "trace_matches": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "english_256",
+      "keys": 257,
+      "median_total_ms": {
+        "rust": 464.29140000000007,
+        "csharp": 1479.3463
+      },
+      "p95_key_ms": {
+        "rust": 3.9305,
+        "csharp": 16.9071
+      },
+      "rust_over_csharp": 0.31384902912860907,
+      "output_matches": true,
+      "trace_matches": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "url_32",
+      "keys": 33,
+      "median_total_ms": {
+        "rust": 0.5624499999999999,
+        "csharp": 1.2219
+      },
+      "p95_key_ms": {
+        "rust": 0.028900000000000002,
+        "csharp": 0.0863
+      },
+      "rust_over_csharp": 0.46030771748915617,
+      "output_matches": true,
+      "trace_matches": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "url_64",
+      "keys": 65,
+      "median_total_ms": {
+        "rust": 2.94245,
+        "csharp": 8.72405
+      },
+      "p95_key_ms": {
+        "rust": 0.0711,
+        "csharp": 0.0946
+      },
+      "rust_over_csharp": 0.3372802769355976,
+      "output_matches": true,
+      "trace_matches": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "url_128",
+      "keys": 129,
+      "median_total_ms": {
+        "rust": 8.68545,
+        "csharp": 10.8718
+      },
+      "p95_key_ms": {
+        "rust": 0.1249,
+        "csharp": 0.2066
+      },
+      "rust_over_csharp": 0.7988971467466288,
+      "output_matches": true,
+      "trace_matches": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "url_256",
+      "keys": 257,
+      "median_total_ms": {
+        "rust": 24.72085,
+        "csharp": 55.921099999999996
+      },
+      "p95_key_ms": {
+        "rust": 0.2145,
+        "csharp": 0.3832
+      },
+      "rust_over_csharp": 0.44206659024947653,
+      "output_matches": true,
+      "trace_matches": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "short_japanese",
+      "keys": 16,
+      "median_total_ms": {
+        "rust": 1.26155,
+        "csharp": 3.16845
+      },
+      "p95_key_ms": {
+        "rust": 0.16970000000000002,
+        "csharp": 0.41
+      },
+      "rust_over_csharp": 0.39815998358818977,
+      "output_matches": true,
+      "trace_matches": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "short_mixed",
+      "keys": 16,
+      "median_total_ms": {
+        "rust": 1.11715,
+        "csharp": 2.11395
+      },
+      "p95_key_ms": {
+        "rust": 0.1649,
+        "csharp": 0.3216
+      },
+      "rust_over_csharp": 0.5284656685352066,
+      "output_matches": true,
+      "trace_matches": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "short_english",
+      "keys": 6,
+      "median_total_ms": {
+        "rust": 0.15605,
+        "csharp": 0.46209999999999996
+      },
+      "p95_key_ms": {
+        "rust": 0.0506,
+        "csharp": 0.1384
+      },
+      "rust_over_csharp": 0.33769746808050205,
+      "output_matches": true,
+      "trace_matches": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "short_url",
+      "keys": 21,
+      "median_total_ms": {
+        "rust": 0.40245,
+        "csharp": 4.64875
+      },
+      "p95_key_ms": {
+        "rust": 0.0276,
+        "csharp": 0.199
+      },
+      "rust_over_csharp": 0.08657165904813122,
+      "output_matches": true,
+      "trace_matches": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "edit_and_katakana",
+      "keys": 21,
+      "median_total_ms": {
+        "rust": 0.89815,
+        "csharp": 2.37275
+      },
+      "p95_key_ms": {
+        "rust": 0.08349999999999999,
+        "csharp": 0.2313
+      },
+      "rust_over_csharp": 0.37852702560320306,
+      "output_matches": true,
+      "trace_matches": true,
+      "eligible_for_speed_claim": true
+    }
+  ],
+  "process_resources": [
+    {
+      "version": "csharp",
+      "round": 0,
+      "wall_seconds": 27.860778699992807,
+      "cpu_seconds": 27.375,
+      "cpu_percent_one_core": 98.25640659500687,
+      "cpu_percent_machine": 8.188033882917239,
+      "logical_processors": 12,
+      "peak_working_set_bytes": 70537216,
+      "sampled_mean_working_set_bytes": 51982016.0,
+      "sampled_peak_private_bytes": 60887040,
+      "peak_commit_bytes": 60887040,
+      "peak_working_set_percent_physical": 0.10361173630190393,
+      "memory_sample_count": 448,
+      "poll_interval_seconds": 0.05,
+      "system_memory_before": {
+        "total_bytes": 68078403584,
+        "used_bytes": 27478900736,
+        "load_percent": 40
+      },
+      "system_memory_after": {
+        "total_bytes": 68078403584,
+        "used_bytes": 27291033600,
+        "load_percent": 40
+      },
+      "scope": "Whole benchmark process: startup, dictionary/session construction, warmups, timed keys, verification JSON output. Not per-key CPU or whole IME application. Working set includes shared resident pages; private bytes are committed memory."
+    },
+    {
+      "version": "rust",
+      "round": 0,
+      "wall_seconds": 10.834004899996216,
+      "cpu_seconds": 10.578125,
+      "cpu_percent_one_core": 97.63817810349794,
+      "cpu_percent_machine": 8.136514841958162,
+      "logical_processors": 12,
+      "peak_working_set_bytes": 44732416,
+      "sampled_mean_working_set_bytes": 42829442.97674418,
+      "sampled_peak_private_bytes": 36372480,
+      "peak_commit_bytes": 36372480,
+      "peak_working_set_percent_physical": 0.06570720470083578,
+      "memory_sample_count": 172,
+      "poll_interval_seconds": 0.05,
+      "system_memory_before": {
+        "total_bytes": 68078403584,
+        "used_bytes": 27288571904,
+        "load_percent": 40
+      },
+      "system_memory_after": {
+        "total_bytes": 68078403584,
+        "used_bytes": 27320311808,
+        "load_percent": 40
+      },
+      "scope": "Whole benchmark process: startup, dictionary/session construction, warmups, timed keys, verification JSON output. Not per-key CPU or whole IME application. Working set includes shared resident pages; private bytes are committed memory."
+    },
+    {
+      "version": "rust",
+      "round": 1,
+      "wall_seconds": 13.500091000008979,
+      "cpu_seconds": 13.25,
+      "cpu_percent_one_core": 98.1474865613216,
+      "cpu_percent_machine": 8.178957213443468,
+      "logical_processors": 12,
+      "peak_working_set_bytes": 42938368,
+      "sampled_mean_working_set_bytes": 41168035.652968034,
+      "sampled_peak_private_bytes": 36167680,
+      "peak_commit_bytes": 36167680,
+      "peak_working_set_percent_physical": 0.06307193726571389,
+      "memory_sample_count": 219,
+      "poll_interval_seconds": 0.05,
+      "system_memory_before": {
+        "total_bytes": 68078403584,
+        "used_bytes": 27326341120,
+        "load_percent": 40
+      },
+      "system_memory_after": {
+        "total_bytes": 68078403584,
+        "used_bytes": 27556610048,
+        "load_percent": 40
+      },
+      "scope": "Whole benchmark process: startup, dictionary/session construction, warmups, timed keys, verification JSON output. Not per-key CPU or whole IME application. Working set includes shared resident pages; private bytes are committed memory."
+    },
+    {
+      "version": "csharp",
+      "round": 1,
+      "wall_seconds": 30.93121520000568,
+      "cpu_seconds": 30.03125,
+      "cpu_percent_one_core": 97.09043051109899,
+      "cpu_percent_machine": 8.09086920925825,
+      "logical_processors": 12,
+      "peak_working_set_bytes": 67649536,
+      "sampled_mean_working_set_bytes": 50502515.61290322,
+      "sampled_peak_private_bytes": 57589760,
+      "peak_commit_bytes": 58322944,
+      "peak_working_set_percent_physical": 0.0993700387179749,
+      "memory_sample_count": 496,
+      "poll_interval_seconds": 0.05,
+      "system_memory_before": {
+        "total_bytes": 68078403584,
+        "used_bytes": 27554955264,
+        "load_percent": 40
+      },
+      "system_memory_after": {
+        "total_bytes": 68078403584,
+        "used_bytes": 30692380672,
+        "load_percent": 45
+      },
+      "scope": "Whole benchmark process: startup, dictionary/session construction, warmups, timed keys, verification JSON output. Not per-key CPU or whole IME application. Working set includes shared resident pages; private bytes are committed memory."
+    }
+  ],
+  "aggregate_resources": {
+    "csharp": {
+      "cpu_seconds_two_rounds": 57.40625,
+      "wall_seconds_two_rounds": 58.79199389999849,
+      "cpu_percent_one_core": 97.6429717584412,
+      "cpu_percent_machine": 8.136914313203434,
+      "peak_working_set_mib": 67.26953125,
+      "peak_working_set_percent_physical": 0.10361173630190393,
+      "sampled_peak_private_mib": 58.06640625
+    },
+    "rust": {
+      "cpu_seconds_two_rounds": 23.828125,
+      "wall_seconds_two_rounds": 24.334095900005195,
+      "cpu_percent_one_core": 97.92073269504503,
+      "cpu_percent_machine": 8.16006105792042,
+      "peak_working_set_mib": 42.66015625,
+      "peak_working_set_percent_physical": 0.06570720470083578,
+      "sampled_peak_private_mib": 34.6875
+    }
+  },
+  "cpu_time_reduction_percent": 58.492106695699505,
+  "peak_working_set_reduction_percent": 36.58324139132455,
+  "rust_full_responses_match_before": true
+}

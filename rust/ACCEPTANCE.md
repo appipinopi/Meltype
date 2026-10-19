@@ -25,6 +25,8 @@
 
 ## 確認できた範囲
 
+- 最新確認（2026-10-20）：`ed34fde` は全193テストと全体／TSF-server Clippy、最終Release x64／x86の24本のABI回帰、Windowsワーカーの予測確定4列とSystem／制御Mozc helper／Hybrid通信が成功。誤字修正は元版104入力列（うち非変換75列はCore）を照合し、Tab変換再取得時の候補位置と英語文節の字種候補も修正しました。独自表・文脈・判定レベル・OSスペルの収集を保持しながら、解析と同一表示判定をセッション内で再利用します。今回の速度中央値はC#より21/21で速く、確定・途中状態も21/21一致。日本語256キーはC# 1502.717ms／Rust 944.935ms、測定プロセス全体のCPU時間は57.406秒／23.828秒、RAMピークは67.27 MiB／42.66 MiB。全UI・全設定・全候補源・実アプリ・全Core互換の証明ではなく、上の15項目は未完了のままです。[測定と限定条件](../tools/performance/windows/results/ed34fde-resources.md)。
+
 - 共通Coreの個別テストは `cargo +stable test -p meltype-core -p meltype-native --locked`。2026-10-19のTSF選択範囲再変換の修正後はCore/nativeの150テストが成功（ワークスペース全体は169テスト）。長文・境界の63入力（2,530打鍵）を元版の固定期待値と比較する。
 - 入力品質は `cargo +stable run -p meltype-core --example quality -- dist/quality.json --check`。2026-10-18時点で削除可能216/216、削除不可215/216。削除不可の1件は未解消で、完全一致とはしない。
 - `tests/data/upstream-backspace.json` は元コミットのC# NativeAOTから採取した20入力の連続削除結果。`upstream_backspace.rs` が各操作のconsumedと表示文字を比較する。入力全般・再入力・全候補の一致を示すものではない。
