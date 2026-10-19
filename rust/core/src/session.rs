@@ -153,6 +153,7 @@ pub struct Session {
     selected_prediction: i32,
     translation_candidates: Vec<String>,
     function_key: i32,
+    balanced_override: bool,
     case_cycle: u8,
     kana_text: String,
     process: String,
@@ -207,6 +208,7 @@ impl Default for Session {
             selected_prediction: -1,
             translation_candidates: vec![],
             function_key: 0,
+            balanced_override: false,
             case_cycle: 0,
             kana_text: String::new(),
             process: String::new(),
@@ -360,13 +362,41 @@ impl Session {
             || !self.settings.boolean("PredictiveCandidates")
             || self.is_converting()
             || self.raw.is_empty()
+            || self.function_key != 0
+            || self.explicit.is_some()
+            || self.language_suggestion().is_some()
+            || self.settings.boolean("CorrectTypos")
+                && Linguistics::bundled()
+                    .misspelling(&self.reading())
+                    .is_some()
         {
             return vec![];
         }
         let mut state = self.state.clone();
         state.preferences = self.preferences.clone();
-        let mut predictions = Linguistics::bundled().predict(&self.reading(), &state);
-        for word in Dictionary::bundled().predict_english(&self.raw) {
+        let displayed = self.display(false);
+        let english = displayed == self.raw && self.raw.bytes().all(|c| c.is_ascii_alphabetic());
+        let reading = if self.uses_kana() {
+            self.kana_text.clone()
+        } else if let Some(units) = self.edited_units.as_ref().filter(|u| u.raw() == self.raw) {
+            units.kana(false)
+        } else {
+            romaji::hiragana(&self.raw, false)
+        };
+        let mut predictions = if !english
+            && reading
+                .chars()
+                .all(|c| ('ぁ'..='ゖ').contains(&c) || c == 'ー')
+        {
+            Linguistics::bundled().predict(&reading, &state)
+        } else {
+            vec![]
+        };
+        for word in Dictionary::bundled()
+            .predict_english(&self.raw)
+            .into_iter()
+            .filter(|_| english || self.raw.len() >= 4)
+        {
             if predictions.len() < 5 && !predictions.contains(&word) {
                 predictions.push(word);
             }
@@ -377,7 +407,7 @@ impl Session {
         let predictions = self.predictions();
         if let Some(text) = predictions.get(index) {
             self.explicit = Some(text.clone());
-            self.selected_prediction = -1;
+            self.selected_prediction = index as i32;
             self.commit()
         } else {
             self.result(false)
@@ -516,23 +546,22 @@ impl Session {
     }
     fn detect_composition(&self, raw: &str, final_input: bool) -> String {
         let dictionary = Dictionary::bundled();
+        let level = if self.balanced_override {
+            "Balanced"
+        } else {
+            self.settings.text("DetectionLevel")
+        };
         if Dictionary::uses_scored(self.settings.boolean("ScoredSegmentation")) {
             dictionary.composition_scored_units(
                 raw,
                 final_input,
                 &self.before,
                 &self.after,
-                self.settings.text("DetectionLevel"),
+                level,
                 self.edited_units.as_ref().filter(|u| u.raw() == raw),
             )
         } else {
-            dictionary.composition(
-                raw,
-                final_input,
-                &self.before,
-                &self.after,
-                self.settings.text("DetectionLevel"),
-            )
+            dictionary.composition(raw, final_input, &self.before, &self.after, level)
         }
     }
     fn refresh_kana(&mut self) {
@@ -596,7 +625,7 @@ impl Session {
         // Do not reinterpret that word while repairing a following syllable.
         let dictionary = Dictionary::bundled();
         let mixed = dictionary.mixed(&self.raw, true);
-        if mixed == self.raw
+        if mixed == self.raw && (self.raw.len() >= 4 || dictionary.is_common_english(&self.raw))
             || mixed.split(|c: char| !c.is_ascii_alphabetic()).any(|word| {
                 word.len() >= 4 || word.len() >= 3 && dictionary.is_common_english(word)
             })
@@ -646,7 +675,9 @@ impl Session {
         }
         if final_input {
             if let Some(fix) = self.romaji_fix() {
-                return self.punctuate(fix.kana);
+                // FixTypos changes retained spelling before the original
+                // detector renders it again (camer -> came is English).
+                return self.punctuate(self.detect_composition(&fix.right, true));
             }
         }
         let dictionary = Dictionary::bundled();
@@ -677,13 +708,30 @@ impl Session {
         self.punctuate(text)
     }
     fn language_suggestion(&self) -> Option<String> {
-        (self.settings.text("DetectionLevel") == "Manual"
-            && self.explicit.is_none()
-            && !self.is_converting()
-            && !self.uses_kana()
-            && Dictionary::bundled().is_english(&self.raw)
-            && self.display(false) != self.raw)
-            .then(|| self.raw.clone())
+        if self.settings.text("DetectionLevel") != "Manual"
+            || self.balanced_override
+            || self.function_key != 0
+            || self.explicit.is_some()
+            || self.is_converting()
+            || self.uses_kana()
+        {
+            return None;
+        }
+        let suggested = Dictionary::bundled().composition(
+            &self.raw,
+            false,
+            &self.before,
+            &self.after,
+            "Balanced",
+        );
+        if suggested == self.display(false) {
+            return None;
+        }
+        let words: Vec<_> = suggested
+            .split(|c: char| !c.is_ascii_alphabetic())
+            .filter(|s| !s.is_empty())
+            .collect();
+        (!words.is_empty()).then(|| words.join(" "))
     }
     /// Auto-mode Space commits a final English segment, including mixed text.
     pub fn ends_in_english(&self) -> bool {
@@ -768,6 +816,7 @@ impl Session {
         let _romaji = romaji::Scope::new(self.custom_romaji.clone());
         let preview = self.preview_candidates();
         let language_suggestion = self.language_suggestion();
+        let predictions = self.predictions();
         SessionResult {
             consumed,
             selection_expect: None,
@@ -776,7 +825,10 @@ impl Session {
                 None
             } else {
                 Some(View {
-                    text: self.display(false),
+                    text: predictions
+                        .get(self.selected_prediction as usize)
+                        .cloned()
+                        .unwrap_or_else(|| self.display(false)),
                     converting: self.is_converting(),
                     selected_index: preview
                         .as_ref()
@@ -817,7 +869,7 @@ impl Session {
                     } else {
                         None
                     },
-                    predictions: self.predictions(),
+                    predictions,
                     selected_prediction: if self.selected_prediction >= 0 {
                         self.selected_prediction
                     } else {
@@ -867,6 +919,7 @@ impl Session {
         self.selected_prediction = -1;
         self.translation_candidates.clear();
         self.function_key = 0;
+        self.balanced_override = false;
         self.case_cycle = 0;
         self.kana_text.clear();
     }
@@ -941,6 +994,22 @@ impl Session {
             }
         }
         let reading = self.reading();
+        let prediction = self.selected_prediction >= 0;
+        let phrase_reading = if prediction {
+            self.state
+                .phrases
+                .iter()
+                .find(|p| p.text == text && p.reading.starts_with(&reading))
+                .map_or_else(|| reading.clone(), |p| p.reading.clone())
+        } else if self.is_converting() && !self.clauses.is_empty() {
+            self.clauses
+                .iter()
+                .filter(|c| !c.english)
+                .map(|c| c.reading.as_str())
+                .collect()
+        } else {
+            reading.clone()
+        };
         self.record_engine_learning();
         if !self.private
             && !self.no_learning
@@ -953,11 +1022,18 @@ impl Session {
                     .iter()
                     .chain(&self.live_clauses)
                     .any(|c| crate::time_candidates::is_dynamic_choice(&c.reading, c.text()));
-            let mut changes = if dynamic {
+            let remember_phrase = self.settings.boolean("PredictiveCandidates")
+                && if prediction {
+                    !text.is_ascii()
+                } else {
+                    text.chars().any(crate::linguistics::kanji)
+                        && !phrase_reading.chars().any(|c| c.is_ascii_alphabetic())
+                };
+            let mut changes = if dynamic || !remember_phrase {
                 vec![]
             } else {
                 vec![Change::Phrase {
-                    reading: reading.clone(),
+                    reading: phrase_reading,
                     text: text.clone(),
                 }]
             };
@@ -1774,6 +1850,10 @@ impl Session {
                 self.result(false)
             }
             0x10..=0x12 | 0xa0..=0xa5 | 0x5b..=0x5c => self.result(false),
+            0x1b if self.selected_prediction >= 0 && !self.is_converting() => {
+                self.selected_prediction = -1;
+                self.result(true)
+            }
             0x1b => {
                 if let Some(original) = self.reconversion_origin.take() {
                     self.reset();
@@ -1843,6 +1923,9 @@ impl Session {
                 self.function_key = 0;
                 self.case_cycle = 0;
                 let removed_keys = previous_keys - self.raw.chars().count();
+                if self.raw.is_empty() {
+                    self.balanced_override = false;
+                }
                 self.typed_keys
                     .truncate(self.typed_keys.len().saturating_sub(removed_keys));
                 self.refresh_kana();
@@ -1885,10 +1968,11 @@ impl Session {
                 result
             }
             0x09 if !self.raw.is_empty() && !self.is_converting() => {
-                if let Some(suggestion) = self.language_suggestion() {
-                    self.explicit = Some(suggestion);
-                    self.function_key = 0x79;
-                    self.case_cycle = 0;
+                if self.language_suggestion().is_some() {
+                    // Manual's Tab suggestion switches detection strength;
+                    // it does not choose an explicit F10 display mode.
+                    self.balanced_override = true;
+                    self.explicit = None;
                     self.selected_prediction = -1;
                     return self.result(true);
                 }
@@ -1899,8 +1983,9 @@ impl Session {
                 let predictions = self.predictions();
                 if !predictions.is_empty() {
                     let direction = if modifiers & 1 != 0 { -1 } else { 1 };
-                    self.selected_prediction =
-                        (self.selected_prediction + direction).rem_euclid(predictions.len() as i32);
+                    self.selected_prediction = (self.selected_prediction + 1 + direction)
+                        .rem_euclid(predictions.len() as i32 + 1)
+                        - 1;
                     return self.result(true);
                 }
                 if self.settings.boolean("TabConversion")
@@ -1948,6 +2033,7 @@ impl Session {
                 }
                 if !self.is_converting()
                     && !self.settings.boolean("SeparateKeyRoles")
+                    && self.function_key == 0
                     && (self.display(true) == self.raw
                         || self.english_at_word_end()
                         || self.before.is_empty()
@@ -2018,6 +2104,7 @@ impl Session {
             }
             0x75..=0x79 if !self.raw.is_empty() => {
                 self.tab_started_conversion = false;
+                self.selected_prediction = -1;
                 let before = (!self.is_converting()).then(|| self.display(false));
                 let same_mode = !self.is_converting() && self.function_key == vk;
                 self.candidates.clear();
@@ -2081,7 +2168,15 @@ impl Session {
                 };
                 let reading = self.reading();
                 self.explicit = Some(
-                    if (self.uses_kana()
+                    if !self.uses_kana()
+                        && self.raw.len() >= 2
+                        && self.raw.bytes().all(|c| c.is_ascii_uppercase())
+                        && vk <= 0x77
+                    {
+                        // Consecutive uppercase keys are retained acronym
+                        // units by CompositionText, even in a kana mode.
+                        self.raw.clone()
+                    } else if (self.uses_kana()
                         || self
                             .edited_units
                             .as_ref()

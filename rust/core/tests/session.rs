@@ -253,7 +253,7 @@ fn composition_control_shortcuts_and_shift_space_match_native_key_roles() {
     assert!(!s.key(32, 32, 0).consumed);
 }
 #[test]
-fn host_committed_preedit_learns_displayed_text_without_finalizing_or_deleting() {
+fn host_committed_preedit_preserves_display_without_learning_unfinished_kana() {
     let mut s = Session::default();
     s.can_delete = true;
     type_text(&mut s, "nihon");
@@ -264,10 +264,8 @@ fn host_committed_preedit_learns_displayed_text_without_finalizing_or_deleting()
     assert!(result.commits[0].expect.is_none());
     assert!(s.raw().is_empty());
     assert!(s.can_delete);
-    assert!(s
-        .state
-        .phrases
-        .iter()
-        .any(|p| p.reading == "にほん" && p.text == "にほn"));
+    // RememberPhrase requires a Japanese result containing kanji. A host's
+    // unfinished kana preedit must not become a future phrase prediction.
+    assert!(s.state.phrases.is_empty());
     assert!(s.commit_preedit().commits.is_empty());
 }

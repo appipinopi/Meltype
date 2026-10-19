@@ -66,6 +66,8 @@ jobs:
         run: python rust/native/tests/shift_space_smoke.py
       - name: F9 F10 case cycles through native ABI
         run: python rust/native/tests/case_keys_smoke.py
+      - name: Prediction display and phrase learning through native ABI
+        run: python rust/native/tests/prediction_keys_smoke.py
       - name: Numeric candidate selection through native ABI
         run: python rust/native/tests/number_keys_smoke.py
       - name: Conversion cancellation and Tab key roles through native ABI
@@ -100,6 +102,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python rust/native/tests/windows_worker_converter_smoke.py target/release/meltype-tip-worker.exe dist/windows-converter-fixture/helper.exe windows-converter-reference.jsonl
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/prediction_worker_smoke.py target/release/meltype-tip-worker.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           dotnet build tools/parity/mozc-lifecycle/MozcLifecycle.csproj --nologo
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           dotnet run --no-build --project tools/parity/mozc-lifecycle/MozcLifecycle.csproj -- --filter tools/parity/mozc-lifecycle/filter-cases.json > mozc-learning-filter-reference.jsonl
@@ -122,7 +126,11 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           dotnet run --no-build --project tools/parity/mozc-lifecycle/MozcLifecycle.csproj -- --conversion-keys tools/parity/mozc-lifecycle/conversion-key-cases.json > conversion-keys-reference.jsonl
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python rust/native/tests/mozc_learning_reference.py mozc-learning-filter-reference.jsonl clause-raw-reference.jsonl clause-language-reference.jsonl clause-history-reference.jsonl single-choice-reference.jsonl engine-keys-reference.jsonl case-keys-reference.jsonl number-keys-reference.jsonl public-number-keys-reference.jsonl conversion-keys-reference.jsonl
+          dotnet run --no-build --project tools/parity/mozc-lifecycle/MozcLifecycle.csproj -- --prediction-keys tools/parity/mozc-lifecycle/prediction-key-cases.json > prediction-keys-reference.jsonl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --no-build --project tools/parity/mozc-lifecycle/MozcLifecycle.csproj -- --direct-typos tools/parity/mozc-lifecycle/direct-typo-cases.json > direct-typos-reference.jsonl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/mozc_learning_reference.py mozc-learning-filter-reference.jsonl clause-raw-reference.jsonl clause-language-reference.jsonl clause-history-reference.jsonl single-choice-reference.jsonl engine-keys-reference.jsonl case-keys-reference.jsonl number-keys-reference.jsonl public-number-keys-reference.jsonl conversion-keys-reference.jsonl prediction-keys-reference.jsonl direct-typos-reference.jsonl
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo build -p meltype-core --example mozc_lifecycle --locked
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -268,6 +276,9 @@ jobs:
       - name: F9 F10 case cycles in a 32-bit process
         if: runner.os == 'Windows'
         run: python rust/native/tests/case_keys_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
+      - name: Prediction display and phrase learning in a 32-bit process
+        if: runner.os == 'Windows'
+        run: python rust/native/tests/prediction_keys_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
       - name: Numeric candidate selection through x86 native ABI
         if: runner.os == 'Windows'
         run: python rust/native/tests/number_keys_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll

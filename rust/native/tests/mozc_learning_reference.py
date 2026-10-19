@@ -81,3 +81,19 @@ if len(sys.argv)>10:
     assert len(actual)==len(expected)==84
     for got,want in zip(actual,expected):assert got==want,(want['case']['name'],want,got)
     print('Original public session: 84 conversion cancellation/candidate-control traces reproduced')
+
+if len(sys.argv)>11:
+    fixture=Path(__file__).resolve().parents[2]/'core/tests/data/upstream-prediction-keys.json'
+    expected=json.loads(fixture.read_text(encoding='utf-8'))['cases']
+    actual=[json.loads(line) for line in Path(sys.argv[11]).read_text(encoding='utf-8-sig').splitlines() if line.startswith('{')]
+    assert len(actual)==len(expected)==110
+    for got,want in zip(actual,expected):assert got==want,(want['case']['name'],want,got)
+    print('Original public session: 110 prediction display/navigation/phrase-learning traces reproduced')
+
+if len(sys.argv)>12:
+    fixture=Path(__file__).resolve().parents[2]/'core/tests/data/upstream-direct-typos.json'
+    expected=json.loads(fixture.read_text(encoding='utf-8'))['cases']
+    actual=[json.loads(line) for line in Path(sys.argv[12]).read_text(encoding='utf-8-sig').splitlines() if line.startswith('{')]
+    assert len(actual)==len(expected)==20
+    for got,want in zip(actual,expected):assert got==want,(want['raw'],want,got)
+    print('Original pure corrector: 20 independent repair results reproduced')

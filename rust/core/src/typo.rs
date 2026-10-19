@@ -213,10 +213,7 @@ impl Corrector {
         (cost[n], known)
     }
     pub fn fix(&self, raw: &str, final_input: bool) -> Option<Fix> {
-        if raw.len() > 128
-            || !raw.bytes().all(|c| c.is_ascii_lowercase())
-            || crate::dictionary::Dictionary::bundled().is_english(raw)
-        {
+        if raw.len() > 128 || !raw.bytes().all(|c| c.is_ascii_lowercase()) {
             return None;
         }
         if romaji::custom_table().is_some() {

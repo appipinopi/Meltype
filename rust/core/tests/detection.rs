@@ -119,38 +119,28 @@ fn romaji_analysis_distinguishes_detection_from_composition() {
 
 #[test]
 fn upstream_romaji_typo_repairs() {
-    for (raw, kana) in [
-        ("onegaishimsu", "おねがいします"),
-        ("arigatpu", "ありがとう"),
-        ("arigtou", "ありがとう"),
-        ("sumimasne", "すみません"),
-        ("shitmeasu", "してます"),
-        ("gozaimsu", "ございます"),
-        ("yorosikuy", "よろしく"),
-        ("kinouhaamegafuttemshita", "きのうはあめがふってました"),
-    ] {
-        assert_eq!(
-            Corrector::bundled()
-                .fix(raw, true)
-                .map(|f| f.kana)
-                .as_deref(),
-            Some(kana),
-            "{raw}"
-        );
+    let fixture: serde_json::Value =
+        serde_json::from_str(include_str!("data/upstream-direct-typos.json")).unwrap();
+    let cases = fixture["cases"].as_array().unwrap();
+    assert_eq!(cases.len(), 20);
+    for row in cases {
+        let raw = row["raw"].as_str().unwrap();
+        let actual = Corrector::bundled()
+            .fix(raw, true)
+            .map(|f| serde_json::json!({"Wrong":f.wrong,"Right":f.right,"Kana":f.kana}));
+        assert_eq!(serde_json::json!(actual), row["expected"], "{raw}");
     }
-    for raw in [
-        "google",
-        "hello",
-        "html",
-        "https://example.com/onegaishimsu",
-        "@onegaishimsu",
-        "teh",
-        "😀",
-        "",
-        "sh",
-    ] {
-        assert!(Corrector::bundled().fix(raw, true).is_none(), "{raw}");
+    // The pure original corrector offers a repair for google. The Session's
+    // English-span policy prevents applying it to actual English input.
+    let mut session = meltype_core::Session::default();
+    session
+        .settings
+        .set("DetectionLevel", serde_json::json!("Balanced"))
+        .unwrap();
+    for ch in "google".chars() {
+        session.key(ch.to_ascii_uppercase() as i32, ch as i32, 0);
     }
+    assert_eq!(session.key(13, 0, 0).commits[0].text, "google");
 }
 
 #[test]

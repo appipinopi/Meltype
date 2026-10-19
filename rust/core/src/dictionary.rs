@@ -514,7 +514,7 @@ impl Dictionary {
         }
         // Original IsEnglishSpan accepts known c-row English spellings before
         // matching their kana against Japanese readings (camera vs kamera).
-        if lower.len() >= 5
+        if (lower.len() >= 5 || lower.len() >= 4 && self.common_english.contains(&lower))
             && lower.contains('c')
             && !lower.contains("ch")
             && self.known_english(&lower)
@@ -635,6 +635,14 @@ impl Dictionary {
                     &computed
                 };
                 let jp = !raw[i..end].bytes().any(|c| c.is_ascii_uppercase())
+                    && !((piece.len() >= 5
+                        || piece.len() >= 4 && self.common_english.contains(piece))
+                        && piece.contains('c')
+                        && !piece.contains("ch")
+                        && self.known_english(piece)
+                        && !self.japanese_prefix(piece)
+                        && !self.proper.contains(piece)
+                        && romaji::analyze(piece, true).valid)
                     && (self.japanese.contains(piece)
                         || self.kana_words.contains(piece_reading)
                         || [
@@ -740,7 +748,18 @@ impl Dictionary {
                     && !japanese_continuation
                     && !partial_japanese
                     && !ambiguous_japanese;
-                let cost = if jp {
+                // A listed c-row word is an English span before kana-word
+                // matching. Keep that decision when another letter follows;
+                // cheap Japanese subspans must not turn camera|a back to kana.
+                let cost = if en
+                    && piece.len() >= 4
+                    && piece.contains('c')
+                    && !piece.contains("ch")
+                    && self.common_english.contains(piece)
+                    && !self.japanese_prefix(piece)
+                {
+                    0.1
+                } else if jp {
                     0.3
                 } else if en {
                     let absorbs_particle = i > 0

@@ -194,3 +194,29 @@ python rust/native/tests/number_keys_smoke.py target/release/meltype_native.dll 
 この比較は全設定・全候補源・JISかな・予測の選択解除・変換中の誤字修正・実OSの描画までを証明しません。全Core移行とUIの照合は継続中で、今回の修正後の速度は未測定です。
 
 字種復元までの全189テストが成功し、最後のnative英語区間修正後もnative単体41テストとRust 1.99の全体／TSF-server Clippyが成功しました。最終Releaseのx64／x86で84入力列、数字選択48列、既存ABI・ケース切替96列・Shift＋Space20操作・文節伸縮20列・選択再変換28操作・結合文字8入力が成功。最終Release workerでは実フレーム通信で追加のTab操作と字種復元も成功。元版84列の再採取照合も成功し、先行の取消・字種・英語区切りの不一致ログは保持しています。結果は`dist/conversion-keys-*.log`へ保存しました。
+
+## 予測候補の表示・操作・学習
+
+`PredictionKeys.cs`は元版の公開Sessionと実際のPhraseHistory／Predictorを使い、110入力列を採取します。学習済み日本語3語句と英語予測、Manual／Balanced、小文字・先頭大文字・全大文字、保留子音、7回のTab／Shift＋Tab、Escの解除と全取消、追加入力・Backspace・F7、Enterとクリック確定を含みます。日本語予測4ケースでは学習を有効にし、確定後の語句の読み・文字列・回数も採取します。履歴とプロファイルは各ケースの一時ディレクトリだけを使い、ユーザーの入力欄へ配送しません。
+
+RustのTab巡回は候補の末尾と先頭の間に未選択（-1）を挟み、選択した予測を途中表示へ反映します。最初のEscは選択だけを解除し、次のEscで入力を消します。Fキーや編集では予測選択を解除します。日本語予測には未確定の子音を含めず、ひらがなの打ち終わった部分を使います。英語予測は英字表示の3文字以上か、かな表示でも英字原文4文字以上の場合に追加。手動の英字提案や誤字提案、明示字種では予測を隠します。Manualの提案をTabで受けた場合はF10を選ばず、その組成の判定だけBalancedへ切り替えます。
+
+予測を確定した学習は、入力途中の読みではなく元の語句の完全な読みに戻して回数を増やします。通常確定の語句学習は予測設定ON・漢字を含む日本語に限定し、英字だけや予測設定OFFの確定を語句履歴へ追加しません。予測一覧を作る際の条件と、明示候補を学習する条件は分けます。
+
+公開キー比較は入力途中のcame、cameraへ文字を足す場合のc行英語区間、全大文字略語にF7を使う場合の差も検出しました。参照ホストへローマ字訂正辞書を接続すると4列の確定結果が変わり、未接続時の採取ログも保持しています。Rustの訂正器から広い英単語一覧による一律除外を取り除き、Session側で同梱の一般語と混在英語を除外します。訂正後の綴りを再判定し、camer→cameなどを無条件にかな表示しません。
+
+`upstream-prediction-keys.json`へ元の全返信とソースハッシュを固定し、Coreの公開入口とC ABIで消費・編集・表示・予測一覧・選択位置・保存後の語句を比較します。DLLでは変換中の候補一覧と文節も比較。ヒント・意味注釈・非変換中の候補選択sentinel・使用日時そのもの・実OSの描画は比較対象外です。ライブ変換はOFFで、ユーザー辞書／変換履歴を加えた予測順位、全判定レベル・かな入力・全誤字と全編集履歴は継続確認です。変換中のTabによる誤字修正の移行は残っています。
+
+```powershell
+dotnet run --project tools/parity/mozc-lifecycle/MozcLifecycle.csproj -- --prediction-keys tools/parity/mozc-lifecycle/prediction-key-cases.json
+cargo test -p meltype-core --test upstream_prediction_keys --locked
+python rust/native/tests/prediction_keys_smoke.py target/release/meltype_native.dll
+```
+
+今回の修正後の性能は未測定です。参照ホストの採取と再照合、両ABI試験をCIへ追加しています。全Core・UIの受入完了を示すものではありません。
+
+訂正器単体も`DirectTypos.cs`で20入力を採取し、正常な修復案・候補なしを`upstream-direct-typos.json`へ固定しました。元版は単体のgoogle→gogoleを返すため、古い「単体でgoogleは常に候補なし」のテストを置き換えました。Sessionでgoogleを入力して確定する場合は英語のまま保つ別の検査を維持します。入力欄が途中表示を確定済みにした場合も、漢字を含まない未完成かなを語句履歴へ追加しない条件へ既存回帰を合わせています。これらは元版のRememberPhraseと公開操作で確認した条件です。
+
+最終Release x64／x86では予測110入力列と保存後の語句、数字48列・変換操作84列、既存ABI・ケース切替96列・Shift＋Space20操作・文節伸縮20列・選択再変換28操作・結合文字8入力が成功しました。Windows workerでも予測Enter／クリック4列の表示・確定・完全な読みの学習と、既存のSystem／Mozc／Hybrid通信が成功。元版の110列と訂正器20入力の再採取照合、Rust 1.99の全体／TSF-server Clippyも成功しています。先行失敗ログは保持し、ローカル結果は`dist/prediction-keys-*.log`へ記録しています。
+
+予測修正後の最終ワークスペース全190テストと、Rust 1.99の全体／TSF-server Clippyが成功しました。途中の古い単体・学習期待値による失敗ログも保持しています。

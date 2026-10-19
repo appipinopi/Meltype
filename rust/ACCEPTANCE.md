@@ -90,6 +90,8 @@
 
 - 変換中のBackspaceを文字削除から変換取消へ修正し、F6〜F10で選んだ字種をBackspace／Escで復元。変換キー・Shift＋Downの候補方向、Tabで始めた場合だけのTab巡回とShift＋Tabの開始抑止も移植。元版の公開入口84入力列を採取し、DLLで表示・編集・文節・選択位置と候補一覧を照合する。Tabの外部変換器取得を接続し、Windows workerの実通信へ操作を追加。全189テストと、最後のnative修正後の単体41テスト・全体／TSF-server Clippyが成功。最終Release x64／x86の84列と既存回帰、追加操作を含むworker通信も成功。全設定・予測解除・変換中誤字修正やOS描画は継続確認。今回の速度は未測定。[条件](../tools/parity/mozc-lifecycle/README.md)。
 
+- 予測候補のTab／Shift＋Tab巡回に未選択を含め、途中表示・Escでの選択解除・Fキー／編集時の解除、保留子音と英語予測の条件、手動提案受理時の組成内Balanced切替を元版へ修正。公開キー110入力列と確定後の語句の読み／回数を固定。予測確定は完全な元の読みへ学習し、通常確定は予測ONの漢字を含む日本語だけ語句学習する。c行英語区間と全大文字略語、ローマ字訂正器の英語除外と訂正後の再判定も修正。最終修正後の全190テストと全体／TSF-server Clippy、両ABIの110列と保存後の語句・既存回帰、Windows workerの予測確定4列と既存通信が成功。全候補源・全設定・変換中の誤字修正・OS描画は継続確認。速度は未測定。[条件](../tools/parity/mozc-lifecycle/README.md)。
+
 ## 次に埋めるCoreの差
 
 1. 入力途中の区切り・保留子音・英語候補・音単位編集を、元版のCompositionText/CompositionDetectorと各キーで比較する。

@@ -270,7 +270,12 @@ mod tests {
                     .candidates
                     .iter()
                     .position(|candidate| candidate == c["target"].as_str().unwrap())
-                    .unwrap();
+                    .unwrap_or_else(|| {
+                        panic!(
+                            "missing target: {} candidates {:?}",
+                            c["name"], view.candidates
+                        )
+                    });
                 assert!(s.select_composing(index).consumed);
                 let result = s.key(13, 0, 0);
                 assert!(s.take_engine_learning().is_empty(), "{}", c["name"]);

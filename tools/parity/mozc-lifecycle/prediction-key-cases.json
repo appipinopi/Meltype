@@ -1,0 +1,4301 @@
+[
+  {
+    "name": "kyo-Manual-forward",
+    "raw": "kyo",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyo-Manual-reverse",
+    "raw": "kyo",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyo-Manual-escape",
+    "raw": "kyo",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyo-Manual-edit",
+    "raw": "kyo",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        65,
+        97,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyo-Manual-f7",
+    "raw": "kyo",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        118,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyo-Manual-escape-twice",
+    "raw": "kyo",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyo-Manual-back",
+    "raw": "kyo",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyo-Balanced-forward",
+    "raw": "kyo",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyo-Balanced-reverse",
+    "raw": "kyo",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyo-Balanced-escape",
+    "raw": "kyo",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyo-Balanced-edit",
+    "raw": "kyo",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        65,
+        97,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyo-Balanced-f7",
+    "raw": "kyo",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        118,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyo-Balanced-escape-twice",
+    "raw": "kyo",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyo-Balanced-back",
+    "raw": "kyo",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyou-Manual-forward",
+    "raw": "kyou",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyou-Manual-reverse",
+    "raw": "kyou",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyou-Manual-escape",
+    "raw": "kyou",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyou-Manual-edit",
+    "raw": "kyou",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        65,
+        97,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyou-Manual-f7",
+    "raw": "kyou",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        118,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyou-Manual-escape-twice",
+    "raw": "kyou",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyou-Manual-back",
+    "raw": "kyou",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyou-Balanced-forward",
+    "raw": "kyou",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyou-Balanced-reverse",
+    "raw": "kyou",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyou-Balanced-escape",
+    "raw": "kyou",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyou-Balanced-edit",
+    "raw": "kyou",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        65,
+        97,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyou-Balanced-f7",
+    "raw": "kyou",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        118,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyou-Balanced-escape-twice",
+    "raw": "kyou",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyou-Balanced-back",
+    "raw": "kyou",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyoun-Manual-forward",
+    "raw": "kyoun",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyoun-Manual-reverse",
+    "raw": "kyoun",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyoun-Manual-escape",
+    "raw": "kyoun",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyoun-Manual-edit",
+    "raw": "kyoun",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        65,
+        97,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyoun-Manual-f7",
+    "raw": "kyoun",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        118,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyoun-Manual-escape-twice",
+    "raw": "kyoun",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyoun-Manual-back",
+    "raw": "kyoun",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyoun-Balanced-forward",
+    "raw": "kyoun",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyoun-Balanced-reverse",
+    "raw": "kyoun",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyoun-Balanced-escape",
+    "raw": "kyoun",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyoun-Balanced-edit",
+    "raw": "kyoun",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        65,
+        97,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyoun-Balanced-f7",
+    "raw": "kyoun",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        118,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyoun-Balanced-escape-twice",
+    "raw": "kyoun",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyoun-Balanced-back",
+    "raw": "kyoun",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "decis-Manual-forward",
+    "raw": "decis",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "decis-Manual-reverse",
+    "raw": "decis",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "decis-Manual-escape",
+    "raw": "decis",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "decis-Manual-edit",
+    "raw": "decis",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        65,
+        97,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "decis-Manual-f7",
+    "raw": "decis",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        118,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "decis-Manual-escape-twice",
+    "raw": "decis",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "decis-Manual-back",
+    "raw": "decis",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "decis-Balanced-forward",
+    "raw": "decis",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "decis-Balanced-reverse",
+    "raw": "decis",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "decis-Balanced-escape",
+    "raw": "decis",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "decis-Balanced-edit",
+    "raw": "decis",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        65,
+        97,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "decis-Balanced-f7",
+    "raw": "decis",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        118,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "decis-Balanced-escape-twice",
+    "raw": "decis",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "decis-Balanced-back",
+    "raw": "decis",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "Decis-Manual-forward",
+    "raw": "Decis",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "Decis-Manual-reverse",
+    "raw": "Decis",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "Decis-Manual-escape",
+    "raw": "Decis",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "Decis-Manual-edit",
+    "raw": "Decis",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        65,
+        97,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "Decis-Manual-f7",
+    "raw": "Decis",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        118,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "Decis-Manual-escape-twice",
+    "raw": "Decis",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "Decis-Manual-back",
+    "raw": "Decis",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "Decis-Balanced-forward",
+    "raw": "Decis",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "Decis-Balanced-reverse",
+    "raw": "Decis",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "Decis-Balanced-escape",
+    "raw": "Decis",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "Decis-Balanced-edit",
+    "raw": "Decis",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        65,
+        97,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "Decis-Balanced-f7",
+    "raw": "Decis",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        118,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "Decis-Balanced-escape-twice",
+    "raw": "Decis",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "Decis-Balanced-back",
+    "raw": "Decis",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "DECIS-Manual-forward",
+    "raw": "DECIS",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "DECIS-Manual-reverse",
+    "raw": "DECIS",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "DECIS-Manual-escape",
+    "raw": "DECIS",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "DECIS-Manual-edit",
+    "raw": "DECIS",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        65,
+        97,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "DECIS-Manual-f7",
+    "raw": "DECIS",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        118,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "DECIS-Manual-escape-twice",
+    "raw": "DECIS",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "DECIS-Manual-back",
+    "raw": "DECIS",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "DECIS-Balanced-forward",
+    "raw": "DECIS",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "DECIS-Balanced-reverse",
+    "raw": "DECIS",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "DECIS-Balanced-escape",
+    "raw": "DECIS",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "DECIS-Balanced-edit",
+    "raw": "DECIS",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        65,
+        97,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "DECIS-Balanced-f7",
+    "raw": "DECIS",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        118,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "DECIS-Balanced-escape-twice",
+    "raw": "DECIS",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "DECIS-Balanced-back",
+    "raw": "DECIS",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "imp-Manual-forward",
+    "raw": "imp",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "imp-Manual-reverse",
+    "raw": "imp",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "imp-Manual-escape",
+    "raw": "imp",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "imp-Manual-edit",
+    "raw": "imp",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        65,
+        97,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "imp-Manual-f7",
+    "raw": "imp",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        118,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "imp-Manual-escape-twice",
+    "raw": "imp",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "imp-Manual-back",
+    "raw": "imp",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "imp-Balanced-forward",
+    "raw": "imp",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "imp-Balanced-reverse",
+    "raw": "imp",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "imp-Balanced-escape",
+    "raw": "imp",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "imp-Balanced-edit",
+    "raw": "imp",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        65,
+        97,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "imp-Balanced-f7",
+    "raw": "imp",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        118,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "imp-Balanced-escape-twice",
+    "raw": "imp",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "imp-Balanced-back",
+    "raw": "imp",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "camera-Balanced-forward",
+    "raw": "camera",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "camera-Balanced-reverse",
+    "raw": "camera",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "camera-Balanced-escape",
+    "raw": "camera",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "camera-Balanced-edit",
+    "raw": "camera",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        65,
+        97,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "camera-Balanced-f7",
+    "raw": "camera",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        118,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "camera-Balanced-escape-twice",
+    "raw": "camera",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "camera-Balanced-back",
+    "raw": "camera",
+    "level": "Balanced",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "camera-Manual-hint-blocks-predictions",
+    "raw": "camera",
+    "level": "Manual",
+    "learning": false,
+    "phrases": [],
+    "keys": [
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyo-learn-enter",
+    "raw": "kyo",
+    "level": "Manual",
+    "learning": true,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyo-learn-click",
+    "raw": "kyo",
+    "level": "Manual",
+    "learning": true,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        -1,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyou-learn-enter",
+    "raw": "kyou",
+    "level": "Manual",
+    "learning": true,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "kyou-learn-click",
+    "raw": "kyou",
+    "level": "Manual",
+    "learning": true,
+    "phrases": [
+      {
+        "reading": "きょうのよてい",
+        "text": "今日の予定",
+        "count": 10,
+        "used": 100
+      },
+      {
+        "reading": "きょうのてんき",
+        "text": "今日の天気",
+        "count": 9,
+        "used": 99
+      },
+      {
+        "reading": "きょうのかいぎ",
+        "text": "今日の会議",
+        "count": 8,
+        "used": 98
+      }
+    ],
+    "keys": [
+      [
+        -1,
+        0,
+        0
+      ]
+    ]
+  }
+]
