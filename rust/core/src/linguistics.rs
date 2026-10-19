@@ -5,7 +5,10 @@ use std::{
     collections::{BTreeMap, HashMap, HashSet},
     sync::OnceLock,
 };
-use unicode_normalization::{char::is_combining_mark, UnicodeNormalization};
+use unicode_normalization::{
+    char::{canonical_combining_class, is_combining_mark},
+    UnicodeNormalization,
+};
 
 pub struct Linguistics {
     meanings: HashMap<String, Vec<(String, String)>>,
@@ -257,18 +260,44 @@ impl Linguistics {
             .map(|(i, _)| i)
             .chain(std::iter::once(text.len()))
             .collect();
-        for start in 0..bounds.len() - 1 {
-            for end in (start + 4..=usize::min(start + 20, bounds.len() - 1)).rev() {
+        // Removing combining marks leaves stable starters for the bundled
+        // shapes. Normalize each scalar once instead of every overlapping
+        // substring. Retain the full normalization path if any retained scalar
+        // has a combining class, since canonical reordering can cross a cut.
+        let units: Vec<_> = text.chars().map(|c| shape(&c.to_string())).collect();
+        let incremental = units
+            .iter()
+            .all(|s| s.chars().all(|c| canonical_combining_class(c) == 0));
+        let mut normalized = String::new();
+        let mut matches = Vec::new();
+        for start in 0..units.len() {
+            normalized.clear();
+            matches.clear();
+            for end in start + 1..=usize::min(start + 20, units.len()) {
+                if incremental {
+                    normalized.push_str(&units[end - 1]);
+                }
+                if end < start + 4 {
+                    continue;
+                }
                 let part = &text[bounds[start]..bounds[end]];
                 if self.correct.contains(part) {
-                    break;
+                    // The original searches from longest to shortest and stops
+                    // at a correct spelling. Discard all shorter candidates.
+                    matches.clear();
+                    continue;
                 }
-                if let Some(right) = self.shapes.get(&shape(part)).and_then(|s| s.first()) {
-                    if !inside_correct(bounds[start], part.len()) {
-                        return Some(
-                            text[..bounds[start]].to_owned() + right + &text[bounds[end]..],
-                        );
-                    }
+                if !incremental {
+                    normalized = shape(part);
+                }
+                if let Some(right) = self.shapes.get(&normalized).and_then(|s| s.first()) {
+                    matches.push((end, right));
+                }
+            }
+            for (end, right) in matches.iter().rev() {
+                let end = bounds[*end];
+                if !inside_correct(bounds[start], end - bounds[start]) {
+                    return Some(text[..bounds[start]].to_owned() + right.as_str() + &text[end..]);
                 }
             }
         }
