@@ -30,7 +30,6 @@ impl Session {
             || !self.is_converting()
             || self.explicit.is_some()
             || self.selected_prediction >= 0
-            || self.function_key != 0
         {
             return;
         }
@@ -46,20 +45,18 @@ impl Session {
             }
         };
         if self.clauses.is_empty() {
-            let reading = self.reading();
-            let text = self.display(true);
+            let clause = self.single_conversion_clause(&self.reading(), &self.display(true));
             if eligible(
-                false,
-                &reading,
-                &text,
-                if self.uses_kana() || self.reconversion_origin.is_some() {
-                    ""
-                } else {
-                    &self.raw
-                },
-                &self.translation_candidates,
+                clause.english,
+                &clause.reading,
+                clause.text(),
+                clause.raw.as_deref().unwrap_or(""),
+                &clause.translations,
             ) {
-                run.push(LearningClause { reading, text });
+                run.push(LearningClause {
+                    reading: clause.reading.clone(),
+                    text: clause.text().to_owned(),
+                });
             }
         } else {
             for clause in &self.clauses {
@@ -119,6 +116,96 @@ fn conversion_context(before: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn original_function_keys_conversion_and_engine_learning_match() {
+        let golden: serde_json::Value =
+            serde_json::from_str(include_str!("../../tests/data/upstream-engine-keys.json"))
+                .unwrap();
+        let cases = golden["cases"].as_array().unwrap();
+        assert_eq!(cases.len(), 24);
+        for row in cases {
+            let c = &row["case"];
+            let raw = c["raw"].as_str().unwrap();
+            for structured in [false, true] {
+                // The English single-clause classification is exercised by the
+                // unsegmented path. Mixed/structured English generation has its
+                // own conversion-reader coverage.
+                if structured && raw == "HASHI" {
+                    continue;
+                }
+                let mut s = Session {
+                    no_learning: c["private"].as_bool().unwrap(),
+                    ..Default::default()
+                };
+                for (name, value) in [
+                    ("LiveConversion", false),
+                    ("PredictiveCandidates", false),
+                    ("LearningEnabled", c["learning"].as_bool().unwrap()),
+                    ("SeparateKeyRoles", c["action"] == "convert"),
+                ] {
+                    s.settings.set(name, serde_json::json!(value)).unwrap();
+                }
+                s.settings
+                    .set("DetectionLevel", serde_json::json!("Manual"))
+                    .unwrap();
+                s.collect_engine_learning(true);
+                let mut committed = String::new();
+                let mut append = |result: SessionResult| {
+                    for edit in result.commits {
+                        committed.push_str(&edit.text);
+                    }
+                };
+                for ch in raw.chars() {
+                    append(s.key(
+                        ch.to_ascii_uppercase() as i32,
+                        ch as i32,
+                        i32::from(ch.is_ascii_uppercase()),
+                    ));
+                }
+                let force = c["force"].as_i64().unwrap() as i32;
+                if force != 0 {
+                    append(s.key(force, 0, 0));
+                }
+                let mut converting = false;
+                if c["action"] != "enter" {
+                    let separate = c["action"] == "convert";
+                    let started = s.key(
+                        if separate { 28 } else { 32 },
+                        if separate { 0 } else { 32 },
+                        0,
+                    );
+                    converting = started.view.as_ref().is_some_and(|v| v.converting);
+                    append(started);
+                    if converting {
+                        // Supply the same deterministic external-converter
+                        // response as the original host, after the key branch.
+                        let reading = s.reading();
+                        let target = c["target"]
+                            .as_str()
+                            .map(str::to_owned)
+                            .unwrap_or_else(|| format!("【{reading}】"));
+                        if structured {
+                            assert!(s.begin_clauses(vec![Clause::new(reading, vec![target])]));
+                        } else {
+                            s.candidates = vec![target];
+                            s.selected = 0;
+                        }
+                        if c["target"].is_string() {
+                            append(s.select_composing(0));
+                        }
+                    }
+                }
+                append(s.key(13, 0, 0));
+                let batches: Vec<_> = s.take_engine_learning().into_iter().map(|batch| serde_json::json!({"context":batch.context,"clauses":batch.clauses})).collect();
+                assert_eq!(
+                    serde_json::json!({"converting":converting,"committed":committed,"batches":batches}),
+                    row["expected"],
+                    "{} structured={structured}",
+                    c["name"]
+                );
+            }
+        }
+    }
     #[test]
     fn original_controller_learning_runs_and_context_match() {
         let golden: serde_json::Value = serde_json::from_str(include_str!(

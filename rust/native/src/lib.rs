@@ -498,6 +498,7 @@ pub unsafe extern "C" fn meltype_handle_key(
             all.get(&(handle as usize))
                 .filter(|s| {
                     (vk == 0x20 || vk == 0x1c && s.settings.boolean("SeparateKeyRoles"))
+                        && !(vk == 0x20 && s.space_commits_alphanumeric())
                         && !(vk == 0x20
                             && !s.settings.boolean("SeparateKeyRoles")
                             && s.ends_in_english())

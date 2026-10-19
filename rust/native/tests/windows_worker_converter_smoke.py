@@ -95,6 +95,28 @@ with tempfile.TemporaryDirectory(prefix='meltype-windows-converter-') as directo
         # A valid empty Mozc response keeps Mozc-only availability, so its
         # fallback is the reading; it must not silently invoke Microsoft IME.
         assert reconvert('kara')=='から';call('reset')
+        # F6-F8 change the display, but a subsequent actual conversion
+        # still notifies the engine. F9/F10 Space commits the shown Latin form.
+        configure('Mozc',learning=True)
+        for function_key,raw in [(117,'tenki'),(118,'sakura'),(119,'kumo')]:
+            count=len([line for line in calls.read_text(encoding='utf-8').splitlines() if line.startswith('L\t')])
+            for ch in raw:assert call('key',vk=ord(ch.upper()),ch=ord(ch))['consumed']
+            call('key',vk=function_key)
+            converted=call('key',vk=32,ch=32)['view']
+            assert converted['converting'] and converted['text'].startswith('MOZC:'),converted
+            assert call('commit')['commits'][0]['text']==converted['text']
+            reconvert('nihongo');call('reset')
+            assert len([line for line in calls.read_text(encoding='utf-8').splitlines() if line.startswith('L\t')])==count+1
+        for function_key,expected_latin in [(120,'ｈａｓｈｉ '),(121,'hashi ')]:
+            count=len([line for line in calls.read_text(encoding='utf-8').splitlines() if line.startswith('L\t')])
+            for ch in 'hashi':call('key',vk=ord(ch.upper()),ch=ord(ch))
+            call('key',vk=function_key)
+            query_count=len(calls.read_text(encoding='utf-8').splitlines())
+            committed=call('key',vk=32,ch=32)
+            assert committed['view'] is None and committed['commits'][0]['text']==expected_latin,committed
+            assert len(calls.read_text(encoding='utf-8').splitlines())==query_count,'Latin Space must not query the converter'
+            reconvert('nihongo');call('reset')
+            assert len([line for line in calls.read_text(encoding='utf-8').splitlines() if line.startswith('L\t')])==count
         configure('Hybrid')
         assert reconvert('nihongo')=='MOZC:にほんご';call('reset')
         configure('System');count=len(calls.read_text(encoding='utf-8').splitlines())

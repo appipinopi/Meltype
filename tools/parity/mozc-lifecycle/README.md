@@ -98,3 +98,22 @@ hashi・go・sushiの元入力への選び直しと2回待ち、goの入力中�
 Rustは文節のない変換に同じ日英学習の選別を適用し、goの入力中候補へもRawを渡します。比較対象の16操作では、入力どおりの英字などをエンジンへ学習通知しないことも検査します。全レベル・各文脈・途中編集・全大文字の自動Space操作・全候補源の分類一致、Fキー後の全エンジン通知、TSF適用失敗時の学習整合、実アプリ上の操作は継続確認です。
 
 今回の単一変換修正後は全184テストとRust 1.99の全体／TSF-server Clippyが成功。最終Releaseのx64／x86でABI・文節伸縮20入力列・選択再変換28操作・学習ワーカーも成功しました。結果は`dist/single-choice-workspace-first.log`と`dist/single-choice-shipping-{x64,x86}-*.log`に保存しています。元版で全大文字のSpace時に候補が開かない先行観測や、F6後の誤った英語学習を検出した先行失敗も保存し、上記の固定した操作と区別します。
+
+## Fキー後の変換とエンジン学習
+
+元の公開MeltypeSessionで文字入力→F6〜F10→Enter／Space／変換キー→Enterを24操作採取し、変換状態・確定全文・エンジン学習通知を`upstream-engine-keys.json`へ固定しています。元版Controllerとセッションは変更せず、試験変換器の応答と学習通知だけを観測します。非同期学習は専用の単一スレッドと末尾通知で完了を待ちます。
+
+```powershell
+dotnet run --project tools/parity/mozc-lifecycle/MozcLifecycle.csproj -- --engine-keys tools/parity/mozc-lifecycle/engine-key-cases.json > engine-keys-reference.jsonl
+python rust/native/tests/mozc_learning_reference.py filter-reference.jsonl raw-reference.jsonl clause-language-reference.jsonl clause-history-reference.jsonl single-choice-reference.jsonl engine-keys-reference.jsonl
+```
+
+F6〜F8で表示字種を変えた後でも、実際に変換した日本語はエンジンへ学習通知します。F9／F10の後のSpaceは表示中の英字に空白を付けて確定し、変換やエンジン学習を始めません。変換キーを使えば変換でき、通常の学習選別を適用します。学習無効とプライベート欄では通知せず、英語文節の日本語候補も元のエンジン学習対象から除きます。
+
+Rustでは単一変換の文節情報を通常履歴・日英学習・エンジン通知で共有します。Coreの比較は仮の外部変換応答をキー分岐後に設定する試験であり、OSへの配送の証明とは分けます。文節ありと文節なしの経路を両方検査し、全大文字の英語文節2操作は単一変換経路で比較します。Windowsの実フレーム通信試験にもF6〜F8後の学習通知とF9／F10のSpace確定を加えています。
+
+残る確認は全判定レベル・途中編集・候補源と全キーの組合せ、TSF適用失敗時の学習整合、実Mozcの永続学習、各OSの実アプリでの入力です。この限定比較でCore全体やUI一致の完了とはしません。修正前の学習通知欠落は`dist/engine-keys-before-fix.log`へ保存しています。今回の変更後の速度は未測定です。
+
+先行のworker検査では、ネイティブABIがCoreのキー処理より前に外部変換を始め、F9のSpaceが英字確定にならない差も検出しました（`dist/engine-keys-shipping-x64-worker.log`）。ネイティブの変換開始条件もCoreと同じ判定を参照するよう修正し、最終worker検査では英字確定時の変換問合せが増えないことまで調べます。
+
+今回の全187テストが成功。最後のnative先行変換修正後もCore／sessionの関連36テスト・native単体41テストとRust 1.99の全体／TSF-server Clippyが成功しました。最終Releaseのx64／x86で追加したFキー後の実フレーム通信、既存ABI・文節伸縮20入力列・選択再変換28操作・結合文字8入力が成功。ログは`dist/engine-keys-final-*.log`へ保存。試験ヘルパーによる通知検証であり、実Mozcの永続辞書学習は未確認です。

@@ -2,6 +2,27 @@
 //! Provenance of a converter clause within the retained composition units.
 use super::*;
 impl Session {
+    pub(super) fn single_conversion_clause(&self, reading: &str, text: &str) -> Clause {
+        let english = !self.uses_kana()
+            && self.reconversion_origin.is_none()
+            && self.raw.bytes().all(|b| b.is_ascii_alphabetic())
+            && self.mixed_reading(true) == self.raw;
+        let mut clause = Clause::new(
+            if english {
+                self.raw.clone()
+            } else {
+                reading.to_owned()
+            },
+            vec![text.to_owned()],
+        );
+        clause.english = english;
+        clause.raw =
+            (!self.uses_kana() && self.reconversion_origin.is_none()).then(|| self.raw.clone());
+        clause.changed = self.chosen_conversion;
+        clause.translations = self.translation_candidates.clone();
+        clause
+    }
+
     pub(super) fn clause_history_change(clause: &Clause) -> Option<Change> {
         let text = clause.text();
         let translation = clause.translations.iter().any(|t| t == text);

@@ -1,0 +1,218 @@
+[
+  {
+    "name": "key-0-enter",
+    "raw": "hashi",
+    "force": 0,
+    "action": "enter",
+    "learning": true,
+    "private": false,
+    "target": null
+  },
+  {
+    "name": "key-0-space",
+    "raw": "hashi",
+    "force": 0,
+    "action": "space",
+    "learning": true,
+    "private": false,
+    "target": null
+  },
+  {
+    "name": "key-0-convert",
+    "raw": "hashi",
+    "force": 0,
+    "action": "convert",
+    "learning": true,
+    "private": false,
+    "target": null
+  },
+  {
+    "name": "key-117-enter",
+    "raw": "hashi",
+    "force": 117,
+    "action": "enter",
+    "learning": true,
+    "private": false,
+    "target": null
+  },
+  {
+    "name": "key-117-space",
+    "raw": "hashi",
+    "force": 117,
+    "action": "space",
+    "learning": true,
+    "private": false,
+    "target": null
+  },
+  {
+    "name": "key-117-convert",
+    "raw": "hashi",
+    "force": 117,
+    "action": "convert",
+    "learning": true,
+    "private": false,
+    "target": null
+  },
+  {
+    "name": "key-118-enter",
+    "raw": "hashi",
+    "force": 118,
+    "action": "enter",
+    "learning": true,
+    "private": false,
+    "target": null
+  },
+  {
+    "name": "key-118-space",
+    "raw": "hashi",
+    "force": 118,
+    "action": "space",
+    "learning": true,
+    "private": false,
+    "target": null
+  },
+  {
+    "name": "key-118-convert",
+    "raw": "hashi",
+    "force": 118,
+    "action": "convert",
+    "learning": true,
+    "private": false,
+    "target": null
+  },
+  {
+    "name": "key-119-enter",
+    "raw": "hashi",
+    "force": 119,
+    "action": "enter",
+    "learning": true,
+    "private": false,
+    "target": null
+  },
+  {
+    "name": "key-119-space",
+    "raw": "hashi",
+    "force": 119,
+    "action": "space",
+    "learning": true,
+    "private": false,
+    "target": null
+  },
+  {
+    "name": "key-119-convert",
+    "raw": "hashi",
+    "force": 119,
+    "action": "convert",
+    "learning": true,
+    "private": false,
+    "target": null
+  },
+  {
+    "name": "key-120-enter",
+    "raw": "hashi",
+    "force": 120,
+    "action": "enter",
+    "learning": true,
+    "private": false,
+    "target": null
+  },
+  {
+    "name": "key-120-space",
+    "raw": "hashi",
+    "force": 120,
+    "action": "space",
+    "learning": true,
+    "private": false,
+    "target": null
+  },
+  {
+    "name": "key-120-convert",
+    "raw": "hashi",
+    "force": 120,
+    "action": "convert",
+    "learning": true,
+    "private": false,
+    "target": null
+  },
+  {
+    "name": "key-121-enter",
+    "raw": "hashi",
+    "force": 121,
+    "action": "enter",
+    "learning": true,
+    "private": false,
+    "target": null
+  },
+  {
+    "name": "key-121-space",
+    "raw": "hashi",
+    "force": 121,
+    "action": "space",
+    "learning": true,
+    "private": false,
+    "target": null
+  },
+  {
+    "name": "key-121-convert",
+    "raw": "hashi",
+    "force": 121,
+    "action": "convert",
+    "learning": true,
+    "private": false,
+    "target": null
+  },
+  {
+    "name": "disabled-117",
+    "raw": "hashi",
+    "force": 117,
+    "action": "convert",
+    "learning": false,
+    "private": false,
+    "target": null
+  },
+  {
+    "name": "private-117",
+    "raw": "hashi",
+    "force": 117,
+    "action": "convert",
+    "learning": true,
+    "private": true,
+    "target": null
+  },
+  {
+    "name": "disabled-120",
+    "raw": "hashi",
+    "force": 120,
+    "action": "convert",
+    "learning": false,
+    "private": false,
+    "target": null
+  },
+  {
+    "name": "private-120",
+    "raw": "hashi",
+    "force": 120,
+    "action": "convert",
+    "learning": true,
+    "private": true,
+    "target": null
+  },
+  {
+    "name": "english-clause-117",
+    "raw": "HASHI",
+    "force": 117,
+    "action": "space",
+    "learning": true,
+    "private": false,
+    "target": "はし"
+  },
+  {
+    "name": "english-clause-120",
+    "raw": "HASHI",
+    "force": 120,
+    "action": "convert",
+    "learning": true,
+    "private": false,
+    "target": "はし"
+  }
+]

@@ -611,6 +611,10 @@ impl Session {
         }
         Some(fix)
     }
+    /// Explicit Latin display commits on Space before querying a converter.
+    pub fn space_commits_alphanumeric(&self) -> bool {
+        !self.is_converting() && matches!(self.function_key, 0x78 | 0x79)
+    }
     pub fn is_converting(&self) -> bool {
         !self.candidates.is_empty()
     }
@@ -949,23 +953,7 @@ impl Session {
             changes.extend(self.clause_language_changes());
             changes.extend(self.clause_history_changes());
             if self.is_converting() && self.clauses.is_empty() {
-                let english = !self.uses_kana()
-                    && self.reconversion_origin.is_none()
-                    && self.raw.bytes().all(|b| b.is_ascii_alphabetic())
-                    && self.mixed_reading(true) == self.raw;
-                let mut clause = Clause::new(
-                    if english {
-                        self.raw.clone()
-                    } else {
-                        reading.clone()
-                    },
-                    vec![text.clone()],
-                );
-                clause.english = english;
-                clause.raw = (!self.uses_kana() && self.reconversion_origin.is_none())
-                    .then(|| self.raw.clone());
-                clause.changed = self.chosen_conversion;
-                clause.translations = self.translation_candidates.clone();
+                let clause = self.single_conversion_clause(&reading, &text);
                 if let Some(change) = Self::clause_language_change(&clause) {
                     changes.push(change);
                 }
@@ -1846,6 +1834,11 @@ impl Session {
                 modifiers,
             ),
             0x20 if !self.raw.is_empty() => {
+                if self.space_commits_alphanumeric() {
+                    self.space_started_conversion = true;
+                    self.explicit = Some(self.display(true) + " ");
+                    return self.commit();
+                }
                 if !self.is_converting()
                     && !self.settings.boolean("SeparateKeyRoles")
                     && self.ends_in_english()
