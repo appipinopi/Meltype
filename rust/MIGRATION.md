@@ -266,3 +266,5 @@
 - SeparateKeyRoles ONのF9／F10後Spaceを候補開始へ修正。OFFの英字確定と区別し、元版比較30操作・関連36テスト・Clippyと両ABIの実通信／既存回帰が成功。全設定組合せ・実Mozc保存・TSF適用失敗時の学習整合は継続。[条件](../tools/parity/mozc-lifecycle/README.md)。
 
 - Shift＋Spaceの変換開始／前候補／空入力スペースを元版へ一致。Fキー後の区間分類と既知c行英語の条件も修正。元版比較50操作・全187テスト・Clippy、両ABIの専用20操作と学習worker／既存回帰が成功。保護入力・独自表・スコア判定・全候補順と実アプリの確認は継続。[範囲](../tools/parity/mozc-lifecycle/README.md)。
+
+- F9／F10の同じ表示を飛ばすケース切替を移植。元版96入力列／576操作と確定を照合し、全188テスト・Clippyと両ABIの最終Release回帰が成功。Unicode大文字変換全般・全編集／候補源・実アプリは引き続き確認する。[範囲](../tools/parity/mozc-lifecycle/README.md)。

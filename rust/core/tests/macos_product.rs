@@ -43,7 +43,7 @@ fn mac_phrase_spacing_preserves_case_and_explicit_or_external_text() {
     assert_eq!(session.commit().commits[0].text, "see you again");
     type_text(&mut session, "seeyouagain");
     session.key(0x79, 0, 0);
-    assert_eq!(session.commit().commits[0].text, "seeyouagain");
+    assert_eq!(session.commit().commits[0].text, "SEEYOUAGAIN");
     type_text(&mut session, "seeyouagain");
     assert_eq!(
         session.commit_external(false, true).commits[0].text,

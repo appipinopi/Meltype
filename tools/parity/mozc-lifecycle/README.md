@@ -137,3 +137,25 @@ SeparateKeyRolesの修正後は関連Core／session 36テストとRust 1.99の�
 cameraの比較で、既知のc行の綴りをかな辞書より先に英語とする元のIsEnglishSpanの条件も移植しました。Fキーで見せる字種と、変換用の区間分類を分離します。比較は限定された語・設定・試験変換器の条件であり、全ての英語区間・保護範囲・スコア判定・カスタム表・実エンジンの候補順を証明しません。全機能とUIの移行は継続中で、今回の変更後の速度も未測定です。
 
 Shift＋Space修正後は全187テスト・Rust 1.99の全体／TSF-server Clippyが成功。最終Releaseのx64／x86で専用20操作の変換表示と確定・候補戻し／進め・空入力、workerの日本語通知と英語cameraの通知除外、既存ABI・文節伸縮20入力列・選択再変換28操作が成功しました。ローカル結果は`dist/shift-space-*.log`へ保存。先行ABI試験の古い全角スペース挿入前提による失敗も保持し、元版から採取した操作に合わせた期待値で再検査しています。
+
+## F9／F10の見た目が変わるケース切替
+
+元の公開MeltypeSessionでF9連打・F10連打・両キーの切替を96入力列（各6操作）実行し、各キーのconsumed／表示全文／変換状態を`upstream-case-keys.json`へ採取します。Manual／Balanced、ひらがな表示のhashi、すでに英語表示のhello、大文字HASHI、単字、数字、GitHub・apiV2を含みます。
+
+```powershell
+dotnet run --project tools/parity/mozc-lifecycle/MozcLifecycle.csproj -- --case-keys tools/parity/mozc-lifecycle/case-key-cases.json > case-keys-reference.jsonl
+python rust/native/tests/mozc_learning_reference.py filter-reference.jsonl raw-reference.jsonl clause-language-reference.jsonl clause-history-reference.jsonl single-choice-reference.jsonl engine-keys-reference.jsonl case-keys-reference.jsonl
+cargo test -p meltype-core --test upstream_case_keys --locked
+```
+
+元版は同じ見た目の段階を飛ばします。HASHIを英字表示中のF10はHashiへ進み、すでに英字表示のhelloの最初のF10はHELLOになります。F9／F10で幅を変えるときは、幅を変えた結果が現在表示と異なればまず打ったままの綴りを表示します。最大3段階の探索で、数字や単字も無限ループしません。変換候補の表示中は自動表示と区別し、打ったままから切替を開始します。
+
+Rustは切替前の表示と次の字種を比較し、同じ表示を飛ばします。専用C ABI試験`case_keys_smoke.py`も全96入力列で表示を照合し、最後にEnterで表示どおり確定することを検査します。元版ソースは変更せず、ホスト・入力・ソースのハッシュを固定データへ保持します。先行の全大文字での不一致は`dist/case-keys-before-fix.log`へ保存しています。
+
+この比較はASCII英字・数字のケース切替と全角化が中心で、Unicode全般の大文字変換、全編集履歴・JISかな・全候補源・変換中の全操作は引き続き確認が必要です。全Core・UIの移行完了や高速化を示す比較ではなく、今回の変更後の速度は未測定です。
+
+回帰で見つかったreviewと@nameも元版から追加採取し、先行78入力列は不変でした。@nameはSigilWordsDirectをOFFにして明示的に組成へ入れる条件です。元版のreview→REVIEW→Review→review、@name→@NAME→@nameの切替順に古い回帰試験の期待値を合わせています。先行の2件の失敗ログは保持しています。
+
+Mac向け共通Core回帰のseeyouagainも元版へ追加し、先行90入力列は不変でした。初回F10でSEEYOUAGAINへ変わる結果を記録し、明示字種を選んだ後には自動の単語間スペースを加えない回帰条件を維持しています。
+
+ケース切替の最終修正後は全188テストとRust 1.99の全体／TSF-server Clippyが成功。最終Release x64／x86で全96入力列の表示と最終確定、学習worker、既存ABI・Shift＋Space20操作・文節伸縮20入力列・選択再変換28操作も成功しました。結果は`dist/case-keys-*.log`へ保存。先行の古い期待値による失敗も保持しています。

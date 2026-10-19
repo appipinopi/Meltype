@@ -84,6 +84,8 @@
 
 - Shift＋Spaceを元版どおり、入力中は日本語候補を優先して変換開始、変換中は前候補、空入力は全角スペースへ修正。nativeの外部呼出しにもShiftを渡し、Fキー後も変換用の区間分類を保持。cameraなど既知のc行英語の判定条件も移植した。元版キー比較を50操作へ拡張し、先行30操作は不変。全187テスト・Rust 1.99の全体／TSF-server Clippyが成功。最終Releaseのx64／x86で元版Shift＋Space20操作の確定と変換表示・候補循環・空入力スペース、workerの日本語学習通知と英語文節の通知除外、既存ABI・文節伸縮20入力列・選択再変換28操作が成功。限定語とManual／Balancedの試験で、保護入力・独自表・スコア判定・全候補順の組合せは継続確認。今回の速度は未測定。[手順](../tools/parity/mozc-lifecycle/README.md)。
 
+- F9／F10のケース切替で、現在表示と同じ段階を飛ばすよう元版へ修正。英字表示中の初回F10、全大文字・単字・数字・混在表記と両キーの切替を、元版の公開入口96入力列／576操作で照合した。review・@name・seeyouagainの古い回帰前提も元版から取り直し、初期の78列と90列は不変。全188テスト・Rust 1.99の全体／TSF-server Clippyが成功。最終Release x64／x86で専用96列の表示と最終確定、学習worker・既存ABI・Shift＋Space20操作・文節伸縮20列・選択再変換28操作が成功。Unicode全般の大文字変換・全候補源・全編集履歴は継続確認で、今回の速度は未測定。[条件](../tools/parity/mozc-lifecycle/README.md)。
+
 ## 次に埋めるCoreの差
 
 1. 入力途中の区切り・保留子音・英語候補・音単位編集を、元版のCompositionText/CompositionDetectorと各キーで比較する。

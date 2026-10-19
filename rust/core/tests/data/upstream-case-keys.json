@@ -1,0 +1,4524 @@
+{
+  "baseline": "45e14f86558aa6ea34f2c2ecd038ba95ca8c3c46",
+  "sha256": {
+    "tools/parity/mozc-lifecycle/CaseKeys.cs": "b09942b3d1de8ae90f2bc724eb828d56eb68f2842388fde6ed9da29a54306c03",
+    "tools/parity/mozc-lifecycle/Program.cs": "f47fee22b4bbf33ed18bf45617725c2a74ba1bf2f76531e0b9fcd50cd4e82997",
+    "tools/parity/mozc-lifecycle/case-key-cases.json": "2841cfdd381241cd30fa68986a65a33b6816afba7df6cd5b7f8d24bc27e034b0",
+    "src/Meltype.Core/Composition/CompositionController.cs": "0b35121785c14431093c3a9b493030fc0483e2d7716f21e232e9c54686f68a03",
+    "src/Meltype.Core/Composition/CompositionText.cs": "c34d54b9c96ed66561e834d46f841d02b77b9a06423bf40d76f7f96f127a02ff"
+  },
+  "cases": [
+    {
+      "case": {
+        "name": "hashi-Manual-F9",
+        "raw": "hashi",
+        "level": "Manual",
+        "keys": [
+          120,
+          120,
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "ｈａｓｈｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＡＳＨＩ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈａｓｈｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ｈａｓｈｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＡＳＨＩ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈａｓｈｉ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "hashi-Manual-F10",
+        "raw": "hashi",
+        "level": "Manual",
+        "keys": [
+          121,
+          121,
+          121,
+          121,
+          121,
+          121
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "hashi",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "HASHI",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Hashi",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "hashi",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "HASHI",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Hashi",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "hashi-Manual-switch",
+        "raw": "hashi",
+        "level": "Manual",
+        "keys": [
+          121,
+          120,
+          121,
+          121,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "hashi",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ｈａｓｈｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "hashi",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "HASHI",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ｈａｓｈｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＡＳＨＩ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "hashi-Balanced-F9",
+        "raw": "hashi",
+        "level": "Balanced",
+        "keys": [
+          120,
+          120,
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "ｈａｓｈｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＡＳＨＩ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈａｓｈｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ｈａｓｈｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＡＳＨＩ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈａｓｈｉ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "hashi-Balanced-F10",
+        "raw": "hashi",
+        "level": "Balanced",
+        "keys": [
+          121,
+          121,
+          121,
+          121,
+          121,
+          121
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "hashi",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "HASHI",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Hashi",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "hashi",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "HASHI",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Hashi",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "hashi-Balanced-switch",
+        "raw": "hashi",
+        "level": "Balanced",
+        "keys": [
+          121,
+          120,
+          121,
+          121,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "hashi",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ｈａｓｈｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "hashi",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "HASHI",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ｈａｓｈｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＡＳＨＩ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "HASHI-Manual-F9",
+        "raw": "HASHI",
+        "level": "Manual",
+        "keys": [
+          120,
+          120,
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "ＨＡＳＨＩ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈａｓｈｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＡＳＨＩ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈａｓｈｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＡＳＨＩ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈａｓｈｉ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "HASHI-Manual-F10",
+        "raw": "HASHI",
+        "level": "Manual",
+        "keys": [
+          121,
+          121,
+          121,
+          121,
+          121,
+          121
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "Hashi",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "HASHI",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Hashi",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "HASHI",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Hashi",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "HASHI",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "HASHI-Manual-switch",
+        "raw": "HASHI",
+        "level": "Manual",
+        "keys": [
+          121,
+          120,
+          121,
+          121,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "Hashi",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＡＳＨＩ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "HASHI",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Hashi",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＡＳＨＩ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈａｓｈｉ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "HASHI-Balanced-F9",
+        "raw": "HASHI",
+        "level": "Balanced",
+        "keys": [
+          120,
+          120,
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "ＨＡＳＨＩ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈａｓｈｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＡＳＨＩ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈａｓｈｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＡＳＨＩ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈａｓｈｉ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "HASHI-Balanced-F10",
+        "raw": "HASHI",
+        "level": "Balanced",
+        "keys": [
+          121,
+          121,
+          121,
+          121,
+          121,
+          121
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "Hashi",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "HASHI",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Hashi",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "HASHI",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Hashi",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "HASHI",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "HASHI-Balanced-switch",
+        "raw": "HASHI",
+        "level": "Balanced",
+        "keys": [
+          121,
+          120,
+          121,
+          121,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "Hashi",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＡＳＨＩ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "HASHI",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Hashi",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＡＳＨＩ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈａｓｈｉ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "Hashi-Manual-F9",
+        "raw": "Hashi",
+        "level": "Manual",
+        "keys": [
+          120,
+          120,
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "Ｈａｓｈｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＡＳＨＩ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈａｓｈｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＡＳＨＩ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈａｓｈｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＡＳＨＩ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "Hashi-Manual-F10",
+        "raw": "Hashi",
+        "level": "Manual",
+        "keys": [
+          121,
+          121,
+          121,
+          121,
+          121,
+          121
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "HASHI",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Hashi",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "HASHI",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Hashi",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "HASHI",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Hashi",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "Hashi-Manual-switch",
+        "raw": "Hashi",
+        "level": "Manual",
+        "keys": [
+          121,
+          120,
+          121,
+          121,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "HASHI",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈａｓｈｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Hashi",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "HASHI",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈａｓｈｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＡＳＨＩ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "Hashi-Balanced-F9",
+        "raw": "Hashi",
+        "level": "Balanced",
+        "keys": [
+          120,
+          120,
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "Ｈａｓｈｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＡＳＨＩ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈａｓｈｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＡＳＨＩ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈａｓｈｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＡＳＨＩ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "Hashi-Balanced-F10",
+        "raw": "Hashi",
+        "level": "Balanced",
+        "keys": [
+          121,
+          121,
+          121,
+          121,
+          121,
+          121
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "HASHI",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Hashi",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "HASHI",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Hashi",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "HASHI",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Hashi",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "Hashi-Balanced-switch",
+        "raw": "Hashi",
+        "level": "Balanced",
+        "keys": [
+          121,
+          120,
+          121,
+          121,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "HASHI",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈａｓｈｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Hashi",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "HASHI",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈａｓｈｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＡＳＨＩ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "hello-Manual-F9",
+        "raw": "hello",
+        "level": "Manual",
+        "keys": [
+          120,
+          120,
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "ｈｅｌｌｏ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＥＬＬＯ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈｅｌｌｏ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ｈｅｌｌｏ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＥＬＬＯ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈｅｌｌｏ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "hello-Manual-F10",
+        "raw": "hello",
+        "level": "Manual",
+        "keys": [
+          121,
+          121,
+          121,
+          121,
+          121,
+          121
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "hello",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "HELLO",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Hello",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "hello",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "HELLO",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Hello",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "hello-Manual-switch",
+        "raw": "hello",
+        "level": "Manual",
+        "keys": [
+          121,
+          120,
+          121,
+          121,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "hello",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ｈｅｌｌｏ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "hello",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "HELLO",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ｈｅｌｌｏ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＥＬＬＯ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "hello-Balanced-F9",
+        "raw": "hello",
+        "level": "Balanced",
+        "keys": [
+          120,
+          120,
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "ｈｅｌｌｏ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＥＬＬＯ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈｅｌｌｏ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ｈｅｌｌｏ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＥＬＬＯ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈｅｌｌｏ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "hello-Balanced-F10",
+        "raw": "hello",
+        "level": "Balanced",
+        "keys": [
+          121,
+          121,
+          121,
+          121,
+          121,
+          121
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "HELLO",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Hello",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "hello",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "HELLO",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Hello",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "hello",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "hello-Balanced-switch",
+        "raw": "hello",
+        "level": "Balanced",
+        "keys": [
+          121,
+          120,
+          121,
+          121,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "HELLO",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ｈｅｌｌｏ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "hello",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "HELLO",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ｈｅｌｌｏ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＥＬＬＯ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "Hello-Manual-F9",
+        "raw": "Hello",
+        "level": "Manual",
+        "keys": [
+          120,
+          120,
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "Ｈｅｌｌｏ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＥＬＬＯ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈｅｌｌｏ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＥＬＬＯ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈｅｌｌｏ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＥＬＬＯ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "Hello-Manual-F10",
+        "raw": "Hello",
+        "level": "Manual",
+        "keys": [
+          121,
+          121,
+          121,
+          121,
+          121,
+          121
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "HELLO",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Hello",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "HELLO",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Hello",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "HELLO",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Hello",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "Hello-Manual-switch",
+        "raw": "Hello",
+        "level": "Manual",
+        "keys": [
+          121,
+          120,
+          121,
+          121,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "HELLO",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈｅｌｌｏ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Hello",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "HELLO",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈｅｌｌｏ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＥＬＬＯ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "Hello-Balanced-F9",
+        "raw": "Hello",
+        "level": "Balanced",
+        "keys": [
+          120,
+          120,
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "Ｈｅｌｌｏ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＥＬＬＯ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈｅｌｌｏ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＥＬＬＯ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈｅｌｌｏ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＥＬＬＯ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "Hello-Balanced-F10",
+        "raw": "Hello",
+        "level": "Balanced",
+        "keys": [
+          121,
+          121,
+          121,
+          121,
+          121,
+          121
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "HELLO",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Hello",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "HELLO",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Hello",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "HELLO",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Hello",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "Hello-Balanced-switch",
+        "raw": "Hello",
+        "level": "Balanced",
+        "keys": [
+          121,
+          120,
+          121,
+          121,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "HELLO",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈｅｌｌｏ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Hello",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "HELLO",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈｅｌｌｏ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＥＬＬＯ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "HELLO-Manual-F9",
+        "raw": "HELLO",
+        "level": "Manual",
+        "keys": [
+          120,
+          120,
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "ＨＥＬＬＯ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈｅｌｌｏ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＥＬＬＯ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈｅｌｌｏ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＥＬＬＯ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈｅｌｌｏ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "HELLO-Manual-F10",
+        "raw": "HELLO",
+        "level": "Manual",
+        "keys": [
+          121,
+          121,
+          121,
+          121,
+          121,
+          121
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "Hello",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "HELLO",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Hello",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "HELLO",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Hello",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "HELLO",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "HELLO-Manual-switch",
+        "raw": "HELLO",
+        "level": "Manual",
+        "keys": [
+          121,
+          120,
+          121,
+          121,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "Hello",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＥＬＬＯ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "HELLO",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Hello",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＥＬＬＯ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈｅｌｌｏ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "HELLO-Balanced-F9",
+        "raw": "HELLO",
+        "level": "Balanced",
+        "keys": [
+          120,
+          120,
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "ＨＥＬＬＯ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈｅｌｌｏ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＥＬＬＯ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈｅｌｌｏ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＥＬＬＯ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈｅｌｌｏ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "HELLO-Balanced-F10",
+        "raw": "HELLO",
+        "level": "Balanced",
+        "keys": [
+          121,
+          121,
+          121,
+          121,
+          121,
+          121
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "Hello",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "HELLO",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Hello",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "HELLO",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Hello",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "HELLO",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "HELLO-Balanced-switch",
+        "raw": "HELLO",
+        "level": "Balanced",
+        "keys": [
+          121,
+          120,
+          121,
+          121,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "Hello",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＥＬＬＯ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "HELLO",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Hello",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＨＥＬＬＯ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｈｅｌｌｏ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "i-Manual-F9",
+        "raw": "i",
+        "level": "Manual",
+        "keys": [
+          120,
+          120,
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "ｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｉ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "i-Manual-F10",
+        "raw": "i",
+        "level": "Manual",
+        "keys": [
+          121,
+          121,
+          121,
+          121,
+          121,
+          121
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "i",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "I",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "i",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "I",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "i",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "I",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "i-Manual-switch",
+        "raw": "i",
+        "level": "Manual",
+        "keys": [
+          121,
+          120,
+          121,
+          121,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "i",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "i",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "I",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｉ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "i-Balanced-F9",
+        "raw": "i",
+        "level": "Balanced",
+        "keys": [
+          120,
+          120,
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "ｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｉ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "i-Balanced-F10",
+        "raw": "i",
+        "level": "Balanced",
+        "keys": [
+          121,
+          121,
+          121,
+          121,
+          121,
+          121
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "i",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "I",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "i",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "I",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "i",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "I",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "i-Balanced-switch",
+        "raw": "i",
+        "level": "Balanced",
+        "keys": [
+          121,
+          120,
+          121,
+          121,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "i",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "i",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "I",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｉ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "I-Manual-F9",
+        "raw": "I",
+        "level": "Manual",
+        "keys": [
+          120,
+          120,
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "Ｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｉ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "I-Manual-F10",
+        "raw": "I",
+        "level": "Manual",
+        "keys": [
+          121,
+          121,
+          121,
+          121,
+          121,
+          121
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "I",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "I",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "I",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "I",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "I",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "I",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "I-Manual-switch",
+        "raw": "I",
+        "level": "Manual",
+        "keys": [
+          121,
+          120,
+          121,
+          121,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "I",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "I",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "I",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｉ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "I-Balanced-F9",
+        "raw": "I",
+        "level": "Balanced",
+        "keys": [
+          120,
+          120,
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "Ｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｉ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "I-Balanced-F10",
+        "raw": "I",
+        "level": "Balanced",
+        "keys": [
+          121,
+          121,
+          121,
+          121,
+          121,
+          121
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "I",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "I",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "I",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "I",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "I",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "I",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "I-Balanced-switch",
+        "raw": "I",
+        "level": "Balanced",
+        "keys": [
+          121,
+          120,
+          121,
+          121,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "I",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "I",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "I",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｉ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｉ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "a-Manual-F9",
+        "raw": "a",
+        "level": "Manual",
+        "keys": [
+          120,
+          120,
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "ａ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ａ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ａ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ａ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ａ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ａ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "a-Manual-F10",
+        "raw": "a",
+        "level": "Manual",
+        "keys": [
+          121,
+          121,
+          121,
+          121,
+          121,
+          121
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "a",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "A",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "a",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "A",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "a",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "A",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "a-Manual-switch",
+        "raw": "a",
+        "level": "Manual",
+        "keys": [
+          121,
+          120,
+          121,
+          121,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "a",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ａ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "a",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "A",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ａ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ａ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "a-Balanced-F9",
+        "raw": "a",
+        "level": "Balanced",
+        "keys": [
+          120,
+          120,
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "ａ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ａ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ａ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ａ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ａ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ａ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "a-Balanced-F10",
+        "raw": "a",
+        "level": "Balanced",
+        "keys": [
+          121,
+          121,
+          121,
+          121,
+          121,
+          121
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "a",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "A",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "a",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "A",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "a",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "A",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "a-Balanced-switch",
+        "raw": "a",
+        "level": "Balanced",
+        "keys": [
+          121,
+          120,
+          121,
+          121,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "a",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ａ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "a",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "A",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ａ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ａ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "A-Manual-F9",
+        "raw": "A",
+        "level": "Manual",
+        "keys": [
+          120,
+          120,
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "Ａ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ａ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ａ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ａ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ａ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ａ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "A-Manual-F10",
+        "raw": "A",
+        "level": "Manual",
+        "keys": [
+          121,
+          121,
+          121,
+          121,
+          121,
+          121
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "A",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "A",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "A",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "A",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "A",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "A",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "A-Manual-switch",
+        "raw": "A",
+        "level": "Manual",
+        "keys": [
+          121,
+          120,
+          121,
+          121,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "A",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ａ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "A",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "A",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ａ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ａ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "A-Balanced-F9",
+        "raw": "A",
+        "level": "Balanced",
+        "keys": [
+          120,
+          120,
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "Ａ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ａ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ａ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ａ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ａ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ａ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "A-Balanced-F10",
+        "raw": "A",
+        "level": "Balanced",
+        "keys": [
+          121,
+          121,
+          121,
+          121,
+          121,
+          121
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "A",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "A",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "A",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "A",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "A",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "A",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "A-Balanced-switch",
+        "raw": "A",
+        "level": "Balanced",
+        "keys": [
+          121,
+          120,
+          121,
+          121,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "A",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ａ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "A",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "A",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ａ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ａ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "123-Manual-F9",
+        "raw": "123",
+        "level": "Manual",
+        "keys": [
+          120,
+          120,
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "１２３",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "１２３",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "１２３",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "１２３",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "１２３",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "１２３",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "123-Manual-F10",
+        "raw": "123",
+        "level": "Manual",
+        "keys": [
+          121,
+          121,
+          121,
+          121,
+          121,
+          121
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "123",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "123",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "123",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "123",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "123",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "123",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "123-Manual-switch",
+        "raw": "123",
+        "level": "Manual",
+        "keys": [
+          121,
+          120,
+          121,
+          121,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "123",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "１２３",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "123",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "123",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "１２３",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "１２３",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "123-Balanced-F9",
+        "raw": "123",
+        "level": "Balanced",
+        "keys": [
+          120,
+          120,
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "１２３",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "１２３",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "１２３",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "１２３",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "１２３",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "１２３",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "123-Balanced-F10",
+        "raw": "123",
+        "level": "Balanced",
+        "keys": [
+          121,
+          121,
+          121,
+          121,
+          121,
+          121
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "123",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "123",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "123",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "123",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "123",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "123",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "123-Balanced-switch",
+        "raw": "123",
+        "level": "Balanced",
+        "keys": [
+          121,
+          120,
+          121,
+          121,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "123",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "１２３",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "123",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "123",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "１２３",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "１２３",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "GitHub-Manual-F9",
+        "raw": "GitHub",
+        "level": "Manual",
+        "keys": [
+          120,
+          120,
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "ＧｉｔＨｕｂ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＧＩＴＨＵＢ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｇｉｔｈｕｂ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＧｉｔＨｕｂ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＧＩＴＨＵＢ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｇｉｔｈｕｂ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "GitHub-Manual-F10",
+        "raw": "GitHub",
+        "level": "Manual",
+        "keys": [
+          121,
+          121,
+          121,
+          121,
+          121,
+          121
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "GITHUB",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Github",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "GitHub",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "GITHUB",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Github",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "GitHub",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "GitHub-Manual-switch",
+        "raw": "GitHub",
+        "level": "Manual",
+        "keys": [
+          121,
+          120,
+          121,
+          121,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "GITHUB",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＧｉｔＨｕｂ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "GitHub",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "GITHUB",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＧｉｔＨｕｂ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＧＩＴＨＵＢ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "GitHub-Balanced-F9",
+        "raw": "GitHub",
+        "level": "Balanced",
+        "keys": [
+          120,
+          120,
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "ＧｉｔＨｕｂ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＧＩＴＨＵＢ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｇｉｔｈｕｂ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＧｉｔＨｕｂ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＧＩＴＨＵＢ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｇｉｔｈｕｂ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "GitHub-Balanced-F10",
+        "raw": "GitHub",
+        "level": "Balanced",
+        "keys": [
+          121,
+          121,
+          121,
+          121,
+          121,
+          121
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "GITHUB",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Github",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "GitHub",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "GITHUB",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Github",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "GitHub",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "GitHub-Balanced-switch",
+        "raw": "GitHub",
+        "level": "Balanced",
+        "keys": [
+          121,
+          120,
+          121,
+          121,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "GITHUB",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＧｉｔＨｕｂ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "GitHub",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "GITHUB",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＧｉｔＨｕｂ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＧＩＴＨＵＢ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "apiV2-Manual-F9",
+        "raw": "apiV2",
+        "level": "Manual",
+        "keys": [
+          120,
+          120,
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "ａｐｉＶ２",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＡＰＩＶ２",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ａｐｉｖ２",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ａｐｉＶ２",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＡＰＩＶ２",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ａｐｉｖ２",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "apiV2-Manual-F10",
+        "raw": "apiV2",
+        "level": "Manual",
+        "keys": [
+          121,
+          121,
+          121,
+          121,
+          121,
+          121
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "apiV2",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "APIV2",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Apiv2",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "apiV2",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "APIV2",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Apiv2",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "apiV2-Manual-switch",
+        "raw": "apiV2",
+        "level": "Manual",
+        "keys": [
+          121,
+          120,
+          121,
+          121,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "apiV2",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ａｐｉＶ２",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "apiV2",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "APIV2",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ａｐｉＶ２",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＡＰＩＶ２",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "apiV2-Balanced-F9",
+        "raw": "apiV2",
+        "level": "Balanced",
+        "keys": [
+          120,
+          120,
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "ａｐｉＶ２",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＡＰＩＶ２",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ａｐｉｖ２",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ａｐｉＶ２",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＡＰＩＶ２",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ａｐｉｖ２",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "apiV2-Balanced-F10",
+        "raw": "apiV2",
+        "level": "Balanced",
+        "keys": [
+          121,
+          121,
+          121,
+          121,
+          121,
+          121
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "APIV2",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Apiv2",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "apiV2",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "APIV2",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Apiv2",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "apiV2",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "apiV2-Balanced-switch",
+        "raw": "apiV2",
+        "level": "Balanced",
+        "keys": [
+          121,
+          120,
+          121,
+          121,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "APIV2",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ａｐｉＶ２",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "apiV2",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "APIV2",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ａｐｉＶ２",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＡＰＩＶ２",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "review-Manual-F9",
+        "raw": "review",
+        "level": "Manual",
+        "keys": [
+          120,
+          120,
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "ｒｅｖｉｅｗ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＲＥＶＩＥＷ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｒｅｖｉｅｗ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ｒｅｖｉｅｗ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＲＥＶＩＥＷ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｒｅｖｉｅｗ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "review-Manual-F10",
+        "raw": "review",
+        "level": "Manual",
+        "keys": [
+          121,
+          121,
+          121,
+          121,
+          121,
+          121
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "review",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "REVIEW",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Review",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "review",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "REVIEW",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Review",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "review-Manual-switch",
+        "raw": "review",
+        "level": "Manual",
+        "keys": [
+          121,
+          120,
+          121,
+          121,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "review",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ｒｅｖｉｅｗ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "review",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "REVIEW",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ｒｅｖｉｅｗ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＲＥＶＩＥＷ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "review-Balanced-F9",
+        "raw": "review",
+        "level": "Balanced",
+        "keys": [
+          120,
+          120,
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "ｒｅｖｉｅｗ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＲＥＶＩＥＷ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｒｅｖｉｅｗ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ｒｅｖｉｅｗ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＲＥＶＩＥＷ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｒｅｖｉｅｗ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "review-Balanced-F10",
+        "raw": "review",
+        "level": "Balanced",
+        "keys": [
+          121,
+          121,
+          121,
+          121,
+          121,
+          121
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "REVIEW",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Review",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "review",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "REVIEW",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Review",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "review",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "review-Balanced-switch",
+        "raw": "review",
+        "level": "Balanced",
+        "keys": [
+          121,
+          120,
+          121,
+          121,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "REVIEW",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ｒｅｖｉｅｗ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "review",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "REVIEW",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ｒｅｖｉｅｗ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＲＥＶＩＥＷ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "@name-Manual-F9",
+        "raw": "@name",
+        "level": "Manual",
+        "keys": [
+          120,
+          120,
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "＠ｎａｍｅ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "＠ＮＡＭＥ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "＠ｎａｍｅ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "＠ＮＡＭＥ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "＠ｎａｍｅ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "＠ＮＡＭＥ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "@name-Manual-F10",
+        "raw": "@name",
+        "level": "Manual",
+        "keys": [
+          121,
+          121,
+          121,
+          121,
+          121,
+          121
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "@NAME",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "@name",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "@NAME",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "@name",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "@NAME",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "@name",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "@name-Manual-switch",
+        "raw": "@name",
+        "level": "Manual",
+        "keys": [
+          121,
+          120,
+          121,
+          121,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "@NAME",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "＠ｎａｍｅ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "@name",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "@NAME",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "＠ｎａｍｅ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "＠ＮＡＭＥ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "@name-Balanced-F9",
+        "raw": "@name",
+        "level": "Balanced",
+        "keys": [
+          120,
+          120,
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "＠ｎａｍｅ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "＠ＮＡＭＥ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "＠ｎａｍｅ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "＠ＮＡＭＥ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "＠ｎａｍｅ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "＠ＮＡＭＥ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "@name-Balanced-F10",
+        "raw": "@name",
+        "level": "Balanced",
+        "keys": [
+          121,
+          121,
+          121,
+          121,
+          121,
+          121
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "@NAME",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "@name",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "@NAME",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "@name",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "@NAME",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "@name",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "@name-Balanced-switch",
+        "raw": "@name",
+        "level": "Balanced",
+        "keys": [
+          121,
+          120,
+          121,
+          121,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "@NAME",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "＠ｎａｍｅ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "@name",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "@NAME",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "＠ｎａｍｅ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "＠ＮＡＭＥ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "seeyouagain-Manual-F9",
+        "raw": "seeyouagain",
+        "level": "Manual",
+        "keys": [
+          120,
+          120,
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "ｓｅｅｙｏｕａｇａｉｎ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＳＥＥＹＯＵＡＧＡＩＮ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｓｅｅｙｏｕａｇａｉｎ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ｓｅｅｙｏｕａｇａｉｎ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＳＥＥＹＯＵＡＧＡＩＮ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｓｅｅｙｏｕａｇａｉｎ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "seeyouagain-Manual-F10",
+        "raw": "seeyouagain",
+        "level": "Manual",
+        "keys": [
+          121,
+          121,
+          121,
+          121,
+          121,
+          121
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "seeyouagain",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "SEEYOUAGAIN",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Seeyouagain",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "seeyouagain",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "SEEYOUAGAIN",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Seeyouagain",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "seeyouagain-Manual-switch",
+        "raw": "seeyouagain",
+        "level": "Manual",
+        "keys": [
+          121,
+          120,
+          121,
+          121,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "seeyouagain",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ｓｅｅｙｏｕａｇａｉｎ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "seeyouagain",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "SEEYOUAGAIN",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ｓｅｅｙｏｕａｇａｉｎ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＳＥＥＹＯＵＡＧＡＩＮ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "seeyouagain-Balanced-F9",
+        "raw": "seeyouagain",
+        "level": "Balanced",
+        "keys": [
+          120,
+          120,
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "ｓｅｅｙｏｕａｇａｉｎ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＳＥＥＹＯＵＡＧＡＩＮ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｓｅｅｙｏｕａｇａｉｎ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ｓｅｅｙｏｕａｇａｉｎ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＳＥＥＹＯＵＡＧＡＩＮ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Ｓｅｅｙｏｕａｇａｉｎ",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "seeyouagain-Balanced-F10",
+        "raw": "seeyouagain",
+        "level": "Balanced",
+        "keys": [
+          121,
+          121,
+          121,
+          121,
+          121,
+          121
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "SEEYOUAGAIN",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Seeyouagain",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "seeyouagain",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "SEEYOUAGAIN",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "Seeyouagain",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "seeyouagain",
+          "converting": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "seeyouagain-Balanced-switch",
+        "raw": "seeyouagain",
+        "level": "Balanced",
+        "keys": [
+          121,
+          120,
+          121,
+          121,
+          120,
+          120
+        ]
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "text": "SEEYOUAGAIN",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ｓｅｅｙｏｕａｇａｉｎ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "seeyouagain",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "SEEYOUAGAIN",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ｓｅｅｙｏｕａｇａｉｎ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "text": "ＳＥＥＹＯＵＡＧＡＩＮ",
+          "converting": false
+        }
+      ]
+    }
+  ]
+}

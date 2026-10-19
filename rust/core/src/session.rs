@@ -1929,6 +1929,8 @@ impl Session {
                 self.result(true)
             }
             0x75..=0x79 if !self.raw.is_empty() => {
+                let before = (!self.is_converting()).then(|| self.display(false));
+                let same_mode = !self.is_converting() && self.function_key == vk;
                 self.candidates.clear();
                 self.clauses.clear();
                 self.live_clauses.clear();
@@ -1939,6 +1941,44 @@ impl Session {
                     0
                 };
                 self.function_key = vk;
+                if vk >= 0x78 {
+                    let render = |case: u8| {
+                        let raw = match case {
+                            1 => self.raw.to_ascii_uppercase(),
+                            2 => {
+                                let mut raw = self.raw.to_ascii_lowercase();
+                                if let Some(first) = raw.get_mut(..1) {
+                                    first.make_ascii_uppercase();
+                                }
+                                raw
+                            }
+                            _ => self.raw.clone(),
+                        };
+                        if vk == 0x78 {
+                            crate::kana::fullwidth(&raw)
+                        } else {
+                            raw
+                        }
+                    };
+                    if !same_mode {
+                        self.case_cycle = 0;
+                    }
+                    let mut output = render(self.case_cycle);
+                    if same_mode || before.as_deref() == Some(output.as_str()) {
+                        // Try all three cases: one-letter/uppercase/numeric
+                        // inputs can have identical visible representations.
+                        // same_mode already advanced the cycle above.
+                        for _ in 0..3 {
+                            if before.as_deref() != Some(output.as_str()) {
+                                break;
+                            }
+                            self.case_cycle = (self.case_cycle + 1) % 3;
+                            output = render(self.case_cycle);
+                        }
+                    }
+                    self.explicit = Some(output);
+                    return self.result(true);
+                }
                 let raw = match self.case_cycle {
                     1 => self.raw.to_ascii_uppercase(),
                     2 => {

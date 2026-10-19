@@ -262,10 +262,11 @@ fn halfwidth_case_and_jis_kana() {
     assert_eq!(s.commit().commits[0].text, "ｶﾞｯｺｳ");
     type_text(&mut s, "review");
     s.key(0x79, 0, 0);
-    s.key(0x79, 0, 0);
     assert_eq!(s.display(false), "REVIEW");
     s.key(0x79, 0, 0);
-    assert_eq!(s.commit().commits[0].text, "Review");
+    assert_eq!(s.display(false), "Review");
+    s.key(0x79, 0, 0);
+    assert_eq!(s.commit().commits[0].text, "review");
     s.settings.set("InputStyle", json!("Kana")).unwrap();
     for (vk, ch) in [(0x54, 't'), (0xc0, '@'), (0x51, 'q')] {
         s.key(vk, ch as i32, 0);
@@ -308,6 +309,7 @@ fn protected_spans_preserve_automatic_text_and_honor_explicit_width() {
         .unwrap();
     type_text(&mut uppercase, "@name");
     uppercase.key(0x79, 0, 0);
+    assert_eq!(uppercase.display(false), "@NAME");
     uppercase.key(0x79, 0, 0);
-    assert_eq!(uppercase.commit().commits[0].text, "@NAME");
+    assert_eq!(uppercase.commit().commits[0].text, "@name");
 }

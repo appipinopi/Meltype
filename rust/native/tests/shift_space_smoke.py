@@ -7,7 +7,9 @@ from pathlib import Path
 import sys
 import tempfile
 
-api=c.CDLL(sys.argv[1])
+filename='meltype_native.dll' if os.name=='nt' else ('libmeltype_native.dylib' if sys.platform=='darwin' else 'libmeltype_native.so')
+library=sys.argv[1] if len(sys.argv)>1 else os.path.abspath(os.path.join('target','release',filename))
+api=c.CDLL(library)
 allocator=c.CDLL('ucrtbase') if os.name=='nt' else c.CDLL(None)
 allocator.malloc.argtypes=[c.c_size_t];allocator.malloc.restype=c.c_void_p
 clause_type=c.CFUNCTYPE(c.c_void_p,c.c_char_p,c.c_char_p)
