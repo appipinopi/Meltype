@@ -60,6 +60,8 @@ jobs:
           python-version: '3.12'
       - name: Native ABI callbacks and live conversion
         run: python rust/native/tests/abi_smoke.py
+      - name: Unicode mark misspelling suggestions through native ABI
+        run: python rust/native/tests/misspelling_marks_smoke.py
       - name: Custom romaji original key traces through native ABI
         run: python rust/native/tests/custom_romaji_smoke.py
       - name: Scored segmentation original key traces through native ABI
@@ -117,6 +119,12 @@ jobs:
           dotnet run --project tools/parity/misspellings/Misspellings.csproj -- tools/parity/misspellings/cases.json > misspelling-reference.jsonl
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python rust/native/tests/misspelling_reference.py misspelling-reference.jsonl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --no-build --project tools/parity/misspellings/Misspellings.csproj -- --categories > unicode-mark-reference.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --no-build --project tools/parity/misspellings/Misspellings.csproj -- --shapes tools/parity/misspellings/shape-cases.json > unicode-shape-reference.jsonl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/parity/misspellings/generate-marks.py --categories unicode-mark-reference.json --shapes unicode-shape-reference.jsonl --check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Legacy input state, replay and prefix learning through native ABI
         run: python rust/native/tests/hook_smoke.py
@@ -233,6 +241,9 @@ jobs:
         with:
           python-version: '3.12'
           architecture: 'x86'
+      - name: Unicode mark suggestions in a 32-bit process
+        if: runner.os == 'Windows'
+        run: python rust/native/tests/misspelling_marks_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
       - name: Rust TSF COM calling conventions in a 32-bit process
         if: runner.os == 'Windows'
         run: python rust/native/tests/tsf_com_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll native/tip/bin/rust-x86/MeltypeTip.dll

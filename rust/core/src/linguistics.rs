@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Yukishiro, appipinopi
+mod normalization_marks;
 use crate::{romaji, storage::State};
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
     sync::OnceLock,
 };
-use unicode_normalization::{
-    char::{canonical_combining_class, is_combining_mark},
-    UnicodeNormalization,
-};
+use unicode_normalization::{char::canonical_combining_class, UnicodeNormalization};
 
 pub struct Linguistics {
     meanings: HashMap<String, Vec<(String, String)>>,
@@ -349,7 +347,7 @@ impl Linguistics {
 }
 fn shape(text: &str) -> String {
     text.nfd()
-        .filter(|c| !is_combining_mark(*c) && !"ッー".contains(*c))
+        .filter(|c| !normalization_marks::is_non_spacing_mark(*c) && !"ッー".contains(*c))
         .map(|c| match c {
             'ァ' => 'ア',
             'ィ' => 'イ',
@@ -384,4 +382,42 @@ pub fn distance(a: &str, b: &str, max: usize) -> usize {
         prev = row;
     }
     prev[b.len()]
+}
+
+#[cfg(test)]
+mod normalization_tests {
+    use super::*;
+    use base64::{engine::general_purpose::STANDARD, Engine};
+    #[test]
+    fn original_character_categories_and_shapes_match() {
+        let fixture: serde_json::Value =
+            serde_json::from_str(include_str!("../tests/data/upstream-unicode-marks.json"))
+                .unwrap();
+        let bitmap = STANDARD
+            .decode(fixture["categories"]["bitmap"].as_str().unwrap())
+            .unwrap();
+        assert_eq!(bitmap.len(), 8192);
+        for value in 0..65536u32 {
+            let expected = bitmap[value as usize / 8] & (1 << (value % 8)) != 0;
+            if let Some(c) = char::from_u32(value) {
+                assert_eq!(
+                    normalization_marks::is_non_spacing_mark(c),
+                    expected,
+                    "U+{value:04X}"
+                );
+            } else {
+                assert!(!expected);
+            }
+        }
+        let cases = fixture["shapes"].as_array().unwrap();
+        assert_eq!(cases.len(), 112);
+        for case in cases {
+            let reading = case["reading"].as_str().unwrap();
+            assert_eq!(
+                shape(reading),
+                case["expected"].as_str().unwrap(),
+                "{reading:?}"
+            );
+        }
+    }
 }

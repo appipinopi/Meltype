@@ -7,7 +7,7 @@ fn original_misspelling_dictionary_results_match() {
     let golden: Value =
         serde_json::from_str(include_str!("data/upstream-misspellings.json")).unwrap();
     let cases = golden["cases"].as_array().unwrap();
-    assert_eq!(cases.len(), 2182);
+    assert_eq!(cases.len(), 2281);
     let mut errors = 0;
     for row in cases {
         let reading = row["reading"].as_str().unwrap();
