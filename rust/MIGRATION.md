@@ -256,3 +256,5 @@
 - 固定ce689c0のWindows共通CoreをC# NativeAOTと再測定。学習を止める場合の確定時の情報組立てを省き、関連55テストとClippyが成功。各ケース6試行・全21入力の確定／途中状態が一致。Rustが速いのは5ケースで、日本語256キーは約2.84倍、URL128キーは約5.52倍の時間を要し、長文最適化は継続する。測定前後のソースと実行ファイルは一致。全機能・UI・TSF・メモリの性能を示す結果ではない。[記録](../tools/performance/windows/results/ce689c0.md)。
 
 - ASCIIの読みに一致できない書き間違い探索を辞書キーの条件から省いた。元版の正常結果459入力が一致し、137例外は別記。全185テストとClippyが成功。固定561b8f8の比較21/21一致で、URL256キーはC# 66.744ms／Rust 3.283ms。日本語256キーはC# 1851.947ms／Rust 5101.226msのため長文最適化は継続。[速度](../tools/performance/windows/results/561b8f8.md)／[辞書と例外の検証範囲](../tools/parity/misspellings/README.md)。
+
+- 誤字探索の重なる部分文字列で正規化を再利用。元版の正常結果2045入力が一致し、全185テストと両ABIのRelease回帰が成功。固定ac0fd42の共通Core比較で21/21一致。英語256キーはC# 1761.955ms／Rust 1008.310ms、日本語256キーはC# 1643.377ms／Rust 4230.685msで長文最適化は継続。[測定と範囲](../tools/performance/windows/results/ac0fd42.md)。
