@@ -2,6 +2,34 @@
 //! Provenance of a converter clause within the retained composition units.
 use super::*;
 impl Session {
+    pub(super) fn clause_history_change(clause: &Clause) -> Option<Change> {
+        let text = clause.text();
+        let translation = clause.translations.iter().any(|t| t == text);
+        if translation
+            || !clause.english
+                && clause.changed
+                && clause.reading.encode_utf16().count() >= 2
+                && text != clause.reading
+                && text != crate::romaji::katakana(&clause.reading)
+                && clause.raw.as_deref() != Some(text)
+                && !crate::time_candidates::is_dynamic_choice(&clause.reading, text)
+        {
+            Some(Change::Conversion {
+                reading: clause.reading.clone(),
+                text: text.into(),
+                translation,
+            })
+        } else {
+            None
+        }
+    }
+    pub(super) fn clause_history_changes(&self) -> Vec<Change> {
+        self.clauses
+            .iter()
+            .filter_map(Self::clause_history_change)
+            .collect()
+    }
+
     pub(super) fn clause_language_changes(&self) -> Vec<Change> {
         let mut changes = Vec::new();
         for clause in &self.clauses {
@@ -92,6 +120,74 @@ impl Session {
 mod tests {
     use super::*;
     #[test]
+    fn original_controller_clause_history_choices_match() {
+        let golden: serde_json::Value = serde_json::from_str(include_str!(
+            "../../tests/data/upstream-clause-history.json"
+        ))
+        .unwrap();
+        let cases = golden["cases"].as_array().unwrap();
+        assert_eq!(cases.len(), 25);
+        for row in cases {
+            let c = &row["case"];
+            let mut s = Session {
+                raw: "fixture".into(),
+                private: c["private"].as_bool().unwrap(),
+                ..Default::default()
+            };
+            s.settings
+                .set("LearningEnabled", c["learning"].clone())
+                .unwrap();
+            let reading = c["reading"].as_str().unwrap();
+            let mut clause = Clause::new(reading.into(), vec![c["text"].as_str().unwrap().into()]);
+            clause.raw = c["raw"].as_str().map(str::to_owned);
+            clause.english = c["english"].as_bool().unwrap();
+            clause.changed = c["changed"].as_bool().unwrap();
+            clause.translations = c["translations"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|t| t.as_str().unwrap().into())
+                .collect();
+            s.clauses = vec![clause];
+            for _ in 0..c["repeats"].as_u64().unwrap() {
+                s.learn(s.clause_history_changes());
+            }
+            let translations = s
+                .state
+                .translations
+                .get(reading)
+                .cloned()
+                .unwrap_or_default();
+            assert_eq!(
+                serde_json::json!({"selected":s.preferences.selected,"translations":translations}),
+                row["expected"],
+                "{}",
+                c["name"]
+            );
+        }
+    }
+    #[test]
+    fn only_explicit_clause_choices_enter_conversion_history() {
+        let mut s = Session {
+            raw: "hashi".into(),
+            ..Default::default()
+        };
+        s.settings
+            .set("LearningEnabled", serde_json::json!(true))
+            .unwrap();
+        assert!(s.begin_clauses(vec![Clause::new("はし".into(), vec!["橋".into()])]));
+        s.commit();
+        assert!(s.preferences.selected.is_empty());
+        s.raw = "hashi".into();
+        assert!(s.begin_clauses(vec![Clause::new("はし".into(), vec!["橋".into()])]));
+        assert!(s.select_composing(0).consumed);
+        s.commit();
+        assert_eq!(
+            s.preferences.selected.get("はし").map(String::as_str),
+            Some("橋")
+        );
+    }
+    #[test]
     fn original_controller_clause_language_choices_match() {
         let golden: serde_json::Value = serde_json::from_str(include_str!(
             "../../tests/data/upstream-clause-language.json"
@@ -178,10 +274,7 @@ mod tests {
         s.commit();
         assert!(!s.preferences.selected.contains_key("はし"));
         assert!(!s.preferences.selected.contains_key("はしかみ"));
-        assert_eq!(
-            s.preferences.selected.get("かみ").map(String::as_str),
-            Some("紙")
-        );
+        assert!(!s.preferences.selected.contains_key("かみ"));
         s.raw = "hashikami".into();
         assert!(s.begin_clauses(vec![
             Clause::new("はし".into(), vec!["hashi".into()]),

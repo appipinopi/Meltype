@@ -158,10 +158,11 @@ impl State {
                 text,
                 translation,
             } => {
-                if crate::time_candidates::is_dynamic_choice(&reading, &text) {
-                    return;
-                }
-                if reading.chars().count() < 2 || text.is_empty() {
+                if !translation
+                    && (crate::time_candidates::is_dynamic_choice(&reading, &text)
+                        || reading.encode_utf16().count() < 2
+                        || text.is_empty())
+                {
                     return;
                 }
                 if translation {

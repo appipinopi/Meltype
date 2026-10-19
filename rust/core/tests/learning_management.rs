@@ -64,3 +64,40 @@ fn forgetting_individual_learning_keeps_other_readings_dictionary_and_snippets()
     assert_eq!(state.preferences.user_dictionary["はし"], ["箸"]);
     assert_eq!(state.snippets["sig"], "署名");
 }
+
+#[test]
+fn translation_counts_keep_short_readings_and_normal_history_uses_utf16_length() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = Store::new(dir.path());
+    store
+        .record(vec![
+            Change::Conversion {
+                reading: "き".into(),
+                text: "tree".into(),
+                translation: true,
+            },
+            Change::Conversion {
+                reading: "き".into(),
+                text: "tree".into(),
+                translation: true,
+            },
+            Change::Conversion {
+                reading: "き".into(),
+                text: "木".into(),
+                translation: false,
+            },
+            Change::Conversion {
+                reading: "😀".into(),
+                text: "笑顔".into(),
+                translation: false,
+            },
+        ])
+        .unwrap();
+    let state = store.load().unwrap();
+    assert_eq!(state.translations["き"]["tree"], 2);
+    assert!(!state.preferences.selected.contains_key("き"));
+    assert_eq!(
+        state.preferences.selected.get("😀").map(String::as_str),
+        Some("笑顔")
+    );
+}

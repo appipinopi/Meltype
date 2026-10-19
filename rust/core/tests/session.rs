@@ -158,7 +158,7 @@ fn live_preview_retains_reading_promotes_to_clauses_and_respects_settings() {
     s.reset();
     type_text(&mut s, "nihongo");
     assert_eq!(s.live_reading().as_deref(), Some("にほんご"));
-    let clause = || Clause::new("にほんご".into(), vec!["日本語".into(), "ニホンゴ".into()]);
+    let clause = || Clause::new("にほんご".into(), vec!["日本語".into(), "日本語訳".into()]);
     assert!(s.update_live_conversion(vec![clause()]));
     assert!(!s.is_converting());
     assert_eq!(s.display(false), "日本語");
@@ -169,7 +169,7 @@ fn live_preview_retains_reading_promotes_to_clauses_and_respects_settings() {
     s.select(1);
     type_text(&mut s, "nihongo");
     s.update_live_conversion(vec![clause()]);
-    assert_eq!(s.display(false), "ニホンゴ");
+    assert_eq!(s.display(false), "日本語訳");
     s.key(8, 0, 0);
     assert_eq!(s.display(false), "にほん");
     s.reset();

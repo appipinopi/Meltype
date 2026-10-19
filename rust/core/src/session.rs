@@ -943,22 +943,16 @@ impl Session {
                 }]
             };
             changes.extend(self.clause_language_changes());
-            for clause in self.clauses.iter().chain(&self.live_clauses) {
-                if clause.raw.as_deref() == Some(clause.text()) {
-                    continue;
+            changes.extend(self.clause_history_changes());
+            if self.is_converting() && self.clauses.is_empty() {
+                let mut clause = Clause::new(reading.clone(), vec![text.clone()]);
+                clause.raw = (!self.uses_kana() && self.reconversion_origin.is_none())
+                    .then(|| self.raw.clone());
+                clause.changed = self.chosen_conversion;
+                clause.translations = self.translation_candidates.clone();
+                if let Some(change) = Self::clause_history_change(&clause) {
+                    changes.push(change);
                 }
-                changes.push(Change::Conversion {
-                    reading: clause.reading.clone(),
-                    text: clause.text().to_owned(),
-                    translation: clause.translations.iter().any(|t| t == clause.text()),
-                });
-            }
-            if self.is_converting() && self.clauses.is_empty() && !dynamic && text != self.raw {
-                changes.push(Change::Conversion {
-                    reading: reading.clone(),
-                    text: text.clone(),
-                    translation: self.translation_candidates.contains(&text),
-                });
             }
             if self.function_key != 0 {
                 changes.push(Change::Language {
