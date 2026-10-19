@@ -86,7 +86,10 @@ impl Clause {
                 unique.push(candidate);
             }
         }
-        if !unique.contains(&reading) {
+        // Converter replies retain their order. The session adds kana/raw
+        // alternatives when building the final list; injecting a reading here
+        // would place it ahead of dictionary words and shift numbered choices.
+        if unique.is_empty() {
             unique.push(reading.clone());
         }
         Self {
@@ -1229,6 +1232,24 @@ impl Session {
         }
         self.commit()
     }
+    fn select_number(&mut self, row: usize) -> Option<SessionResult> {
+        let index = self.selected / 9 * 9 + row;
+        if index >= self.candidates.len() {
+            return None;
+        }
+        self.chosen_conversion = true;
+        self.selected = index;
+        if let Some(clause) = self.clauses.get_mut(self.selected_clause) {
+            clause.selected = index;
+            clause.changed = true;
+            if self.selected_clause + 1 < self.clauses.len() {
+                self.selected_clause += 1;
+                self.sync_clause();
+                return Some(self.result(true));
+            }
+        }
+        Some(self.commit())
+    }
     pub fn begin_conversion(&mut self, external: Vec<String>) {
         let _romaji = romaji::Scope::new(self.custom_romaji.clone());
         if self.raw.is_empty() || self.is_converting() {
@@ -1388,12 +1409,16 @@ impl Session {
             values.extend(clause.candidates.clone());
             if !self.external_converter_only {
                 values.extend(Dictionary::bundled().candidates(&clause.reading));
-                values.extend(Linguistics::bundled().words(&clause.reading));
+                // MeaningDictionary supplies annotations in the original, not
+                // extra conversion candidates. Adding its reverse readings
+                // changes both candidate numbering and the final-page size.
                 if let Some(context) = Linguistics::bundled()
                     .context(&clause.reading, &format!("{}{}", self.before, self.after))
                 {
                     values.insert(0, context);
                 }
+            } else if !values.contains(&clause.reading) {
+                values.push(clause.reading.clone());
             }
             let translations = if self.settings.boolean("TranslationCandidates") {
                 let translations = Linguistics::bundled().translations(
@@ -1406,10 +1431,20 @@ impl Session {
             } else {
                 Vec::new()
             };
+            crate::math_candidates::augment(&clause.reading, &preceding, &mut values);
+            // AddRawCandidates in the original controller places the typed
+            // spelling and its fullwidth form after the Japanese alternatives;
+            // MoveEmojiLast then moves emoji behind those spellings.
+            if let Some(raw) = clause
+                .raw
+                .as_ref()
+                .filter(|raw| raw.chars().any(|c| ('!'..='~').contains(&c)))
+            {
+                values.extend([raw.clone(), crate::kana::fullwidth(raw)]);
+            }
             let emoji = Dictionary::bundled().emoji(&clause.reading);
             values.retain(|candidate| !emoji.contains(candidate));
             values.extend(emoji);
-            crate::math_candidates::augment(&clause.reading, &preceding, &mut values);
             let has_preference = self.preferences.selected.contains_key(&clause.reading)
                 || !self.external_converter_only
                     && Linguistics::bundled()
@@ -1664,6 +1699,15 @@ impl Session {
             self.correctable.clear();
             result.consumed = false;
             return result;
+        }
+        if self.is_converting()
+            && modifiers & 1 == 0
+            && (matches!(vk, 0x31..=0x39) && !self.uses_kana() || matches!(vk, 0x61..=0x69))
+        {
+            let row = if vk >= 0x61 { vk - 0x61 } else { vk - 0x31 };
+            if let Some(result) = self.select_number(row as usize) {
+                return result;
+            }
         }
         match vk {
             0x20 if modifiers & 1 != 0 && !self.raw.is_empty() => {

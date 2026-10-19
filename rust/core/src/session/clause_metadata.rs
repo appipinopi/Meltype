@@ -144,6 +144,85 @@ impl Session {
 mod tests {
     use super::*;
     #[test]
+    fn original_number_key_page_selection_and_clause_advance_match() {
+        let fixture: serde_json::Value =
+            serde_json::from_str(include_str!("../../tests/data/upstream-number-keys.json"))
+                .unwrap();
+        let cases = fixture["cases"].as_array().unwrap();
+        assert_eq!(cases.len(), 39);
+        for row in cases {
+            let c = &row["case"];
+            let clauses = c["clauses"].as_u64().unwrap() as usize;
+            let active = c["active"].as_u64().unwrap() as usize;
+            let mut s = Session {
+                raw: if clauses == 1 {
+                    "hashi".into()
+                } else {
+                    "hashikami".into()
+                },
+                ..Default::default()
+            };
+            for name in ["LiveConversion", "PredictiveCandidates", "LearningEnabled"] {
+                s.settings.set(name, serde_json::json!(false)).unwrap();
+            }
+            s.settings
+                .set("DetectionLevel", serde_json::json!("Manual"))
+                .unwrap();
+            if c["kana"] == true {
+                s.settings
+                    .set("InputStyle", serde_json::json!("Kana"))
+                    .unwrap();
+            }
+            s.clauses = (0..clauses)
+                .map(|i| {
+                    let mut clause = Clause::new(
+                        if i == 0 {
+                            "はし".into()
+                        } else {
+                            "かみ".into()
+                        },
+                        (0..c["count"].as_u64().unwrap())
+                            .map(|n| format!("候補{i}_{n}"))
+                            .collect(),
+                    );
+                    if i == active {
+                        clause.selected = c["start"].as_u64().unwrap() as usize;
+                    }
+                    clause
+                })
+                .collect();
+            s.selected_clause = active;
+            s.sync_clause();
+            let digit = c["row"].as_i64().unwrap() as i32 + 1;
+            let result = s.key(
+                if c["keypad"] == true {
+                    0x60 + digit
+                } else {
+                    0x30 + digit
+                },
+                '0' as i32 + digit,
+                0,
+            );
+            let commits: Vec<_> = result.commits.iter().map(|e| serde_json::json!({"deleteBefore":e.delete_before,"text":e.text,"expect":e.expect})).collect();
+            let view = result.view.as_ref();
+            let mut expected = row["expected"].clone();
+            // Selection positions outside conversion are not used by candidate
+            // navigation (the original reports -1 while this ABI uses 0).
+            // Preserve those original values in the fixture, and compare
+            // selection positions whenever the candidate UI is active.
+            if !view.is_some_and(|v| v.converting) {
+                expected["selectedClause"] = serde_json::json!(0);
+                expected["selectedIndex"] = serde_json::json!(0);
+            }
+            assert_eq!(
+                serde_json::json!({"consumed":result.consumed,"commits":commits,"text":view.map(|v|v.text.as_str()),"converting":view.is_some_and(|v|v.converting),"selectedClause":view.map_or(0,|v|v.selected_clause),"selectedIndex":view.map_or(0,|v|v.selected_index)}),
+                expected,
+                "{}",
+                c["name"]
+            );
+        }
+    }
+    #[test]
     fn original_single_conversion_and_go_preview_learning_match() {
         let golden: serde_json::Value =
             serde_json::from_str(include_str!("../../tests/data/upstream-single-choice.json"))

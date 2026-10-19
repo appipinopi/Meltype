@@ -57,3 +57,19 @@ if len(sys.argv)>7:
     assert len(actual)==len(expected)==96
     for got,want in zip(actual,expected):assert got==want,(want['case']['name'],want,got)
     print('Original public session: 96 F9/F10 visible case-switch sequences reproduced')
+
+if len(sys.argv)>8:
+    fixture=Path(__file__).resolve().parents[2]/'core/tests/data/upstream-number-keys.json'
+    expected=json.loads(fixture.read_text(encoding='utf-8'))['cases']
+    actual=[json.loads(line) for line in Path(sys.argv[8]).read_text(encoding='utf-8-sig').splitlines() if line.startswith('{')]
+    assert len(actual)==len(expected)==39
+    for got,want in zip(actual,expected):assert got==want,(want['case']['name'],want,got)
+    print('Original controller: 39 expanded-state numeric selection reproduced')
+
+if len(sys.argv)>9:
+    fixture=Path(__file__).resolve().parents[2]/'core/tests/data/upstream-public-number-keys.json'
+    expected=json.loads(fixture.read_text(encoding='utf-8'))['cases']
+    actual=[json.loads(line) for line in Path(sys.argv[9]).read_text(encoding='utf-8-sig').splitlines() if line.startswith('{')]
+    assert len(actual)==len(expected)==48
+    for got,want in zip(actual,expected):assert got==want,(want['case']['name'],want,got)
+    print('Original controller: 48 public numeric candidate-selection key traces reproduced')

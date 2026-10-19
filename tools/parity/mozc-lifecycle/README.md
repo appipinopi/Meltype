@@ -159,3 +159,21 @@ Rustは切替前の表示と次の字種を比較し、同じ表示を飛ばし�
 Mac向け共通Core回帰のseeyouagainも元版へ追加し、先行90入力列は不変でした。初回F10でSEEYOUAGAINへ変わる結果を記録し、明示字種を選んだ後には自動の単語間スペースを加えない回帰条件を維持しています。
 
 ケース切替の最終修正後は全188テストとRust 1.99の全体／TSF-server Clippyが成功。最終Release x64／x86で全96入力列の表示と最終確定、学習worker、既存ABI・Shift＋Space20操作・文節伸縮20入力列・選択再変換28操作も成功しました。結果は`dist/case-keys-*.log`へ保存。先行の古い期待値による失敗も保持しています。
+
+## 数字キーによる候補選択
+
+`NumberKeys.cs`は元のControllerに既に展開した候補を設定し、公開HandleKeyで39状態を採取します。1〜9とテンキー、9件単位のページ、複数文節の次文節への移動と最後の確定、候補不足の番号の通常入力、かな入力時のテンキーを含みます。これは候補生成を省いた状態遷移の検査です。
+
+別途`PublicNumberKeys.cs`は内部状態を書き換えず、文字入力からSpace・文節選択・候補移動・番号・Enterまで48入力列を元の公開Sessionへ送ります。固定変換器は各読みへ20候補を返し、元版の同梱候補辞書も読み込みます。`upstream-public-number-keys.json`に全返信を保持し、`number_keys_smoke.py`が実DLLの同じキーと変換コールバックで、消費・確定編集・表示・全文節・変換中の選択位置と候補一覧を比較します。1〜4ページ目、ローマ字候補と絵文字を含む末尾、番号が無いときの入力継続を検査します。非変換中の選択位置（元版-1／Rust 0）、ヒントや意味注釈、実OSの描画はこの照合の対象外です。
+
+比較で数字キー処理の欠落に加え、読みが辞書候補より前へ入ること、打ったローマ字と全角形の欠落、意味注釈用辞書の逆引き語が余分な候補になることを発見しました。外部変換文節の候補組立てを修正し、ローマ字の後ろへ絵文字を配置します。Clauseの生成は入力された候補順を維持し、空の応答だけ読みへフォールバックします。変換器が無いローカル変換経路と全候補源の順序、候補の取得タイミング、全設定・編集履歴の組合せは継続確認です。
+
+```powershell
+dotnet run --project tools/parity/mozc-lifecycle/MozcLifecycle.csproj -- --number-keys tools/parity/mozc-lifecycle/number-key-cases.json
+dotnet run --no-build --project tools/parity/mozc-lifecycle/MozcLifecycle.csproj -- --public-number-keys tools/parity/mozc-lifecycle/public-number-key-cases.json
+python rust/native/tests/number_keys_smoke.py target/release/meltype_native.dll
+```
+
+CIは元版から両固定データを再採取して照合し、DLL試験を各OSとWindows x86へ追加しています。今回の修正後の速度は未測定で、全Core・UIの移行完了を示すものではありません。
+
+最終修正後は全189テストとRust 1.99のワークスペース／TSF-server Clippyが成功。最終Releaseのx64／x86で公開キー48入力列の消費・確定・表示・文節・変換中の選択位置と候補一覧が一致しました。既存ABI、ケース切替96列、Shift＋Space20操作、文節伸縮20列、選択再変換28操作、結合文字8入力も両ABIで成功。最終Release workerの実フレーム通信も成功しています。元版から39状態と48入力列を再採取する参照検査も成功し、先行の候補順の不一致ログは保存しています。結果は`dist/number-keys-*.log`へ記録しました。

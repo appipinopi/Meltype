@@ -66,6 +66,8 @@ jobs:
         run: python rust/native/tests/shift_space_smoke.py
       - name: F9 F10 case cycles through native ABI
         run: python rust/native/tests/case_keys_smoke.py
+      - name: Numeric candidate selection through native ABI
+        run: python rust/native/tests/number_keys_smoke.py
       - name: Custom romaji original key traces through native ABI
         run: python rust/native/tests/custom_romaji_smoke.py
       - name: Scored segmentation original key traces through native ABI
@@ -112,7 +114,11 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           dotnet run --no-build --project tools/parity/mozc-lifecycle/MozcLifecycle.csproj -- --case-keys tools/parity/mozc-lifecycle/case-key-cases.json > case-keys-reference.jsonl
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python rust/native/tests/mozc_learning_reference.py mozc-learning-filter-reference.jsonl clause-raw-reference.jsonl clause-language-reference.jsonl clause-history-reference.jsonl single-choice-reference.jsonl engine-keys-reference.jsonl case-keys-reference.jsonl
+          dotnet run --no-build --project tools/parity/mozc-lifecycle/MozcLifecycle.csproj -- --number-keys tools/parity/mozc-lifecycle/number-key-cases.json > number-keys-reference.jsonl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --no-build --project tools/parity/mozc-lifecycle/MozcLifecycle.csproj -- --public-number-keys tools/parity/mozc-lifecycle/public-number-key-cases.json > public-number-keys-reference.jsonl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/mozc_learning_reference.py mozc-learning-filter-reference.jsonl clause-raw-reference.jsonl clause-language-reference.jsonl clause-history-reference.jsonl single-choice-reference.jsonl engine-keys-reference.jsonl case-keys-reference.jsonl number-keys-reference.jsonl public-number-keys-reference.jsonl
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo build -p meltype-core --example mozc_lifecycle --locked
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -258,6 +264,9 @@ jobs:
       - name: F9 F10 case cycles in a 32-bit process
         if: runner.os == 'Windows'
         run: python rust/native/tests/case_keys_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
+      - name: Numeric candidate selection through x86 native ABI
+        if: runner.os == 'Windows'
+        run: python rust/native/tests/number_keys_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
       - name: Rust TSF COM calling conventions in a 32-bit process
         if: runner.os == 'Windows'
         run: python rust/native/tests/tsf_com_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll native/tip/bin/rust-x86/MeltypeTip.dll

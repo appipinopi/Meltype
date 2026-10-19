@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 using System.Text.Json;
 using Meltype.Composition;
+if(args[0]=="--public-number-keys") { PublicNumberKeys.Write(args[1]); return; }
+if(args[0]=="--number-keys") { NumberKeys.Write(args[1]); return; }
 if(args[0]=="--case-keys") { CaseKeys.Write(args[1]); return; }
 if(args[0]=="--engine-keys") { EngineKeys.Write(args[1]); return; }
 if(args[0]=="--choice") { Choice.Write(args[1]); return; }
