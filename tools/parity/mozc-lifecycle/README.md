@@ -108,7 +108,7 @@ dotnet run --project tools/parity/mozc-lifecycle/MozcLifecycle.csproj -- --engin
 python rust/native/tests/mozc_learning_reference.py filter-reference.jsonl raw-reference.jsonl clause-language-reference.jsonl clause-history-reference.jsonl single-choice-reference.jsonl engine-keys-reference.jsonl
 ```
 
-F6〜F8で表示字種を変えた後でも、実際に変換した日本語はエンジンへ学習通知します。F9／F10の後のSpaceは表示中の英字に空白を付けて確定し、変換やエンジン学習を始めません。変換キーを使えば変換でき、通常の学習選別を適用します。学習無効とプライベート欄では通知せず、英語文節の日本語候補も元のエンジン学習対象から除きます。
+F6〜F8で表示字種を変えた後でも、実際に変換した日本語はエンジンへ学習通知します。SeparateKeyRolesがOFFの場合、F9／F10の後のSpaceは表示中の英字に空白を付けて確定し、変換やエンジン学習を始めません。変換キーを使えば変換でき、通常の学習選別を適用します。学習無効とプライベート欄では通知せず、英語文節の日本語候補も元のエンジン学習対象から除きます。
 
 Rustでは単一変換の文節情報を通常履歴・日英学習・エンジン通知で共有します。Coreの比較は仮の外部変換応答をキー分岐後に設定する試験であり、OSへの配送の証明とは分けます。文節ありと文節なしの経路を両方検査し、全大文字の英語文節2操作は単一変換経路で比較します。Windowsの実フレーム通信試験にもF6〜F8後の学習通知とF9／F10のSpace確定を加えています。
 
@@ -117,3 +117,11 @@ Rustでは単一変換の文節情報を通常履歴・日英学習・エンジ�
 先行のworker検査では、ネイティブABIがCoreのキー処理より前に外部変換を始め、F9のSpaceが英字確定にならない差も検出しました（`dist/engine-keys-shipping-x64-worker.log`）。ネイティブの変換開始条件もCoreと同じ判定を参照するよう修正し、最終worker検査では英字確定時の変換問合せが増えないことまで調べます。
 
 今回の全187テストが成功。最後のnative先行変換修正後もCore／sessionの関連36テスト・native単体41テストとRust 1.99の全体／TSF-server Clippyが成功しました。最終Releaseのx64／x86で追加したFキー後の実フレーム通信、既存ABI・文節伸縮20入力列・選択再変換28操作・結合文字8入力が成功。ログは`dist/engine-keys-final-*.log`へ保存。試験ヘルパーによる通知検証であり、実Mozcの永続辞書学習は未確認です。
+
+## キーの役割を分ける設定とF9／F10
+
+比較を30操作へ拡張しました。元版ではSeparateKeyRolesがONの場合、F9／F10の後でもSpaceは候補を開きます。OFFの場合の英字＋空白の確定とは別の動作です。直近の英字確定の修正がONにも適用されていた差を`dist/separate-engine-keys-before-fix.log`へ保存し、Coreとnativeが参照する共通の条件へ設定判定を追加しました。
+
+元版から採取した最初の24操作は不変です。追加6操作は通常表示とF6〜F10のあと、SeparateKeyRolesをONにしたSpaceでの変換状態・確定全文・学習通知を比較します。Windowsの実フレーム通信でも設定OFFの英字確定／問合せ抑止と、ONの候補開始／確定後の学習通知を同じworkerで検査します。全設定や全キー操作の組合せを証明するものではなく、全候補源・途中編集・実Mozcの永続学習・TSF適用失敗時の学習整合は継続確認です。今回の修正後の速度は未測定です。
+
+SeparateKeyRolesの修正後は関連Core／session 36テストとRust 1.99の全体／TSF-server Clippyが成功。最終Release x64／x86で、設定ONのF9／F10後の候補開始と学習通知、OFFの英字確定と外部問合せ抑止、既存ABI・文節伸縮20入力列・選択再変換28操作が成功しました。ログは`dist/separate-engine-keys-*.log`へ保存しています。全187テストは直前版の実行結果で、今回の修正では関連範囲と最終実行ファイルの回帰を確認しています。

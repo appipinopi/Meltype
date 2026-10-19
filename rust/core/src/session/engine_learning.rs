@@ -122,7 +122,7 @@ mod tests {
             serde_json::from_str(include_str!("../../tests/data/upstream-engine-keys.json"))
                 .unwrap();
         let cases = golden["cases"].as_array().unwrap();
-        assert_eq!(cases.len(), 24);
+        assert_eq!(cases.len(), 30);
         for row in cases {
             let c = &row["case"];
             let raw = c["raw"].as_str().unwrap();
@@ -141,7 +141,10 @@ mod tests {
                     ("LiveConversion", false),
                     ("PredictiveCandidates", false),
                     ("LearningEnabled", c["learning"].as_bool().unwrap()),
-                    ("SeparateKeyRoles", c["action"] == "convert"),
+                    (
+                        "SeparateKeyRoles",
+                        c["separate"].as_bool().unwrap_or(c["action"] == "convert"),
+                    ),
                 ] {
                     s.settings.set(name, serde_json::json!(value)).unwrap();
                 }

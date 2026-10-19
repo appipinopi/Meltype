@@ -9,7 +9,7 @@ internal static class EngineKeys {
         foreach(var row in JsonDocument.Parse(File.ReadAllText(path)).RootElement.EnumerateArray()) {
             var learner=new Learner();
             var detector=CompositionDetector.CreateDefault();detector.SpellChecker=BuiltInWordChecker.Shared;
-            var separate=row.GetProperty("action").GetString()=="convert";
+            var separate=row.TryGetProperty("separate",out var mode)?mode.GetBoolean():row.GetProperty("action").GetString()=="convert";
             var settings=new Settings { DetectionLevel=DetectionLevel.Manual, LiveConversion=false, PredictiveCandidates=false, SeparateKeyRoles=separate };
             var options=new CompositionOptions { Learning=()=>row.GetProperty("learning").GetBoolean(), Level=()=>DetectionLevel.Manual,
                 SeparateKeyRoles=()=>separate, LiveConversion=()=>false, RomajiTypos=RomajiTypoCorrector.Load(detector.Romaji) };
@@ -23,7 +23,8 @@ internal static class EngineKeys {
             var force=row.GetProperty("force").GetInt32();if(force!=0)Press(force);
             var converting=false;
             if(row.GetProperty("action").GetString()!="enter") {
-                var start=Press(separate?28:32,separate?null:' ');converting=start.View?.Converting==true;
+                var convert=row.GetProperty("action").GetString()=="convert";
+                var start=Press(convert?28:32,convert?null:' ');converting=start.View?.Converting==true;
                 if(converting && row.GetProperty("target").GetString() is {} target) {
                     var index=start.View!.Candidates.ToList().IndexOf(target);if(index<0)throw new Exception("Missing target "+target);
                     session.SelectCandidate(index);

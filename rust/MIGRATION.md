@@ -262,3 +262,5 @@
 - 元版と異なっていた結合文字の除外を修正。UTF-16 charのMn分類をRustの212範囲へ固定し、全65,536値と正規化112例、正常結果2144入力が一致。全186テストと両ABIの結合文字入力8ケース・既存回帰が成功。新しい実行時依存は追加せず、今回の分類修正の速度はまだ再計測していない。[手順と制限](../tools/parity/misspellings/README.md)。
 
 - F6〜F10後のEnter／Space／変換キーとエンジン学習を元版24操作で照合。F6〜F8後の通知を回復し、F9／F10のSpaceはnativeの先行変換も抑止。全187テスト、最後のnative修正後の関連36＋native41テスト・Clippy、両ABIの最終Release回帰と学習ワーカーが成功。全候補源・全編集・TSF適用失敗時の学習整合、実Mozcの永続学習は継続。[手順](../tools/parity/mozc-lifecycle/README.md)。
+
+- SeparateKeyRoles ONのF9／F10後Spaceを候補開始へ修正。OFFの英字確定と区別し、元版比較30操作・関連36テスト・Clippyと両ABIの実通信／既存回帰が成功。全設定組合せ・実Mozc保存・TSF適用失敗時の学習整合は継続。[条件](../tools/parity/mozc-lifecycle/README.md)。

@@ -18,7 +18,7 @@ with tempfile.TemporaryDirectory(prefix='meltype-windows-converter-') as directo
     shutil.copy2(worker,root/worker.name)
     (root/'mozc').mkdir();shutil.copy2(helper,root/'mozc/meltype_mozc_helper.exe')
     config=profile/'config.json'
-    def configure(mode,enabled=True,learning=False):config.write_text(json.dumps(dict(Enabled=enabled,ConversionEngine=mode,LiveConversion=False,PredictiveCandidates=False,LearningEnabled=learning,DetectionLevel='Manual')),encoding='utf-8')
+    def configure(mode,enabled=True,learning=False,separate=False):config.write_text(json.dumps(dict(Enabled=enabled,ConversionEngine=mode,LiveConversion=False,PredictiveCandidates=False,LearningEnabled=learning,SeparateKeyRoles=separate,DetectionLevel='Manual')),encoding='utf-8')
     configure('System')
     env=dict(os.environ,MELTYPE_RUST_DATA_DIR=str(profile));env.pop('MELTYPE_TEST_TIP_NO_CONVERTERS',None)
     process=subprocess.Popen([str(root/worker.name),'--stdio-tip-worker'],stdin=subprocess.PIPE,stdout=subprocess.PIPE,env=env)
@@ -117,6 +117,18 @@ with tempfile.TemporaryDirectory(prefix='meltype-windows-converter-') as directo
             assert len(calls.read_text(encoding='utf-8').splitlines())==query_count,'Latin Space must not query the converter'
             reconvert('nihongo');call('reset')
             assert len([line for line in calls.read_text(encoding='utf-8').splitlines() if line.startswith('L\t')])==count
+        # SeparateKeyRoles deliberately opens candidates for Latin display too.
+        configure('Mozc',learning=True,separate=True)
+        for function_key,raw in [(120,'tsuki'),(121,'hoshi')]:
+            count=len([line for line in calls.read_text(encoding='utf-8').splitlines() if line.startswith('L\t')])
+            for ch in raw:call('key',vk=ord(ch.upper()),ch=ord(ch))
+            call('key',vk=function_key)
+            converted=call('key',vk=32,ch=32)
+            assert converted['commits']==[] and converted['view']['converting'],converted
+            assert converted['view']['text'].startswith('MOZC:'),converted
+            call('commit')
+            reconvert('nihongo');call('reset')
+            assert len([line for line in calls.read_text(encoding='utf-8').splitlines() if line.startswith('L\t')])==count+1
         configure('Hybrid')
         assert reconvert('nihongo')=='MOZC:にほんご';call('reset')
         configure('System');count=len(calls.read_text(encoding='utf-8').splitlines())

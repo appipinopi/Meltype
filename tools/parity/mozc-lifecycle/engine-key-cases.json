@@ -214,5 +214,65 @@
     "learning": true,
     "private": false,
     "target": "はし"
+  },
+  {
+    "name": "separate-space-0",
+    "raw": "hashi",
+    "force": 0,
+    "action": "space",
+    "learning": true,
+    "private": false,
+    "target": null,
+    "separate": true
+  },
+  {
+    "name": "separate-space-117",
+    "raw": "hashi",
+    "force": 117,
+    "action": "space",
+    "learning": true,
+    "private": false,
+    "target": null,
+    "separate": true
+  },
+  {
+    "name": "separate-space-118",
+    "raw": "hashi",
+    "force": 118,
+    "action": "space",
+    "learning": true,
+    "private": false,
+    "target": null,
+    "separate": true
+  },
+  {
+    "name": "separate-space-119",
+    "raw": "hashi",
+    "force": 119,
+    "action": "space",
+    "learning": true,
+    "private": false,
+    "target": null,
+    "separate": true
+  },
+  {
+    "name": "separate-space-120",
+    "raw": "hashi",
+    "force": 120,
+    "action": "space",
+    "learning": true,
+    "private": false,
+    "target": null,
+    "separate": true
+  },
+  {
+    "name": "separate-space-121",
+    "raw": "hashi",
+    "force": 121,
+    "action": "space",
+    "learning": true,
+    "private": false,
+    "target": null,
+    "separate": true
   }
 ]

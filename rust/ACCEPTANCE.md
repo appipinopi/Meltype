@@ -80,6 +80,8 @@
 
 - Fキー後の変換とエンジン学習を元版の公開キー入口24操作から照合。F6〜F8後に変換した日本語は通知し、F9／F10後のSpaceは英字と空白で確定。単一変換の履歴／日英学習／エンジン通知で同じ文節情報を使用。Windows nativeの先行変換もSpaceの判定を共有し、英字確定時の外部問合せを抑止した。全187テストが成功し、最後のnative修正後も関連36テスト・native単体41テストとRust 1.99の全体／TSF-server Clippyが成功。最終Releaseのx64／x86で追加Fキーの学習通知・問合せ抑止、既存ABI・文節伸縮20入力列・選択再変換28操作・結合文字8入力の回帰も成功。全設定／全候補源・途中編集・実Mozcの永続学習・TSF適用失敗時の整合は継続作業。今回の変更後の速度は未測定。[条件](../tools/parity/mozc-lifecycle/README.md)。
 
+- SeparateKeyRolesがONの場合、F9／F10後のSpaceを元版どおり候補開始へ修正。OFFの場合は英字＋空白で確定する。Fキー比較を30操作へ拡張し、先行24操作の期待値は不変。関連Core／session 36テストとRust 1.99の全体／TSF-server Clippy、最終Releaseのx64／x86で設定ON/OFFの実フレーム通信と既存ABI・文節伸縮20入力列・選択再変換28操作が成功。全設定・全キー・全候補源や実Mozcの永続学習・TSF適用失敗時の整合は未完了。今回の速度は未測定。[条件](../tools/parity/mozc-lifecycle/README.md)。
+
 ## 次に埋めるCoreの差
 
 1. 入力途中の区切り・保留子音・英語候補・音単位編集を、元版のCompositionText/CompositionDetectorと各キーで比較する。

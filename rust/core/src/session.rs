@@ -611,9 +611,11 @@ impl Session {
         }
         Some(fix)
     }
-    /// Explicit Latin display commits on Space before querying a converter.
+    /// Explicit Latin display commits on Space unless separate key roles request conversion.
     pub fn space_commits_alphanumeric(&self) -> bool {
-        !self.is_converting() && matches!(self.function_key, 0x78 | 0x79)
+        !self.is_converting()
+            && !self.settings.boolean("SeparateKeyRoles")
+            && matches!(self.function_key, 0x78 | 0x79)
     }
     pub fn is_converting(&self) -> bool {
         !self.candidates.is_empty()

@@ -1,9 +1,9 @@
 {
   "baseline": "45e14f86558aa6ea34f2c2ecd038ba95ca8c3c46",
   "sha256": {
-    "tools/parity/mozc-lifecycle/EngineKeys.cs": "1d84bf8c6bf4b7e617fba7eeb1a84fa4e801f8ed91d90073060a31c9ff31f01b",
+    "tools/parity/mozc-lifecycle/EngineKeys.cs": "07a78512262c0e6bdae78f717cf9c43ac3e6e7ffd758310e530fa7f8cfa14533",
     "tools/parity/mozc-lifecycle/Program.cs": "1b48429638320ffd58647fbdca221ace63a9432c756d73021b00e956d2ec0134",
-    "tools/parity/mozc-lifecycle/engine-key-cases.json": "f4ef6648fb1261e2754246b4c26c9e81c32a4559e276af8f16c38fd10b1932ab",
+    "tools/parity/mozc-lifecycle/engine-key-cases.json": "07cbd8cc7ce447fc205b9c974758f97429802cd3c6a23462e5d9e629fb52fa48",
     "src/Meltype.Core/Composition/CompositionController.cs": "0b35121785c14431093c3a9b493030fc0483e2d7716f21e232e9c54686f68a03",
     "src/Meltype.Core/Composition/MeltypeSession.cs": "b0f2c0044a73f5c39b01cc324d79ed160396069a64bb5d1035308eed262f6479"
   },
@@ -490,6 +490,168 @@
         "converting": true,
         "committed": "はし",
         "batches": []
+      }
+    },
+    {
+      "case": {
+        "name": "separate-space-0",
+        "raw": "hashi",
+        "force": 0,
+        "action": "space",
+        "learning": true,
+        "private": false,
+        "target": null,
+        "separate": true
+      },
+      "expected": {
+        "converting": true,
+        "committed": "【はし】",
+        "batches": [
+          {
+            "context": "",
+            "clauses": [
+              {
+                "reading": "はし",
+                "text": "【はし】"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "case": {
+        "name": "separate-space-117",
+        "raw": "hashi",
+        "force": 117,
+        "action": "space",
+        "learning": true,
+        "private": false,
+        "target": null,
+        "separate": true
+      },
+      "expected": {
+        "converting": true,
+        "committed": "【はし】",
+        "batches": [
+          {
+            "context": "",
+            "clauses": [
+              {
+                "reading": "はし",
+                "text": "【はし】"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "case": {
+        "name": "separate-space-118",
+        "raw": "hashi",
+        "force": 118,
+        "action": "space",
+        "learning": true,
+        "private": false,
+        "target": null,
+        "separate": true
+      },
+      "expected": {
+        "converting": true,
+        "committed": "【はし】",
+        "batches": [
+          {
+            "context": "",
+            "clauses": [
+              {
+                "reading": "はし",
+                "text": "【はし】"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "case": {
+        "name": "separate-space-119",
+        "raw": "hashi",
+        "force": 119,
+        "action": "space",
+        "learning": true,
+        "private": false,
+        "target": null,
+        "separate": true
+      },
+      "expected": {
+        "converting": true,
+        "committed": "【はし】",
+        "batches": [
+          {
+            "context": "",
+            "clauses": [
+              {
+                "reading": "はし",
+                "text": "【はし】"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "case": {
+        "name": "separate-space-120",
+        "raw": "hashi",
+        "force": 120,
+        "action": "space",
+        "learning": true,
+        "private": false,
+        "target": null,
+        "separate": true
+      },
+      "expected": {
+        "converting": true,
+        "committed": "【はし】",
+        "batches": [
+          {
+            "context": "",
+            "clauses": [
+              {
+                "reading": "はし",
+                "text": "【はし】"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "case": {
+        "name": "separate-space-121",
+        "raw": "hashi",
+        "force": 121,
+        "action": "space",
+        "learning": true,
+        "private": false,
+        "target": null,
+        "separate": true
+      },
+      "expected": {
+        "converting": true,
+        "committed": "【はし】",
+        "batches": [
+          {
+            "context": "",
+            "clauses": [
+              {
+                "reading": "はし",
+                "text": "【はし】"
+              }
+            ]
+          }
+        ]
       }
     }
   ]
