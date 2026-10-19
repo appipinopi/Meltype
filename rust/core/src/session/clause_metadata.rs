@@ -2,6 +2,31 @@
 //! Provenance of a converter clause within the retained composition units.
 use super::*;
 impl Session {
+    pub(super) fn clause_language_changes(&self) -> Vec<Change> {
+        let mut changes = Vec::new();
+        for clause in &self.clauses {
+            if !clause.english && clause.changed {
+                if let Some(raw) = clause
+                    .raw
+                    .as_ref()
+                    .filter(|raw| raw.as_str() == clause.text())
+                {
+                    changes.push(Change::Language {
+                        raw: raw.clone(),
+                        english: true,
+                        explicit: false,
+                    });
+                }
+            }
+            if clause.english
+                && clause.reading.bytes().all(|b| b.is_ascii_alphabetic())
+                && clause.text().chars().any(|c| matches!(c, '\u{3040}'..='\u{30ff}' | '\u{3400}'..='\u{4dbf}' | '\u{4e00}'..='\u{9fff}'))
+            {
+                changes.push(Change::Language { raw: clause.reading.clone(), english: false, explicit: false });
+            }
+        }
+        changes
+    }
     pub(super) fn clause_original_inputs(&self, clauses: &[Clause]) -> Vec<Option<String>> {
         if self.uses_kana() || self.reconversion_origin.is_some() {
             return vec![None; clauses.len()];
@@ -66,6 +91,70 @@ impl Session {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn original_controller_clause_language_choices_match() {
+        let golden: serde_json::Value = serde_json::from_str(include_str!(
+            "../../tests/data/upstream-clause-language.json"
+        ))
+        .unwrap();
+        let cases = golden["cases"].as_array().unwrap();
+        assert_eq!(cases.len(), 16);
+        for row in cases {
+            let c = &row["case"];
+            let mut s = Session {
+                raw: "fixture".into(),
+                private: c["private"].as_bool().unwrap(),
+                ..Default::default()
+            };
+            s.settings
+                .set("LearningEnabled", c["learning"].clone())
+                .unwrap();
+            let mut clause = Clause::new(
+                c["reading"].as_str().unwrap().into(),
+                vec![c["text"].as_str().unwrap().into()],
+            );
+            clause.raw = c["raw"].as_str().map(str::to_owned);
+            clause.english = c["english"].as_bool().unwrap();
+            clause.changed = c["changed"].as_bool().unwrap();
+            s.clauses = vec![clause];
+            for _ in 0..c["repeats"].as_u64().unwrap() {
+                s.learn(s.clause_language_changes());
+            }
+            let actual: Vec<_> = s.state.language_counts.iter().map(|(word, entry)| serde_json::json!({"word":word,"english":entry.english,"count":entry.count,"active":entry.active(word)})).collect();
+            assert_eq!(serde_json::json!(actual), row["expected"], "{}", c["name"]);
+        }
+    }
+    #[test]
+    fn candidate_selection_marks_only_the_selected_clause() {
+        let mut s = Session {
+            raw: "hashikami".into(),
+            ..Default::default()
+        };
+        assert!(s.begin_clauses(vec![
+            Clause::new("はし".into(), vec!["橋".into(), "hashi".into()]),
+            Clause::new("かみ".into(), vec!["紙".into()])
+        ]));
+        assert!(s.clauses.iter().all(|c| !c.changed));
+        let index = s.candidates.iter().position(|c| c == "hashi").unwrap();
+        assert!(s.select_composing(index).consumed);
+        assert!(s.clauses[0].changed);
+        assert!(!s.clauses[1].changed);
+        s.settings
+            .set("LearningEnabled", serde_json::json!(true))
+            .unwrap();
+        s.commit();
+        assert!(s.state.language_counts["hashi"].english);
+        assert!(!s.state.language_counts["hashi"].explicit);
+        s.raw = "hashikami".into();
+        assert!(s.begin_clauses(vec![
+            Clause::new("はし".into(), vec!["橋".into()]),
+            Clause::new("かみ".into(), vec!["紙".into()])
+        ]));
+        s.cycle(1);
+        assert!(s.clauses[0].changed);
+        s.resize_clause(true);
+        assert!(s.clauses.iter().all(|c| !c.changed));
+    }
     #[test]
     fn ordinary_input_has_clause_local_raw_and_boundary_edits_clear_it() {
         let mut s = Session {

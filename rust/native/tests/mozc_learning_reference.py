@@ -17,3 +17,11 @@ if len(sys.argv)>2:
     assert len(actual)==len(expected)==36
     for got,want in zip(actual,expected):assert got==want,(want['case'],want,got)
     print('Original CompositionText: 36 inputs and all original UTF-16 RawForReading ranges reproduced')
+
+if len(sys.argv)>3:
+    fixture=Path(__file__).resolve().parents[2]/'core/tests/data/upstream-clause-language.json'
+    expected=json.loads(fixture.read_text(encoding='utf-8'))['cases']
+    actual=[json.loads(line) for line in Path(sys.argv[3]).read_text(encoding='utf-8-sig').splitlines() if line.startswith('{')]
+    assert len(actual)==len(expected)==16
+    for got,want in zip(actual,expected):assert got==want,(want['case']['name'],want,got)
+    print('Original controller: 16 clause language learning cases reproduced')

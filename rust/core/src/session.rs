@@ -72,6 +72,8 @@ pub struct Clause {
     pub kana: Option<String>,
     /// Original input for this exact reading range; cleared by boundary edits.
     pub raw: Option<String>,
+    /// True only after an explicit candidate selection; reset by reconversion.
+    pub changed: bool,
     /// Translation membership belongs to this clause, not the whole sentence.
     pub translations: Vec<String>,
 }
@@ -94,6 +96,7 @@ impl Clause {
             english: false,
             kana: None,
             raw: None,
+            changed: false,
             translations: Vec::new(),
         }
     }
@@ -939,6 +942,7 @@ impl Session {
                     text: text.clone(),
                 }]
             };
+            changes.extend(self.clause_language_changes());
             for clause in self.clauses.iter().chain(&self.live_clauses) {
                 if clause.raw.as_deref() == Some(clause.text()) {
                     continue;
@@ -1193,6 +1197,7 @@ impl Session {
         self.selected = index;
         if let Some(clause) = self.clauses.get_mut(self.selected_clause) {
             clause.selected = index;
+            clause.changed = true;
         }
         self.result(true)
     }
@@ -1212,6 +1217,7 @@ impl Session {
         self.selected = index;
         if let Some(clause) = self.clauses.get_mut(self.selected_clause) {
             clause.selected = index;
+            clause.changed = true;
             if self.clauses.len() > 1 {
                 return self.result(true);
             }
@@ -1879,6 +1885,7 @@ impl Session {
                         } else {
                             Some(self.raw.clone())
                         },
+                        changed: self.chosen_conversion,
                         translations: self.translation_candidates.clone(),
                     });
                 }
@@ -2010,6 +2017,7 @@ impl Session {
             (self.selected as i32 + direction).rem_euclid(self.candidates.len() as i32) as usize;
         if let Some(clause) = self.clauses.get_mut(self.selected_clause) {
             clause.selected = self.selected;
+            clause.changed = true;
         }
     }
 }

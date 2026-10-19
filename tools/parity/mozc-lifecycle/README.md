@@ -55,3 +55,16 @@ python rust/native/tests/mozc_learning_reference.py filter-reference.jsonl raw-r
 文節ごとのChanged状態と英字選択時の言語学習、全レベル・独自ローマ字表・誤字修正・JISかな・編集履歴・全候補源の組合せ、元入力／全角英字候補を追加する全経路と候補順、TSF適用失敗後の学習の整合と実Mozcの永続学習は継続作業です。
 
 今回の文節情報の変更後は、ワークスペース178テストとRust 1.99の全体／TSF-server Clippyが成功。最終Releaseのx64／x86でABI、元版の文節伸縮20入力列、選択再変換28操作、実フレーム通信の学習ワーカー試験も再実行して成功しました。結果は`dist/clause-metadata-shipping-{x64,x86}-*.log`に保存しています。
+
+## 文節選択による日英学習
+
+通常の文節にChangedを保持し、候補選択API・候補送りで操作した文節だけを変更済みにします。境界伸縮と再変換では初期化します。変更済みの日本語文節でRawと同じ英字を選ぶと英語として、英語文節で日本語候補を選ぶと日本語として学習します。候補からの選択はF6／F10の明示切替とは区別して、既存の回数学習へ渡します。
+
+```powershell
+dotnet run --project tools/parity/mozc-lifecycle/MozcLifecycle.csproj -- --language tools/parity/mozc-lifecycle/language-cases.json > clause-language-reference.jsonl
+python rust/native/tests/mozc_learning_reference.py filter-reference.jsonl raw-reference.jsonl clause-language-reference.jsonl
+```
+
+変更していない元ControllerとLanguageMemoryを一時メモリで実行し、通常と同じ組込みローマ字辞書を接続した16ケースを`upstream-clause-language.json`へ採取します。選択の有無、2回必要な短語・日本語、大小文字、元入力不在、英語から日本語、対象外文字、学習無効・プライベートを比較します。Rustは学習方向・回数・有効状態を照合し、実際の文節選択から確定までと伸縮時の状態破棄も別に検査します。全候補生成経路、文節を持たない単一変換、言語判定表示、実アプリ内での入力と永続保存の全組合せはこの比較だけでは証明しません。
+
+この日英学習の追加後は全180テストとRust 1.99の全体／TSF-server Clippyが成功。最終Releaseのx64／x86でABI・文節伸縮20入力列・選択再変換28操作・学習ワーカーも成功しました。ローカル結果は`dist/clause-language-*.log`に保存しています。

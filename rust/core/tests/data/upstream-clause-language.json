@@ -1,0 +1,291 @@
+{
+  "baseline": "45e14f86558aa6ea34f2c2ecd038ba95ca8c3c46",
+  "sha256": {
+    "tools/parity/mozc-lifecycle/Language.cs": "13a34f75f80615cec4647ce60408e43b6dc5037f6888ba636ec597c84a640aec",
+    "tools/parity/mozc-lifecycle/Program.cs": "abf72bc8785e7335ccd15e70a4e3ceb7973bb04cf8d5386ec4c1d150cbed147c",
+    "src/Meltype.Core/Composition/CompositionController.cs": "0b35121785c14431093c3a9b493030fc0483e2d7716f21e232e9c54686f68a03",
+    "src/Meltype.Core/Composition/LanguageMemory.cs": "00d523e0f28a4f1512adb85be95d6a3a6ba9197e9f919a10b79df47db6be4951"
+  },
+  "cases": [
+    {
+      "case": {
+        "name": "raw-not-selected",
+        "reading": "ご",
+        "text": "go",
+        "raw": "go",
+        "english": false,
+        "changed": false,
+        "repeats": 1,
+        "learning": true,
+        "private": false
+      },
+      "expected": []
+    },
+    {
+      "case": {
+        "name": "raw-first-choice",
+        "reading": "ご",
+        "text": "go",
+        "raw": "go",
+        "english": false,
+        "changed": true,
+        "repeats": 1,
+        "learning": true,
+        "private": false
+      },
+      "expected": [
+        {
+          "word": "go",
+          "english": true,
+          "count": 1,
+          "active": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "raw-second-choice",
+        "reading": "ご",
+        "text": "go",
+        "raw": "go",
+        "english": false,
+        "changed": true,
+        "repeats": 2,
+        "learning": true,
+        "private": false
+      },
+      "expected": [
+        {
+          "word": "go",
+          "english": true,
+          "count": 2,
+          "active": true
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "common-first",
+        "reading": "すし",
+        "text": "sushi",
+        "raw": "sushi",
+        "english": false,
+        "changed": true,
+        "repeats": 1,
+        "learning": true,
+        "private": false
+      },
+      "expected": [
+        {
+          "word": "sushi",
+          "english": true,
+          "count": 1,
+          "active": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "common-second",
+        "reading": "すし",
+        "text": "sushi",
+        "raw": "sushi",
+        "english": false,
+        "changed": true,
+        "repeats": 2,
+        "learning": true,
+        "private": false
+      },
+      "expected": [
+        {
+          "word": "sushi",
+          "english": true,
+          "count": 2,
+          "active": true
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "ascii-case",
+        "reading": "はし",
+        "text": "HASHI",
+        "raw": "HASHI",
+        "english": false,
+        "changed": true,
+        "repeats": 1,
+        "learning": true,
+        "private": false
+      },
+      "expected": [
+        {
+          "word": "hashi",
+          "english": true,
+          "count": 1,
+          "active": false
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "missing-provenance",
+        "reading": "ご",
+        "text": "go",
+        "raw": null,
+        "english": false,
+        "changed": true,
+        "repeats": 1,
+        "learning": true,
+        "private": false
+      },
+      "expected": []
+    },
+    {
+      "case": {
+        "name": "different-raw",
+        "reading": "ご",
+        "text": "GO",
+        "raw": "go",
+        "english": false,
+        "changed": true,
+        "repeats": 1,
+        "learning": true,
+        "private": false
+      },
+      "expected": []
+    },
+    {
+      "case": {
+        "name": "english-to-japanese",
+        "reading": "go",
+        "text": "語",
+        "raw": null,
+        "english": true,
+        "changed": false,
+        "repeats": 1,
+        "learning": true,
+        "private": false
+      },
+      "expected": [
+        {
+          "word": "go",
+          "english": false,
+          "count": 1,
+          "active": true
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "english-to-kana",
+        "reading": "api",
+        "text": "あぴ",
+        "raw": null,
+        "english": true,
+        "changed": true,
+        "repeats": 1,
+        "learning": true,
+        "private": false
+      },
+      "expected": [
+        {
+          "word": "api",
+          "english": false,
+          "count": 1,
+          "active": true
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "english-unchanged",
+        "reading": "go",
+        "text": "go",
+        "raw": null,
+        "english": true,
+        "changed": true,
+        "repeats": 1,
+        "learning": true,
+        "private": false
+      },
+      "expected": []
+    },
+    {
+      "case": {
+        "name": "english-nonalphabetic",
+        "reading": "go2",
+        "text": "語",
+        "raw": null,
+        "english": true,
+        "changed": true,
+        "repeats": 1,
+        "learning": true,
+        "private": false
+      },
+      "expected": []
+    },
+    {
+      "case": {
+        "name": "one-letter",
+        "reading": "い",
+        "text": "i",
+        "raw": "i",
+        "english": false,
+        "changed": true,
+        "repeats": 1,
+        "learning": true,
+        "private": false
+      },
+      "expected": []
+    },
+    {
+      "case": {
+        "name": "disabled",
+        "reading": "ご",
+        "text": "go",
+        "raw": "go",
+        "english": false,
+        "changed": true,
+        "repeats": 1,
+        "learning": false,
+        "private": false
+      },
+      "expected": []
+    },
+    {
+      "case": {
+        "name": "private",
+        "reading": "ご",
+        "text": "go",
+        "raw": "go",
+        "english": false,
+        "changed": true,
+        "repeats": 1,
+        "learning": true,
+        "private": true
+      },
+      "expected": []
+    },
+    {
+      "case": {
+        "name": "english-cjk-extension",
+        "reading": "go",
+        "text": "㐀",
+        "raw": null,
+        "english": true,
+        "changed": false,
+        "repeats": 1,
+        "learning": true,
+        "private": false
+      },
+      "expected": [
+        {
+          "word": "go",
+          "english": false,
+          "count": 1,
+          "active": true
+        }
+      ]
+    }
+  ]
+}
