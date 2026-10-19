@@ -94,7 +94,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           dotnet run --no-build --project tools/parity/mozc-lifecycle/MozcLifecycle.csproj -- --filter tools/parity/mozc-lifecycle/filter-cases.json > mozc-learning-filter-reference.jsonl
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python rust/native/tests/mozc_learning_reference.py mozc-learning-filter-reference.jsonl
+          dotnet run --no-build --project tools/parity/mozc-lifecycle/MozcLifecycle.csproj -- --raw tools/parity/mozc-lifecycle/raw-cases.json > clause-raw-reference.jsonl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/mozc_learning_reference.py mozc-learning-filter-reference.jsonl clause-raw-reference.jsonl
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo build -p meltype-core --example mozc_lifecycle --locked
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

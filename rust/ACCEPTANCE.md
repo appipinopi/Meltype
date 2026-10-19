@@ -62,6 +62,8 @@
 
 - 1b897ffのCIはWindows／macOS／Linux desktop、macOS SDK、fcitx SDK、buildが成功。AndroidはAPI35実ウィジェット12件中1件が、テストアプリの確認画面を調べる際に`android`パッケージの画面を検出して失敗。保存logcatにはランチャーの入力配送タイムアウトによるANR画面があり、失敗ログを保持した。同じ確定済み版のAndroidジョブだけを再試行し、[2回目のジョブ](https://github.com/appipinopi/Meltype/actions/runs/39177021651/job/117827365037)は12件すべて成功。保存された7枚の実PNG（確認画面2枚を含む）とメタデータも取得して検査した。初回失敗と再試行成功を区別する。
 
+- 文節ごとにRaw（元入力）とTranslations（翻訳候補の所属）を保持し、学習の除外に文全体の情報を流用しないよう修正。翻訳を選んだ文節を永続履歴でも翻訳として記録し、元の英字を選んだ文節を通常の変換履歴へ登録しない。元のCompositionTextからBalanced／Manualの36入力・346 UTF-16範囲を採取し、Rustの文字列で表せる334範囲の元入力が一致。元Controllerの選別比較を22ケースへ拡大し、既存20ケースの期待値は不変。通常の複数文節での元入力保持・境界伸縮時の破棄・翻訳を通常変換として学習しないこともCoreで検査。全178テストとRust 1.99の全体／TSF-server Clippyが成功。最終Releaseのx64／x86でABI・文節伸縮20入力列・選択再変換28操作・学習ワーカーの回帰も成功。文節ごとのChanged状態・英字選択時の言語学習、全設定・独自表・誤字修正・編集履歴と全候補源の組合せ、候補順とTSF適用失敗時の学習整合は未完了。[再現条件](../tools/parity/mozc-lifecycle/README.md)。
+
 ## 次に埋めるCoreの差
 
 1. 入力途中の区切り・保留子音・英語候補・音単位編集を、元版のCompositionText/CompositionDetectorと各キーで比較する。

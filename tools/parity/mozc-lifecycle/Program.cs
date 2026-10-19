@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 using System.Text.Json;
 using Meltype.Composition;
+if(args[0]=="--raw") { Raw.Write(args[1]); return; }
 if(args[0]=="--filter") { Filter.Write(args[1]); return; }
 var actions = JsonDocument.Parse(File.ReadAllText(args[2])).RootElement;
 using (var converter = new MozcConverter(Path.GetFullPath(args[0]), Path.GetFullPath(args[1]))) {

@@ -2,7 +2,7 @@
   "baseline": "45e14f86558aa6ea34f2c2ecd038ba95ca8c3c46",
   "sha256": {
     "tools/parity/mozc-lifecycle/Filter.cs": "7626a515168a323c205964a8089bb07da54d81d9245052dc8786c1e498a9bc52",
-    "tools/parity/mozc-lifecycle/Program.cs": "a4f8236a7ecd06d72e37477e45d3a065f0834dc573b221c03f57f6bdce8461dd",
+    "tools/parity/mozc-lifecycle/Program.cs": "09045db38c9c563730bb7243ac48fd0105140cbfbd2bd03d3cc7fc7f4fc7104b",
     "src/Meltype.Core/Composition/CompositionController.cs": "0b35121785c14431093c3a9b493030fc0483e2d7716f21e232e9c54686f68a03"
   },
   "cases": [
@@ -552,6 +552,78 @@
         ]
       },
       "expected": []
+    },
+    {
+      "case": {
+        "name": "raw-membership",
+        "before": "日本語",
+        "learning": true,
+        "private": false,
+        "clauses": [
+          {
+            "reading": "はし",
+            "text": "hashi",
+            "english": false,
+            "raw": "hashi",
+            "translations": []
+          },
+          {
+            "reading": "かみ",
+            "text": "紙",
+            "english": false,
+            "raw": "kami",
+            "translations": []
+          }
+        ]
+      },
+      "expected": [
+        {
+          "context": "日本語",
+          "clauses": [
+            {
+              "reading": "かみ",
+              "text": "紙"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "translation-membership",
+        "before": "日本語",
+        "learning": true,
+        "private": false,
+        "clauses": [
+          {
+            "reading": "はし",
+            "text": "bridge",
+            "english": false,
+            "raw": null,
+            "translations": [
+              "bridge"
+            ]
+          },
+          {
+            "reading": "ぶりっじ",
+            "text": "bridge",
+            "english": false,
+            "raw": null,
+            "translations": []
+          }
+        ]
+      },
+      "expected": [
+        {
+          "context": "日本語",
+          "clauses": [
+            {
+              "reading": "ぶりっじ",
+              "text": "bridge"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

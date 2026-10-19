@@ -6,6 +6,14 @@ from pathlib import Path
 fixture=Path(__file__).resolve().parents[2]/'core/tests/data/upstream-engine-learning.json'
 expected=json.loads(fixture.read_text(encoding='utf-8'))['cases']
 actual=[json.loads(line) for line in Path(sys.argv[1]).read_text(encoding='utf-8-sig').splitlines() if line.startswith('{')]
-assert len(actual)==len(expected)==20
+assert len(actual)==len(expected)==22
 for got,want in zip(actual,expected):assert got==want,(want['case']['name'],want,got)
-print('Original controller: 20 learning eligibility/run/context cases reproduced')
+print('Original controller: 22 learning eligibility/run/context cases reproduced')
+
+if len(sys.argv)>2:
+    fixture=Path(__file__).resolve().parents[2]/'core/tests/data/upstream-clause-raw.json'
+    expected=json.loads(fixture.read_text(encoding='utf-8'))['cases']
+    actual=[json.loads(line) for line in Path(sys.argv[2]).read_text(encoding='utf-8-sig').splitlines() if line.startswith('{')]
+    assert len(actual)==len(expected)==36
+    for got,want in zip(actual,expected):assert got==want,(want['case'],want,got)
+    print('Original CompositionText: 36 inputs and all original UTF-16 RawForReading ranges reproduced')

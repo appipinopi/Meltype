@@ -52,7 +52,11 @@ impl Session {
                 false,
                 &reading,
                 &text,
-                &self.raw,
+                if self.uses_kana() || self.reconversion_origin.is_some() {
+                    ""
+                } else {
+                    &self.raw
+                },
                 &self.translation_candidates,
             ) {
                 run.push(LearningClause { reading, text });
@@ -63,8 +67,8 @@ impl Session {
                     clause.english,
                     &clause.reading,
                     clause.text(),
-                    &self.raw,
-                    &self.translation_candidates,
+                    clause.raw.as_deref().unwrap_or(""),
+                    &clause.translations,
                 ) {
                     run.push(LearningClause {
                         reading: clause.reading.clone(),
@@ -122,7 +126,7 @@ mod tests {
         ))
         .unwrap();
         let cases = golden["cases"].as_array().unwrap();
-        assert_eq!(cases.len(), 20);
+        assert_eq!(cases.len(), 22);
         for row in cases {
             let case = &row["case"];
             let mut s = Session::default();
@@ -149,6 +153,13 @@ mod tests {
                         vec![c["text"].as_str().unwrap().into()],
                     );
                     clause.english = c["english"] == true;
+                    clause.raw = c["raw"].as_str().map(str::to_owned);
+                    clause.translations = c["translations"]
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .map(|t| t.as_str().unwrap().to_owned())
+                        .collect();
                     clause
                 })
                 .collect();

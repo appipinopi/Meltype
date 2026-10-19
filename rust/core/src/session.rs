@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 appipinopi
+mod clause_metadata;
 mod direct;
 mod engine_learning;
 mod reconversion;
@@ -69,6 +70,10 @@ pub struct Clause {
     pub english: bool,
     /// None for protected text, Some for English sound-unit readings.
     pub kana: Option<String>,
+    /// Original input for this exact reading range; cleared by boundary edits.
+    pub raw: Option<String>,
+    /// Translation membership belongs to this clause, not the whole sentence.
+    pub translations: Vec<String>,
 }
 impl Clause {
     pub fn new(reading: String, mut candidates: Vec<String>) -> Self {
@@ -88,6 +93,8 @@ impl Clause {
             selected: 0,
             english: false,
             kana: None,
+            raw: None,
+            translations: Vec::new(),
         }
     }
     pub fn literal(reading: String, ordinary_english: bool) -> Self {
@@ -933,13 +940,16 @@ impl Session {
                 }]
             };
             for clause in self.clauses.iter().chain(&self.live_clauses) {
+                if clause.raw.as_deref() == Some(clause.text()) {
+                    continue;
+                }
                 changes.push(Change::Conversion {
                     reading: clause.reading.clone(),
                     text: clause.text().to_owned(),
-                    translation: false,
+                    translation: clause.translations.iter().any(|t| t == clause.text()),
                 });
             }
-            if self.is_converting() && !dynamic {
+            if self.is_converting() && self.clauses.is_empty() && !dynamic && text != self.raw {
                 changes.push(Change::Conversion {
                     reading: reading.clone(),
                     text: text.clone(),
@@ -1342,10 +1352,12 @@ impl Session {
             return false;
         }
         clauses = crate::time_candidates::join(clauses);
+        let original_inputs = self.clause_original_inputs(&clauses);
         self.translation_candidates.clear();
         let mut preceding = self.before.clone();
         let mut previous_english = false;
-        for clause in &mut clauses {
+        for (clause, original_input) in clauses.iter_mut().zip(original_inputs) {
+            clause.raw = original_input;
             if clause.english {
                 if clause.kana.is_some() {
                     clause.kana = Some(romaji::hiragana(&clause.reading, true));
@@ -1372,14 +1384,17 @@ impl Session {
                     values.insert(0, context);
                 }
             }
-            if self.settings.boolean("TranslationCandidates") {
+            let translations = if self.settings.boolean("TranslationCandidates") {
                 let translations = Linguistics::bundled().translations(
                     values.first().map(String::as_str).unwrap_or(""),
                     &clause.reading,
                 );
                 self.translation_candidates.extend(translations.clone());
-                values.extend(translations);
-            }
+                values.extend(translations.clone());
+                translations
+            } else {
+                Vec::new()
+            };
             let emoji = Dictionary::bundled().emoji(&clause.reading);
             values.retain(|candidate| !emoji.contains(candidate));
             values.extend(emoji);
@@ -1419,7 +1434,10 @@ impl Session {
             if !has_preference && particle || suru {
                 values.insert(0, clause.reading.clone());
             }
+            let raw = clause.raw.take();
             *clause = Clause::new(clause.reading.clone(), values);
+            clause.raw = raw;
+            clause.translations = translations;
             preceding.push_str(clause.text());
             previous_english = false;
         }
@@ -1856,6 +1874,12 @@ impl Session {
                         selected: self.selected,
                         english: false,
                         kana: None,
+                        raw: if self.uses_kana() || self.reconversion_origin.is_some() {
+                            None
+                        } else {
+                            Some(self.raw.clone())
+                        },
+                        translations: self.translation_candidates.clone(),
                     });
                 }
                 if modifiers & 1 != 0 {

@@ -342,5 +342,51 @@
         "translations": []
       }
     ]
+  },
+  {
+    "name": "raw-membership",
+    "before": "日本語",
+    "learning": true,
+    "private": false,
+    "clauses": [
+      {
+        "reading": "はし",
+        "text": "hashi",
+        "english": false,
+        "raw": "hashi",
+        "translations": []
+      },
+      {
+        "reading": "かみ",
+        "text": "紙",
+        "english": false,
+        "raw": "kami",
+        "translations": []
+      }
+    ]
+  },
+  {
+    "name": "translation-membership",
+    "before": "日本語",
+    "learning": true,
+    "private": false,
+    "clauses": [
+      {
+        "reading": "はし",
+        "text": "bridge",
+        "english": false,
+        "raw": null,
+        "translations": [
+          "bridge"
+        ]
+      },
+      {
+        "reading": "ぶりっじ",
+        "text": "bridge",
+        "english": false,
+        "raw": null,
+        "translations": []
+      }
+    ]
   }
 ]
