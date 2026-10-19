@@ -30,30 +30,33 @@ impl Session {
             .collect()
     }
 
-    pub(super) fn clause_language_changes(&self) -> Vec<Change> {
-        let mut changes = Vec::new();
-        for clause in &self.clauses {
-            if !clause.english && clause.changed {
-                if let Some(raw) = clause
-                    .raw
-                    .as_ref()
-                    .filter(|raw| raw.as_str() == clause.text())
-                {
-                    changes.push(Change::Language {
-                        raw: raw.clone(),
-                        english: true,
-                        explicit: false,
-                    });
-                }
-            }
-            if clause.english
-                && clause.reading.bytes().all(|b| b.is_ascii_alphabetic())
-                && clause.text().chars().any(|c| matches!(c, '\u{3040}'..='\u{30ff}' | '\u{3400}'..='\u{4dbf}' | '\u{4e00}'..='\u{9fff}'))
+    pub(super) fn clause_language_change(clause: &Clause) -> Option<Change> {
+        if !clause.english && clause.changed {
+            if let Some(raw) = clause
+                .raw
+                .as_ref()
+                .filter(|raw| raw.as_str() == clause.text())
             {
-                changes.push(Change::Language { raw: clause.reading.clone(), english: false, explicit: false });
+                return Some(Change::Language {
+                    raw: raw.clone(),
+                    english: true,
+                    explicit: false,
+                });
             }
         }
-        changes
+        if clause.english
+            && clause.reading.bytes().all(|b| b.is_ascii_alphabetic())
+            && clause.text().chars().any(|c| matches!(c, '\u{3040}'..='\u{30ff}' | '\u{3400}'..='\u{4dbf}' | '\u{4e00}'..='\u{9fff}'))
+        {
+            return Some(Change::Language { raw: clause.reading.clone(), english: false, explicit: false });
+        }
+        None
+    }
+    pub(super) fn clause_language_changes(&self) -> Vec<Change> {
+        self.clauses
+            .iter()
+            .filter_map(Self::clause_language_change)
+            .collect()
     }
     pub(super) fn clause_original_inputs(&self, clauses: &[Clause]) -> Vec<Option<String>> {
         if self.uses_kana() || self.reconversion_origin.is_some() {
@@ -119,6 +122,71 @@ impl Session {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn original_single_conversion_and_go_preview_learning_match() {
+        let golden: serde_json::Value =
+            serde_json::from_str(include_str!("../../tests/data/upstream-single-choice.json"))
+                .unwrap();
+        let cases = golden["cases"].as_array().unwrap();
+        assert_eq!(cases.len(), 16);
+        for row in cases {
+            let c = &row["case"];
+            let raw = c["raw"].as_str().unwrap();
+            let mut s = Session {
+                no_learning: c["private"].as_bool().unwrap(),
+                ..Default::default()
+            };
+            s.settings
+                .set("DetectionLevel", serde_json::json!("Manual"))
+                .unwrap();
+            s.settings
+                .set("LiveConversion", serde_json::json!(false))
+                .unwrap();
+            s.settings
+                .set("PredictiveCandidates", serde_json::json!(false))
+                .unwrap();
+            s.settings
+                .set("LearningEnabled", c["learning"].clone())
+                .unwrap();
+            s.collect_engine_learning(true);
+            let mut commits = Vec::new();
+            for _ in 0..c["repeats"].as_u64().unwrap() {
+                for ch in raw.chars() {
+                    s.key(
+                        ch.to_ascii_uppercase() as i32,
+                        ch as i32,
+                        i32::from(ch.is_ascii_uppercase()),
+                    );
+                }
+                if c["forceKana"] == true {
+                    s.key(0x75, 0, 0);
+                }
+                if c["preview"] != true {
+                    s.key(0x20, 32, 0);
+                    assert!(s.clauses.is_empty(), "flat path: {}", c["name"]);
+                }
+                let view = s.result(false).view.unwrap();
+                let index = view
+                    .candidates
+                    .iter()
+                    .position(|candidate| candidate == c["target"].as_str().unwrap())
+                    .unwrap();
+                assert!(s.select_composing(index).consumed);
+                let result = s.key(13, 0, 0);
+                assert!(s.take_engine_learning().is_empty(), "{}", c["name"]);
+                commits.push(
+                    result
+                        .commits
+                        .iter()
+                        .map(|e| e.text.as_str())
+                        .collect::<String>(),
+                );
+            }
+            assert_eq!(serde_json::json!(commits), row["commits"], "{}", c["name"]);
+            let actual: Vec<_> = s.state.language_counts.iter().map(|(word, entry)| serde_json::json!({"word":word,"english":entry.english,"count":entry.count,"active":entry.active(word)})).collect();
+            assert_eq!(serde_json::json!(actual), row["expected"], "{}", c["name"]);
+        }
+    }
     #[test]
     fn original_controller_clause_history_choices_match() {
         let golden: serde_json::Value = serde_json::from_str(include_str!(

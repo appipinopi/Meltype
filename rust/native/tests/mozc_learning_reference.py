@@ -33,3 +33,11 @@ if len(sys.argv)>4:
     assert len(actual)==len(expected)==25
     for got,want in zip(actual,expected):assert got==want,(want['case']['name'],want,got)
     print('Original controller: 25 normal/translation history cases reproduced')
+
+if len(sys.argv)>5:
+    fixture=Path(__file__).resolve().parents[2]/'core/tests/data/upstream-single-choice.json'
+    expected=json.loads(fixture.read_text(encoding='utf-8'))['cases']
+    actual=[json.loads(line) for line in Path(sys.argv[5]).read_text(encoding='utf-8-sig').splitlines() if line.startswith('{')]
+    assert len(actual)==len(expected)==16
+    for got,want in zip(actual,expected):assert got==want,(want['case']['name'],want,got)
+    print('Original public session: 16 single-conversion/preview choice learning cases reproduced')

@@ -945,16 +945,31 @@ impl Session {
             changes.extend(self.clause_language_changes());
             changes.extend(self.clause_history_changes());
             if self.is_converting() && self.clauses.is_empty() {
-                let mut clause = Clause::new(reading.clone(), vec![text.clone()]);
+                let english = !self.uses_kana()
+                    && self.reconversion_origin.is_none()
+                    && self.raw.bytes().all(|b| b.is_ascii_alphabetic())
+                    && self.mixed_reading(true) == self.raw;
+                let mut clause = Clause::new(
+                    if english {
+                        self.raw.clone()
+                    } else {
+                        reading.clone()
+                    },
+                    vec![text.clone()],
+                );
+                clause.english = english;
                 clause.raw = (!self.uses_kana() && self.reconversion_origin.is_none())
                     .then(|| self.raw.clone());
                 clause.changed = self.chosen_conversion;
                 clause.translations = self.translation_candidates.clone();
+                if let Some(change) = Self::clause_language_change(&clause) {
+                    changes.push(change);
+                }
                 if let Some(change) = Self::clause_history_change(&clause) {
                     changes.push(change);
                 }
             }
-            if self.function_key != 0 {
+            if self.function_key != 0 && !self.is_converting() {
                 changes.push(Change::Language {
                     raw: self.raw.clone(),
                     english: self.function_key >= 0x78,
@@ -1181,7 +1196,9 @@ impl Session {
                 return self.result(false);
             }
             self.candidates = preview;
-            self.clauses = vec![Clause::new("ご".into(), self.candidates.clone())];
+            let mut clause = Clause::new("ご".into(), self.candidates.clone());
+            clause.raw = Some(self.raw.clone());
+            self.clauses = vec![clause];
             self.live_clauses.clear();
         }
         if index >= self.candidates.len() {

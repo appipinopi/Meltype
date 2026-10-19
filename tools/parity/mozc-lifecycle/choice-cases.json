@@ -1,0 +1,162 @@
+[
+  {
+    "name": "flat-hashi-1",
+    "raw": "hashi",
+    "repeats": 1,
+    "preview": false,
+    "learning": true,
+    "private": false,
+    "forceKana": false,
+    "target": "hashi"
+  },
+  {
+    "name": "flat-hashi-2",
+    "raw": "hashi",
+    "repeats": 2,
+    "preview": false,
+    "learning": true,
+    "private": false,
+    "forceKana": false,
+    "target": "hashi"
+  },
+  {
+    "name": "flat-go-1",
+    "raw": "go",
+    "repeats": 1,
+    "preview": false,
+    "learning": true,
+    "private": false,
+    "forceKana": false,
+    "target": "go"
+  },
+  {
+    "name": "flat-go-2",
+    "raw": "go",
+    "repeats": 2,
+    "preview": false,
+    "learning": true,
+    "private": false,
+    "forceKana": false,
+    "target": "go"
+  },
+  {
+    "name": "flat-sushi-1",
+    "raw": "sushi",
+    "repeats": 1,
+    "preview": false,
+    "learning": true,
+    "private": false,
+    "forceKana": false,
+    "target": "sushi"
+  },
+  {
+    "name": "flat-sushi-2",
+    "raw": "sushi",
+    "repeats": 2,
+    "preview": false,
+    "learning": true,
+    "private": false,
+    "forceKana": false,
+    "target": "sushi"
+  },
+  {
+    "name": "flat-HASHI-1",
+    "raw": "HASHI",
+    "repeats": 1,
+    "preview": false,
+    "learning": true,
+    "private": false,
+    "forceKana": true,
+    "target": "HASHI"
+  },
+  {
+    "name": "flat-HASHI-2",
+    "raw": "HASHI",
+    "repeats": 2,
+    "preview": false,
+    "learning": true,
+    "private": false,
+    "forceKana": true,
+    "target": "HASHI"
+  },
+  {
+    "name": "preview-go",
+    "raw": "go",
+    "repeats": 2,
+    "preview": true,
+    "learning": true,
+    "private": false,
+    "forceKana": false,
+    "target": "go"
+  },
+  {
+    "name": "preview-go-once",
+    "raw": "go",
+    "repeats": 1,
+    "preview": true,
+    "learning": true,
+    "private": false,
+    "forceKana": false,
+    "target": "go"
+  },
+  {
+    "name": "disabled",
+    "raw": "go",
+    "repeats": 1,
+    "preview": false,
+    "learning": false,
+    "private": false,
+    "forceKana": false,
+    "target": "go"
+  },
+  {
+    "name": "private",
+    "raw": "go",
+    "repeats": 1,
+    "preview": false,
+    "learning": true,
+    "private": true,
+    "forceKana": false,
+    "target": "go"
+  },
+  {
+    "name": "preview-disabled",
+    "raw": "go",
+    "repeats": 1,
+    "preview": true,
+    "learning": false,
+    "private": false,
+    "forceKana": false,
+    "target": "go"
+  },
+  {
+    "name": "preview-private",
+    "raw": "go",
+    "repeats": 1,
+    "preview": true,
+    "learning": true,
+    "private": true,
+    "forceKana": false,
+    "target": "go"
+  },
+  {
+    "name": "english-to-japanese-HASHI",
+    "raw": "HASHI",
+    "repeats": 1,
+    "preview": false,
+    "learning": true,
+    "private": false,
+    "forceKana": true,
+    "target": "はし"
+  },
+  {
+    "name": "english-to-japanese-GO",
+    "raw": "GO",
+    "repeats": 1,
+    "preview": false,
+    "learning": true,
+    "private": false,
+    "forceKana": true,
+    "target": "ご"
+  }
+]

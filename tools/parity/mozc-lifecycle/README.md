@@ -83,3 +83,18 @@ python rust/native/tests/mozc_learning_reference.py filter-reference.jsonl raw-r
 通常入力のライブ変換から通常履歴を自動登録する処理を除き、文節のない変換でも選び直し状態を通常履歴の条件へ適用します。これは履歴の選別の照合であり、文節のない変換の日英学習、全候補源・全文節編集経路・保存制限・設定画面の一致や、TSF適用失敗時の学習整合まで証明するものではありません。
 
 今回の履歴修正後は全183テストとRust 1.99の全体／TSF-server Clippyが成功。最終Releaseのx64／x86でABI・文節伸縮20入力列・選択再変換28操作・学習ワーカーも再実行して成功しました。結果は`dist/clause-history-workspace-verified.log`と`dist/clause-history-shipping-{x64,x86}-*.log`へ保存しています。先行試験では古いカタカナ学習前提の回帰が1件失敗し、そのログも保持しています。通常候補の選択学習を検査する試験へ修正し、カタカナを通常履歴へ登録しない元版の期待値は比較データ側で維持しています。
+
+## 単一変換と go の入力中候補
+
+`Choice.cs`は元の公開`MeltypeSession.HandleKey`／`SelectCandidate`を使用し、文字入力→Space（またはgoの入力中候補）→候補選択→Enterを実行します。元版の組込み辞書・LanguageMemoryを接続したManualの16操作について、確定文字列と日英学習の方向・回数・有効状態を`upstream-single-choice.json`へ採取します。Rust側も公開のキー／候補選択入口を通し、通常の単一変換が文節リストを持たない経路であることを明示的に検査します。候補一覧の全順序は比較対象にしていません。
+
+```powershell
+dotnet run --project tools/parity/mozc-lifecycle/MozcLifecycle.csproj -- --choice tools/parity/mozc-lifecycle/choice-cases.json > single-choice-reference.jsonl
+python rust/native/tests/mozc_learning_reference.py filter-reference.jsonl raw-reference.jsonl clause-language-reference.jsonl clause-history-reference.jsonl single-choice-reference.jsonl
+```
+
+hashi・go・sushiの元入力への選び直しと2回待ち、goの入力中候補、学習無効とプライベート欄を比較します。全大文字は自動のSpace処理とは分け、F6のあとSpaceで候補を開く操作として固定しています。表示字種を変えても変換用の区間が英語であれば、英字候補の選択は日英の訂正として覚えません。同じ英語区間で日本語候補を選んだ場合は日本語として記録します。Fキーで表示を変えてから変換した場合は、変換候補の学習へ同時に別の明示Fキー学習を混ぜません。
+
+Rustは文節のない変換に同じ日英学習の選別を適用し、goの入力中候補へもRawを渡します。比較対象の16操作では、入力どおりの英字などをエンジンへ学習通知しないことも検査します。全レベル・各文脈・途中編集・全大文字の自動Space操作・全候補源の分類一致、Fキー後の全エンジン通知、TSF適用失敗時の学習整合、実アプリ上の操作は継続確認です。
+
+今回の単一変換修正後は全184テストとRust 1.99の全体／TSF-server Clippyが成功。最終Releaseのx64／x86でABI・文節伸縮20入力列・選択再変換28操作・学習ワーカーも成功しました。結果は`dist/single-choice-workspace-first.log`と`dist/single-choice-shipping-{x64,x86}-*.log`に保存しています。元版で全大文字のSpace時に候補が開かない先行観測や、F6後の誤った英語学習を検出した先行失敗も保存し、上記の固定した操作と区別します。
