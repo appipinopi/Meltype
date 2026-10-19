@@ -1,0 +1,2992 @@
+{
+  "baseline": "45e14f86558aa6ea34f2c2ecd038ba95ca8c3c46",
+  "sha256": {
+    "tools/parity/misspellings/Program.cs": "170e91844213633948db992e6e8332951e970f31014222c9d2882f41329718ed",
+    "tools/parity/misspellings/cases.json": "804397fe6e8b4747e500f313381aaff61d1857e9149937563f461152ab84e242",
+    "src/Meltype.Core/Composition/MisspellingDictionary.cs": "63b48b253c531cffd05a69b3f36db707b8075f6caa2463b9a5104dea6f114e65",
+    "dictionaries/misspellings.txt": "a5ae4a63d361552b25d2385878ee8391e8b98f722a7d4a721baf8bc4b947dc36"
+  },
+  "original_errors": 137,
+  "cases": [
+    {
+      "reading": "ブレスレッド",
+      "expected": "ブレスレット",
+      "error": null
+    },
+    {
+      "reading": "prefix/ブレスレッド/suffix",
+      "expected": "prefix/ブレスレット/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀ブレスレッド😀",
+      "expected": "😀ブレスレット😀",
+      "error": null
+    },
+    {
+      "reading": "ブレスレット",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ブレスレット/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ブレスレット😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "アンクレッド",
+      "expected": "アンクレット",
+      "error": null
+    },
+    {
+      "reading": "prefix/アンクレッド/suffix",
+      "expected": "prefix/アンクレット/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀アンクレッド😀",
+      "expected": "😀アンクレット😀",
+      "error": null
+    },
+    {
+      "reading": "アンクレット",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/アンクレット/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀アンクレット😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "シュミレーション",
+      "expected": "シミュレーション",
+      "error": null
+    },
+    {
+      "reading": "prefix/シュミレーション/suffix",
+      "expected": "prefix/シミュレーション/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀シュミレーション😀",
+      "expected": "😀シミュレーション😀",
+      "error": null
+    },
+    {
+      "reading": "シミュレーション",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/シミュレーション/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀シミュレーション😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "シュミレーター",
+      "expected": "シミュレーター",
+      "error": null
+    },
+    {
+      "reading": "prefix/シュミレーター/suffix",
+      "expected": "prefix/シミュレーター/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀シュミレーター😀",
+      "expected": "😀シミュレーター😀",
+      "error": null
+    },
+    {
+      "reading": "シミュレーター",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/シミュレーター/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀シミュレーター😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "コミニュケーション",
+      "expected": "コミュニケーション",
+      "error": null
+    },
+    {
+      "reading": "prefix/コミニュケーション/suffix",
+      "expected": "prefix/コミュニケーション/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀コミニュケーション😀",
+      "expected": "😀コミュニケーション😀",
+      "error": null
+    },
+    {
+      "reading": "コミュニケーション",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/コミュニケーション/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀コミュニケーション😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "コミニケーション",
+      "expected": "コミュニケーション",
+      "error": null
+    },
+    {
+      "reading": "prefix/コミニケーション/suffix",
+      "expected": "prefix/コミュニケーション/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀コミニケーション😀",
+      "expected": "😀コミュニケーション😀",
+      "error": null
+    },
+    {
+      "reading": "コミニティ",
+      "expected": "コミュニティ",
+      "error": null
+    },
+    {
+      "reading": "prefix/コミニティ/suffix",
+      "expected": "prefix/コミュニティ/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀コミニティ😀",
+      "expected": "😀コミュニティ😀",
+      "error": null
+    },
+    {
+      "reading": "コミュニティ",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/コミュニティ/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀コミュニティ😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "コミニティー",
+      "expected": "コミュニティー",
+      "error": null
+    },
+    {
+      "reading": "prefix/コミニティー/suffix",
+      "expected": "prefix/コミュニティー/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀コミニティー😀",
+      "expected": "😀コミュニティー😀",
+      "error": null
+    },
+    {
+      "reading": "コミュニティー",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/コミュニティー/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀コミュニティー😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "シュチュエーション",
+      "expected": "シチュエーション",
+      "error": null
+    },
+    {
+      "reading": "prefix/シュチュエーション/suffix",
+      "expected": "prefix/シチュエーション/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀シュチュエーション😀",
+      "expected": "😀シチュエーション😀",
+      "error": null
+    },
+    {
+      "reading": "シチュエーション",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/シチュエーション/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀シチュエーション😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "シュチエーション",
+      "expected": "シチュエーション",
+      "error": null
+    },
+    {
+      "reading": "prefix/シュチエーション/suffix",
+      "expected": "prefix/シチュエーション/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀シュチエーション😀",
+      "expected": "😀シチュエーション😀",
+      "error": null
+    },
+    {
+      "reading": "アボガド",
+      "expected": "アボカド",
+      "error": null
+    },
+    {
+      "reading": "prefix/アボガド/suffix",
+      "expected": "prefix/アボカド/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀アボガド😀",
+      "expected": "😀アボカド😀",
+      "error": null
+    },
+    {
+      "reading": "アボカド",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/アボカド/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀アボカド😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ギブス",
+      "expected": "ギプス",
+      "error": null
+    },
+    {
+      "reading": "prefix/ギブス/suffix",
+      "expected": "prefix/ギプス/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀ギブス😀",
+      "expected": "😀ギプス😀",
+      "error": null
+    },
+    {
+      "reading": "ギプス",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ギプス/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ギプス😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "バトミントン",
+      "expected": "バドミントン",
+      "error": null
+    },
+    {
+      "reading": "prefix/バトミントン/suffix",
+      "expected": "prefix/バドミントン/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀バトミントン😀",
+      "expected": "😀バドミントン😀",
+      "error": null
+    },
+    {
+      "reading": "バドミントン",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/バドミントン/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀バドミントン😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ドッチボール",
+      "expected": "ドッジボール",
+      "error": null
+    },
+    {
+      "reading": "prefix/ドッチボール/suffix",
+      "expected": "prefix/ドッジボール/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀ドッチボール😀",
+      "expected": "😀ドッジボール😀",
+      "error": null
+    },
+    {
+      "reading": "ドッジボール",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ドッジボール/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ドッジボール😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "フィギア",
+      "expected": "フィギュア",
+      "error": null
+    },
+    {
+      "reading": "prefix/フィギア/suffix",
+      "expected": "prefix/フィギュア/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀フィギア😀",
+      "expected": "😀フィギュア😀",
+      "error": null
+    },
+    {
+      "reading": "フィギュア",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/フィギュア/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀フィギュア😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "カーデガン",
+      "expected": "カーディガン",
+      "error": null
+    },
+    {
+      "reading": "prefix/カーデガン/suffix",
+      "expected": "prefix/カーディガン/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀カーデガン😀",
+      "expected": "😀カーディガン😀",
+      "error": null
+    },
+    {
+      "reading": "カーディガン",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/カーディガン/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀カーディガン😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ラクビー",
+      "expected": "ラグビー",
+      "error": null
+    },
+    {
+      "reading": "prefix/ラクビー/suffix",
+      "expected": "prefix/ラグビー/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀ラクビー😀",
+      "expected": "😀ラグビー😀",
+      "error": null
+    },
+    {
+      "reading": "ラグビー",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ラグビー/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ラグビー😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ハンバーク",
+      "expected": "ハンバーグ",
+      "error": null
+    },
+    {
+      "reading": "prefix/ハンバーク/suffix",
+      "expected": "prefix/ハンバーグ/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀ハンバーク😀",
+      "expected": "😀ハンバーグ😀",
+      "error": null
+    },
+    {
+      "reading": "ハンバーグ",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ハンバーグ/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ハンバーグ😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ヨーグルド",
+      "expected": "ヨーグルト",
+      "error": null
+    },
+    {
+      "reading": "prefix/ヨーグルド/suffix",
+      "expected": "prefix/ヨーグルト/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀ヨーグルド😀",
+      "expected": "😀ヨーグルト😀",
+      "error": null
+    },
+    {
+      "reading": "ヨーグルト",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ヨーグルト/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ヨーグルト😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "グッツ",
+      "expected": "グッズ",
+      "error": null
+    },
+    {
+      "reading": "prefix/グッツ/suffix",
+      "expected": "prefix/グッズ/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀グッツ😀",
+      "expected": "😀グッズ😀",
+      "error": null
+    },
+    {
+      "reading": "グッズ",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/グッズ/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀グッズ😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "キューピット",
+      "expected": "キューピッド",
+      "error": null
+    },
+    {
+      "reading": "prefix/キューピット/suffix",
+      "expected": "prefix/キューピッド/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀キューピット😀",
+      "expected": "😀キューピッド😀",
+      "error": null
+    },
+    {
+      "reading": "キューピッド",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/キューピッド/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀キューピッド😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ヘットフォン",
+      "expected": "ヘッドフォン",
+      "error": null
+    },
+    {
+      "reading": "prefix/ヘットフォン/suffix",
+      "expected": "prefix/ヘッドフォン/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀ヘットフォン😀",
+      "expected": "😀ヘッドフォン😀",
+      "error": null
+    },
+    {
+      "reading": "ヘッドフォン",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ヘッドフォン/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ヘッドフォン😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ヘットホン",
+      "expected": "ヘッドホン",
+      "error": null
+    },
+    {
+      "reading": "prefix/ヘットホン/suffix",
+      "expected": "prefix/ヘッドホン/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀ヘットホン😀",
+      "expected": "😀ヘッドホン😀",
+      "error": null
+    },
+    {
+      "reading": "ヘッドホン",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ヘッドホン/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ヘッドホン😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ホットドック",
+      "expected": "ホットドッグ",
+      "error": null
+    },
+    {
+      "reading": "prefix/ホットドック/suffix",
+      "expected": "prefix/ホットドッグ/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀ホットドック😀",
+      "expected": "😀ホットドッグ😀",
+      "error": null
+    },
+    {
+      "reading": "ホットドッグ",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ホットドッグ/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ホットドッグ😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ドックフード",
+      "expected": "ドッグフード",
+      "error": null
+    },
+    {
+      "reading": "prefix/ドックフード/suffix",
+      "expected": "prefix/ドッグフード/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀ドックフード😀",
+      "expected": "😀ドッグフード😀",
+      "error": null
+    },
+    {
+      "reading": "ドッグフード",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ドッグフード/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ドッグフード😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ハンドバック",
+      "expected": "ハンドバッグ",
+      "error": null
+    },
+    {
+      "reading": "prefix/ハンドバック/suffix",
+      "expected": "prefix/ハンドバッグ/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀ハンドバック😀",
+      "expected": "😀ハンドバッグ😀",
+      "error": null
+    },
+    {
+      "reading": "ハンドバッグ",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ハンドバッグ/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ハンドバッグ😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ショルダーバック",
+      "expected": "ショルダーバッグ",
+      "error": null
+    },
+    {
+      "reading": "prefix/ショルダーバック/suffix",
+      "expected": "prefix/ショルダーバッグ/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀ショルダーバック😀",
+      "expected": "😀ショルダーバッグ😀",
+      "error": null
+    },
+    {
+      "reading": "ショルダーバッグ",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ショルダーバッグ/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ショルダーバッグ😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "トートバック",
+      "expected": "トートバッグ",
+      "error": null
+    },
+    {
+      "reading": "prefix/トートバック/suffix",
+      "expected": "prefix/トートバッグ/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀トートバック😀",
+      "expected": "😀トートバッグ😀",
+      "error": null
+    },
+    {
+      "reading": "トートバッグ",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/トートバッグ/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀トートバッグ😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "エコバック",
+      "expected": "エコバッグ",
+      "error": null
+    },
+    {
+      "reading": "prefix/エコバック/suffix",
+      "expected": "prefix/エコバッグ/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀エコバック😀",
+      "expected": "😀エコバッグ😀",
+      "error": null
+    },
+    {
+      "reading": "エコバッグ",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/エコバッグ/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀エコバッグ😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "キャリーバック",
+      "expected": "キャリーバッグ",
+      "error": null
+    },
+    {
+      "reading": "prefix/キャリーバック/suffix",
+      "expected": "prefix/キャリーバッグ/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀キャリーバック😀",
+      "expected": "😀キャリーバッグ😀",
+      "error": null
+    },
+    {
+      "reading": "キャリーバッグ",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/キャリーバッグ/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀キャリーバッグ😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "セカンドバック",
+      "expected": "セカンドバッグ",
+      "error": null
+    },
+    {
+      "reading": "prefix/セカンドバック/suffix",
+      "expected": "prefix/セカンドバッグ/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀セカンドバック😀",
+      "expected": "😀セカンドバッグ😀",
+      "error": null
+    },
+    {
+      "reading": "セカンドバッグ",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/セカンドバッグ/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀セカンドバッグ😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "サンドバック",
+      "expected": "サンドバッグ",
+      "error": null
+    },
+    {
+      "reading": "prefix/サンドバック/suffix",
+      "expected": "prefix/サンドバッグ/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀サンドバック😀",
+      "expected": "😀サンドバッグ😀",
+      "error": null
+    },
+    {
+      "reading": "サンドバッグ",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/サンドバッグ/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀サンドバッグ😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "エアバック",
+      "expected": "エアバッグ",
+      "error": null
+    },
+    {
+      "reading": "prefix/エアバック/suffix",
+      "expected": "prefix/エアバッグ/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀エアバック😀",
+      "expected": "😀エアバッグ😀",
+      "error": null
+    },
+    {
+      "reading": "エアバッグ",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/エアバッグ/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀エアバッグ😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ティーパック",
+      "expected": "ティーバッグ",
+      "error": null
+    },
+    {
+      "reading": "prefix/ティーパック/suffix",
+      "expected": "prefix/ティーバッグ/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀ティーパック😀",
+      "expected": "😀ティーバッグ😀",
+      "error": null
+    },
+    {
+      "reading": "ティーバッグ",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ティーバッグ/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ティーバッグ😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ベットルーム",
+      "expected": "ベッドルーム",
+      "error": null
+    },
+    {
+      "reading": "prefix/ベットルーム/suffix",
+      "expected": "prefix/ベッドルーム/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀ベットルーム😀",
+      "expected": "😀ベッドルーム😀",
+      "error": null
+    },
+    {
+      "reading": "ベッドルーム",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ベッドルーム/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ベッドルーム😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ベットタウン",
+      "expected": "ベッドタウン",
+      "error": null
+    },
+    {
+      "reading": "prefix/ベットタウン/suffix",
+      "expected": "prefix/ベッドタウン/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀ベットタウン😀",
+      "expected": "😀ベッドタウン😀",
+      "error": null
+    },
+    {
+      "reading": "ベッドタウン",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ベッドタウン/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ベッドタウン😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ペッドボトル",
+      "expected": "ペットボトル",
+      "error": null
+    },
+    {
+      "reading": "prefix/ペッドボトル/suffix",
+      "expected": "prefix/ペットボトル/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀ペッドボトル😀",
+      "expected": "😀ペットボトル😀",
+      "error": null
+    },
+    {
+      "reading": "ペットボトル",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ペットボトル/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ペットボトル😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "エベレーター",
+      "expected": "エレベーター",
+      "error": null
+    },
+    {
+      "reading": "prefix/エベレーター/suffix",
+      "expected": "prefix/エレベーター/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀エベレーター😀",
+      "expected": "😀エレベーター😀",
+      "error": null
+    },
+    {
+      "reading": "エレベーター",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/エレベーター/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀エレベーター😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "キーボート",
+      "expected": "キーボード",
+      "error": null
+    },
+    {
+      "reading": "prefix/キーボート/suffix",
+      "expected": "prefix/キーボード/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀キーボート😀",
+      "expected": "😀キーボード😀",
+      "error": null
+    },
+    {
+      "reading": "キーボード",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/キーボード/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀キーボード😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ダイエッド",
+      "expected": "ダイエット",
+      "error": null
+    },
+    {
+      "reading": "prefix/ダイエッド/suffix",
+      "expected": "prefix/ダイエット/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀ダイエッド😀",
+      "expected": "😀ダイエット😀",
+      "error": null
+    },
+    {
+      "reading": "ダイエット",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ダイエット/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ダイエット😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "チケッド",
+      "expected": "チケット",
+      "error": null
+    },
+    {
+      "reading": "prefix/チケッド/suffix",
+      "expected": "prefix/チケット/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀チケッド😀",
+      "expected": "😀チケット😀",
+      "error": null
+    },
+    {
+      "reading": "チケット",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/チケット/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀チケット😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ネックレス",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ネックレス/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ネックレス😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "イヤリング",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/イヤリング/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀イヤリング😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "アクセサリー",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/アクセサリー/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀アクセサリー😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ジャケット",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ジャケット/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ジャケット😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "クローゼット",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/クローゼット/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀クローゼット😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ブランケット",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ブランケット/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ブランケット😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "マットレス",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/マットレス/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀マットレス😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ポシェット",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ポシェット/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ポシェット😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "リュックサック",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/リュックサック/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀リュックサック😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "スニーカー",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/スニーカー/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀スニーカー😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "サンダル",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/サンダル/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀サンダル😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "パスワード",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/パスワード/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀パスワード😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ダウンロード",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ダウンロード/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ダウンロード😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "アップロード",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/アップロード/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀アップロード😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "アップデート",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/アップデート/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀アップデート😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "スケジュール",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/スケジュール/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀スケジュール😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "メッセージ",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/メッセージ/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀メッセージ😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "プロジェクト",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/プロジェクト/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀プロジェクト😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "コンピューター",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/コンピューター/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀コンピューター😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ネットワーク",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ネットワーク/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ネットワーク😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "アプリケーション",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/アプリケーション/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀アプリケーション😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "データベース",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/データベース/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀データベース😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "インターネット",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/インターネット/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀インターネット😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "スマートフォン",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/スマートフォン/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀スマートフォン😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "タブレット",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/タブレット/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀タブレット😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "プリンター",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/プリンター/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀プリンター😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ディスプレイ",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ディスプレイ/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ディスプレイ😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "モチベーション",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/モチベーション/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀モチベーション😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "プレゼンテーション",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/プレゼンテーション/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀プレゼンテーション😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "インストール",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/インストール/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀インストール😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "チョコレート",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/チョコレート/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀チョコレート😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "スパゲッティ",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/スパゲッティ/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀スパゲッティ😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ブロッコリー",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ブロッコリー/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ブロッコリー😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "パイナップル",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/パイナップル/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀パイナップル😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ソーセージ",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ソーセージ/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ソーセージ😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "マヨネーズ",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/マヨネーズ/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀マヨネーズ😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ケチャップ",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ケチャップ/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ケチャップ😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "サンドイッチ",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/サンドイッチ/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀サンドイッチ😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ハンバーガー",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ハンバーガー/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ハンバーガー😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "デザート",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/デザート/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀デザート😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "レストラン",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/レストラン/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀レストラン😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "エスカレーター",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/エスカレーター/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀エスカレーター😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "トイレットペーパー",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/トイレットペーパー/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀トイレットペーパー😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ティッシュ",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ティッシュ/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ティッシュ😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ドライヤー",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ドライヤー/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ドライヤー😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "シャンプー",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/シャンプー/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀シャンプー😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "コンディショナー",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/コンディショナー/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀コンディショナー😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "スーツケース",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/スーツケース/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀スーツケース😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ランドセル",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ランドセル/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ランドセル😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ボランティア",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ボランティア/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ボランティア😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "アルバイト",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/アルバイト/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀アルバイト😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ミーティング",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ミーティング/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ミーティング😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "アンケート",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/アンケート/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀アンケート😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "カレンダー",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/カレンダー/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀カレンダー😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "キャンセル",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/キャンセル/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀キャンセル😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "トレーニング",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/トレーニング/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀トレーニング😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "バスケットボール",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/バスケットボール/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀バスケットボール😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "バレーボール",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/バレーボール/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀バレーボール😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "フィギュアスケート",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/フィギュアスケート/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀フィギュアスケート😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "スケートボード",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/スケートボード/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀スケートボード😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ヘリコプター",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ヘリコプター/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ヘリコプター😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ロケット",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ロケット/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ロケット😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ディスクトップ",
+      "expected": "デスクトップ",
+      "error": null
+    },
+    {
+      "reading": "prefix/ディスクトップ/suffix",
+      "expected": "prefix/デスクトップ/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀ディスクトップ😀",
+      "expected": "😀デスクトップ😀",
+      "error": null
+    },
+    {
+      "reading": "デスクトップ",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/デスクトップ/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀デスクトップ😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "コンピュター",
+      "expected": "コンピューター",
+      "error": null
+    },
+    {
+      "reading": "prefix/コンピュター/suffix",
+      "expected": "prefix/コンピューター/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀コンピュター😀",
+      "expected": "😀コンピューター😀",
+      "error": null
+    },
+    {
+      "reading": "ベビーベット",
+      "expected": "ベビーベッド",
+      "error": null
+    },
+    {
+      "reading": "prefix/ベビーベット/suffix",
+      "expected": "prefix/ベビーベッド/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀ベビーベット😀",
+      "expected": "😀ベビーベッド😀",
+      "error": null
+    },
+    {
+      "reading": "ベビーベッド",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ベビーベッド/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ベビーベッド😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ピラミット",
+      "expected": "ピラミッド",
+      "error": null
+    },
+    {
+      "reading": "prefix/ピラミット/suffix",
+      "expected": "prefix/ピラミッド/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀ピラミット😀",
+      "expected": "😀ピラミッド😀",
+      "error": null
+    },
+    {
+      "reading": "ピラミッド",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ピラミッド/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ピラミッド😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "スタンダート",
+      "expected": "スタンダード",
+      "error": null
+    },
+    {
+      "reading": "prefix/スタンダート/suffix",
+      "expected": "prefix/スタンダード/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀スタンダート😀",
+      "expected": "😀スタンダード😀",
+      "error": null
+    },
+    {
+      "reading": "スタンダード",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/スタンダード/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀スタンダード😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ドックラン",
+      "expected": "ドッグラン",
+      "error": null
+    },
+    {
+      "reading": "prefix/ドックラン/suffix",
+      "expected": "prefix/ドッグラン/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀ドックラン😀",
+      "expected": "😀ドッグラン😀",
+      "error": null
+    },
+    {
+      "reading": "ドッグラン",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ドッグラン/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ドッグラン😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ハイブリット",
+      "expected": "ハイブリッド",
+      "error": null
+    },
+    {
+      "reading": "prefix/ハイブリット/suffix",
+      "expected": "prefix/ハイブリッド/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀ハイブリット😀",
+      "expected": "😀ハイブリッド😀",
+      "error": null
+    },
+    {
+      "reading": "ハイブリッド",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ハイブリッド/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ハイブリッド😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "スプレットシート",
+      "expected": "スプレッドシート",
+      "error": null
+    },
+    {
+      "reading": "prefix/スプレットシート/suffix",
+      "expected": "prefix/スプレッドシート/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀スプレットシート😀",
+      "expected": "😀スプレッドシート😀",
+      "error": null
+    },
+    {
+      "reading": "スプレッドシート",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/スプレッドシート/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀スプレッドシート😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ヘットライト",
+      "expected": "ヘッドライト",
+      "error": null
+    },
+    {
+      "reading": "prefix/ヘットライト/suffix",
+      "expected": "prefix/ヘッドライト/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀ヘットライト😀",
+      "expected": "😀ヘッドライト😀",
+      "error": null
+    },
+    {
+      "reading": "ヘッドライト",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ヘッドライト/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ヘッドライト😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "エクスプレッソ",
+      "expected": "エスプレッソ",
+      "error": null
+    },
+    {
+      "reading": "prefix/エクスプレッソ/suffix",
+      "expected": "prefix/エスプレッソ/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀エクスプレッソ😀",
+      "expected": "😀エスプレッソ😀",
+      "error": null
+    },
+    {
+      "reading": "エスプレッソ",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/エスプレッソ/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀エスプレッソ😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "エキササイズ",
+      "expected": "エクササイズ",
+      "error": null
+    },
+    {
+      "reading": "prefix/エキササイズ/suffix",
+      "expected": "prefix/エクササイズ/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀エキササイズ😀",
+      "expected": "😀エクササイズ😀",
+      "error": null
+    },
+    {
+      "reading": "エクササイズ",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/エクササイズ/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀エクササイズ😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "シンポジューム",
+      "expected": "シンポジウム",
+      "error": null
+    },
+    {
+      "reading": "prefix/シンポジューム/suffix",
+      "expected": "prefix/シンポジウム/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀シンポジューム😀",
+      "expected": "😀シンポジウム😀",
+      "error": null
+    },
+    {
+      "reading": "シンポジウム",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/シンポジウム/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀シンポジウム😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "デバック",
+      "expected": "デバッグ",
+      "error": null
+    },
+    {
+      "reading": "prefix/デバック/suffix",
+      "expected": "prefix/デバッグ/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀デバック😀",
+      "expected": "😀デバッグ😀",
+      "error": null
+    },
+    {
+      "reading": "デバッグ",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/デバッグ/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀デバッグ😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "アルゴリスム",
+      "expected": "アルゴリズム",
+      "error": null
+    },
+    {
+      "reading": "prefix/アルゴリスム/suffix",
+      "expected": "prefix/アルゴリズム/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀アルゴリスム😀",
+      "expected": "😀アルゴリズム😀",
+      "error": null
+    },
+    {
+      "reading": "アルゴリズム",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/アルゴリズム/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀アルゴリズム😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ブルーツース",
+      "expected": "ブルートゥース",
+      "error": null
+    },
+    {
+      "reading": "prefix/ブルーツース/suffix",
+      "expected": "prefix/ブルートゥース/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀ブルーツース😀",
+      "expected": "😀ブルートゥース😀",
+      "error": null
+    },
+    {
+      "reading": "ブルートゥース",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ブルートゥース/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ブルートゥース😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ワークショッブ",
+      "expected": "ワークショップ",
+      "error": null
+    },
+    {
+      "reading": "prefix/ワークショッブ/suffix",
+      "expected": "prefix/ワークショップ/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀ワークショッブ😀",
+      "expected": "😀ワークショップ😀",
+      "error": null
+    },
+    {
+      "reading": "ワークショップ",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ワークショップ/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ワークショップ😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "シュミレート",
+      "expected": "シミュレート",
+      "error": null
+    },
+    {
+      "reading": "prefix/シュミレート/suffix",
+      "expected": "prefix/シミュレート/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀シュミレート😀",
+      "expected": "😀シミュレート😀",
+      "error": null
+    },
+    {
+      "reading": "シミュレート",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/シミュレート/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀シミュレート😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "コミュニケイション",
+      "expected": "コミュニケーション",
+      "error": null
+    },
+    {
+      "reading": "prefix/コミュニケイション/suffix",
+      "expected": "prefix/コミュニケーション/suffix",
+      "error": null
+    },
+    {
+      "reading": "😀コミュニケイション😀",
+      "expected": "😀コミュニケーション😀",
+      "error": null
+    },
+    {
+      "reading": "ラップトップ",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ラップトップ/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ラップトップ😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "コンポーネント",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/コンポーネント/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀コンポーネント😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ドキュメント",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ドキュメント/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ドキュメント😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "フレームワーク",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/フレームワーク/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀フレームワーク😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "プログラミング",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/プログラミング/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀プログラミング😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "リポジトリ",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/リポジトリ/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀リポジトリ😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "スーパーマーケット",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/スーパーマーケット/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀スーパーマーケット😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "コンビニエンスストア",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/コンビニエンスストア/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀コンビニエンスストア😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "キーホルダー",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/キーホルダー/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀キーホルダー😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ドライバー",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ドライバー/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ドライバー😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "トランポリン",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/トランポリン/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀トランポリン😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "オーケストラ",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/オーケストラ/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀オーケストラ😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "ドキュメンタリー",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/ドキュメンタリー/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀ドキュメンタリー😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "イルミネーション",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/イルミネーション/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀イルミネーション😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "リハビリテーション",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/リハビリテーション/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀リハビリテーション😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "オリエンテーション",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/オリエンテーション/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀オリエンテーション😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "インフルエンザ",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/インフルエンザ/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀インフルエンザ😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "アレルギー",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/アレルギー/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀アレルギー😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "エアコン",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/エアコン/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀エアコン😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "リモコン",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "prefix/リモコン/suffix",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "😀リモコン😀",
+      "expected": null,
+      "error": "ArgumentException"
+    },
+    {
+      "reading": "",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "hello",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "https://example.com/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "https://example.com/",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "ASCII123!?",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "café",
+      "expected": null,
+      "error": null
+    },
+    {
+      "reading": "ッー",
+      "expected": null,
+      "error": null
+    }
+  ]
+}

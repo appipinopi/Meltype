@@ -15,6 +15,7 @@ pub struct Linguistics {
     misspellings: Vec<(String, String)>,
     correct: HashSet<String>,
     shapes: HashMap<String, Vec<String>>,
+    ascii_misspellings: bool,
     pub readings: BTreeMap<String, Vec<String>>,
 }
 pub fn kanji(c: char) -> bool {
@@ -42,6 +43,7 @@ impl Linguistics {
                 misspellings: vec![],
                 correct: HashSet::new(),
                 shapes: HashMap::new(),
+                ascii_misspellings: false,
                 readings: BTreeMap::new(),
             };
             for line in lines(include_str!("../../../dictionaries/meanings.txt")) {
@@ -110,6 +112,11 @@ impl Linguistics {
                     d.shapes.entry(shape(&right)).or_default().push(right);
                 }
             }
+            // ASCII readings cannot match non-ASCII spellings or normalized
+            // shapes. Derive this from the loaded dictionary, including empty
+            // shapes, so adding an ASCII entry keeps the normal lookup path.
+            d.ascii_misspellings = d.misspellings.iter().any(|(wrong, _)| wrong.is_ascii())
+                || d.shapes.keys().any(|key| key.is_ascii());
             d.misspellings
                 .sort_by_key(|(wrong, _)| std::cmp::Reverse(wrong.len()));
             d
@@ -226,6 +233,9 @@ impl Linguistics {
         vec![]
     }
     pub fn misspelling(&self, reading: &str) -> Option<String> {
+        if reading.is_ascii() && !self.ascii_misspellings {
+            return None;
+        }
         let text = romaji::katakana(reading);
         let inside_correct = |start: usize, len: usize| {
             self.correct.iter().any(|word| {
