@@ -18,7 +18,7 @@ with tempfile.TemporaryDirectory(prefix='meltype-windows-converter-') as directo
     shutil.copy2(worker,root/worker.name)
     (root/'mozc').mkdir();shutil.copy2(helper,root/'mozc/meltype_mozc_helper.exe')
     config=profile/'config.json'
-    def configure(mode,enabled=True,learning=False,separate=False,level='Manual'):config.write_text(json.dumps(dict(Enabled=enabled,ConversionEngine=mode,LiveConversion=False,PredictiveCandidates=False,LearningEnabled=learning,SeparateKeyRoles=separate,DetectionLevel=level)),encoding='utf-8')
+    def configure(mode,enabled=True,learning=False,separate=False,level='Manual',tab=False):config.write_text(json.dumps(dict(Enabled=enabled,ConversionEngine=mode,LiveConversion=False,PredictiveCandidates=False,LearningEnabled=learning,SeparateKeyRoles=separate,DetectionLevel=level,TabConversion=tab)),encoding='utf-8')
     configure('System')
     env=dict(os.environ,MELTYPE_RUST_DATA_DIR=str(profile));env.pop('MELTYPE_TEST_TIP_NO_CONVERTERS',None)
     process=subprocess.Popen([str(root/worker.name),'--stdio-tip-worker'],stdin=subprocess.PIPE,stdout=subprocess.PIPE,env=env)
@@ -54,6 +54,29 @@ with tempfile.TemporaryDirectory(prefix='meltype-windows-converter-') as directo
         assert view['candidates'].index('MOZC:はし')<view['candidates'].index('ALT:はし'),view
         selected=call('select',index=view['candidates'].index('ALT:はし'))
         assert selected['commits'][0]['text']=='ALT:はし',selected
+        # Tab starts conversion only when enabled. Its candidates must come
+        # through the worker's converter, and cancellation keeps the input.
+        configure('Mozc',tab=True)
+        for ch in 'hashi':call('key',vk=ord(ch.upper()),ch=ord(ch))
+        tabbed=call('key',vk=9)
+        assert tabbed['view']['converting'] and tabbed['view']['text']=='MOZC:はし',tabbed
+        advanced=call('key',vk=9)
+        assert advanced['view']['selectedIndex']==1 and advanced['view']['text']=='ALT:はし',advanced
+        previous=call('key',vk=9,mods=1)
+        assert previous['view']['selectedIndex']==0,previous
+        cancelled=call('key',vk=8)
+        assert cancelled['commits']==[] and not cancelled['view']['converting'] and cancelled['view']['text']=='はし',cancelled
+        assert call('commit')['commits'][0]['text']=='はし'
+        for ch in 'hashi':call('key',vk=ord(ch.upper()),ch=ord(ch))
+        call('key',vk=32,ch=32)
+        passed=call('key',vk=9)
+        assert not passed['consumed'] and passed['view'] is None and passed['commits'][0]['text']=='MOZC:はし',passed
+        for ch in 'hashi':call('key',vk=ord(ch.upper()),ch=ord(ch))
+        call('key',vk=118)
+        assert call('key',vk=28)['view']['converting']
+        cancelled=call('key',vk=27)
+        assert cancelled['view']['text']=='ハシ' and not cancelled['view']['converting'],cancelled
+        assert call('commit')['commits'][0]['text']=='ハシ'
         configure('Mozc',learning=True)
         before={p.relative_to(profile):p.read_bytes() for p in profile.rglob('*') if p.is_file() and 'mozc' not in p.relative_to(profile).parts}
         for ch in 'kanji':assert call('key',vk=ord(ch.upper()),ch=ord(ch),private=True)['consumed']

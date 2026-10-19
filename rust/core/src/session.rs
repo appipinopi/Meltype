@@ -164,6 +164,8 @@ pub struct Session {
     composition_kana: bool,
     correctable: Vec<crate::commit_correction::Record>,
     space_started_conversion: bool,
+    tab_started_conversion: bool,
+    conversion_origin_display: Option<String>,
     chosen_conversion: bool,
     sigil: crate::sigil::Sigil,
     edited_units: Option<crate::composition_units::Units>,
@@ -216,6 +218,8 @@ impl Default for Session {
             composition_kana: false,
             correctable: vec![],
             space_started_conversion: false,
+            tab_started_conversion: false,
+            conversion_origin_display: None,
             chosen_conversion: false,
             sigil: Default::default(),
             edited_units: None,
@@ -844,6 +848,8 @@ impl Session {
         self.sigil = Default::default();
         self.correctable.clear();
         self.space_started_conversion = false;
+        self.tab_started_conversion = false;
+        self.conversion_origin_display = None;
         self.chosen_conversion = false;
         self.last_commit = None;
         self.reconversion_origin = None;
@@ -1250,11 +1256,18 @@ impl Session {
         }
         Some(self.commit())
     }
+    /// True after Core accepted Tab as a conversion start. Native adapters
+    /// can then fetch clauses without preempting predictions or suggestions.
+    pub fn tab_conversion_started(&self) -> bool {
+        self.tab_started_conversion && self.is_converting()
+    }
     pub fn begin_conversion(&mut self, external: Vec<String>) {
         let _romaji = romaji::Scope::new(self.custom_romaji.clone());
         if self.raw.is_empty() || self.is_converting() {
             return;
         }
+        self.tab_started_conversion = false;
+        self.conversion_origin_display = self.explicit.clone();
         if !self.live_clauses.is_empty() {
             let clauses = std::mem::take(&mut self.live_clauses);
             self.begin_clauses(clauses);
@@ -1384,6 +1397,10 @@ impl Session {
             return false;
         }
         clauses = crate::time_candidates::join(clauses);
+        if !self.is_converting() {
+            self.tab_started_conversion = false;
+            self.conversion_origin_display = self.explicit.clone();
+        }
         let original_inputs = self.clause_original_inputs(&clauses);
         self.translation_candidates.clear();
         let mut preceding = self.before.clone();
@@ -1710,6 +1727,27 @@ impl Session {
             }
         }
         match vk {
+            0x08 if self.is_converting() => {
+                // The first Backspace cancels conversion without editing the
+                // retained input. A subsequent Backspace removes a sound unit.
+                self.candidates.clear();
+                self.clauses.clear();
+                self.live_clauses.clear();
+                self.selected_clause = 0;
+                self.selected = 0;
+                self.explicit = self.conversion_origin_display.take();
+                self.tab_started_conversion = false;
+                self.result(true)
+            }
+            0x1c if self.is_converting() => {
+                self.cycle(1);
+                self.result(true)
+            }
+            0x09 if self.is_converting() && !self.tab_started_conversion => {
+                let mut result = self.commit();
+                result.consumed = false;
+                result
+            }
             0x20 if modifiers & 1 != 0 && !self.raw.is_empty() => {
                 if self.is_converting() {
                     self.cycle(-1);
@@ -1758,7 +1796,8 @@ impl Session {
                     self.clauses.clear();
                     self.live_clauses.clear();
                     self.selected_clause = 0;
-                    self.explicit = None;
+                    self.explicit = self.conversion_origin_display.take();
+                    self.tab_started_conversion = false;
                 } else {
                     self.reset();
                 }
@@ -1864,15 +1903,20 @@ impl Session {
                         (self.selected_prediction + direction).rem_euclid(predictions.len() as i32);
                     return self.result(true);
                 }
-                if self.settings.boolean("TabConversion") {
+                if self.settings.boolean("TabConversion")
+                    && modifiers & 1 == 0
+                    && !self.space_commits_alphanumeric()
+                    && !self.ends_in_english()
+                {
                     self.begin_conversion(vec![]);
+                    self.tab_started_conversion = self.is_converting();
                     return self.result(true);
                 }
                 let mut result = self.commit();
                 result.consumed = false;
                 result
             }
-            0x1c if self.settings.boolean("SeparateKeyRoles") && !self.raw.is_empty() => {
+            0x1c if !self.raw.is_empty() => {
                 self.begin_conversion(vec![]);
                 self.result(true)
             }
@@ -1965,7 +2009,7 @@ impl Session {
                 self.result(true)
             }
             0x26 | 0x28 | 0x09 if self.is_converting() => {
-                self.cycle(if vk == 0x26 || modifiers & 1 != 0 {
+                self.cycle(if vk == 0x26 || vk == 0x09 && modifiers & 1 != 0 {
                     -1
                 } else {
                     1
@@ -1973,6 +2017,7 @@ impl Session {
                 self.result(true)
             }
             0x75..=0x79 if !self.raw.is_empty() => {
+                self.tab_started_conversion = false;
                 let before = (!self.is_converting()).then(|| self.display(false));
                 let same_mode = !self.is_converting() && self.function_key == vk;
                 self.candidates.clear();
@@ -2067,6 +2112,7 @@ impl Session {
                 self.result(true)
             }
             _ if ch >= 0x20 && ch != 0x7f => {
+                self.tab_started_conversion = false;
                 // Retain the old commit when a new character starts after conversion.
                 let commits =
                     if self.is_converting() && !self.settings.boolean("ContinueAfterConversion") {

@@ -438,30 +438,40 @@ unsafe fn external_selection_conversion(reading: &str, prefer_romaji: bool) -> V
         let stop = chars.get(end).map_or(reading.len(), |(i, _)| *i);
         let run = &reading[chars[start].0..stop];
         if keep[start] {
-            let mut candidates = Vec::new();
-            if prefer_romaji {
-                let analysis = meltype_core::romaji::analyze(&run.to_ascii_lowercase(), true);
-                let kana = analysis.kana();
-                if analysis.valid && analysis.partial.is_empty() && !kana.is_empty() {
-                    candidates.extend(external_reconversion(&kana));
-                    let katakana = meltype_core::romaji::katakana(&kana);
-                    candidates.extend([
-                        kana,
-                        katakana.clone(),
-                        meltype_core::kana::halfwidth(&katakana),
-                    ]);
+            // The detector keeps known English words and following unknown
+            // spellings in separate segments (team|Xyz). Prefer-Japanese
+            // conversion must preserve those boundaries as normal Space does.
+            let parts = if prefer_romaji && run.bytes().all(|c| c.is_ascii_alphabetic()) {
+                meltype_core::dictionary::Dictionary::bundled().english_parts(run)
+            } else {
+                vec![run]
+            };
+            for run in parts {
+                let mut candidates = Vec::new();
+                if prefer_romaji {
+                    let analysis = meltype_core::romaji::analyze(&run.to_ascii_lowercase(), true);
+                    let kana = analysis.kana();
+                    if analysis.valid && analysis.partial.is_empty() && !kana.is_empty() {
+                        candidates.extend(external_reconversion(&kana));
+                        let katakana = meltype_core::romaji::katakana(&kana);
+                        candidates.extend([
+                            kana,
+                            katakana.clone(),
+                            meltype_core::kana::halfwidth(&katakana),
+                        ]);
+                    }
+                    let mut capitalized = run.to_owned();
+                    capitalized[..1].make_ascii_uppercase();
+                    candidates.extend([run.into(), capitalized, run.to_ascii_uppercase()]);
                 }
-                let mut capitalized = run.to_owned();
-                capitalized[..1].make_ascii_uppercase();
-                candidates.extend([run.into(), capitalized, run.to_ascii_uppercase()]);
+                candidates.extend([run.into(), meltype_core::kana::fullwidth(run)]);
+                let mut clause = Clause::new(run.into(), candidates);
+                if prefer_romaji {
+                    clause.english = true;
+                    clause.kana = Some(String::new());
+                }
+                clauses.push(clause);
             }
-            candidates.extend([run.into(), meltype_core::kana::fullwidth(run)]);
-            let mut clause = Clause::new(run.into(), candidates);
-            if prefer_romaji {
-                clause.english = true;
-                clause.kana = Some(String::new());
-            }
-            clauses.push(clause);
         } else {
             let (segments, candidates) = external_conversion_unprotected(run, std::ptr::null());
             if segments.is_empty() {
@@ -497,7 +507,7 @@ pub unsafe extern "C" fn meltype_handle_key(
         let reading = sessions().lock().ok().and_then(|all| {
             all.get(&(handle as usize))
                 .filter(|s| {
-                    (vk == 0x20 || vk == 0x1c && s.settings.boolean("SeparateKeyRoles"))
+                    (vk == 0x20 || vk == 0x1c)
                         && !(vk == 0x20 && modifiers & 1 == 0 && s.space_commits_alphanumeric())
                         && !(vk == 0x20
                             && modifiers & 1 == 0
@@ -512,16 +522,16 @@ pub unsafe extern "C" fn meltype_handle_key(
                         && !s.code_english()
                         && (s.display(true) != s.raw()
                             || s.settings.boolean("SeparateKeyRoles")
+                            || vk == 0x1c
                             || vk == 0x20 && modifiers & 1 != 0)
                         && modifiers & 14 == 0
-                        && (modifiers & 1 == 0 || vk == 0x20)
                 })
                 .map(Session::conversion_reading)
         });
         let (segments, external) = reading
             .as_deref()
             .map(|r| {
-                if vk == 0x20 && modifiers & 1 != 0 {
+                if vk == 0x1c || vk == 0x20 && modifiers & 1 != 0 {
                     (external_selection_conversion(r, true), Vec::new())
                 } else {
                     external_conversion(r, before)
@@ -539,6 +549,11 @@ pub unsafe extern "C" fn meltype_handle_key(
         } else {
             None
         };
+        let starting_tab = vk == 0x09
+            && sessions().lock().ok().is_some_and(|all| {
+                all.get(&(handle as usize))
+                    .is_some_and(|s| !s.is_converting())
+            });
         let result = run(handle, |s| {
             s.set_context(read(before).as_deref(), read(after).as_deref());
             if !segments.is_empty() && s.begin_clauses(segments) {
@@ -550,6 +565,45 @@ pub unsafe extern "C" fn meltype_handle_key(
                 s.key(vk, ch, modifiers)
             }
         });
+        // Let Core decide whether Tab starts conversion: suggestions,
+        // predictions and protected input take precedence. Only then request
+        // converter clauses, outside the session mutex as for Space.
+        let tab_reading = if starting_tab {
+            sessions().lock().ok().and_then(|all| {
+                all.get(&(handle as usize))
+                    .filter(|s| s.tab_conversion_started())
+                    .map(Session::conversion_reading)
+            })
+        } else {
+            None
+        };
+        let result = if let Some(reading) = tab_reading {
+            let (mut clauses, candidates) = external_conversion(&reading, before);
+            if clauses.is_empty() && !candidates.is_empty() {
+                clauses.push(Clause::new(reading, candidates));
+            }
+            if !clauses.is_empty() {
+                if let Some(text) = take(result) {
+                    if let Ok(previous) = serde_json::from_str::<meltype_core::SessionResult>(&text)
+                    {
+                        run(handle, |s| {
+                            s.begin_clauses(clauses);
+                            let mut reply = s.result(previous.consumed);
+                            reply.commits = previous.commits;
+                            reply
+                        })
+                    } else {
+                        allocate(&text)
+                    }
+                } else {
+                    result
+                }
+            } else {
+                result
+            }
+        } else {
+            result
+        };
         let result = if let Some(previous) = resize_before {
             let current = sessions()
                 .lock()

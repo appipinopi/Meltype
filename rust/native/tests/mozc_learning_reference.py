@@ -73,3 +73,11 @@ if len(sys.argv)>9:
     assert len(actual)==len(expected)==48
     for got,want in zip(actual,expected):assert got==want,(want['case']['name'],want,got)
     print('Original controller: 48 public numeric candidate-selection key traces reproduced')
+
+if len(sys.argv)>10:
+    fixture=Path(__file__).resolve().parents[2]/'core/tests/data/upstream-conversion-keys.json'
+    expected=json.loads(fixture.read_text(encoding='utf-8'))['cases']
+    actual=[json.loads(line) for line in Path(sys.argv[10]).read_text(encoding='utf-8-sig').splitlines() if line.startswith('{')]
+    assert len(actual)==len(expected)==84
+    for got,want in zip(actual,expected):assert got==want,(want['case']['name'],want,got)
+    print('Original public session: 84 conversion cancellation/candidate-control traces reproduced')

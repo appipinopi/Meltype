@@ -88,6 +88,8 @@
 
 - 数字／テンキーの1〜9で、表示中の9件ページから選択し、次の文節へ進む・最後なら確定する処理を追加。元版39状態と、内部状態を注入しない公開キー48入力列を採取した。DLLでの候補一覧照合から、外部変換文節の読みの挿入位置・ローマ字候補の欠落・意味辞書からの余分な候補も修正。最終修正後の全189テストと全体／TSF-server Clippy、x64／x86の最終Releaseで48列の候補一覧・表示・確定と既存回帰、最終Release workerの実通信が成功。先行失敗ログを保持し、全候補源・全設定・OS描画は継続確認。今回の速度は未測定。[条件と再現](../tools/parity/mozc-lifecycle/README.md)。
 
+- 変換中のBackspaceを文字削除から変換取消へ修正し、F6〜F10で選んだ字種をBackspace／Escで復元。変換キー・Shift＋Downの候補方向、Tabで始めた場合だけのTab巡回とShift＋Tabの開始抑止も移植。元版の公開入口84入力列を採取し、DLLで表示・編集・文節・選択位置と候補一覧を照合する。Tabの外部変換器取得を接続し、Windows workerの実通信へ操作を追加。全189テストと、最後のnative修正後の単体41テスト・全体／TSF-server Clippyが成功。最終Release x64／x86の84列と既存回帰、追加操作を含むworker通信も成功。全設定・予測解除・変換中誤字修正やOS描画は継続確認。今回の速度は未測定。[条件](../tools/parity/mozc-lifecycle/README.md)。
+
 ## 次に埋めるCoreの差
 
 1. 入力途中の区切り・保留子音・英語候補・音単位編集を、元版のCompositionText/CompositionDetectorと各キーで比較する。

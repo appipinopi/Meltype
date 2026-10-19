@@ -177,3 +177,20 @@ python rust/native/tests/number_keys_smoke.py target/release/meltype_native.dll
 CIは元版から両固定データを再採取して照合し、DLL試験を各OSとWindows x86へ追加しています。今回の修正後の速度は未測定で、全Core・UIの移行完了を示すものではありません。
 
 最終修正後は全189テストとRust 1.99のワークスペース／TSF-server Clippyが成功。最終Releaseのx64／x86で公開キー48入力列の消費・確定・表示・文節・変換中の選択位置と候補一覧が一致しました。既存ABI、ケース切替96列、Shift＋Space20操作、文節伸縮20列、選択再変換28操作、結合文字8入力も両ABIで成功。最終Release workerの実フレーム通信も成功しています。元版から39状態と48入力列を再採取する参照検査も成功し、先行の候補順の不一致ログは保存しています。結果は`dist/number-keys-*.log`へ記録しました。
+
+## 変換中の取消とTabの役割
+
+`ConversionKeys.cs`は元の公開MeltypeSessionへ文字入力からキーを送り、内部状態を変更せず84入力列を採取します。Manual・固定20候補・元版の同梱候補辞書で、ライブ変換・予測・学習はOFF。TabConversionのON/OFF、1／2文節、Backspace・Ctrl＋H・Esc・変換キー・Shift付き上下、Tab／Shift＋Tab、取消・字種変更後の再変換、F6〜F10から変換して取消を含みます。`upstream-conversion-keys.json`へ全返信と参照ソースのハッシュを固定し、数字選択と共通のDLL試験で消費・編集・表示・文節・変換中の選択位置と候補一覧を照合します。
+
+Rustでは最初のBackspaceは変換だけを取り消し、次のBackspaceで入力を削除します。変換前に選んだ字種もBackspace／Escで復元します。変換キーはキー役割分離設定にかかわらず候補を進め、Shift＋Downも前ではなく次の候補です。Tabで始めた変換だけTab／Shift＋Tabで候補を巡回し、Spaceなどで始めた変換のTabは確定してアプリへ通します。Shift＋Tabでは新たな変換を始めず、取消・Fキー・新しい入力・確定でTab起点の状態を解除します。
+
+nativeはCoreがTabの変換開始を受理した後で外部変換器へ問い合わせます。これにより提案・予測・保護入力の優先処理へ先回りしません。Windows workerのフレーム試験にもTab開始・候補巡回・取消・SpaceからのTab通過と、F7後に変換してEscで字種を戻す操作を追加しています。変換キーの日本語優先経路でも既知英単語と未知の綴りの境界を保ち、既存の文節伸縮ケースを回帰に使います。
+
+```powershell
+dotnet run --project tools/parity/mozc-lifecycle/MozcLifecycle.csproj -- --conversion-keys tools/parity/mozc-lifecycle/conversion-key-cases.json
+python rust/native/tests/number_keys_smoke.py target/release/meltype_native.dll rust/core/tests/data/upstream-conversion-keys.json
+```
+
+この比較は全設定・全候補源・JISかな・予測の選択解除・変換中の誤字修正・実OSの描画までを証明しません。全Core移行とUIの照合は継続中で、今回の修正後の速度は未測定です。
+
+字種復元までの全189テストが成功し、最後のnative英語区間修正後もnative単体41テストとRust 1.99の全体／TSF-server Clippyが成功しました。最終Releaseのx64／x86で84入力列、数字選択48列、既存ABI・ケース切替96列・Shift＋Space20操作・文節伸縮20列・選択再変換28操作・結合文字8入力が成功。最終Release workerでは実フレーム通信で追加のTab操作と字種復元も成功。元版84列の再採取照合も成功し、先行の取消・字種・英語区切りの不一致ログは保持しています。結果は`dist/conversion-keys-*.log`へ保存しました。

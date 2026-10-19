@@ -67,14 +67,16 @@ def projection(result):
                 view={k: view[k] for k in fields} if view else None)
 
 
-golden = json.loads((Path(__file__).resolve().parents[2] / 'core/tests/data/upstream-public-number-keys.json').read_text(encoding='utf-8'))
-assert len(golden['cases']) == 48
+fixture = Path(sys.argv[2]) if len(sys.argv) > 2 else Path(__file__).resolve().parents[2] / 'core/tests/data/upstream-public-number-keys.json'
+golden = json.loads(fixture.read_text(encoding='utf-8'))
+assert len(golden['cases']) == (84 if fixture.stem == 'upstream-conversion-keys' else 48)
 with tempfile.TemporaryDirectory(prefix='meltype-number-keys-') as directory:
     for number, row in enumerate(golden['cases']):
         profile = Path(directory, str(number))
         profile.mkdir()
         (profile / 'config.json').write_text(json.dumps(dict(LiveConversion=False, PredictiveCandidates=False,
-            LearningEnabled=False, DetectionLevel='Manual', ScoredSegmentation=False)), encoding='utf-8')
+            LearningEnabled=False, DetectionLevel='Manual', ScoredSegmentation=False,
+            TabConversion=row['case'].get('tab', False))), encoding='utf-8')
         handle = api.meltype_create_at(str(profile).encode())
         assert handle
         queries.clear()
@@ -87,9 +89,10 @@ with tempfile.TemporaryDirectory(prefix='meltype-number-keys-') as directory:
                 finally:
                     api.meltype_free(pointer)
                 assert projection(actual) == projection(expected), (row['case']['name'], index, key, projection(expected), projection(actual))
-            assert 'はし' in queries, (row['case'], queries)
-            if row['case']['raw'] == 'hashikami':
+            if row['case'].get('converts', True):
+                assert 'はし' in queries, (row['case'], queries)
+            if row['case']['raw'] == 'hashikami' and row['case'].get('converts', True):
                 assert 'かみ' in queries, (row['case'], queries)
         finally:
             api.meltype_destroy(handle)
-print('Native ABI: 48 original public numeric candidate-selection key traces passed')
+print(f"Native ABI: {fixture.stem}: {len(golden['cases'])} original public key traces passed")
