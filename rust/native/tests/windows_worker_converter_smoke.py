@@ -54,20 +54,39 @@ with tempfile.TemporaryDirectory(prefix='meltype-windows-converter-') as directo
         assert view['candidates'].index('MOZC:はし')<view['candidates'].index('ALT:はし'),view
         selected=call('select',index=view['candidates'].index('ALT:はし'))
         assert selected['commits'][0]['text']=='ALT:はし',selected
-        count=len(calls.read_text(encoding='utf-8').splitlines())
         configure('Mozc',learning=True)
         before={p.relative_to(profile):p.read_bytes() for p in profile.rglob('*') if p.is_file() and 'mozc' not in p.relative_to(profile).parts}
-        private=call('reconvert',text='kanji',private=True)
+        for ch in 'kanji':assert call('key',vk=ord(ch.upper()),ch=ord(ch),private=True)['consumed']
+        private=call('key',vk=32,ch=32,private=True)
         assert private['consumed'] and private['view']['text']=='MOZC:かんじ',private
         committed=call('commit')
         assert committed['commits'][0]['text']=='MOZC:かんじ',committed
         after={p.relative_to(profile):p.read_bytes() for p in profile.rglob('*') if p.is_file() and 'mozc' not in p.relative_to(profile).parts}
         assert before==after,'private conversion must not persist learning'
-        assert reconvert('kanji')=='MOZC:かんじ'
+        assert not any(line.startswith('L\t') for line in calls.read_text(encoding='utf-8').splitlines()),'private conversion must not notify Mozc'
+        for ch in 'kanji':assert call('key',vk=ord(ch.upper()),ch=ord(ch))['consumed']
+        assert call('key',vk=32,ch=32)['view']['text']=='MOZC:かんじ'
         call('commit')
         normal={p.relative_to(profile):p.read_bytes() for p in profile.rglob('*') if p.is_file() and 'mozc' not in p.relative_to(profile).parts}
         assert normal!=after,'normal conversion must resume persistent learning'
-        count=len(calls.read_text(encoding='utf-8').splitlines())
+        # A later query serializes with learning and must bypass both caches.
+        assert reconvert('kanji')=='MOZC:かんじ';call('reset')
+        assert len([line for line in calls.read_text(encoding='utf-8').splitlines() if line.startswith('L\t')])==1,calls.read_text(encoding='utf-8')
+        for ch in 'hashi':assert call('key',vk=ord(ch.upper()),ch=ord(ch))['consumed']
+        view=call('key',vk=32,ch=32)['view']
+        (profile/'mozc/fixture-slow-learning').touch()
+        started=time.monotonic()
+        assert call('select',index=view['candidates'].index('ALT:はし'))['commits'][0]['text']=='ALT:はし'
+        assert time.monotonic()-started<.5,'commit must not wait for slow helper learning'
+        configure('System')
+        assert reconvert('nihongo')==expected,'System stays usable while Mozc learns'
+        call('reset');configure('Mozc',learning=True)
+        assert reconvert('hashi')=='ALT:はし','learned candidate must replace cached first choice'
+        call('reset')
+        (profile/'mozc/fixture-slow-learning').unlink()
+        trace=calls.read_text(encoding='utf-8').splitlines()
+        assert any(line.startswith('L\t') and line.endswith('\tはし\x1fALT:はし') for line in trace),trace
+        count=len(trace)
         configure('Mozc',False)
         disabled=call('reconvert',text='tenki')
         assert not disabled['consumed'] and disabled['view'] is None
@@ -85,6 +104,27 @@ with tempfile.TemporaryDirectory(prefix='meltype-windows-converter-') as directo
     finally:
         process.stdin.close();process.wait(timeout=10)
         assert process.returncode==0
+    assert (profile/'mozc/fixture-saved-on-quit').read_text()=='saved','healthy helper must flush on worker shutdown'
+    # Losing the helper during asynchronous learning must not strand its
+    # pending owner or keep a stale conversion cache alive.
+    (profile/'mozc/fixture-fail-learning').touch()
+    configure('Hybrid',learning=True)
+    process=subprocess.Popen([str(root/worker.name),'--stdio-tip-worker'],stdin=subprocess.PIPE,stdout=subprocess.PIPE,env=env)
+    try:
+        deadline=time.monotonic()+10
+        while True:
+            value=reconvert('nihongo');call('reset')
+            if value=='MOZC:にほんご':break
+            assert time.monotonic()<deadline,value
+            time.sleep(.025)
+        for ch in 'hashi':assert call('key',vk=ord(ch.upper()),ch=ord(ch))['consumed']
+        view=call('key',vk=32,ch=32)['view']
+        assert call('select',index=view['candidates'].index('ALT:はし'))['commits'][0]['text']=='ALT:はし'
+        assert reconvert('nihongo')==expected,'learning transport failure must release ownership and fall back'
+        configure('System');call('reset');call('close')
+    finally:
+        process.stdin.close();process.wait(timeout=10);assert process.returncode==0
+    (profile/'mozc/fixture-fail-learning').unlink()
     no_helper=root/'without-helper';no_helper.mkdir();shutil.copy2(worker,no_helper/worker.name)
     configure('Mozc')
     process=subprocess.Popen([str(no_helper/worker.name),'--stdio-tip-worker'],stdin=subprocess.PIPE,stdout=subprocess.PIPE,env=env)

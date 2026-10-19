@@ -1,0 +1,346 @@
+[
+  {
+    "name": "japanese",
+    "before": "日本語",
+    "learning": true,
+    "private": false,
+    "clauses": [
+      {
+        "reading": "はし",
+        "text": "橋",
+        "english": false,
+        "raw": null,
+        "translations": []
+      },
+      {
+        "reading": "かみ",
+        "text": "紙",
+        "english": false,
+        "raw": null,
+        "translations": []
+      }
+    ]
+  },
+  {
+    "name": "runs",
+    "before": "日本語",
+    "learning": true,
+    "private": false,
+    "clauses": [
+      {
+        "reading": "はし",
+        "text": "橋",
+        "english": false,
+        "raw": null,
+        "translations": []
+      },
+      {
+        "reading": "api",
+        "text": "api",
+        "english": true,
+        "raw": null,
+        "translations": []
+      },
+      {
+        "reading": "かみ",
+        "text": "紙",
+        "english": false,
+        "raw": null,
+        "translations": []
+      }
+    ]
+  },
+  {
+    "name": "raw",
+    "before": "日本語",
+    "learning": true,
+    "private": false,
+    "clauses": [
+      {
+        "reading": "はし",
+        "text": "hashi",
+        "english": false,
+        "raw": "hashi",
+        "translations": []
+      }
+    ]
+  },
+  {
+    "name": "translation",
+    "before": "日本語",
+    "learning": true,
+    "private": false,
+    "clauses": [
+      {
+        "reading": "はし",
+        "text": "bridge",
+        "english": false,
+        "raw": null,
+        "translations": [
+          "bridge"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "date",
+    "before": "日本語",
+    "learning": true,
+    "private": false,
+    "clauses": [
+      {
+        "reading": "きょう",
+        "text": "月曜日",
+        "english": false,
+        "raw": null,
+        "translations": []
+      },
+      {
+        "reading": "いま",
+        "text": "12:34",
+        "english": false,
+        "raw": null,
+        "translations": []
+      }
+    ]
+  },
+  {
+    "name": "math",
+    "before": "日本語",
+    "learning": true,
+    "private": false,
+    "clauses": [
+      {
+        "reading": "かける",
+        "text": "×",
+        "english": false,
+        "raw": null,
+        "translations": []
+      },
+      {
+        "reading": "たす",
+        "text": "＋",
+        "english": false,
+        "raw": null,
+        "translations": []
+      },
+      {
+        "reading": "3かける4",
+        "text": "3×4",
+        "english": false,
+        "raw": null,
+        "translations": []
+      }
+    ]
+  },
+  {
+    "name": "digits",
+    "before": "日本語",
+    "learning": true,
+    "private": false,
+    "clauses": [
+      {
+        "reading": "123",
+        "text": "百二十三",
+        "english": false,
+        "raw": null,
+        "translations": []
+      }
+    ]
+  },
+  {
+    "name": "kana",
+    "before": "日本語",
+    "learning": true,
+    "private": false,
+    "clauses": [
+      {
+        "reading": "はし",
+        "text": "はし",
+        "english": false,
+        "raw": null,
+        "translations": []
+      }
+    ]
+  },
+  {
+    "name": "context-0",
+    "before": "",
+    "learning": true,
+    "private": false,
+    "clauses": [
+      {
+        "reading": "はし",
+        "text": "橋",
+        "english": false,
+        "raw": null,
+        "translations": []
+      }
+    ]
+  },
+  {
+    "name": "context-1",
+    "before": "abc",
+    "learning": true,
+    "private": false,
+    "clauses": [
+      {
+        "reading": "はし",
+        "text": "橋",
+        "english": false,
+        "raw": null,
+        "translations": []
+      }
+    ]
+  },
+  {
+    "name": "context-2",
+    "before": "English!",
+    "learning": true,
+    "private": false,
+    "clauses": [
+      {
+        "reading": "はし",
+        "text": "橋",
+        "english": false,
+        "raw": null,
+        "translations": []
+      }
+    ]
+  },
+  {
+    "name": "context-3",
+    "before": "日本語！次の文",
+    "learning": true,
+    "private": false,
+    "clauses": [
+      {
+        "reading": "はし",
+        "text": "橋",
+        "english": false,
+        "raw": null,
+        "translations": []
+      }
+    ]
+  },
+  {
+    "name": "context-4",
+    "before": "前。 日本語 ",
+    "learning": true,
+    "private": false,
+    "clauses": [
+      {
+        "reading": "はし",
+        "text": "橋",
+        "english": false,
+        "raw": null,
+        "translations": []
+      }
+    ]
+  },
+  {
+    "name": "context-5",
+    "before": "一二三四五六七八九十日本語",
+    "learning": true,
+    "private": false,
+    "clauses": [
+      {
+        "reading": "はし",
+        "text": "橋",
+        "english": false,
+        "raw": null,
+        "translations": []
+      }
+    ]
+  },
+  {
+    "name": "context-6",
+    "before": "😀日本語",
+    "learning": true,
+    "private": false,
+    "clauses": [
+      {
+        "reading": "はし",
+        "text": "橋",
+        "english": false,
+        "raw": null,
+        "translations": []
+      }
+    ]
+  },
+  {
+    "name": "context-7",
+    "before": "abcα",
+    "learning": true,
+    "private": false,
+    "clauses": [
+      {
+        "reading": "はし",
+        "text": "橋",
+        "english": false,
+        "raw": null,
+        "translations": []
+      }
+    ]
+  },
+  {
+    "name": "context-8",
+    "before": "abc\n",
+    "learning": true,
+    "private": false,
+    "clauses": [
+      {
+        "reading": "はし",
+        "text": "橋",
+        "english": false,
+        "raw": null,
+        "translations": []
+      }
+    ]
+  },
+  {
+    "name": "context-9",
+    "before": "日本語\n",
+    "learning": true,
+    "private": false,
+    "clauses": [
+      {
+        "reading": "はし",
+        "text": "橋",
+        "english": false,
+        "raw": null,
+        "translations": []
+      }
+    ]
+  },
+  {
+    "name": "private",
+    "before": "日本語",
+    "learning": true,
+    "private": true,
+    "clauses": [
+      {
+        "reading": "はし",
+        "text": "橋",
+        "english": false,
+        "raw": null,
+        "translations": []
+      }
+    ]
+  },
+  {
+    "name": "disabled",
+    "before": "日本語",
+    "learning": false,
+    "private": false,
+    "clauses": [
+      {
+        "reading": "はし",
+        "text": "橋",
+        "english": false,
+        "raw": null,
+        "translations": []
+      }
+    ]
+  }
+]

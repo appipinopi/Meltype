@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 appipinopi
 mod direct;
+mod engine_learning;
 mod reconversion;
 use crate::{
     dictionary::Dictionary,
@@ -9,6 +10,7 @@ use crate::{
     settings::Settings,
     storage::{Change, State, Store},
 };
+pub use engine_learning::Batch as EngineLearning;
 pub use reconversion::ReconversionPart;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -127,6 +129,7 @@ pub struct Session {
     pub private: bool,
     /// InputScope.PRIVATE permits conversion while suppressing learning.
     pub no_learning: bool,
+    engine_learning: Option<Vec<engine_learning::Batch>>,
     pub preferences: Preferences,
     pub settings: Settings,
     pub state: State,
@@ -178,6 +181,7 @@ impl Default for Session {
             code_japanese: false,
             private: false,
             no_learning: false,
+            engine_learning: None,
             preferences: Preferences::default(),
             settings: Settings::default(),
             state: State::default(),
@@ -912,6 +916,7 @@ impl Session {
             }
         }
         let reading = self.reading();
+        self.record_engine_learning();
         if !self.private && !self.raw.is_empty() {
             let dynamic = crate::time_candidates::is_dynamic_choice(&reading, &text)
                 || self

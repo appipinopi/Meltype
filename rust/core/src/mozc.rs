@@ -7,13 +7,23 @@ use std::{
     path::Path,
     process::{Child, ChildStdin, Command, Stdio},
     sync::mpsc::{self, Receiver},
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 pub struct Mozc {
     child: Child,
     input: ChildStdin,
     output: Receiver<io::Result<String>>,
+    ready: bool,
+    learned_since_save: u32,
+}
+fn clean(text: &str) -> String {
+    text.replace(['\t', '\n', '\r'], " ")
+}
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct LearningClause {
+    pub reading: String,
+    pub text: String,
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Segment {
@@ -79,6 +89,8 @@ impl Mozc {
             child,
             input,
             output,
+            ready: false,
+            learned_since_save: 0,
         };
         if backend.receive(Duration::from_secs(10))? != "READY" {
             return Err(io::Error::new(
@@ -86,13 +98,14 @@ impl Mozc {
                 "invalid Mozc greeting",
             ));
         }
+        backend.ready = true;
         Ok(backend)
     }
     fn receive(&mut self, timeout: Duration) -> io::Result<String> {
         match self.output.recv_timeout(timeout) {
             Ok(Ok(line)) => Ok(line),
             result => {
-                let _ = self.child.kill();
+                self.abort();
                 Err(io::Error::new(
                     io::ErrorKind::TimedOut,
                     format!("Mozc unavailable: {result:?}"),
@@ -114,14 +127,59 @@ impl Mozc {
     /// response is not an engine failure and must not trigger System fallback
     /// while a Mozc-only engine remains available.
     pub fn query(&mut self, reading: &str, context: &str) -> io::Result<Option<Vec<Segment>>> {
-        let clean = |s: &str| s.replace(['\t', '\n', '\r', '\x1e', '\x1f'], " ");
-        writeln!(self.input, "C\t{}\t{}", clean(context), clean(reading))?;
-        self.input.flush()?;
-        let response = self.receive(Duration::from_millis(1500))?;
+        // Preserve the existing conversion protocol's separator hardening.
+        // Learning deliberately uses US/RS to encode its clause records.
+        let clean_query = |text: &str| clean(text).replace(['\x1e', '\x1f'], " ");
+        let response = self.request(&format!(
+            "C\t{}\t{}",
+            clean_query(context),
+            clean_query(reading)
+        ))?;
         if response.is_empty() {
             return Ok(None);
         }
-        parse_segments(reading, &response).map(Some)
+        parse_segments(reading, &response)
+            .inspect_err(|_| self.abort())
+            .map(Some)
+    }
+    /// Same L/S protocol and successful-learning save cadence as the original
+    /// MozcConverter. The caller serializes this with conversion requests and
+    /// clears its candidate/conversion caches when scheduling learning.
+    pub fn learn(&mut self, context: &str, clauses: &[LearningClause]) -> io::Result<bool> {
+        if clauses.is_empty() {
+            return Ok(false);
+        }
+        let records = clauses
+            .iter()
+            .map(|c| {
+                format!(
+                    "{}\x1f{}",
+                    clean(&c.reading).replace('\x1f', " "),
+                    clean(&c.text).replace('\x1f', " ")
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\x1e");
+        let accepted = self.request(&format!("L\t{}\t{records}", clean(context)))? == "OK";
+        if accepted {
+            self.learned_since_save += 1;
+            if self.learned_since_save >= 5 {
+                self.learned_since_save = 0;
+                self.request("S")?;
+            }
+        }
+        Ok(accepted)
+    }
+    fn request(&mut self, line: &str) -> io::Result<String> {
+        if let Err(error) = writeln!(self.input, "{line}").and_then(|_| self.input.flush()) {
+            self.abort();
+            return Err(error);
+        }
+        self.receive(Duration::from_millis(1500))
+    }
+    fn abort(&mut self) {
+        self.ready = false;
+        let _ = self.child.kill();
     }
 }
 #[cfg(windows)]
@@ -154,6 +212,23 @@ mod windows_launch {
 }
 impl Drop for Mozc {
     fn drop(&mut self) {
+        // The helper saves its user data after Q/EOF. Killing a healthy
+        // process skips that final save, unlike the original Dispose.
+        if self.ready
+            && self.child.try_wait().ok() == Some(None)
+            && writeln!(self.input, "Q")
+                .and_then(|_| self.input.flush())
+                .is_ok()
+        {
+            let deadline = Instant::now() + Duration::from_secs(1);
+            while Instant::now() < deadline {
+                match self.child.try_wait() {
+                    Ok(Some(_)) => return,
+                    Ok(None) => std::thread::sleep(Duration::from_millis(5)),
+                    Err(_) => break,
+                }
+            }
+        }
         let _ = self.child.kill();
         let _ = self.child.wait();
     }

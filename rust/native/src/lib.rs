@@ -68,14 +68,27 @@ fn run(
     f: impl FnOnce(&mut Session) -> meltype_core::SessionResult,
 ) -> *mut c_char {
     catch_unwind(AssertUnwindSafe(|| {
+        #[cfg(windows)]
+        let learning = windows_converter::has_worker();
+        #[cfg(not(windows))]
+        let learning = false;
         let mut all = sessions().lock().ok()?;
         let session = all.get_mut(&(handle as usize))?;
+        session.collect_engine_learning(learning);
         if session.raw().is_empty() {
             if let Err(error) = session.reload() {
                 session.storage_error = Some(error.to_string());
             }
         }
-        Some(allocate(&serde_json::to_string(&f(session)).ok()?))
+        let result = f(session);
+        let notifications = session.take_engine_learning();
+        drop(all);
+        // Engine IPC and callbacks must not run under the session registry lock.
+        #[cfg(windows)]
+        windows_converter::learn(notifications);
+        #[cfg(not(windows))]
+        let _ = notifications;
+        Some(allocate(&serde_json::to_string(&result).ok()?))
     }))
     .ok()
     .flatten()

@@ -2,7 +2,7 @@ name: Rust preview
 on:
   workflow_dispatch:
   pull_request:
-    paths: ['rust/**', 'android/**', 'Cargo.*', 'dictionaries/**', 'native/tip/**', 'linux/fcitx5/**', 'tools/parity/windows-converter/**', '.github/workflows/rust.yml']
+    paths: ['rust/**', 'android/**', 'Cargo.*', 'dictionaries/**', 'native/tip/**', 'linux/fcitx5/**', 'tools/parity/windows-converter/**', 'tools/parity/mozc-lifecycle/**', '.github/workflows/rust.yml']
 permissions:
   contents: read
 jobs:
@@ -89,6 +89,16 @@ jobs:
           rustc --edition=2021 -O rust/native/tests/fixtures/windows_mozc.rs -o dist/windows-converter-fixture/helper.exe
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python rust/native/tests/windows_worker_converter_smoke.py target/release/meltype-tip-worker.exe dist/windows-converter-fixture/helper.exe windows-converter-reference.jsonl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet build tools/parity/mozc-lifecycle/MozcLifecycle.csproj --nologo
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --no-build --project tools/parity/mozc-lifecycle/MozcLifecycle.csproj -- --filter tools/parity/mozc-lifecycle/filter-cases.json > mozc-learning-filter-reference.jsonl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/mozc_learning_reference.py mozc-learning-filter-reference.jsonl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo build -p meltype-core --example mozc_lifecycle --locked
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/mozc_lifecycle_smoke.py dist/windows-converter-fixture/helper.exe tools/parity/mozc-lifecycle/bin/Debug/net10.0/MozcLifecycle.dll target/debug/examples/mozc_lifecycle.exe
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Direct-input timeout through native ABI
         run: python rust/native/tests/direct_time_smoke.py

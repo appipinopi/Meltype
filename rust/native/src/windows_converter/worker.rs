@@ -37,6 +37,7 @@ struct Backend {
     helper: Option<PathBuf>,
     profile: PathBuf,
     mozc: Option<Mozc>,
+    learning: Option<std::thread::JoinHandle<(Mozc, std::io::Result<()>)>>,
     starting: Option<Receiver<std::io::Result<Mozc>>>,
     failures: u32,
     conversions: HashMap<(String, String), Option<Vec<Segment>>>,
@@ -65,6 +66,7 @@ impl Backend {
             && self.available()
             && self.mozc.is_none()
             && self.starting.is_none()
+            && self.learning.is_none()
         {
             let helper = self.helper.clone().unwrap();
             let profile = self.profile.clone();
@@ -88,6 +90,7 @@ impl Backend {
         if self.mode == Mode::System || !self.available() || reading.is_empty() {
             return None;
         }
+        self.finish_learning();
         let clean = |s: &str| s.replace(['\t', '\r', '\n'], " ");
         let key = (clean(context), clean(reading));
         if let Some(known) = self.conversions.get(&key).cloned() {
@@ -99,6 +102,7 @@ impl Backend {
         let response = self.mozc.as_mut()?.query(reading, context);
         match response {
             Ok(segments) => {
+                self.failures = 0;
                 if let Some(ref segments) = segments {
                     self.remember_candidates(segments, true);
                 }
@@ -116,6 +120,39 @@ impl Backend {
                 None
             }
         }
+    }
+    fn finish_learning(&mut self) {
+        if let Some(task) = self.learning.take() {
+            match task.join() {
+                Ok((engine, Ok(()))) => {
+                    self.mozc = Some(engine);
+                    self.failures = 0;
+                }
+                _ => {
+                    self.failures += 1;
+                    self.conversions.clear();
+                    self.candidates.clear();
+                }
+            }
+        }
+    }
+    fn learn(&mut self, batches: Vec<meltype_core::session::EngineLearning>) {
+        if batches.is_empty() || self.mode == Mode::System || !self.available() {
+            return;
+        }
+        self.finish_learning();
+        let Some(mut engine) = self.mozc.take() else {
+            return;
+        };
+        self.conversions.clear();
+        self.candidates.clear();
+        // Only helper IPC runs here; System and WinRT remain on their STA.
+        self.learning = Some(std::thread::spawn(move || {
+            let result = batches
+                .into_iter()
+                .try_for_each(|batch| engine.learn(&batch.context, &batch.clauses).map(|_| ()));
+            (engine, result)
+        }));
     }
     fn use_system(&self) -> bool {
         self.mode != Mode::Mozc || !self.available()
@@ -176,6 +213,7 @@ impl Backend {
     fn candidates(&mut self, reading: &str) -> Vec<String> {
         let mut result = Vec::new();
         if self.mode != Mode::System && self.available() {
+            self.finish_learning();
             if let Some(known) = self.candidates.get(reading) {
                 result = known.clone();
             } else if let Some(segments) = self.mozc_request(reading, "") {
@@ -198,6 +236,19 @@ impl Backend {
         }
         result
     }
+}
+impl Drop for Backend {
+    fn drop(&mut self) {
+        self.finish_learning();
+    }
+}
+pub(crate) fn has_worker() -> bool {
+    BACKEND
+        .try_with(|state| state.try_borrow().ok().is_some_and(|s| s.is_some()))
+        .unwrap_or(false)
+}
+pub(crate) fn learn(batches: Vec<meltype_core::session::EngineLearning>) {
+    with_backend(|backend| backend.learn(batches));
 }
 thread_local! { static BACKEND: RefCell<Option<Backend>> = const { RefCell::new(None) }; }
 fn with_backend<T>(f: impl FnOnce(&mut Backend) -> T) -> Option<T> {
@@ -271,6 +322,7 @@ pub fn install() -> Option<WorkerConverters> {
             helper,
             profile: meltype_core::storage::Store::default_directory().join("mozc"),
             mozc: None,
+            learning: None,
             starting: None,
             failures: 0,
             conversions: HashMap::new(),

@@ -4,7 +4,7 @@
 mod candidates;
 mod worker;
 pub use worker::install as install_worker;
-pub(crate) use worker::scope;
+pub(crate) use worker::{has_worker, learn, scope};
 mod system;
 use serde_json::json;
 use std::ffi::c_char;
