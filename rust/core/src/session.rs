@@ -927,7 +927,11 @@ impl Session {
         }
         let reading = self.reading();
         self.record_engine_learning();
-        if !self.private && !self.raw.is_empty() {
+        if !self.private
+            && !self.no_learning
+            && self.settings.boolean("LearningEnabled")
+            && !self.raw.is_empty()
+        {
             let dynamic = crate::time_candidates::is_dynamic_choice(&reading, &text)
                 || self
                     .clauses
