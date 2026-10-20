@@ -1927,6 +1927,7 @@ dependencies = [
  "serde_json",
  "tempfile",
  "tray-icon",
+ "windows",
  "windows-sys 0.61.2",
 ]
 

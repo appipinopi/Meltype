@@ -70,6 +70,7 @@ jobs:
         run: |
           ./rust/Test-Manage-Windows.ps1
           ./rust/Test-WindowsLifecycle.ps1
+          ./rust/Test-UpdateWindows.ps1
           ./rust/Test-StartupCli.ps1 -Binary target/release/meltype-settings.exe
           ./rust/Test-TrayStop.ps1 -Binary target/release/meltype-settings.exe
       - name: Build isolated settings render probe

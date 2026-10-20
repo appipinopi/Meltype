@@ -1,6 +1,6 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+﻿# SPDX-License-Identifier: GPL-3.0-or-later
 # Isolated real tray and cooperative shutdown. Never registers an IME or changes startup.
-param([Parameter(Mandatory=$true)][string]$Binary)
+param([Parameter(Mandatory=$true)][string]$Binary, [switch]$Portable)
 $ErrorActionPreference = 'Stop'
 $exe = (Resolve-Path -LiteralPath $Binary).Path
 $root = Join-Path ([IO.Path]::GetTempPath()) ('meltype tray stop 日本語-' + [Guid]::NewGuid().ToString('N'))
@@ -12,7 +12,8 @@ $previousDataDirectory = $env:MELTYPE_RUST_DATA_DIR
 $tray = $null; $helper = $null
 try {
     $env:MELTYPE_RUST_DATA_DIR = $root
-    $tray = Start-Process -FilePath $exe -ArgumentList '--tray' -WindowStyle Hidden -PassThru -RedirectStandardError (Join-Path $root 'tray.log')
+    $trayArguments = if ($Portable) { @('--tray','--portable-keyboard') } else { @('--tray') }
+    $tray = Start-Process -FilePath $exe -ArgumentList $trayArguments -WindowStyle Hidden -PassThru -RedirectStandardError (Join-Path $root 'tray.log')
     $deadline = [DateTime]::UtcNow.AddSeconds(20)
     $ready = $false
     while ([DateTime]::UtcNow -lt $deadline) {

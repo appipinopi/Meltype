@@ -1,7 +1,7 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
-# Settings/Core preview without registration. TSF input needs machine installation.
+﻿# SPDX-License-Identifier: GPL-3.0-or-later
+# Registration-free buffered input. Ctrl+Alt+J toggles input; settings-only remains available.
 [CmdletBinding()]
-param([switch]$Tray)
+param([switch]$Tray, [switch]$SettingsOnly)
 $ErrorActionPreference = 'Stop'
 $executable = Join-Path $PSScriptRoot 'meltype-settings.exe'
 if (-not (Test-Path -LiteralPath $executable)) { throw 'Run from an extracted package.' }
@@ -10,6 +10,7 @@ try {
     $env:MELTYPE_RUST_DATA_DIR = Join-Path $PSScriptRoot 'data'
     New-Item -ItemType Directory -Path $env:MELTYPE_RUST_DATA_DIR -Force | Out-Null
     $arguments = @()
+    if (-not $SettingsOnly) { $arguments += '--portable-keyboard' }
     if ($Tray) { $arguments += '--tray' }
     & $executable @arguments
 } finally {

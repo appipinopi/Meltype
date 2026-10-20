@@ -43,6 +43,8 @@ def main():
         'README-Windows.md': REPO/'rust/WINDOWS-PACKAGE.md',
         'Manage-Windows.ps1': REPO/'rust/Manage-Windows.ps1',
         'Start-Portable.ps1': REPO/'rust/Start-Portable.ps1',
+        'Update-Windows.ps1': REPO/'rust/Update-Windows.ps1',
+        'Test-InstalledIme.ps1': REPO/'rust/Test-InstalledIme.ps1',
     }
     for path in sources.values():
         if not path.is_file():

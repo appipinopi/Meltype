@@ -91,7 +91,7 @@ def pe(path):
 
 def inspect(root):
     errors, binaries = [], {}
-    for name in [*REQUIRED, 'LICENSE', 'THIRD-PARTY-NOTICES.md', 'README-Windows.md', 'Manage-Windows.ps1', 'Start-Portable.ps1']:
+    for name in [*REQUIRED, 'LICENSE', 'THIRD-PARTY-NOTICES.md', 'README-Windows.md', 'Manage-Windows.ps1', 'Start-Portable.ps1', 'Update-Windows.ps1']:
         if not (root/name).is_file():
             errors.append('missing required file: ' + name)
     queue = [(name, arch) for name, arch in REQUIRED.items() if (root/name).is_file()]

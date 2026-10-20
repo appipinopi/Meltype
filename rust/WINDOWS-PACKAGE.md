@@ -40,7 +40,7 @@ python tools/check-rust-windows-package.py <展開フォルダー> --report <検
 
 設定画面には初回案内と「報告・更新」があり、トレイからも報告・配布一覧を開けます。
 初回案内の完了は設定へ保存されます。ブラウザーに入力内容や学習データを自動送信しません。
-更新案内はAutoUpdateがONなら起動時にバックグラウンドでRustフォークの公開配布を確認します。設定画面からも再確認できます。元C#版のZIPをRust版として案内しません。自動ダウンロード・置換は未接続です。
+更新案内はAutoUpdateがONなら起動時にバックグラウンドでRustフォークの公開配布を確認します。設定画面からも再確認できます。元C#版のZIPをRust版として案内しません。公開された安定版のRust Windows ZIPを取得し、GitHubのSHA-256ダイジェスト・ZIP内の全ファイルを検査してから更新します。更新の適用にはUAC確認が必要です。
 
 まず通常のPowerShellで検査し、導入時だけ管理者PowerShellを使用します。
 
@@ -79,7 +79,9 @@ Uninstallはトレイの終了を待ち、実行ユーザーのRust用タスク�
 
 設定画面と入力テストは、ZIP内のdataフォルダーを保存先として使えます。
 環境変数は子プロセスだけへ引継ぎ、スクリプト終了時に元へ戻します。
-これは設定/Coreのポータブル動作です。未登録の実アプリに入力するキーボード方式は未接続です。
+通常起動は登録不要のバッファ入力とトレイです。Ctrl+Alt+Jで入力をON/OFFにします。OS側のIMEは英数入力にし、元版Meltypeとの同時入力は避けてください。設定/Coreの確認だけなら `-SettingsOnly` を指定します。
+
+編集可能なUI Automation Valueパターンを持つ通常入力欄に対応し、未確定文字と候補を別ウィンドウに表示して、確定時だけUnicode入力を送ります。パスワード・読取専用・判別できない入力欄では入力を取り込みません。フォーカス変更、クリック、Ctrl/Alt/Winショートカットで未確定入力を取り消します。OS辞書、ライブ変換、周辺文に基づく確定後訂正、学習の永続保存、管理者アプリへの入力は対象外です。設定変更はトレイの巡回で反映します。このホストはTSFと同等の機能を保証しません。
 別アプリ内のTSF workerはこの起動スクリプトの子ではないため、ポータブルdataの共有も未対応です。
 
 ## 起動設定の引継ぎと回復
@@ -101,3 +103,24 @@ queryは参照のみ、rebindは有効な起動設定だけをこのEXEへ付け
 別の管理者アカウントで実行した場合、この処理の対象もその管理者です。通常使うユーザーの処理には、そのユーザーで上記コマンドを実行してください。
 `-SkipCurrentUserStartup` は、手動でトレイ終了・起動設定を処理する場合に限って両方の自動処理を省略します。
 起動処理用プロトコルを持たない旧プレビューの削除では、先に新版へ更新するか、手動で起動設定を解除してこの指定を使用します。
+
+## 自動更新と実登録の確認（2026-10-21）
+
+```powershell
+.\Update-Windows.ps1 -Action Check
+.\Update-Windows.ps1 -Action Stage   # 取得・検査まで。IME登録は変更しない
+.\Update-Windows.ps1 -Action Apply   # 導入済みRust版の更新。UAC確認あり
+.\Test-InstalledIme.ps1 -Package . -ReportDirectory C:\Temp\Meltype-registration-report
+# 実登録試験（未使用の結果フォルダーを指定、元版の両ABI DLLが必要）
+.\Test-InstalledIme.ps1 -Package . -ReportDirectory C:\Temp\Meltype-registration-exercise -ExerciseRegistration
+```
+
+Applyは既存の管理導入が必要です。通常ユーザーからの適用では、更新後に同じユーザーで新トレイを起動します。適用を開始した表示は完了通知ではありません。起動した側の一時ログと `Program Files/MeltypeRust/update-logs` の記録で結果を確認できます。別管理者の認証で昇格した場合の自動起動設定については下記の制限に従ってください。Stageの取得物はWindowsのTemp内の `Meltype-Rust-update-*` に残します。署名・SmartScreenの配布者評価は別途必要です。
+
+実登録試験は元DLLのパス・ハッシュとCOM/TIPレジストリを保存し、管理配布のInstall、両ABIの実COM起動とTSFプロファイルを検査して、finallyで元版の登録を戻します。既存のRust管理導入がある場合は上書き試験しません。既存アプリを強制終了したり既定のIMEを切り替えたりしません。外部アプリの実TSF入力はこの登録試験に含みません。
+
+現時点でフォークに公開リリースがないため、実公開ZIPからの更新受入は未確認です。登録なし入力は専用Win32 Editを使う試験で日本語確定・同一ウィンドウ内のフォーカス変更・パスワード/読取専用の除外・終了時のフック解放を確認しました。試験用ビルドだけが、試験プロセス宛ての識別付き合成キーを許可します。通常版は合成キーを除外します。実キーボード、各エディター、候補の原版同等レイアウトは別途受入が必要です。
+
+登録なし入力の自動試験は対話デスクトップで `cargo test -p meltype-settings --locked --no-run` を実行し、表示されたテストEXEを `python tools/test-portable-input.py <テストEXE> --unit-host` へ渡します。製品EXEは識別付き試験キーも除外するため、このドライバーの対象にしません。実製品の起動・終了は `rust/Test-TrayStop.ps1 -Binary <製品EXE> -Portable` で別途検査します。
+
+2026-10-21の実登録試験はUACがキャンセルされ、登録操作へ進みませんでした。参照し直したHKLM64/32の登録は、両方とも `C:\Program Files\Meltype\tip` 内の元版DLLです。実IMEの導入成功は未確認です。

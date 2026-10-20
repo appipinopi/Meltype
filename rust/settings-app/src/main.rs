@@ -6,6 +6,8 @@ use meltype_core::{control, settings::Settings, storage::Store, Session};
 use serde_json::{json, Value};
 mod lifecycle;
 mod metadata;
+#[cfg(windows)]
+mod portable_keyboard;
 mod rules;
 #[cfg(windows)]
 mod startup;
@@ -22,7 +24,8 @@ fn main() -> eframe::Result {
     if let Some(code) = startup::command_line(&std::env::args_os().skip(1).collect::<Vec<_>>()) {
         std::process::exit(code);
     }
-    let resident = cfg!(windows) && std::env::args().any(|a| a == "--tray");
+    let resident = cfg!(windows)
+        && std::env::args().any(|a| matches!(a.as_str(), "--tray" | "--portable-keyboard"));
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([740., 740.])
@@ -79,6 +82,8 @@ struct App {
     #[cfg(windows)]
     resident: bool,
     #[cfg(windows)]
+    keyboard: Option<portable_keyboard::Keyboard>,
+    #[cfg(windows)]
     tray: Option<tray::Tray>,
     page: usize,
     status: String,
@@ -104,7 +109,26 @@ struct BTreeEditor(std::collections::BTreeMap<String, String>);
 impl App {
     fn new() -> Self {
         let store = Store::new(Store::default_directory());
-        Self::with_store(store)
+        #[cfg(not(windows))]
+        {
+            Self::with_store(store)
+        }
+        #[cfg(windows)]
+        {
+            let mut app = Self::with_store(store.clone());
+            if std::env::args().any(|a| a == "--portable-keyboard") {
+                match portable_keyboard::Keyboard::start(store) {
+                    Ok(keyboard) => {
+                        app.keyboard = Some(keyboard);
+                        app.status =
+                        "ポータブル入力: Ctrl+Alt+J で ON/OFF。登録済みIMEは英数にしてください。"
+                            .into();
+                    }
+                    Err(error) => app.status = error,
+                }
+            }
+            app
+        }
     }
     fn with_store(store: Store) -> Self {
         let loaded = store.settings();
@@ -126,7 +150,10 @@ impl App {
             closing: false,
             help: "項目にカーソルを合わせると説明を表示します。".into(),
             #[cfg(windows)]
-            resident: std::env::args().any(|a| a == "--tray"),
+            resident: std::env::args()
+                .any(|a| matches!(a.as_str(), "--tray" | "--portable-keyboard")),
+            #[cfg(windows)]
+            keyboard: None,
             #[cfg(windows)]
             tray: None,
             page: 0,
@@ -265,6 +292,9 @@ impl App {
                 return;
             }
         };
+        if let Some(keyboard) = &mut self.keyboard {
+            keyboard.configure(&settings);
+        }
         if self.tray.is_none() {
             match tray::Tray::new(ctx, &settings, &self.store) {
                 Ok(tray) => self.tray = Some(tray),
@@ -1258,6 +1288,17 @@ impl eframe::App for App {
                     }
                 });
             });
+            #[cfg(windows)]
+            if let Some(keyboard) = &self.keyboard {
+                ui.label(if keyboard.enabled() {
+                    "ポータブル入力: ON（Ctrl+Alt+JでOFF）"
+                } else {
+                    "ポータブル入力: OFF（Ctrl+Alt+JでON）"
+                });
+                ui.small(
+                    "編集可能な通常入力欄のみ対応。OS辞書・確定後訂正・学習保存は使用しません。",
+                );
+            }
             ui.label(&self.status);
         });
         if self.page == 0 {
