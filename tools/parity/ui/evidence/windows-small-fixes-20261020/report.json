@@ -1,0 +1,79 @@
+{
+  "binary_sha256": "cfd8bb9c868b0753d9146d6d744cc259ca1627a05807a4c28107d169723b839c",
+  "pages": [
+    {
+      "page": "settings",
+      "width": 740,
+      "height": 740,
+      "rgba_sha256": "43517127998dfa624110fdae3ddfda80e7abb9437161f855a4ee998610a3afd3",
+      "captured": true,
+      "origin_pixel_equivalence_verified": false
+    },
+    {
+      "page": "dictionary",
+      "width": 740,
+      "height": 740,
+      "rgba_sha256": "cc7ca0a133cdaedd012ec2f2059b90babef5de2772b01ab20d929cda34742677",
+      "captured": true,
+      "origin_pixel_equivalence_verified": false
+    },
+    {
+      "page": "snippets",
+      "width": 740,
+      "height": 740,
+      "rgba_sha256": "5ffe6d59be38b3160ab8b7d99f5cb09da70048aea424692e774e78f24ecfa1bf",
+      "captured": true,
+      "origin_pixel_equivalence_verified": false
+    },
+    {
+      "page": "learning",
+      "width": 740,
+      "height": 740,
+      "rgba_sha256": "9532ab513cbeb78628b0ef16374b810b25fa7ef50bff77dc339a0a8263984ae9",
+      "captured": true,
+      "origin_pixel_equivalence_verified": false
+    },
+    {
+      "page": "backup",
+      "width": 740,
+      "height": 740,
+      "rgba_sha256": "e83ba0ff62379636d12f57ac8ea8f9d0ddef823b011da139c178d7eecd1fa514",
+      "captured": true,
+      "origin_pixel_equivalence_verified": false
+    },
+    {
+      "page": "input-test",
+      "width": 740,
+      "height": 740,
+      "rgba_sha256": "23792eb7053c45520b334ef49c332895dcfe33db510059722b6d2da5eb13cf00",
+      "captured": true,
+      "origin_pixel_equivalence_verified": false
+    }
+  ],
+  "all_screens_equivalent": false,
+  "source_sha256": {
+    "rust/settings-app/src/main.rs": "84ac55a0785563a72bfdaafbf1f1a8417b178079233d35ba51ae305616e71b11",
+    "rust/settings-app/src/rules.rs": "084d35b972a5f601b9985b5fd752eba8c62cffd9d3f110519b77b528816bfc91",
+    "rust/settings-app/src/widgets.rs": "c63cf81c7c7d58f804be9add4eb60408ac0186c8b51ed6d96412b970a4652eb6",
+    "tools/parity/ui/capture_settings.py": "2297cd16f6beede2d5b098a93edfcfc5f77585cf5369538a1673134233256f55"
+  },
+  "long_help": {
+    "binary_sha256": "cfd8bb9c868b0753d9146d6d744cc259ca1627a05807a4c28107d169723b839c",
+    "pages": [
+      {
+        "page": "settings",
+        "width": 740,
+        "height": 740,
+        "rgba_sha256": "06fc6e21d26e8b1c24ebc879e3820588c53f22a74051095c7aadb2d4a58b72b9",
+        "captured": true,
+        "origin_pixel_equivalence_verified": false
+      }
+    ],
+    "all_screens_equivalent": false
+  },
+  "visual_review": [
+    "settings.png",
+    "long-help.png"
+  ],
+  "scope": "Small settings display corrections; six isolated pages captured without saving or migration. Original all-screen layout/interaction parity remains unverified."
+}

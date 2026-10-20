@@ -2,7 +2,7 @@ name: Rust preview
 on:
   workflow_dispatch:
   pull_request:
-    paths: ['rust/**', 'android/**', 'Cargo.*', 'dictionaries/**', 'native/tip/**', 'linux/fcitx5/**', 'tools/parity/*.py', 'tools/parity/settings-candidates/**', 'tools/parity/settings-apps/**', 'tools/parity/windows-converter/**', 'tools/parity/mozc-lifecycle/**', '.github/workflows/rust.yml']
+    paths: ['rust/**', 'android/**', 'Cargo.*', 'dictionaries/**', 'native/tip/**', 'linux/fcitx5/**', 'tools/parity/*.py', 'tools/check-rust-windows-package.py', 'tools/test_rust_windows_package.py', 'tools/parity/settings-candidates/**', 'tools/parity/settings-apps/**', 'tools/parity/windows-converter/**', 'tools/parity/mozc-lifecycle/**', '.github/workflows/rust.yml']
 permissions:
   contents: read
 jobs:
@@ -63,6 +63,8 @@ jobs:
           python-version: '3.12'
       - name: Batch evidence and resume integrity
         run: python -m unittest discover -s tools/parity -p test_batch_compare.py -v
+      - name: Windows preview file and PE dependency integrity
+        run: python -m unittest discover -s tools -p test_rust_windows_package.py -v
       - name: Build isolated settings render probe
         run: cargo build -p meltype-settings --features visual-test --locked
       - name: Capture six settings pages on Windows and macOS

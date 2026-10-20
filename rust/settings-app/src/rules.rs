@@ -27,12 +27,12 @@ pub fn editor(ui: &mut egui::Ui, key: &str, value: &mut Value, settings: &Settin
     }
     egui::ScrollArea::horizontal().id_salt(key).show(ui, |ui| {
         egui::Grid::new(key).striped(true).show(ui, |ui| {
-            ui.label(if kinds { "名前" } else { "プロセス名" });
             ui.label(if kinds {
-                "最初は英数"
+                "名前"
             } else {
-                "自動切替"
+                "プロセス名 (例: code.exe)"
             });
+            ui.label(if kinds { "最初は英数" } else { "有効" });
             ui.label(if kinds { "基本の種類" } else { "種類" });
             if kinds {
                 ui.label("判定の強さ");

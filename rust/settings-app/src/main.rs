@@ -325,6 +325,7 @@ impl App {
             let active = self.settings.text("ActiveProfile").to_owned();
             let mut selected = active.clone();
             egui::ComboBox::from_id_salt("active_profile")
+                .width(200.)
                 .selected_text(&active)
                 .show_ui(ui, |ui| {
                     if let Some(profiles) = self.settings.0["Profiles"].as_array() {
@@ -572,6 +573,8 @@ impl App {
                         ui.separator();
                     });
                 }
+                // Retain the original form's trailing space below the last row.
+                ui.add_space(16.);
             });
     }
     fn dictionary(&mut self, ui: &mut egui::Ui) {
@@ -1065,6 +1068,9 @@ impl eframe::App for App {
                 if let Ok(page) = std::env::var("MELTYPE_UI_PAGE") {
                     self.page = page.parse::<usize>().unwrap_or(0).min(5);
                 }
+                if let Ok(key) = std::env::var("MELTYPE_UI_HELP_KEY") {
+                    self.help = metadata::description(&key).to_owned();
+                }
             }
             ctx.request_repaint();
             #[cfg(windows)]
@@ -1104,11 +1110,10 @@ impl eframe::App for App {
                 ui.label("移植プレビュー");
             });
         });
-        egui::SidePanel::left("navigation")
+        egui::TopBottomPanel::top("navigation")
             .resizable(false)
-            .default_width(160.0)
             .show(ctx, |ui| {
-                ui.vertical(|ui| {
+                ui.horizontal_wrapped(|ui| {
                     for (i, label) in [
                         "設定",
                         "ユーザー辞書",
@@ -1149,19 +1154,11 @@ impl eframe::App for App {
             ui.label(&self.status);
         });
         if self.page == 0 {
-            if self.settings.boolean("SettingsShowHelp") {
-                egui::TopBottomPanel::bottom("help")
-                    .exact_height(80.)
-                    .resizable(false)
-                    .show(ctx, |ui| {
-                        ui.label(&self.help).on_hover_text(&self.help);
-                    });
-            }
             egui::TopBottomPanel::bottom("detection_test")
                 .exact_height(115.)
                 .resizable(false)
                 .show(ctx, |ui| {
-                    ui.label("判定テスト (IME 自動切替の判定。英字で入力):");
+                    ui.label("判定テスト (ローマ字か英語かの判定。英字で入力):");
                     ui.text_edit_singleline(&mut self.test_raw);
                     if !self.test_raw.is_empty() && self.test_raw.len() <= 256 {
                         let keys: Vec<_> = self
@@ -1193,6 +1190,25 @@ impl eframe::App for App {
                             });
                     }
                 });
+            // Bottom panels reserve space in insertion order: explanation,
+            // detection test, then action buttons, as in the original form.
+            if self.settings.boolean("SettingsShowHelp") {
+                let font = egui::TextStyle::Body.resolve(&ctx.style());
+                let height = ctx.fonts(|fonts| fonts.row_height(&font)) * 4. + 14.;
+                egui::TopBottomPanel::bottom("help")
+                    .exact_height(height)
+                    .resizable(false)
+                    .show(ctx, |ui| {
+                        let mut text = egui::text::LayoutJob::simple(
+                            self.help.clone(),
+                            font,
+                            ui.visuals().weak_text_color(),
+                            ui.available_width(),
+                        );
+                        text.wrap.max_rows = 4;
+                        ui.add(egui::Label::new(text)).on_hover_text(&self.help);
+                    });
+            }
         }
         egui::CentralPanel::default().show(ctx, |ui| match self.page {
             0 => self.settings(ui),
