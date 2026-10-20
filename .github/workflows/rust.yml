@@ -2,7 +2,7 @@ name: Rust preview
 on:
   workflow_dispatch:
   pull_request:
-    paths: ['rust/**', 'android/**', 'Cargo.*', 'dictionaries/**', 'native/tip/**', 'linux/fcitx5/**', 'tools/parity/settings-candidates/**', 'tools/parity/settings-apps/**', 'tools/parity/windows-converter/**', 'tools/parity/mozc-lifecycle/**', '.github/workflows/rust.yml']
+    paths: ['rust/**', 'android/**', 'Cargo.*', 'dictionaries/**', 'native/tip/**', 'linux/fcitx5/**', 'tools/parity/*.py', 'tools/parity/settings-candidates/**', 'tools/parity/settings-apps/**', 'tools/parity/windows-converter/**', 'tools/parity/mozc-lifecycle/**', '.github/workflows/rust.yml']
 permissions:
   contents: read
 jobs:
@@ -25,7 +25,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libibus-1.0-dev ibus gir1.2-ibus-1.0 python3-gi dbus-x11 xvfb fonts-noto-cjk
+          sudo apt-get install -y libibus-1.0-dev ibus gir1.2-ibus-1.0 python3-gi dbus-x11 xvfb fonts-noto-cjk libxkbcommon-x11-0
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo clippy -p meltype-native --all-targets --features tsf-server --locked -- -D warnings
@@ -42,6 +42,9 @@ jobs:
           cmake -S linux/fcitx5 -B linux/build/fcitx5-legacy -DMELTYPE_RUST_CORE=OFF
           cmake --build linux/build/fcitx5-legacy --parallel 2
       - run: cargo build --workspace --release --locked
+      - name: Windows converter batch ABI bounds and cleanup
+        if: runner.os == 'Windows'
+        run: python rust/native/tests/windows_converter_batch_smoke.py target/release/meltype_native.dll
       - name: fcitx5 Rust JSON ABI and reference/core projection parity
         if: runner.os == 'Linux'
         run: |
@@ -58,6 +61,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Batch evidence and resume integrity
+        run: python -m unittest discover -s tools/parity -p test_batch_compare.py -v
       - name: Build isolated settings render probe
         run: cargo build -p meltype-settings --features visual-test --locked
       - name: Capture six settings pages on Windows and macOS
@@ -97,6 +102,8 @@ jobs:
         run: python tools/parity/settings-candidates/replay.py target/release/${{ runner.os == 'Windows' && 'meltype_native.dll' || runner.os == 'macOS' && 'libmeltype_native.dylib' || 'libmeltype_native.so' }}
       - name: Additional resumable setting combinations
         run: python tools/parity/settings-candidates/replay.py target/release/${{ runner.os == 'Windows' && 'meltype_native.dll' || runner.os == 'macOS' && 'libmeltype_native.dylib' || 'libmeltype_native.so' }} --fixture rust/core/tests/data/upstream-settings-exhaustive-batch.json
+      - name: Expanded setting regression prefixes from original C#
+        run: python tools/parity/settings-candidates/replay.py target/release/${{ runner.os == 'Windows' && 'meltype_native.dll' || runner.os == 'macOS' && 'libmeltype_native.dylib' || 'libmeltype_native.so' }} --fixture rust/core/tests/data/upstream-settings-expanded-regressions.json
       - name: Core levels learning context and custom data through native ABI
         run: python rust/native/tests/core_data_smoke.py
       - name: Scored segmentation original key traces through native ABI

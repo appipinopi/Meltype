@@ -635,7 +635,16 @@ impl Session {
         }
         self.kana_text.clear();
         for (vk, ch, shift) in &self.typed_keys {
-            let kana = crate::kana::key(*vk, *shift).unwrap_or(*ch);
+            // Non-JIS keys still pass through CompositionText.Symbol in the
+            // original kana input path (e.g. a character-only '-' event).
+            let kana = crate::kana::key(*vk, *shift).unwrap_or(match ch {
+                '-' => 'ー',
+                ',' => '、',
+                '.' => '。',
+                '[' => '「',
+                ']' => '」',
+                _ => *ch,
+            });
             if "゛゜".contains(kana) {
                 if let Some(combined) = self
                     .kana_text
@@ -1456,6 +1465,18 @@ impl Session {
             return;
         }
         let reading = self.reading();
+        // A residual alphabetic reading with no engine response still has a
+        // Japanese clause and width alternatives. This also applies when the
+        // platform adapter declines converter calls because Enabled is false
+        // while an already-open composition is being edited.
+        if external.is_empty()
+            && reading == self.raw
+            && reading.bytes().all(|c| c.is_ascii_alphabetic())
+            && !self.external_converter_only
+            && self.begin_clauses(vec![Clause::new(reading.clone(), vec![reading.clone()])])
+        {
+            return;
+        }
         let mut candidates = self
             .preferences
             .user_dictionary

@@ -38,3 +38,6 @@ workerの試験は独立した一時フォルダーで実際のフレーム通�
 
 
 `corpus.py <出力フォルダー> --sample 128` は20,181件の同梱読みから均等に128件を選び、既存の境界26入力と合わせ154入力を生成する。参照ホストへ生成した cases.json を渡し、`windows_converter_smoke.py <DLL> <参照JSONL> <生成cases.json>` で同じ実OS応答を照合する。これは有限のサンプルであり、OS辞書の全入力・全応答を網羅するものではない。
+
+
+`corpus.py <出力フォルダー> --all` はサンプル抽出をせず、同梱の全20,181読みと境界26入力を生成する。生成完了と比較成功を区別する。`batch_compare.py windows` の使い方と再開・失敗保持は [BATCHES.md](../BATCHES.md) を参照。`windows_converter_smoke.py` の `--keep-going --report <ローカルJSON>` は差を記録して残りも比較するが、不一致・未実施があれば終了コードは失敗になる。

@@ -415,7 +415,9 @@ impl Linguistics {
                     .user_dictionary
                     .iter()
                     .filter(|(r, _)| r.starts_with(reading) && r.as_str() != reading)
-                    .flat_map(|(_, v)| v.clone()),
+                    // Conversion stores newest registrations first; upstream
+                    // prediction enumerates the original registration order.
+                    .flat_map(|(_, v)| v.iter().rev().cloned()),
             )
             .chain(
                 state

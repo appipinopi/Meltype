@@ -27,3 +27,6 @@ cargo test -p meltype-core --test upstream_settings_apps
 
 
 `exhaustive.py dist/batch --offset 0 --limit 128` は定義済み値域の直積から128構成（2入力ずつ）を生成する。`coverage.json` のnext_offsetを次回のoffsetに渡し、domains_sha256/設定順/strideが一致する同一の値域で再開する。組合せ数は2,067,895,430,987,964,852,731,904で、offsetを進めたこと自体は過去の全範囲の照合成功を証明しない。追加256入力のC#由来期待値は `upstream-settings-exhaustive-batch.json` に固定し、通常の候補replay.pyへ --fixture で渡せる。任意の数値・文字列や入力履歴の完全網羅ではない。
+
+
+`exhaustive.py --scenes all` は各構成を既存の20入力例で検査するためのケースを生成する。分割比較・証跡のハッシュ検査・失敗を保持した再開は [BATCHES.md](../BATCHES.md) を参照。追加比較で見つかった予測順・残留英字の幅候補・かな記号の回帰期待値は `upstream-settings-expanded-regressions.json` に元のC#応答から固定した。

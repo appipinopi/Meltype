@@ -1,0 +1,540 @@
+{
+  "domains_sha256": "40ebe9660cfe4c3a415c55e130a5cb5edb55b7ceced2d580761a5c7e45067b38",
+  "settings_order": [
+    "Enabled",
+    "JapaneseKeyboardOnly",
+    "AllowInjectedInput",
+    "Mode",
+    "HankakuTogglesKeyboard",
+    "ConvertKeysSwitchKeyboard",
+    "AltKeysSwitchKeyboard",
+    "AutoCorrectAfterCommit",
+    "DirectModeAutoDetect",
+    "SigilWordsDirect",
+    "SnippetMark",
+    "SpaceAroundEnglish",
+    "Punctuation",
+    "JapanesePunctuationAfterEnglish",
+    "LiveConversion",
+    "ConversionEngine",
+    "TranslationCandidates",
+    "PredictiveCandidates",
+    "TabConversion",
+    "ContinueAfterConversion",
+    "SeparateKeyRoles",
+    "ShowCandidateMeanings",
+    "ShowTypedKeys",
+    "CorrectTypos",
+    "SlashAsMiddleDot",
+    "ShowModeIndicator",
+    "ShowModeIndicatorOnFocus",
+    "ModeIndicatorJapaneseColor",
+    "ModeIndicatorDirectColor",
+    "ModeIndicatorTextColor",
+    "CompositionPlacement",
+    "CompositionSize",
+    "CompositionFont",
+    "CompositionTheme",
+    "CompositionOpacity",
+    "ShowNotifications",
+    "AutoUpdate",
+    "InputStyle",
+    "DetectionLevel",
+    "ScoredSegmentation",
+    "JapaneseThreshold",
+    "TypoEnabled",
+    "MaxPendingKeys",
+    "IdleFlushMs",
+    "MaxHoldMs",
+    "SettingsVersion",
+    "WelcomeShown",
+    "TsfIntroduced",
+    "TsfOffered",
+    "SettingsShowHelp",
+    "SettingsWheelChangesValue",
+    "Profiles",
+    "ActiveProfile",
+    "SessionIdleMs",
+    "ContinueEnglishAfterSpace",
+    "LearningEnabled",
+    "FeedbackWindowMs",
+    "UseTsf",
+    "ImeTimeoutMs",
+    "PasteApps",
+    "NoPasteApps",
+    "TextInputApps",
+    "ExcludeFullscreen",
+    "StopInGames",
+    "AppRules",
+    "AppKinds",
+    "FileLog",
+    "LogTypedText"
+  ],
+  "settings": 68,
+  "declared_cartesian_configurations": "2067895430987964852731904",
+  "offset": "128",
+  "next_offset": "640",
+  "stride": "1278029661531174827838347",
+  "batch_configurations": 512,
+  "batch_scenarios": 10240,
+  "scenes": "all",
+  "scenes_per_configuration": 20,
+  "traversal_complete": false,
+  "arbitrary_numeric_and_string_values_covered": false,
+  "scope": "Only explicitly declared finite domains; input histories and OS API responses are separate dimensions.",
+  "date": "2026-10-20",
+  "baseline": "45e14f86558aa6ea34f2c2ecd038ba95ca8c3c46",
+  "partition_valid": true,
+  "architectures": {
+    "x64": {
+      "checked": 10240,
+      "matched": 10240,
+      "available": 0,
+      "timeout_retries": 0,
+      "unsuccessful_processes": 0,
+      "mismatched": 0,
+      "complete": true
+    },
+    "x86": {
+      "checked": 10240,
+      "matched": 10240,
+      "available": 0,
+      "timeout_retries": 0,
+      "unsuccessful_processes": 0,
+      "mismatched": 0,
+      "complete": true
+    }
+  },
+  "source_cases_sha256": "4ac3438a1a5625af38e8fa3f04b6ead5e6647bdd6e2ff43ac8c277ac7aeae939",
+  "report_hashes": [
+    {
+      "shard": 0,
+      "offset": 0,
+      "abi": "x64",
+      "sha256": "92c962649353aae3adc4fa690ba9659b39266ef335b07241b05e52f66dcc9253"
+    },
+    {
+      "shard": 0,
+      "offset": 0,
+      "abi": "x86",
+      "sha256": "856845140468c49c30613afdd0a4b850dab44ea56f29a3f881aba2ae18a1752c"
+    },
+    {
+      "shard": 0,
+      "offset": 320,
+      "abi": "x64",
+      "sha256": "856f494a266b1eaa751c3de0a4a3273ec12626ab5a2591e9c2b6c0147b740d3c"
+    },
+    {
+      "shard": 0,
+      "offset": 320,
+      "abi": "x86",
+      "sha256": "4e7349b2eebf4fb6988c4d08c4b84dbe37610fcbde1c216c588ab70abb049159"
+    },
+    {
+      "shard": 0,
+      "offset": 640,
+      "abi": "x64",
+      "sha256": "5876b03040294f0ad2cc05f78a21f387e70339d6cd243da946b0fcaf3747d5bf"
+    },
+    {
+      "shard": 0,
+      "offset": 640,
+      "abi": "x86",
+      "sha256": "a859630110fb5baf491b4101a5e10c45f8a6f9263e23f6489c07d8e9236ad814"
+    },
+    {
+      "shard": 0,
+      "offset": 960,
+      "abi": "x64",
+      "sha256": "2e87f673d87afea1ad6bb3495ddb70ccc8f3c3c85b759bc654e3a9963ec95acb"
+    },
+    {
+      "shard": 0,
+      "offset": 960,
+      "abi": "x86",
+      "sha256": "3dd82ac1d20a32151a938d0c468fda7b574f87750a7b54aed42e8a59b4883274"
+    },
+    {
+      "shard": 0,
+      "offset": 1280,
+      "abi": "x64",
+      "sha256": "16092a60dab19fd99764a6a2a491735eeabf6d269ee25453859062eb5cb4c6e5"
+    },
+    {
+      "shard": 0,
+      "offset": 1280,
+      "abi": "x86",
+      "sha256": "643894886fca6cb66dc85d264bbcf03fb11594ed2d7b7838db7ab5f1a1099f54"
+    },
+    {
+      "shard": 0,
+      "offset": 1600,
+      "abi": "x64",
+      "sha256": "a5b0c4b8b955049d29009c3ac6afe1f0d5748ecf6208553f132efe7c196e1bb1"
+    },
+    {
+      "shard": 0,
+      "offset": 1600,
+      "abi": "x86",
+      "sha256": "20077444464c4b211260ac4501fe6ac3886ac1913aba89018aec517beae6d31f"
+    },
+    {
+      "shard": 0,
+      "offset": 1920,
+      "abi": "x64",
+      "sha256": "2cccea53f28c0f6bb2274e5bbdeeb4136a07be374d473b89021c379dc2e949c9"
+    },
+    {
+      "shard": 0,
+      "offset": 1920,
+      "abi": "x86",
+      "sha256": "59cbd04ac667b02cab73f3281df6d42394e00380839e05ad63ccc32813b937a7"
+    },
+    {
+      "shard": 0,
+      "offset": 2240,
+      "abi": "x64",
+      "sha256": "e8876aac3a2ed44826ee16e531aa06746de4f14bdd714f5124554c3ac1900e96"
+    },
+    {
+      "shard": 0,
+      "offset": 2240,
+      "abi": "x86",
+      "sha256": "7664ae4b786e6d1c9f61034776620d5b5e1b5c76fe645338d0f402349a526fd4"
+    },
+    {
+      "shard": 1,
+      "offset": 0,
+      "abi": "x64",
+      "sha256": "f761fb825b9ac1b13631c4d2b43a70ffba8b387abca32b4a0d1a5228e2f436e8"
+    },
+    {
+      "shard": 1,
+      "offset": 0,
+      "abi": "x86",
+      "sha256": "20f5b88da7d514df75bb39801e48f5d24ba2b2fdf892203990742ea64bea4fe2"
+    },
+    {
+      "shard": 1,
+      "offset": 320,
+      "abi": "x64",
+      "sha256": "1ef4a0f40ab169c383ea7596294c911ab6185b1afafe34491bb128cfc1a1768d"
+    },
+    {
+      "shard": 1,
+      "offset": 320,
+      "abi": "x86",
+      "sha256": "379d9838389b54aa30e0f50df751df929e987939c3a673f49face6b50cb088ce"
+    },
+    {
+      "shard": 1,
+      "offset": 640,
+      "abi": "x64",
+      "sha256": "9790dff3664877e12708e7d25cae1bb14adc2737aead86ba58b431e31b90b54a"
+    },
+    {
+      "shard": 1,
+      "offset": 640,
+      "abi": "x86",
+      "sha256": "bb6c3c202b99c64527e3e0686fc3d7945733330cd0354e934aa2fd24223f69ca"
+    },
+    {
+      "shard": 1,
+      "offset": 960,
+      "abi": "x64",
+      "sha256": "620417176a6813a0d414121cacefcb27bf384fe70fec7da0a8db720856ca4826"
+    },
+    {
+      "shard": 1,
+      "offset": 960,
+      "abi": "x86",
+      "sha256": "a5e47dc206466d3dcf5e51fbae99263371a29b98bdef19196b9a0d3a0760e044"
+    },
+    {
+      "shard": 1,
+      "offset": 1280,
+      "abi": "x64",
+      "sha256": "5381e8aecdf421d2e6020d992f4fa4855f6c1002e2aef83af29c790f3796ac3a"
+    },
+    {
+      "shard": 1,
+      "offset": 1280,
+      "abi": "x86",
+      "sha256": "218975b2fdadcd7aab09d1f247da3b067cceab46260bab4067c52e730937737d"
+    },
+    {
+      "shard": 1,
+      "offset": 1600,
+      "abi": "x64",
+      "sha256": "8f0517bad7e71982eef9f07b2c6a0c55088365b603767da11f98458985eb8893"
+    },
+    {
+      "shard": 1,
+      "offset": 1600,
+      "abi": "x86",
+      "sha256": "b982522e00dd16e4f4355a3e19aa25dc30dfaa876a60a12bcc63760d04c2af78"
+    },
+    {
+      "shard": 1,
+      "offset": 1920,
+      "abi": "x64",
+      "sha256": "f758b5b293fcd56791483d7d0a408147ad0f3f2a335901cf149428fa8f816f52"
+    },
+    {
+      "shard": 1,
+      "offset": 1920,
+      "abi": "x86",
+      "sha256": "9bf7c100fca39ef098635094ec99c197f4cfcfd816c2b94cc25ae450c0643948"
+    },
+    {
+      "shard": 1,
+      "offset": 2240,
+      "abi": "x64",
+      "sha256": "3df89b90f91bbfd52bba3846fa8cdf5129ed239da98affe3a2758ae0daa57ab9"
+    },
+    {
+      "shard": 1,
+      "offset": 2240,
+      "abi": "x86",
+      "sha256": "540dce25a5e42e324e9e5b22b798dd5de3156d2767cecee376fe66d5a6bbd4b5"
+    },
+    {
+      "shard": 2,
+      "offset": 0,
+      "abi": "x64",
+      "sha256": "a352ae110bbe21c3c11ab547b878eb4533c410817f824912bc700f89f8574112"
+    },
+    {
+      "shard": 2,
+      "offset": 0,
+      "abi": "x86",
+      "sha256": "75ac264f3d5392f249704a4991d4e0e30af1cb92239ad4cd1c3e6981879e43ae"
+    },
+    {
+      "shard": 2,
+      "offset": 320,
+      "abi": "x64",
+      "sha256": "dd76930de683ca0dc6032e6ec82c6b708fc15a15afef048eac7163a01c6ed7ba"
+    },
+    {
+      "shard": 2,
+      "offset": 320,
+      "abi": "x86",
+      "sha256": "9b1c0184fa8eecfdb678629ffe42db5c94d3b839d9a307d008a7127de043af0a"
+    },
+    {
+      "shard": 2,
+      "offset": 640,
+      "abi": "x64",
+      "sha256": "ece41761d80a9ab7629abe75502ba2c9a8293b2099b28eaa84c1999f30df2cb3"
+    },
+    {
+      "shard": 2,
+      "offset": 640,
+      "abi": "x86",
+      "sha256": "b7c71a14cdd90a2543aea8385fd47422b592c826684217c03fea0291ef868a7f"
+    },
+    {
+      "shard": 2,
+      "offset": 960,
+      "abi": "x64",
+      "sha256": "964d4bbc0554ce74d85fd418ee413d56fa198e9822e4c9a563ae37b74c2e21bb"
+    },
+    {
+      "shard": 2,
+      "offset": 960,
+      "abi": "x86",
+      "sha256": "c45a77c3c7f377884b55118eacdc89ed01bdd9c515038211c0ba49ca06458d42"
+    },
+    {
+      "shard": 2,
+      "offset": 1280,
+      "abi": "x64",
+      "sha256": "b77eeb658c4b006cc1185a6202a68371d536e8a1a99ccf089823bd57f6b6c2ef"
+    },
+    {
+      "shard": 2,
+      "offset": 1280,
+      "abi": "x86",
+      "sha256": "01b6f5e1421b5e7011c76c0d25023c91283cbe6d01acd137bf31b26da931d195"
+    },
+    {
+      "shard": 2,
+      "offset": 1600,
+      "abi": "x64",
+      "sha256": "9f90af880d0d92f1fe1077deb57c0ea312af139277f78040ee83a3d3daab130c"
+    },
+    {
+      "shard": 2,
+      "offset": 1600,
+      "abi": "x86",
+      "sha256": "d880fd1d88179e17fd5dd682c9f6c4a1284f7fe14f972c0c75dc3b18773517e8"
+    },
+    {
+      "shard": 2,
+      "offset": 1920,
+      "abi": "x64",
+      "sha256": "626418016156fd7b03263c038227a550093914a6e8239e2b4e3578fde7211e7a"
+    },
+    {
+      "shard": 2,
+      "offset": 1920,
+      "abi": "x86",
+      "sha256": "aaffcdda950800607cabcda1294df78e9f1b2b2eaa218da7cc383df378b88bd5"
+    },
+    {
+      "shard": 2,
+      "offset": 2240,
+      "abi": "x64",
+      "sha256": "8224b8b66620164ade2e9d69010abf8c51afd461bfff7660585d3a87904d0d33"
+    },
+    {
+      "shard": 2,
+      "offset": 2240,
+      "abi": "x86",
+      "sha256": "166d96cb1c436c07a734a22343b2d9ab3d70218b328c8b7dbd69509486e1e603"
+    },
+    {
+      "shard": 3,
+      "offset": 0,
+      "abi": "x64",
+      "sha256": "1cab9179ee84ad05c0c47fada9072566f2cd92a12315456f57ed5ba96ed7adf0"
+    },
+    {
+      "shard": 3,
+      "offset": 0,
+      "abi": "x86",
+      "sha256": "7210a880a2bfeedfdc10f90c0d461b60653cd31e9c7808a339862bf512a284e3"
+    },
+    {
+      "shard": 3,
+      "offset": 320,
+      "abi": "x64",
+      "sha256": "e4a060510a00f0d792875869d67088154ee0a74f05742fe07bf55869e512b73d"
+    },
+    {
+      "shard": 3,
+      "offset": 320,
+      "abi": "x86",
+      "sha256": "ba813b5ea1c771cb84290d6ce075c99fde0675d993fe8195391fa107d88939e4"
+    },
+    {
+      "shard": 3,
+      "offset": 640,
+      "abi": "x64",
+      "sha256": "03a02347689766471338bad2dc3181f375b18c69851183e05061f1023d07e593"
+    },
+    {
+      "shard": 3,
+      "offset": 640,
+      "abi": "x86",
+      "sha256": "ebe35050b5856f3e56f4f6710d4b3aad7c9b66fed59ee124e610d18f1842e573"
+    },
+    {
+      "shard": 3,
+      "offset": 960,
+      "abi": "x64",
+      "sha256": "dbc61c7fa821973c0cbc1ee0d02f69ce73b62f791ecf59f744c4481ddca5edcb"
+    },
+    {
+      "shard": 3,
+      "offset": 960,
+      "abi": "x86",
+      "sha256": "dee7d9a0ee4c086d54409d6ab718bd38d76cafd38e4297f2c3ea6bd0c3935fdf"
+    },
+    {
+      "shard": 3,
+      "offset": 1280,
+      "abi": "x64",
+      "sha256": "a7c9d3cd386319f47fcc3b60a627019ec369e266c4e2ca45e308430bf4430928"
+    },
+    {
+      "shard": 3,
+      "offset": 1280,
+      "abi": "x86",
+      "sha256": "b7c138c854e73a34b60f18e3901731c0307684fa62d75e46381ab562114bdcc8"
+    },
+    {
+      "shard": 3,
+      "offset": 1600,
+      "abi": "x64",
+      "sha256": "1b891a3e656f249295831ef45d3176a64e0924492e000471d8a5fbb0d081d27a"
+    },
+    {
+      "shard": 3,
+      "offset": 1600,
+      "abi": "x86",
+      "sha256": "d5f7c9b6b168fed6c16985fbfa98c1524e10b6f8b6360e73aff10c45c59dfcb7"
+    },
+    {
+      "shard": 3,
+      "offset": 1920,
+      "abi": "x64",
+      "sha256": "06baf5330c23d498984cba5ffc15b9ceca44f6f26f7ee8924f8e4106621f4162"
+    },
+    {
+      "shard": 3,
+      "offset": 1920,
+      "abi": "x86",
+      "sha256": "8d59b4c341516ee0b58604cbc70410359793de45af95ee3851b3ffa74adfad41"
+    },
+    {
+      "shard": 3,
+      "offset": 2240,
+      "abi": "x64",
+      "sha256": "4974eec0efa3bbd2279d632d5079bccbb57c590c40f5bd500acd5b883c9c8e5d"
+    },
+    {
+      "shard": 3,
+      "offset": 2240,
+      "abi": "x86",
+      "sha256": "84bbccda1684e833cb611a65ba7cd0b36400b3b68fcdd75501d574e206bc6af1"
+    }
+  ],
+  "finite_batch_comparison_passed": true,
+  "all_68_cartesian_combinations_verified": false,
+  "concurrent_shards": 4,
+  "artifact_sha256": {
+    "tools/parity/settings-candidates/bin/Debug/net10.0/Meltype.Core.Tests.dll": "7c9e76876661f0191de5d83a019c6a0e7bf112c5044a8e43e1071db1a194d7f8",
+    "x64/meltype_native.dll": "0a824335785919360dba706f708de250a094f252d6208897948993a94dfef8a2",
+    "tools/parity/settings-candidates/check.py": "1e9c957fe7af1f9d601560d1675429478d4808ebdfa10fc6abb65af503c00650",
+    "tools/parity/batch_compare.py": "a045a3d5f04214d7d486bcb85d83dcd274328baab6108f1006184815ba02e385",
+    "tools/parity/settings-candidates/bin/Debug/net10.0/Meltype.Core.dll": "19d5ec50c4c4ac8b28088f2447c342dc611ce8ca6d33ba81fb21a2f6c9bfb10e",
+    "x86/meltype_native.dll": "e59894f1eba1ac7314cef15cb006b7c642c327773c811124e6562e640faff1ad",
+    "dist/python-3.12.10-win32/python.exe": "afadcb9072665e6d780df6d8ea146e129ac785ea6429ad1dfdae2f330d69c72e"
+  },
+  "rustc": "1.99.1 (58cf8f9c3 2026-10-13)",
+  "windows_version": [
+    "11",
+    "10.0.26300",
+    "SP0",
+    "Multiprocessor Free"
+  ],
+  "source_sha256": {
+    "rust/core/src/session.rs": "0306ad371734af4b8f124030c6803230a8bac2f160de6fc3fc69851ecab819d4",
+    "rust/core/src/linguistics.rs": "cb91ade6372acf5a228f92707663543ddf919e024bb0fa20adddaec0c35bfea7",
+    "rust/native/src/windows_converter.rs": "bcccd05ae85b876f3fa6c1916b61d253c2f2673dd1242b1ef84a713930263a8b",
+    "rust/core/tests/data/upstream-settings-expanded-regressions.json": "4a95f8566d0522d9d9bbef57e0c5a3426bed1b9433ba7b209b868665be279d26",
+    "tools/parity/settings-candidates/exhaustive.py": "28d95838b355357dd18f95b5bc3113a6bcce92f8bcdac87c61557a0bc5ddff22",
+    "tools/parity/settings-candidates/matrix.py": "6c8e04d8af076634f6d545d8a11a70d999b89f1a0f41b9903cce44c93ca6bd69",
+    "tools/parity/settings-candidates/check.py": "1e9c957fe7af1f9d601560d1675429478d4808ebdfa10fc6abb65af503c00650",
+    "rust/core/data/settings-defaults.json": "ba22a708fd4214d5e908dfa41cdecee679e583bc34d5c0e195af6501b0e30e7b",
+    "rust/settings-app/settings-ui.json": "7eef8ce9a33620cdf6b9ac2cc76e1175bdc41a1d6994cb553cde9e15c6069e7e"
+  },
+  "cartesian_ranges_compared": [
+    {
+      "offset": "0",
+      "next_offset": "128",
+      "scenes_per_configuration": 2,
+      "fixture_sha256": "984e769232af7e8b86a540d0c66fd6280254d2f7fad5195905f425fea0d4dd4c"
+    },
+    {
+      "offset": "128",
+      "next_offset": "640",
+      "scenes_per_configuration": 20
+    }
+  ],
+  "upstream_core_unchanged": true,
+  "upstream_converter_unchanged": true
+}
