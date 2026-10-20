@@ -41,6 +41,8 @@ def main():
         'LICENSE': REPO/'LICENSE',
         'THIRD-PARTY-NOTICES.md': REPO/'THIRD-PARTY-NOTICES.md',
         'README-Windows.md': REPO/'rust/WINDOWS-PACKAGE.md',
+        'Manage-Windows.ps1': REPO/'rust/Manage-Windows.ps1',
+        'Start-Portable.ps1': REPO/'rust/Start-Portable.ps1',
     }
     for path in sources.values():
         if not path.is_file():

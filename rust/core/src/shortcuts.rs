@@ -88,3 +88,12 @@ pub fn control_bindings(text: &str) -> Vec<(i32, i32)> {
     }
     result
 }
+
+/// The exact two-character pair set used by CompositionController 1.3.0.
+pub fn is_bracket_pair(text: &str) -> bool {
+    [
+        "「」", "『』", "（）", "()", "［］", "[]", "｛｝", "{}", "【】", "〈〉", "《》", "〔〕",
+        "\"\"", "“”",
+    ]
+    .contains(&text)
+}

@@ -20,6 +20,7 @@ pub enum Action {
     Profile(String),
     Level(String),
     Folder,
+    About,
     Quit,
     Startup,
     Status(String),
@@ -104,6 +105,7 @@ impl Tray {
             ("バックアップ...", Action::Page(4)),
             ("判定テスト...", Action::Page(5)),
             ("データフォルダを開く", Action::Folder),
+            ("報告・更新...", Action::About),
         ] {
             let item = MenuItem::new(label, true, None);
             menu.append(&item).map_err(|e| e.to_string())?;

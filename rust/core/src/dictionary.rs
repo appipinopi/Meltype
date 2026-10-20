@@ -432,7 +432,10 @@ impl Dictionary {
                     && !self.number_with_japanese_unit(word)
                 || word.contains('@')
                 || word.starts_with(['/', '$'])
-                || word.contains('\\')
+                || word
+                    .split_once('\\')
+                    .is_some_and(|(_, tail)| !tail.is_empty())
+                || word.get(1..).is_some_and(|tail| tail.starts_with(":\\"))
                 || word.contains('_')
                 || word.split_once('.').is_some_and(|(left, right)| {
                     !left.is_empty()

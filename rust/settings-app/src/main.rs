@@ -4,6 +4,7 @@
 use eframe::egui;
 use meltype_core::{control, settings::Settings, storage::Store, Session};
 use serde_json::{json, Value};
+mod lifecycle;
 mod metadata;
 mod rules;
 #[cfg(windows)]
@@ -63,6 +64,7 @@ fn main() -> eframe::Result {
 }
 struct App {
     store: Store,
+    lifecycle: lifecycle::Lifecycle,
     settings: Settings,
     opened: Settings,
     discard: bool,
@@ -110,6 +112,7 @@ impl App {
         let mut test_session = Session::default();
         test_session.settings = settings.clone();
         Self {
+            lifecycle: lifecycle::Lifecycle::new(&settings),
             store,
             opened: settings.clone(),
             settings,
@@ -275,6 +278,11 @@ impl App {
                     ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(false));
                     ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
                 }
+                tray::Action::About => {
+                    self.lifecycle.about = true;
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
+                }
                 tray::Action::Folder => {
                     if let Err(e) = std::fs::create_dir_all(&self.store.directory).and_then(|()| {
                         std::process::Command::new("explorer.exe")
@@ -421,7 +429,7 @@ impl App {
                 let key = f["key"].as_str()?;
                 let value = self.settings.0.get(key)?;
                 let filter = self.filter.to_lowercase();
-                ((self.show_all || supported(key))
+                ((self.show_all || visible_by_default(key))
                     && (key.to_lowercase().contains(&filter)
                         || metadata::label(key).contains(&self.filter)
                         || metadata::description(key).contains(&self.filter)))
@@ -464,6 +472,15 @@ impl App {
                             if rules::editor(ui, &key, &mut value, &self.settings) {
                                 self.action(json!({"op":"settings_set","name":key,"value":value}));
                             }
+                            return;
+                        }
+                        if key == "ToggleKeyboardShortcuts" {
+                            ui.label(metadata::label(&key))
+                                .on_hover_text(metadata::description(&key));
+                            let mut shortcut = value.as_str().unwrap_or("").to_owned();
+                            ui.add_enabled(false, egui::TextEdit::singleline(&mut shortcut));
+                            ui.label("キーボード方式の接続が完了すると使用できます。");
+                            ui.separator();
                             return;
                         }
                         let row = ui.horizontal(|ui| {
@@ -1014,6 +1031,9 @@ impl App {
         }
     }
 }
+fn visible_by_default(key: &str) -> bool {
+    supported(key) || key == "ToggleKeyboardShortcuts"
+}
 fn supported(key: &str) -> bool {
     [
         "GitHubIssueCandidates",
@@ -1069,7 +1089,7 @@ fn supported(key: &str) -> bool {
         "SlashAsMiddleDot",
     ]
     .contains(&key)
-        || cfg!(windows) && key == "ShowNotifications"
+        || cfg!(windows) && ["ShowNotifications", "CursorIntoBrackets"].contains(&key)
 }
 fn choices(key: &str) -> Option<&'static [&'static str]> {
     Some(match key {
@@ -1101,6 +1121,10 @@ impl eframe::App for App {
         if let Ok(path) = std::env::var("MELTYPE_UI_CAPTURE") {
             self.capture_frames += 1;
             if self.capture_frames == 1 {
+                if let Ok(screen) = std::env::var("MELTYPE_UI_LIFECYCLE") {
+                    self.lifecycle.welcome = screen == "welcome";
+                    self.lifecycle.about = screen == "about";
+                }
                 if let Ok(page) = std::env::var("MELTYPE_UI_PAGE") {
                     self.page = page.parse::<usize>().unwrap_or(0).min(5);
                 }
@@ -1140,10 +1164,38 @@ impl eframe::App for App {
                 }
             }
         }
+        if self.lifecycle.show(ctx, &self.store) {
+            match self.store.change_settings(|s| {
+                s.set("WelcomeShown", json!(true))?;
+                if s.text("Mode") == "Tsf" {
+                    s.set("TsfIntroduced", json!(true))?;
+                }
+                Ok(s.boolean("TsfIntroduced"))
+            }) {
+                Ok(introduced) => {
+                    self.lifecycle.welcome = false;
+                    self.settings.0.insert("WelcomeShown".into(), json!(true));
+                    self.opened.0.insert("WelcomeShown".into(), json!(true));
+                    self.settings
+                        .0
+                        .insert("TsfIntroduced".into(), json!(introduced));
+                    self.opened
+                        .0
+                        .insert("TsfIntroduced".into(), json!(introduced));
+                }
+                Err(error) => self.status = error.to_string(),
+            }
+        }
         egui::TopBottomPanel::top("tabs").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.heading("Meltype 設定");
                 ui.label("移植プレビュー");
+                if ui.button("報告・更新").clicked() {
+                    self.lifecycle.about = true;
+                }
+                if ui.button("使い始めるには").clicked() {
+                    self.lifecycle.welcome = true;
+                }
             });
         });
         egui::TopBottomPanel::top("navigation")
@@ -1314,6 +1366,59 @@ impl eframe::App for App {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn all_added_fields_have_target_labels_help_and_typed_controls() {
+        let inventory: Value =
+            serde_json::from_str(include_str!("../../../tools/parity/pre1/inventory.json"))
+                .unwrap();
+        let mut count = 0;
+        for field in inventory["missing_settings"].as_array().unwrap() {
+            if field["first_present_in_requested_release"] == "v1.3.1-pre.1" {
+                continue;
+            }
+            let key = field["key"].as_str().unwrap();
+            let metadata = metadata::field(key).expect(key);
+            assert!(!metadata["label"].as_str().unwrap().is_empty(), "{key}");
+            assert!(
+                !metadata["description"].as_str().unwrap().is_empty(),
+                "{key}"
+            );
+            let default = Settings::default().0[key].clone();
+            assert!(
+                default.is_boolean() || default.is_string(),
+                "control type {key}"
+            );
+            assert!(
+                visible_by_default(key) || !cfg!(windows) && key == "CursorIntoBrackets",
+                "missing row {key}"
+            );
+            // The last shortcut setting is explicitly shown as not connected.
+            if key != "ToggleKeyboardShortcuts" && (cfg!(windows) || key != "CursorIntoBrackets") {
+                assert!(supported(key), "hidden {key}");
+            }
+            count += 1;
+        }
+        assert_eq!(count, 28);
+    }
+    #[test]
+    fn welcome_state_respects_saved_acknowledgement() {
+        let mut settings = Settings::default();
+        assert!(lifecycle::Lifecycle::new(&settings).welcome);
+        settings.set("WelcomeShown", json!(true)).unwrap();
+        assert!(
+            lifecycle::Lifecycle::new(&settings).welcome,
+            "TSF introduction is still pending"
+        );
+        settings.set("TsfIntroduced", json!(true)).unwrap();
+        assert!(!lifecycle::Lifecycle::new(&settings).welcome);
+        let migrated =
+            Settings::parse(r#"{"Mode":"AutoSwitch","WelcomeShown":true,"TsfIntroduced":true}"#)
+                .unwrap();
+        assert!(
+            lifecycle::Lifecycle::new(&migrated).welcome,
+            "legacy AutoSwitch must restart the TSF introduction"
+        );
+    }
     #[test]
     fn window_edits_are_drafts_and_save_merges_only_changed_fields() {
         let dir = tempfile::tempdir().unwrap();

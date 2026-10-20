@@ -31,7 +31,14 @@ fn original_hook_and_learning_match_all_182_event_sequences() {
     for case in cases {
         let mut settings = Settings::default();
         for (name, value) in case["settings"].as_object().unwrap() {
-            settings.set(name, value.clone()).unwrap();
+            // This is the archived InputSession API oracle, not product config
+            // loading. Preserve removed enum inputs for that legacy API alone;
+            // product migration is compared against v1.3.0 in v130_settings.
+            if name == "InputStyle" && value == "Both" {
+                settings.0.insert(name.clone(), value.clone());
+            } else {
+                settings.set(name, value.clone()).unwrap();
+            }
         }
         let mut model = Model::default();
         if let Some(records) = case["learn"].as_array() {

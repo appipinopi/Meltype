@@ -343,15 +343,32 @@ impl Store {
         Ok(Lock(file))
     }
     pub fn settings(&self) -> io::Result<Settings> {
+        let (settings, migrate) = self.read_settings()?;
+        if !migrate {
+            return Ok(settings);
+        }
+        // Re-read after acquiring the cross-process lock; never overwrite a newer edit.
+        // A read-only config can still supply its migrated in-memory settings.
+        if let Ok(_lock) = self.lock() {
+            let (current, migrate) = self.read_settings()?;
+            if migrate {
+                let bytes = serde_json::to_vec_pretty(&current).map_err(io::Error::other)?;
+                let _ = atomic_write(&self.directory.join("config.json"), &bytes);
+            }
+            return Ok(current);
+        }
+        Ok(settings)
+    }
+    fn read_settings(&self) -> io::Result<(Settings, bool)> {
         match fs::read(self.directory.join("config.json")) {
             Ok(bytes) => {
                 let (text, _) = crate::user_dictionary::decode(&bytes)?;
-                Settings::parse(&text).map_err(io::Error::other)
+                Settings::parse_migrating(&text).map_err(io::Error::other)
             }
             Err(e) if e.kind() == io::ErrorKind::NotFound => {
                 let mut s = Settings::default();
                 s.normalize();
-                Ok(s)
+                Ok((s, false))
             }
             Err(e) => Err(e),
         }
@@ -361,7 +378,7 @@ impl Store {
         f: impl FnOnce(&mut Settings) -> Result<T, String>,
     ) -> io::Result<T> {
         let _lock = self.lock()?;
-        let mut settings = self.settings()?;
+        let (mut settings, _) = self.read_settings()?;
         let result = f(&mut settings).map_err(io::Error::other)?;
         atomic_write(
             &self.directory.join("config.json"),

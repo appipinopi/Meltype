@@ -19,7 +19,7 @@ std::string CommitJson(const JsonValue& reply) {
         if (i) json += ',';
         const auto& edit = edits[i];
         json += "{\"text\":" + JsonString(edit[L"text"].Str()) + ",\"deleteBefore\":" + std::to_string(edit[L"deleteBefore"].Int()) +
-            ",\"expect\":" + (edit[L"expect"].type == JsonValue::Type::String ? JsonString(edit[L"expect"].Str()) : "null") + "}";
+            ",\"caretBack\":" + std::to_string(edit[L"caretBack"].Int()) + ",\"expect\":" + (edit[L"expect"].type == JsonValue::Type::String ? JsonString(edit[L"expect"].Str()) : "null") + "}";
     }
     return json+"]";
 }

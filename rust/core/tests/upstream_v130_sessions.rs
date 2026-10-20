@@ -9,7 +9,14 @@ fn v130_key_operations_match_original() {
     let fixture: Value =
         serde_json::from_str(include_str!("data/upstream-v130-sessions.json")).unwrap();
     let mut failures = Vec::new();
-    for case in fixture["cases"].as_array().unwrap() {
+    let edges: Value =
+        serde_json::from_str(include_str!("data/upstream-v130-input-edges.json")).unwrap();
+    for case in fixture["cases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .chain(edges["cases"].as_array().unwrap())
+    {
         let directory = tempfile::tempdir().unwrap();
         fs::write(
             directory.path().join("config.json"),

@@ -27,6 +27,25 @@ const SHARED: &[&str] = &[
     "SettingsShowHelp",
     "SettingsWheelChangesValue",
 ];
+fn same_type(default: &Value, value: &Value) -> bool {
+    match default {
+        Value::Bool(_) => value.is_boolean(),
+        Value::Number(_) => value.is_i64(),
+        Value::String(_) => value.is_string(),
+        Value::Array(_) => value.is_array(),
+        Value::Object(_) => value.is_object(),
+        Value::Null => value.is_null(),
+    }
+}
+fn migrate_input_style(values: &mut Map<String, Value>) {
+    if values
+        .get("InputStyle")
+        .and_then(Value::as_str)
+        .is_some_and(|s| s.eq_ignore_ascii_case("Both"))
+    {
+        values.insert("InputStyle".into(), json!("Romaji"));
+    }
+}
 impl Default for Settings {
     fn default() -> Self {
         Self(
@@ -37,12 +56,31 @@ impl Default for Settings {
 }
 impl Settings {
     pub fn parse(text: &str) -> Result<Self, String> {
+        Self::parse_migrating(text).map(|(settings, _)| settings)
+    }
+    pub(crate) fn parse_migrating(text: &str) -> Result<(Self, bool), String> {
         let mut loaded: Map<String, Value> = json5::from_str(text).map_err(|e| e.to_string())?;
         let mut defaults = Self::default();
         let version = loaded
             .get("SettingsVersion")
             .and_then(Value::as_i64)
             .unwrap_or(1);
+        let removed = |value: Option<&Value>| {
+            value.and_then(Value::as_str).is_some_and(|s| {
+                s.eq_ignore_ascii_case("AutoSwitch") || s.eq_ignore_ascii_case("Both")
+            })
+        };
+        let migrate = version < 5
+            || removed(loaded.get("Mode"))
+            || removed(loaded.get("InputStyle"))
+            || loaded
+                .get("Profiles")
+                .and_then(Value::as_array)
+                .is_some_and(|profiles| {
+                    profiles.iter().any(|p| {
+                        removed(p["Values"].get("Mode")) || removed(p["Values"].get("InputStyle"))
+                    })
+                });
         if version < 2 {
             if loaded.get("IdleFlushMs") == Some(&json!(400)) {
                 loaded.insert("IdleFlushMs".into(), json!(700));
@@ -89,7 +127,7 @@ impl Settings {
         loaded.insert("SettingsVersion".into(), json!(5));
         defaults.0.extend(loaded);
         defaults.normalize();
-        Ok(defaults)
+        Ok((defaults, migrate))
     }
     pub fn boolean(&self, name: &str) -> bool {
         self.0.get(name).and_then(Value::as_bool).unwrap_or(false)
@@ -116,12 +154,19 @@ impl Settings {
     }
     pub fn normalize(&mut self) {
         let defaults = Self::default();
+        // Removed choices are read case-insensitively by the 1.3.0 converters.
+        // Only a top-level AutoSwitch restarts the first-run TSF introduction.
+        if self.text("Mode").eq_ignore_ascii_case("AutoSwitch") {
+            self.0.insert("Mode".into(), json!("Tsf"));
+            self.0.insert("TsfIntroduced".into(), json!(false));
+        }
+        migrate_input_style(&mut self.0);
         for (name, default) in &defaults.0 {
             let value = self
                 .0
                 .entry(name.clone())
                 .or_insert_with(|| default.clone());
-            if value.is_null() {
+            if !same_type(default, value) {
                 *value = default.clone();
             }
         }
@@ -190,7 +235,26 @@ impl Settings {
                 if name.is_empty() || !seen.insert(name.to_owned()) {
                     return None;
                 }
-                Some(json!({"Name":name,"Values":p["Values"]}))
+                let mut values = p["Values"].clone();
+                if let Some(values) = values.as_object_mut() {
+                    migrate_input_style(values);
+                    // Mode is shared; old profile copies must not reintroduce it.
+                    if values
+                        .get("Mode")
+                        .and_then(Value::as_str)
+                        .is_some_and(|s| s.eq_ignore_ascii_case("AutoSwitch"))
+                    {
+                        values.insert("Mode".into(), json!("Tsf"));
+                    }
+                    for (key, value) in values.iter_mut() {
+                        if let Some(default) = defaults.0.get(key) {
+                            if !same_type(default, value) {
+                                *value = default.clone();
+                            }
+                        }
+                    }
+                }
+                Some(json!({"Name":name,"Values":values}))
             })
             .collect();
         let name = if active.is_empty() {

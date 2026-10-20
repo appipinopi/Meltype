@@ -15,6 +15,7 @@ type Write = unsafe extern "C" fn(*mut c_void, *mut c_void, *const u16, u32) -> 
 #[serde(default, rename_all = "camelCase")]
 struct Edit {
     text: String,
+    caret_back: u32,
     delete_before: i32,
     expect: Option<String>,
 }
@@ -44,6 +45,15 @@ pub unsafe extern "C" fn meltype_tsf_apply_commits(
             else {
                 return false;
             };
+            // Reject arbitrary backward movement before making any edits.
+            if edits.iter().any(|edit| {
+                edit.caret_back != 0
+                    && (edit.caret_back != 1
+                        || edit.delete_before != 0
+                        || !meltype_core::shortcuts::is_bracket_pair(&edit.text))
+            }) {
+                return false;
+            }
             let mut next: Option<ITfRange> = None;
             for edit in edits {
                 let composition = current(owner);
@@ -94,6 +104,20 @@ pub unsafe extern "C" fn meltype_tsf_apply_commits(
                 next = range.Clone().ok();
                 if let Some(next) = &next {
                     let _ = next.Collapse(cookie, TF_ANCHOR_END);
+                    if edit.caret_back == 1 {
+                        let mut shifted = 0;
+                        if next
+                            .ShiftStart(cookie, -1, &mut shifted, std::ptr::null())
+                            .is_err()
+                            || shifted != -1
+                        {
+                            return false;
+                        }
+                        if next.Collapse(cookie, TF_ANCHOR_START).is_err() {
+                            return false;
+                        }
+                        ranges::caret(&context, next, cookie);
+                    }
                 }
             }
             true

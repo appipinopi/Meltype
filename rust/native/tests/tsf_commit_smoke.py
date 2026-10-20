@@ -58,6 +58,19 @@ class CommitTests(unittest.TestCase):
     def begin(self):
         self.active=self.api.meltype_tsf_start_composition(c.byref(self.host.context),c.byref(self.host.sink),None,7)
         self.assertTrue(self.active)
+    def test_bracket_commit_moves_caret_inside_then_next_commit_uses_new_anchor(self):
+        self.assertEqual(self.apply([{"text":"（）","caretBack":1},{"text":"内側"}]),1)
+        self.assertEqual(self.host.document,units("（内側）"))
+        self.assertEqual(self.host.selection,(3,3))
+
+    def test_invalid_caret_movement_is_rejected_without_writing(self):
+        for text, count in [("abc",1),("()",2),("()",-1)]:
+            self.assertEqual(self.apply([{"text":text,"caretBack":count}]),0)
+            self.assertEqual(self.host.document,units("old"))
+        self.assertEqual(self.apply([{"text":"valid"},{"text":"abc","caretBack":1}]),0)
+        self.assertEqual(self.host.document,units("old"))
+        self.assertEqual(self.writes,[])
+
     def test_multiple_commits_append_after_previous_edit_despite_caret_move(self):
         self.keep=True;self.move_caret=True
         self.assertEqual(self.apply([{"text":"日"},{"text":"😀"},{"text":"本"}]),1)

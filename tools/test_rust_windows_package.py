@@ -56,11 +56,18 @@ class PackageTests(unittest.TestCase):
             p = self.root/name
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_bytes(image(arch, ['kernel32.dll'], self.exports if p.suffix=='.dll' else ()))
-        for name in ['LICENSE', 'THIRD-PARTY-NOTICES.md', 'README-Windows.md']:
+        for name in ['LICENSE', 'THIRD-PARTY-NOTICES.md', 'README-Windows.md', 'Manage-Windows.ps1', 'Start-Portable.ps1']:
             (self.root/name).write_text('fixture', encoding='utf-8')
 
     def test_complete_layout(self):
         self.assertTrue(audit.inspect(self.root)['passed'])
+
+    def test_lifecycle_scripts_are_required(self):
+        for name in ['Manage-Windows.ps1', 'Start-Portable.ps1']:
+            saved = (self.root/name).read_bytes()
+            (self.root/name).unlink()
+            self.assertTrue(any(name in error for error in audit.inspect(self.root)['errors']))
+            (self.root/name).write_bytes(saved)
 
     def test_worker_is_required_next_to_tip(self):
         (self.root/'tip/x86/meltype-tip-worker.exe').unlink()

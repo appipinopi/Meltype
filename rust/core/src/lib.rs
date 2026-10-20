@@ -31,3 +31,6 @@ pub mod time_candidates;
 pub mod typo;
 pub mod user_dictionary;
 pub use session::{Session, SessionResult};
+
+#[cfg(windows)]
+pub mod windows_http;

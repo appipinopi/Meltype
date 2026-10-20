@@ -222,6 +222,7 @@ impl Session {
                 return Some(SessionResult {
                     consumed: true,
                     commits: vec![TextEdit {
+                        caret_back: 0,
                         delete_before: 0,
                         text: if half { " " } else { "　" }.into(),
                         expect: None,

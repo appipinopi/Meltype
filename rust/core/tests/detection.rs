@@ -75,7 +75,7 @@ fn detection_settings_control_kana_threshold_and_typo_contributions() {
         .contributions
         .iter()
         .all(|c| c.source != "Typo"));
-    for style in ["Kana", "Both"] {
+    for style in ["Kana"] {
         settings
             .set("InputStyle", serde_json::json!(style))
             .unwrap();
@@ -266,7 +266,8 @@ fn direct_detection_replaces_only_a_verified_prefix_and_keeps_english_and_protec
     s.settings
         .set("InputStyle", serde_json::json!("Both"))
         .unwrap();
-    assert_eq!(direct_typing("byiaf", s).0, "こんにちは");
+    assert_eq!(s.settings.text("InputStyle"), "Romaji");
+    assert_eq!(direct_typing("byiaf", s).0, "byiaf");
     let mut s = direct_session();
     assert!(!s.key(0x4e, 'n' as i32, 0).consumed);
     assert!(s.direct);
@@ -297,8 +298,7 @@ fn kana_editing_transforms_and_undo_keep_physical_key_history() {
     for key in [0x42, 0x59, 0x49, 0x41, 0x46] {
         s.key(key, (key as u8 as char).to_ascii_lowercase() as i32, 0);
     }
-    // The original Windows CompositionOptions uses KanaInput only for Kana;
-    // Both chooses kana when direct-mode detection switches the input style.
-    // An ordinary buffered Both composition retains the romaji path.
+    // In 1.3.0 the removed Both choice is migrated to Romaji.
+    assert_eq!(s.settings.text("InputStyle"), "Romaji");
     assert_eq!(s.display(false), "bいあf");
 }

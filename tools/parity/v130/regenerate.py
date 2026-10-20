@@ -49,20 +49,49 @@ def main():
         for name in ["Composition/Calculator.cs", "Composition/NumberCandidates.cs",
                      "Composition/CompositionController.cs", "Composition/Predictor.cs", "Composition/GitHubIssueTitles.cs", "Input/KeyShortcut.cs"]:
             values["source_sha256"][name] = hashlib.sha256((project.parent/name).read_bytes()).hexdigest()
-        sessions = read(DATA / "upstream-v130-sessions.json")
-        requests = workspace / "sessions.json"
-        write(requests, [{key:value for key,value in case.items() if key!="expected"} for case in sessions["cases"]])
-        replies = [json.loads(line) for line in run(reference+["--sessions",str(requests),str(workspace/"profiles")]).decode("utf-8-sig").splitlines()]
-        if len(replies) != len(sessions["cases"]):
-            raise ValueError("missing key reference responses")
-        for case,reply in zip(sessions["cases"],replies):
-            if case["name"]!=reply["name"]:
-                raise ValueError("misordered reference response")
-            case["expected"]=reply["expected"]
-        # Publish only after both runs completed successfully.
+        session_documents = {}
+        for filename in ["upstream-v130-sessions.json", "upstream-v130-input-edges.json"]:
+            sessions = read(DATA / filename)
+            requests = workspace / filename
+            write(requests, [{key:value for key,value in case.items() if key!="expected"} for case in sessions["cases"]])
+            replies = [json.loads(line) for line in run(reference+["--sessions",str(requests),str(workspace/(filename+"-profiles"))]).decode("utf-8-sig").splitlines()]
+            if len(replies) != len(sessions["cases"]):
+                raise ValueError("missing key reference responses")
+            for case,reply in zip(sessions["cases"],replies):
+                if case["name"]!=reply["name"]:
+                    raise ValueError("misordered reference response")
+                case["expected"]=reply["expected"]
+            session_documents[filename] = sessions
+        defaults = json.loads(run(reference+["--defaults"]).decode("utf-8-sig"))
+        settings = read(ROOT/"rust/core/tests/data/upstream-v130-settings.json")
+        requests = workspace / "settings.json"
+        write(requests, [{key:value for key,value in case.items() if key!="expected"} for case in settings["settings"]])
+        replies = [json.loads(line) for line in run(reference+["--settings",str(requests),str(workspace/"settings-files")]).decode("utf-8-sig").splitlines()]
+        if len(replies) != len(settings["settings"]):
+            raise ValueError("missing settings reference responses")
+        for case,reply in zip(settings["settings"],replies):
+            if case["name"] != reply["name"]: raise ValueError("misordered settings reference")
+            case["expected"] = reply["expected"]
+        # Lossless shallow deltas avoid repeating complete default settings 120 times.
+        base_settings = settings["settings"][0]["expected"][0]["settings"]
+        settings["baseSettings"] = base_settings
+        for case in settings["settings"]:
+            for step in case["expected"]:
+                snapshot = step.pop("settings")
+                if not base_settings.keys() <= snapshot.keys():
+                    raise ValueError("settings snapshot removed base keys")
+                delta = {key:value for key,value in snapshot.items() if key not in base_settings or value != base_settings[key]}
+                if {**base_settings, **delta} != snapshot:
+                    raise ValueError("lossy settings fixture")
+                step["settingsDelta"] = delta
+        # Publish only after all runs completed successfully.
+        write(DATA/"upstream-v130-settings.json", settings)
+        write(DATA/"upstream-v130-defaults.json", {"upstream":COMMIT,"defaults":defaults})
         write(DATA/"upstream-v130-values.json",values)
-        write(DATA/"upstream-v130-sessions.json",sessions)
-        print(f"Regenerated {len(values['cases'])} scalar cases and {len(sessions['cases'])} key sequences from {COMMIT}")
+        for filename, document in session_documents.items():
+            write(DATA/filename, document)
+        sequences = sum(len(document["cases"]) for document in session_documents.values())
+        print(f"Regenerated {len(values['cases'])} scalar cases, {sequences} key sequences, and {len(settings['settings'])} settings cases from {COMMIT}")
 
 if __name__ == "__main__":
     main()

@@ -18,9 +18,16 @@ pub use reconversion::ReconversionPart;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
+fn is_zero(value: &u32) -> bool {
+    *value == 0
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TextEdit {
+    /// UTF-16 units to move inside a committed bracket pair (capable hosts only).
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub caret_back: u32,
     pub delete_before: usize,
     pub text: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -175,7 +182,6 @@ pub struct Session {
     typed_keys: Vec<(i32, char, bool)>,
     reconversion_origin: Option<String>,
     context_is_fresh: bool,
-    composition_kana: bool,
     correctable: Vec<crate::commit_correction::Record>,
     space_started_conversion: bool,
     tab_started_conversion: bool,
@@ -237,7 +243,6 @@ impl Default for Session {
             typed_keys: vec![],
             reconversion_origin: None,
             context_is_fresh: false,
-            composition_kana: false,
             correctable: vec![],
             space_started_conversion: false,
             tab_started_conversion: false,
@@ -672,7 +677,7 @@ impl Session {
         }
     }
     fn refresh_kana(&mut self) {
-        if !["Kana", "Both"].contains(&self.settings.text("InputStyle")) {
+        if self.settings.text("InputStyle") != "Kana" {
             return;
         }
         self.kana_text.clear();
@@ -719,10 +724,14 @@ impl Session {
     }
     fn uses_kana(&self) -> bool {
         self.settings.text("InputStyle") == "Kana"
-            || self.settings.text("InputStyle") == "Both" && self.composition_kana
     }
     fn romaji_fix(&self) -> Option<crate::typo::Fix> {
         if self.v130.enter_as_shown
+            || self.settings.boolean("LaughterAfterKana")
+                && self.raw.strip_suffix('w').is_some_and(|prefix| {
+                    let kana = romaji::hiragana(prefix, true);
+                    kana.chars().count() == 1 && kana.chars().all(|c| ('ぁ'..='ん').contains(&c))
+                })
             || !self.settings.boolean("CorrectTypos")
             || self.preferences.english.get(&self.raw.to_ascii_lowercase()) == Some(&true)
             || !self.raw.bytes().all(|c| c.is_ascii_lowercase())
@@ -943,7 +952,9 @@ impl Session {
                         {
                             '］'
                         }
-                        '+' | '*' | '=' | '%' | '&' | '$' | '^' if !latin_punctuation => {
+                        '+' | '*' | '=' | '%' | '&' | '$' | '^' | '<' | '>'
+                            if !latin_punctuation =>
+                        {
                             char::from_u32(c as u32 + 0xfee0).unwrap()
                         }
                         _ => c,
@@ -1121,7 +1132,6 @@ impl Session {
         self.chosen_conversion = false;
         self.last_commit = None;
         self.reconversion_origin = None;
-        self.composition_kana = false;
         self.context_is_fresh = false;
         self.raw.clear();
         self.edited_units = None;
@@ -1174,6 +1184,7 @@ impl Session {
             SessionResult {
                 consumed: false,
                 commits: vec![TextEdit {
+                    caret_back: 0,
                     delete_before: 0,
                     text,
                     expect: None,
@@ -1387,12 +1398,25 @@ impl Session {
                 romaji,
             });
         }
+        let caret_back = u32::from(
+            self.settings.boolean("CursorIntoBrackets")
+                && correction.is_none()
+                && crate::shortcuts::is_bracket_pair(&text),
+        );
+        if caret_back != 0 {
+            // The host moves left; cached context and correction history must follow.
+            self.before.pop();
+            self.after
+                .insert_str(0, &text[text.char_indices().nth(1).unwrap().0..]);
+            self.correctable.clear();
+        }
         SessionResult {
             consumed: !text.is_empty(),
             commits: if text.is_empty() {
                 vec![]
             } else {
                 vec![TextEdit {
+                    caret_back,
                     delete_before: correction
                         .as_ref()
                         .map_or(0, |(original, _)| original.encode_utf16().count()),
@@ -1500,6 +1524,7 @@ impl Session {
         self.refresh_kana();
         let mut result = self.result(true);
         result.commits.push(TextEdit {
+            caret_back: 0,
             delete_before: text.encode_utf16().count(),
             text: String::new(),
             expect: Some(text),
@@ -2324,6 +2349,7 @@ impl Session {
                 let mut result = self.commit();
                 self.correctable.clear();
                 result.commits.push(TextEdit {
+                    caret_back: 0,
                     delete_before: 0,
                     text: "　".into(),
                     expect: None,
@@ -2347,6 +2373,7 @@ impl Session {
                     return SessionResult {
                         consumed: true,
                         commits: vec![TextEdit {
+                            caret_back: 0,
                             delete_before: 0,
                             text: original,
                             expect: None,

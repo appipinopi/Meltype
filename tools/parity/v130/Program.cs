@@ -7,6 +7,26 @@ using Meltype.Config;
 using Meltype.Input;
 Console.OutputEncoding=System.Text.Encoding.UTF8;
 
+if(args[0]=="--settings") {
+    Directory.CreateDirectory(args[2]);
+    var index=0;
+    foreach(var row in JsonDocument.Parse(File.ReadAllText(args[1])).RootElement.EnumerateArray()) {
+        var path=Path.Combine(args[2],"settings-"+(index++)+".json");File.WriteAllText(path,row.GetProperty("config").GetRawText());
+        var settings=Settings.Load(path);var trace=new List<object>();
+        void Record(bool accepted)=>trace.Add(new { accepted,settings=JsonDocument.Parse(settings.ToJson()).RootElement.Clone() });
+        Record(true);
+        if(row.TryGetProperty("ops",out var ops))foreach(var op in ops.EnumerateArray()) {
+            var name=op.GetProperty("name").GetString()!;Settings? next=op.GetProperty("op").GetString() switch {
+                "add"=>settings.AddProfile(name),"switch"=>settings.ProfileNames.Contains(name)?settings.SwitchProfile(name):null,
+                "rename"=>settings.RenameProfile(name,op.GetProperty("newName").GetString()!),"remove"=>settings.RemoveProfile(name),
+                _=>throw new ArgumentException() };
+            if(next is not null)settings=next;Record(next is not null);
+        }
+        Console.WriteLine(JsonSerializer.Serialize(new {name=row.GetProperty("name").GetString(),expected=trace}));
+    }
+    return;
+}
+
 if (args[0] == "--metadata") {
  var props=typeof(Settings).GetProperties().Where(p=>p.GetCustomAttribute<System.ComponentModel.CategoryAttribute>()!=null).Select(p=>new {key=p.Name,type=p.PropertyType.Name,category=p.GetCustomAttribute<System.ComponentModel.CategoryAttribute>()!.Category,label=p.GetCustomAttribute<System.ComponentModel.DisplayNameAttribute>()?.DisplayName??p.Name,description=p.GetCustomAttribute<System.ComponentModel.DescriptionAttribute>()?.Description??""});
  Console.WriteLine(JsonSerializer.Serialize(props));return;

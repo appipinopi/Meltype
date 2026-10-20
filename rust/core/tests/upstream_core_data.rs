@@ -63,13 +63,15 @@ fn known_settings(settings: &Settings, baseline: &Value) -> Value {
 }
 
 #[test]
-fn original_known_settings_normalization_and_profile_lifecycle() {
-    let fixture = fixture();
+fn v130_known_settings_normalization_and_profile_lifecycle() {
+    // Removed choices intentionally differ from the old 45e14f8 reference.
+    let fixture: Value =
+        serde_json::from_str(include_str!("data/upstream-v130-settings.json")).unwrap();
     assert_eq!(fixture["settings"].as_array().unwrap().len(), 120);
     for case in fixture["settings"].as_array().unwrap() {
         let mut settings = Settings::parse(&case["config"].to_string()).unwrap();
         let mut trace = vec![
-            json!({"accepted":true,"settings":known_settings(&settings, &fixture["settings"][0]["expected"][0]["settings"])}),
+            json!({"accepted":true,"settings":known_settings(&settings, &fixture["baseSettings"])}),
         ];
         if let Some(ops) = case["ops"].as_array() {
             for op in ops {
@@ -82,9 +84,19 @@ fn original_known_settings_normalization_and_profile_lifecycle() {
                     _ => panic!("unknown profile operation"),
                 }
                 .is_ok();
-                trace.push(json!({"accepted":accepted,"settings":known_settings(&settings, &fixture["settings"][0]["expected"][0]["settings"])}));
+                trace.push(json!({"accepted":accepted,"settings":known_settings(&settings, &fixture["baseSettings"])}));
             }
         }
-        assert_eq!(json!(trace), case["expected"], "{}", case["name"]);
+        let expected: Vec<_> = case["expected"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|step| {
+                let mut settings = fixture["baseSettings"].as_object().unwrap().clone();
+                settings.extend(step["settingsDelta"].as_object().unwrap().clone());
+                json!({"accepted":step["accepted"],"settings":settings})
+            })
+            .collect();
+        assert_eq!(json!(trace), json!(expected), "{}", case["name"]);
     }
 }

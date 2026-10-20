@@ -68,6 +68,7 @@ impl Session {
             self.direct_english_word = false;
             self.refresh_kana();
             Some(TextEdit {
+                caret_back: 0,
                 delete_before: held.encode_utf16().count(),
                 text: String::new(),
                 expect: Some(held),
@@ -137,6 +138,7 @@ impl Session {
                 self.refresh_kana();
                 let mut result = self.result(true);
                 result.commits.push(TextEdit {
+                    caret_back: 0,
                     delete_before: expected.encode_utf16().count(),
                     text: String::new(),
                     expect: Some(expected.into()),
@@ -243,15 +245,6 @@ impl Session {
         self.direct_last_key_ms = None;
         self.direct = false;
         self.direct_english_word = false;
-        self.composition_kana = self.settings.text("InputStyle") == "Both"
-            && result
-                .contributions
-                .iter()
-                .any(|c| c.source == "Kana" && c.japanese > 0)
-            && result
-                .contributions
-                .iter()
-                .all(|c| c.source == "Kana" || c.japanese == 0);
         self.raw = typed;
         self.typed_keys = self
             .raw
@@ -264,6 +257,7 @@ impl Session {
         let mut result = self.result(true);
         if !prefix.is_empty() {
             result.commits.push(TextEdit {
+                caret_back: 0,
                 delete_before: prefix.encode_utf16().count(),
                 text: String::new(),
                 expect: Some(prefix),

@@ -297,10 +297,16 @@ pub(crate) fn application_reply(input: &[u8]) -> Option<serde_json::Value> {
         }
     }
     let value = parse(input)?;
-    let commits:Vec<_>=array(get(&value,"commits")).iter().map(|edit|serde_json::json!({
-        "text":text(get(edit,"text")),"deleteBefore":integer(get(edit,"deleteBefore")),
-        "expect":match get(edit,"expect") {Some(v@Value::String(_))=>Some(text(Some(v))),_=>None}
-    })).collect();
+    let commits: Vec<_> = array(get(&value,"commits")).iter().map(|edit| {
+        let mut value = serde_json::json!({
+            "text":text(get(edit,"text")),"deleteBefore":integer(get(edit,"deleteBefore")),
+            "expect":match get(edit,"expect") {Some(v@Value::String(_))=>Some(text(Some(v))),_=>None}
+        });
+        if let Some(caret) = get(edit, "caretBack") {
+            value["caretBack"] = serde_json::json!(integer(Some(caret)));
+        }
+        value
+    }).collect();
     let view = match get(&value, "view") {
         None | Some(Value::Null) => serde_json::Value::Null,
         Some(view) => {
@@ -475,6 +481,16 @@ pub unsafe extern "C" fn meltype_json_quote(text: *const u16, length: u32) -> *m
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(windows)]
+    #[test]
+    fn application_projection_preserves_bracket_caret_requests() {
+        let value = application_reply(
+            br#"{"active":true,"commits":[{"text":"()","caretBack":1},{"text":"plain"}]}"#,
+        )
+        .unwrap();
+        assert_eq!(value["commits"][0]["caretBack"], 1);
+        assert!(value["commits"][1].get("caretBack").is_none());
+    }
     #[cfg(windows)]
     #[test]
     fn application_projection_keeps_typed_defaults_and_utf16_replacement() {
