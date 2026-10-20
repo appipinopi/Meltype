@@ -24,7 +24,7 @@ public static class InstalledImeProbe {
         Marshal.ThrowExceptionForHR(init);
         try {
             Guid clsid = new Guid("417D801B-A9BD-4C26-BD16-356A825A6998");
-            Guid iid = new Guid("aa80e7f1-2021-11d2-93e0-0060b067b86e");
+            Guid iid = new Guid("aa80e7f7-2021-11d2-93e0-0060b067b86e");
             IntPtr value;
             Marshal.ThrowExceptionForHR(CoCreateInstance(ref clsid, IntPtr.Zero, 1, ref iid, out value));
             if (value == IntPtr.Zero) throw new Exception("Null ITfTextInputProcessor");
@@ -71,7 +71,12 @@ try {
     $key = $machine.OpenSubKey('SOFTWARE\Microsoft\Windows\CurrentVersion')
     try { $installRoot = Join-Path ([string]$key.GetValue('ProgramFilesDir')) 'MeltypeRust' } finally { $key.Dispose() }
 } finally { $machine.Dispose() }
-if (Test-Path -LiteralPath (Join-Path $installRoot 'installed.json')) { throw 'Existing managed Rust installation: exercise refused to preserve it.' }
+if (Test-Path -LiteralPath (Join-Path $installRoot 'installed.json')) {
+    $prior = Get-Content -LiteralPath (Join-Path $installRoot 'installed.json') -Raw | ConvertFrom-Json
+    $versions = Join-Path $installRoot 'versions'
+    if ($prior.unregistered -ne $true -or @((Get-ChildItem -LiteralPath $versions -File -Recurse -Force -ErrorAction SilentlyContinue)).Count -ne 0) { throw 'Existing managed Rust installation: exercise refused to preserve it.' }
+    foreach ($arch in 'x64','x86') { if ($old[$arch].StartsWith($installRoot+'\',[StringComparison]::OrdinalIgnoreCase)) { throw 'Rust IME still registered; exercise refused.' } }
+}
 New-Item -ItemType Directory -Path $ReportDirectory -ErrorAction Stop | Out-Null
 $report = (Resolve-Path -LiteralPath $ReportDirectory).Path
 Start-Transcript -LiteralPath (Join-Path $report 'registration.log') | Out-Null
