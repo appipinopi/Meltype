@@ -65,6 +65,12 @@ jobs:
         run: python -m unittest discover -s tools/parity -p test_batch_compare.py -v
       - name: Windows preview file and PE dependency integrity
         run: python -m unittest discover -s tools -p test_rust_windows_package.py -v
+      - name: Windows package lifecycle over isolated files
+        if: runner.os == 'Windows'
+        run: |
+          ./rust/Test-Manage-Windows.ps1
+          ./rust/Test-WindowsLifecycle.ps1
+          ./rust/Test-StartupCli.ps1 -Binary target/release/meltype-settings.exe
       - name: Build isolated settings render probe
         run: cargo build -p meltype-settings --features visual-test --locked
       - name: Capture six settings pages on Windows and macOS

@@ -5,7 +5,7 @@ use eframe::egui;
 use std::{
     ffi::OsString,
     io::Write,
-    os::windows::process::CommandExt,
+    os::windows::{ffi::OsStringExt, process::CommandExt},
     path::PathBuf,
     sync::mpsc::{self, Receiver},
     time::{Duration, Instant},
@@ -257,8 +257,20 @@ fn escape(s: &str) -> String {
         .replace('\'', "&apos;")
 }
 fn run(args: &[OsString]) -> Result<i32, String> {
-    let system = std::env::var_os("SystemRoot").ok_or("SystemRootがありません")?;
-    let mut child = std::process::Command::new(PathBuf::from(system).join("System32/schtasks.exe"))
+    // The installer can call this process elevated. Do not trust an inherited
+    // SystemRoot when selecting the executable that manages scheduled tasks.
+    let mut system = vec![0u16; 32768];
+    let count = unsafe {
+        windows_sys::Win32::System::SystemInformation::GetSystemDirectoryW(
+            system.as_mut_ptr(),
+            system.len() as u32,
+        )
+    } as usize;
+    if count == 0 || count >= system.len() {
+        return Err("Windowsのシステムフォルダーを取得できません".into());
+    }
+    let system = PathBuf::from(OsString::from_wide(&system[..count]));
+    let mut child = std::process::Command::new(system.join("schtasks.exe"))
         .args(args)
         .creation_flags(0x08000000)
         .stdin(std::process::Stdio::null())
@@ -278,6 +290,113 @@ fn run(args: &[OsString]) -> Result<i32, String> {
         }
         std::thread::sleep(Duration::from_millis(40));
     }
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Maintenance {
+    Query,
+    Rebind,
+    Disable,
+}
+impl Maintenance {
+    fn parse(text: &str) -> Result<Self, String> {
+        match text {
+            "query" => Ok(Self::Query),
+            "rebind" => Ok(Self::Rebind),
+            "disable" => Ok(Self::Disable),
+            _ => Err("startup action must be query, rebind or disable".into()),
+        }
+    }
+}
+type Request = (Maintenance, Option<PathBuf>);
+fn arguments(args: &[OsString]) -> Result<Option<Request>, String> {
+    if !args
+        .iter()
+        .any(|a| a == "--startup-action" || a == "--startup-result")
+    {
+        return Ok(None);
+    }
+    let mut action = None;
+    let mut result = None;
+    let (pairs, remainder) = args.as_chunks::<2>();
+    for pair in pairs {
+        if pair[0] == "--startup-action" && action.is_none() {
+            action = Some(Maintenance::parse(
+                pair[1].to_str().ok_or("invalid action")?,
+            )?);
+        } else if pair[0] == "--startup-result" && result.is_none() && !pair[1].is_empty() {
+            result = Some(PathBuf::from(&pair[1]));
+        } else {
+            return Err("invalid or duplicate startup argument".into());
+        }
+    }
+    if !remainder.is_empty() {
+        return Err("missing startup argument value".into());
+    }
+    Ok(Some((
+        action.ok_or("--startup-action is required")?,
+        result,
+    )))
+}
+fn maintain(
+    spec: &Spec,
+    action: Maintenance,
+    run: &mut impl FnMut(&[OsString]) -> Result<i32, String>,
+    registry: &mut impl FnMut(RunEntry) -> Result<bool, String>,
+) -> Result<(bool, bool), String> {
+    let enabled = spec.query_combined(run, registry)?;
+    match action {
+        Maintenance::Query => Ok((enabled, false)),
+        Maintenance::Rebind if !enabled => Ok((false, false)),
+        Maintenance::Rebind => {
+            // Never leave an old task racing an updated Run entry after a task
+            // replacement fails. Fallback is valid only if no task existed.
+            let scheduled = spec.query(run)?;
+            match spec.set(true, run) {
+                Ok(_) => {
+                    registry(RunEntry::Disable)?;
+                    Ok((true, true))
+                }
+                Err(error) if scheduled => Err(error),
+                Err(_) => registry(RunEntry::Enable).map(|v| (v, true)),
+            }
+        }
+        Maintenance::Disable => spec
+            .set_combined(false, run, registry)
+            .map(|v| (v, enabled)),
+    }
+}
+/// Headless, current-user startup maintenance for the package manager. This
+/// returns before egui, tray setup or user-data loading can have side effects.
+pub fn command_line(args: &[OsString]) -> Option<i32> {
+    let request = match arguments(args) {
+        Ok(None) => return None,
+        Ok(Some(request)) => request,
+        Err(error) => {
+            eprintln!("{error}");
+            return Some(2);
+        }
+    };
+    let result = Spec::current().and_then(|spec| {
+        maintain(&spec, request.0, &mut run, &mut |action| {
+            registry(&spec, action)
+        })
+    });
+    let value = match &result {
+        Ok((enabled, changed)) => {
+            serde_json::json!({"protocol":1,"ok":true,"enabled":enabled,"changed":changed})
+        }
+        Err(error) => serde_json::json!({"protocol":1,"ok":false,"error":error}),
+    };
+    if let Some(path) = request.1 {
+        let bytes = serde_json::to_vec(&value).expect("startup result JSON");
+        if let Err(error) = meltype_core::storage::atomic_write(&path, &bytes) {
+            eprintln!("startup result: {error}");
+            return Some(1);
+        }
+    } else {
+        println!("{value}");
+    }
+    Some(i32::from(result.is_err()))
 }
 pub struct Startup {
     spec: Spec,
@@ -338,6 +457,137 @@ impl Startup {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn maintenance_arguments_are_explicit_and_never_fall_through_to_gui() {
+        let args = |s: &[&str]| s.iter().map(OsString::from).collect::<Vec<_>>();
+        assert!(arguments(&args(&["--tray"])).unwrap().is_none());
+        let request = arguments(&args(&[
+            "--startup-result",
+            "C:/結果.json",
+            "--startup-action",
+            "query",
+        ]))
+        .unwrap()
+        .unwrap();
+        assert_eq!(
+            request,
+            (Maintenance::Query, Some(PathBuf::from("C:/結果.json")))
+        );
+        for input in [
+            vec!["--startup-action"],
+            vec!["--startup-action", "unknown"],
+            vec!["--startup-result", "file"],
+            vec!["--startup-action", "query", "--tray"],
+            vec!["--startup-action", "query", "--startup-action", "disable"],
+        ] {
+            assert!(arguments(&args(&input)).is_err(), "{input:?}");
+        }
+    }
+    #[test]
+    fn maintenance_rebind_preserves_opt_out_and_updates_enabled_run_fallback() {
+        let spec = spec();
+        let mut calls = vec![];
+        let mut invoke = |args: &[OsString]| {
+            calls.push(args.to_vec());
+            Ok(1)
+        };
+        assert_eq!(
+            maintain(&spec, Maintenance::Rebind, &mut invoke, &mut |_| Ok(false)),
+            Ok((false, false))
+        );
+        assert_eq!(calls.len(), 1, "disabled startup must not be enabled");
+        let mut created = false;
+        let mut registry_ops = vec![];
+        let mut invoke = |args: &[OsString]| {
+            if args[0] == "/Create" {
+                let path = PathBuf::from(&args[4]);
+                let bytes = std::fs::read(path).unwrap();
+                let units: Vec<_> = bytes[2..]
+                    .as_chunks::<2>()
+                    .0
+                    .iter()
+                    .map(|c| u16::from_le_bytes(*c))
+                    .collect();
+                let xml = String::from_utf16(&units).unwrap();
+                assert!(xml.contains(&escape(&spec.executable.to_string_lossy())));
+                created = true;
+                Ok(0)
+            } else {
+                Ok(1)
+            }
+        };
+        let result = maintain(&spec, Maintenance::Rebind, &mut invoke, &mut |op| {
+            registry_ops.push(op);
+            Ok(true)
+        });
+        assert_eq!(result, Ok((true, true)));
+        assert!(created);
+        assert_eq!(registry_ops, vec![RunEntry::Exists, RunEntry::Disable]);
+    }
+    #[test]
+    fn maintenance_disables_both_owned_entries_and_query_failure_does_not_mutate() {
+        let spec = spec();
+        let mut calls = vec![];
+        let mut registry_ops = vec![];
+        let result = maintain(
+            &spec,
+            Maintenance::Disable,
+            &mut |args| {
+                calls.push(args[0].clone());
+                Ok(0)
+            },
+            &mut |op| {
+                registry_ops.push(op);
+                Ok(false)
+            },
+        );
+        assert_eq!(result, Ok((false, true)));
+        assert_eq!(
+            calls,
+            vec![OsString::from("/Query"), "/Query".into(), "/Delete".into()]
+        );
+        assert_eq!(registry_ops, vec![RunEntry::Disable]);
+        let mut calls = vec![];
+        assert!(maintain(
+            &spec,
+            Maintenance::Rebind,
+            &mut |args| {
+                calls.push(args[0].clone());
+                Ok(5)
+            },
+            &mut |_| Ok(false)
+        )
+        .is_err());
+        assert_eq!(calls, vec![OsString::from("/Query")]);
+    }
+    #[test]
+    fn rebind_refuses_to_hide_failure_replacing_an_existing_task() {
+        let mut commands = vec![];
+        let result = maintain(
+            &spec(),
+            Maintenance::Rebind,
+            &mut |args| {
+                commands.push(args[0].clone());
+                Ok(if args[0] == "/Create" { 5 } else { 0 })
+            },
+            &mut |_| panic!("must not create a competing Run entry"),
+        );
+        assert!(result.is_err());
+        assert_eq!(commands.last(), Some(&OsString::from("/Create")));
+        // When no task exists, a policy-denied Create may update the owned Run entry.
+        let mut registry_ops = vec![];
+        let result = maintain(
+            &spec(),
+            Maintenance::Rebind,
+            &mut |args| Ok(if args[0] == "/Query" { 1 } else { 5 }),
+            &mut |op| {
+                registry_ops.push(op);
+                Ok(true)
+            },
+        );
+        assert_eq!(result, Ok((true, true)));
+        assert_eq!(registry_ops, vec![RunEntry::Exists, RunEntry::Enable]);
+    }
     fn spec() -> Spec {
         Spec::new(
             "DOMAIN\\藤島&<\"'".into(),

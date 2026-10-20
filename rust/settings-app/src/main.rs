@@ -16,6 +16,10 @@ mod widgets;
 mod windows_services;
 
 fn main() -> eframe::Result {
+    #[cfg(windows)]
+    if let Some(code) = startup::command_line(&std::env::args_os().skip(1).collect::<Vec<_>>()) {
+        std::process::exit(code);
+    }
     let resident = cfg!(windows) && std::env::args().any(|a| a == "--tray");
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()

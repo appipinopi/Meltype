@@ -4,7 +4,8 @@
 param(
     [ValidateSet('Inspect','Install','Update','Uninstall')][string]$Action = 'Inspect',
     [string]$Package = $PSScriptRoot,
-    [switch]$ReplaceExisting
+    [switch]$ReplaceExisting,
+    [switch]$SkipCurrentUserStartup
 )
 $ErrorActionPreference = 'Stop'
 $clsid = '{417D801B-A9BD-4C26-BD16-356A825A6998}'
@@ -15,6 +16,18 @@ function Get-Server([Microsoft.Win32.RegistryView]$View) {
         if ($null -eq $key) { return $null }
         try { return [string]$key.GetValue('') } finally { $key.Dispose() }
     } finally { $hive.Dispose() }
+}
+function Get-InstallRoot {
+    $machine = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::LocalMachine, [Microsoft.Win32.RegistryView]::Registry64)
+    try {
+        $key = $machine.OpenSubKey('SOFTWARE\Microsoft\Windows\CurrentVersion')
+        try { $programFiles = [string]$key.GetValue('ProgramFilesDir') } finally { $key.Dispose() }
+    } finally { $machine.Dispose() }
+    return [IO.Path]::GetFullPath((Join-Path $programFiles 'MeltypeRust'))
+}
+function Assert-Administrator {
+    $principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
+    if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'Run in an administrator PowerShell.' }
 }
 function Assert-Child([string]$Base, [string]$Path) {
     $full = [IO.Path]::GetFullPath($Path)
@@ -46,12 +59,7 @@ if ($Action -ne 'Uninstall') {
     Write-Host "Package hashes verified: $packageRoot"
     if ($Action -eq 'Inspect') { return }
 }
-$machine = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::LocalMachine, [Microsoft.Win32.RegistryView]::Registry64)
-try {
-    $key = $machine.OpenSubKey('SOFTWARE\Microsoft\Windows\CurrentVersion')
-    try { $programFiles = [string]$key.GetValue('ProgramFilesDir') } finally { $key.Dispose() }
-} finally { $machine.Dispose() }
-$installRoot = [IO.Path]::GetFullPath((Join-Path $programFiles 'MeltypeRust'))
+$installRoot = Get-InstallRoot
 $statePath = Assert-Child $installRoot (Join-Path $installRoot 'installed.json')
 $state = if (Test-Path -LiteralPath $statePath) { Get-Content -LiteralPath $statePath -Raw | ConvertFrom-Json } else { $null }
 $old = @{ x64 = (Get-Server ([Microsoft.Win32.RegistryView]::Registry64)); x86 = (Get-Server ([Microsoft.Win32.RegistryView]::Registry32)) }
@@ -64,8 +72,7 @@ if ($Action -ne 'Uninstall') {
     }
 }
 if (-not $PSCmdlet.ShouldProcess($installRoot, "$Action Meltype Rust IME")) { return }
-$principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
-if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'Run in an administrator PowerShell.' }
+Assert-Administrator
 $windows = [Environment]::GetFolderPath('Windows')
 $reg64 = Join-Path $windows 'System32\regsvr32.exe'
 if (-not [Environment]::Is64BitProcess) { $reg64 = Join-Path $windows 'Sysnative\regsvr32.exe' }
@@ -77,14 +84,41 @@ function Register-Server([string]$Arch,[string]$Dll,[switch]$Remove) {
     $process = Start-Process -FilePath $exe -ArgumentList $arguments -WindowStyle Hidden -Wait -PassThru
     if ($process.ExitCode -ne 0) { throw "regsvr32 $Arch failed: $($process.ExitCode)" }
 }
+function Invoke-StartupMaintenance([string]$Exe, [ValidateSet('rebind','disable')][string]$Operation) {
+    if (-not (Test-Path -LiteralPath $Exe -PathType Leaf)) { throw "Startup helper missing: $Exe" }
+    $report = [IO.Path]::GetTempFileName()
+    $process = $null
+    try {
+        $process = Start-Process -FilePath $Exe -ArgumentList @('--startup-action', $Operation, '--startup-result', ('"'+$report+'"')) -WindowStyle Hidden -PassThru
+        if (-not $process.WaitForExit(45000)) {
+            try { $process.Kill(); $process.WaitForExit() } catch { }
+            throw 'Startup helper timed out; no further installation steps were attempted.'
+        }
+        $result = Get-Content -LiteralPath $report -Raw -Encoding UTF8 | ConvertFrom-Json
+        if ($process.ExitCode -ne 0 -or $result.protocol -ne 1 -or $result.ok -ne $true -or $result.enabled -isnot [bool]) {
+            throw "Startup maintenance failed: $($result.error)"
+        }
+        return $result
+    } finally {
+        if ($null -ne $process) { $process.Dispose() }
+        Remove-Item -LiteralPath $report -Force -ErrorAction SilentlyContinue
+    }
+}
 if ($Action -eq 'Uninstall') {
     if ($null -eq $state) { throw 'No managed installation; nothing removed.' }
     foreach ($arch in 'x64','x86') {
         $dll = Assert-Child $installRoot ([string]$state.$arch)
         if ($old[$arch] -and $old[$arch] -ne $dll) { throw "Registration changed externally: $($old[$arch])" }
     }
+    if (-not $SkipCurrentUserStartup) {
+        if ($state.startupProtocol -ne 1) {
+            throw 'This old installation has no startup helper. Update first, or disable startup manually and pass -SkipCurrentUserStartup.'
+        }
+        $helper = Assert-Child $installRoot (Join-Path ([string]$state.package) 'meltype-settings.exe')
+        $null = Invoke-StartupMaintenance $helper 'disable'
+    }
     foreach ($arch in 'x64','x86') { Register-Server $arch ([string]$state.$arch) -Remove }
-    Write-Host "IME unregistered. Close the tray and disable its startup setting. Files remain at $installRoot for removal after applications close/reboot. User data is retained."
+    Write-Host "IME unregistered. Current-user startup was processed unless explicitly skipped. Close the tray. Files remain at $installRoot for removal after applications close/reboot. User data is retained."
     return
 }
 $stamp = (Get-FileHash -LiteralPath (Join-Path $packageRoot 'SHA256SUMS.json') -Algorithm SHA256).Hash.Substring(0,16)
@@ -112,7 +146,7 @@ try {
         $attempted += $arch
         Register-Server $arch (Join-Path $versionRoot "tip\$arch\MeltypeTip.dll")
     }
-    $newState = @{ x64 = (Join-Path $versionRoot 'tip\x64\MeltypeTip.dll'); x86 = (Join-Path $versionRoot 'tip\x86\MeltypeTip.dll'); package = $versionRoot }
+    $newState = @{ x64 = (Join-Path $versionRoot 'tip\x64\MeltypeTip.dll'); x86 = (Join-Path $versionRoot 'tip\x86\MeltypeTip.dll'); package = $versionRoot; startupProtocol = 1 }
     $temporary = Join-Path $installRoot 'installed.json.tmp'
     $newState | ConvertTo-Json | Set-Content -LiteralPath $temporary -Encoding UTF8
     Move-Item -LiteralPath $temporary -Destination $statePath -Force
@@ -125,6 +159,14 @@ try {
         } catch { Write-Warning "Rollback $arch failed: $_" }
     }
     throw $failure
+}
+if (-not $SkipCurrentUserStartup) {
+    try {
+        $startup = Invoke-StartupMaintenance (Join-Path $versionRoot 'meltype-settings.exe') 'rebind'
+        Write-Host "Current-user startup enabled: $($startup.enabled)"
+    } catch {
+        throw "IME installation completed, but current-user startup was not updated: $_. Old version files were retained; retry the startup helper from the new folder."
+    }
 }
 Write-Host "Installed: $versionRoot. Select Meltype in Windows language settings; restart open applications."
 Write-Host "Start tray: & '$versionRoot\meltype-settings.exe' --tray"
