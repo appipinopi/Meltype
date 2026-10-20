@@ -8,7 +8,10 @@ use std::{
 mod composition;
 mod scored;
 
+#[derive(Clone)]
 pub struct Dictionary {
+    custom_names: HashMap<String, String>,
+    custom_kana: Option<PrefixIndex>,
     english: HashSet<String>,
     japanese: HashSet<String>,
     candidates: HashMap<String, Vec<String>>,
@@ -26,7 +29,7 @@ pub struct Dictionary {
 
 /// Sorted dictionary keys keep prefix queries logarithmic without materializing
 /// every prefix. Build once with the immutable bundled dictionary.
-#[derive(Default)]
+#[derive(Default, Clone)]
 struct PrefixIndex(Vec<String>);
 impl PrefixIndex {
     fn new(words: &HashSet<String>) -> Self {
@@ -46,6 +49,71 @@ fn words(text: &str) -> impl Iterator<Item = &str> {
 }
 
 impl Dictionary {
+    pub(crate) fn profile(
+        directory: &std::path::Path,
+        romaji: Option<std::sync::Arc<romaji::CustomTable>>,
+    ) -> Option<Self> {
+        let files = ["english.txt", "japanese.txt", "propernouns.txt"];
+        if !files.iter().any(|name| directory.join(name).is_file()) {
+            return None;
+        }
+        let mut dictionary = Self::bundled().clone();
+        for name in files {
+            let Some(text) = std::fs::read(directory.join(name)).ok().and_then(|bytes| {
+                crate::user_dictionary::decode(&bytes)
+                    .ok()
+                    .map(|(text, _)| text)
+            }) else {
+                continue;
+            };
+            for word in text
+                .lines()
+                .flat_map(|line| {
+                    line.split('#')
+                        .next()
+                        .unwrap_or("")
+                        .split([' ', '\t', '\r', ','])
+                })
+                .filter(|word| !word.is_empty())
+            {
+                let lower = word.to_ascii_lowercase();
+                if name == "propernouns.txt" {
+                    if !lower.bytes().all(|c| c.is_ascii_alphanumeric()) {
+                        continue;
+                    }
+                    if !dictionary.proper.contains(&lower) {
+                        dictionary
+                            .custom_names
+                            .entry(lower.clone())
+                            .or_insert_with(|| word.into());
+                    }
+                    dictionary.proper.insert(lower.clone());
+                    dictionary.common_english.insert(lower.clone());
+                    dictionary.english.insert(lower);
+                } else if lower.bytes().all(|c| c.is_ascii_lowercase()) {
+                    if name == "english.txt" {
+                        dictionary.common_english.insert(lower.clone());
+                        dictionary.english.insert(lower);
+                    } else {
+                        dictionary.japanese.insert(lower);
+                    }
+                }
+            }
+        }
+        dictionary.english_index = PrefixIndex::new(&dictionary.english);
+        dictionary.common_index = PrefixIndex::new(&dictionary.common_english);
+        dictionary.proper_index = PrefixIndex::new(&dictionary.proper);
+        dictionary.japanese_index = PrefixIndex::new(&dictionary.japanese);
+        let _romaji = romaji::Scope::new(romaji);
+        dictionary.custom_kana = Some(PrefixIndex::new(
+            &dictionary
+                .japanese
+                .iter()
+                .map(|word| romaji::hiragana(word, true))
+                .collect(),
+        ));
+        Some(dictionary)
+    }
     pub(crate) fn english_candidates(&self, raw: &str) -> Vec<String> {
         static CANONICAL: OnceLock<HashMap<String, String>> = OnceLock::new();
         let names = CANONICAL.get_or_init(|| {
@@ -61,7 +129,10 @@ impl Dictionary {
             names
         });
         let mut values = vec![raw.to_owned()];
-        if let Some(name) = names.get(&raw.to_ascii_lowercase()) {
+        if let Some(name) = names
+            .get(&raw.to_ascii_lowercase())
+            .or_else(|| self.custom_names.get(&raw.to_ascii_lowercase()))
+        {
             values.push(name.clone());
         }
         let mut capitalized = raw.to_owned();
@@ -86,6 +157,8 @@ impl Dictionary {
         DICT.get_or_init(|| {
             let _builtins = romaji::Scope::new(None);
             let mut dict = Self {
+                custom_names: HashMap::new(),
+                custom_kana: None,
                 english: HashSet::new(),
                 english_index: PrefixIndex::default(),
                 japanese_index: PrefixIndex::default(),
@@ -491,12 +564,17 @@ impl Dictionary {
             return false;
         };
         let suffix = word[start..].trim_start_matches(|c: char| c.is_ascii_digit());
-        [
+        let units = [
             "ji", "fun", "pun", "gatsu", "nichi", "nen", "jikan", "en", "nin", "sai", "mai", "hon",
             "bon", "ko", "kai", "kakeru", "waru", "tasu", "hiku", "purasu", "mainasu", "iko-ru",
-        ]
-        .iter()
-        .any(|unit| suffix.starts_with(unit))
+        ];
+        if let Some(next) = suffix.find(|c: char| c.is_ascii_digit()) {
+            let tail = suffix[next..].trim_start_matches(|c: char| c.is_ascii_digit());
+            if !tail.is_empty() && !units.iter().any(|unit| tail.starts_with(unit)) {
+                return false;
+            }
+        }
+        units.iter().any(|unit| suffix.starts_with(unit))
     }
     fn mixed_word(&self, raw: &str, final_input: bool) -> String {
         let lower = raw.to_ascii_lowercase();

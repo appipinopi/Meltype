@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! Explicit reconversion of text typed while the IME was off.
-use super::{romaji, Clause, Dictionary, Session, SessionResult};
+use super::{romaji, Clause, Session, SessionResult};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReconversionPart {
@@ -22,7 +22,7 @@ impl Session {
             return None;
         }
         let _romaji = romaji::Scope::new(self.custom_romaji.clone());
-        let dict = Dictionary::bundled();
+        let dict = self.dictionary();
         let mut parts: Vec<ReconversionPart> = Vec::new();
         let mut previous_english = false;
         for word in text.split_whitespace() {

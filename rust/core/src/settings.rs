@@ -456,7 +456,8 @@ impl Settings {
     }
     pub fn for_app(&self, process: &str) -> Self {
         let mut settings = self.clone();
-        let stem = |s: &str| s.to_lowercase().trim_end_matches(".exe").to_owned();
+        settings.0.insert("AppProfile".into(), json!("General"));
+        settings.0.insert("StartInEnglish".into(), json!(false));
         let rule = self.0["AppRules"]
             .as_array()
             .unwrap()
@@ -465,7 +466,7 @@ impl Settings {
             .find(|r| {
                 r["Process"]
                     .as_str()
-                    .is_some_and(|s| stem(s) == stem(process))
+                    .is_some_and(|s| s.to_lowercase() == process.to_lowercase())
             });
         if let Some(rule) = rule {
             if rule["Enabled"] == false {
@@ -496,5 +497,18 @@ impl Settings {
             settings.0.insert("Enabled".into(), json!(false));
         }
         settings
+    }
+    /// Shared effective app policy; executable matching follows upstream and
+    /// deliberately keeps extensions significant.
+    pub fn app_policy(&self, process: &str, looks_like_game: bool) -> Value {
+        let app = self.for_app(process);
+        let explicit = self.0["AppRules"].as_array().is_some_and(|rules| {
+            rules.iter().any(|r| {
+                r["Process"]
+                    .as_str()
+                    .is_some_and(|p| p.to_lowercase() == process.to_lowercase())
+            })
+        });
+        json!({"enabled":app.boolean("Enabled") && !(self.boolean("StopInGames")&&looks_like_game&&!explicit),"profile":app.text("AppProfile"),"level":app.text("DetectionLevel"),"live":app.boolean("LiveConversion"),"startInEnglish":app.boolean("StartInEnglish")})
     }
 }

@@ -77,6 +77,10 @@ pub struct Clause {
     pub changed: bool,
     /// Translation membership belongs to this clause, not the whole sentence.
     pub translations: Vec<String>,
+    /// Separate engine calls retain their place before auxiliary words.
+    pub standalone: Option<String>,
+    /// MoreCandidates is expanded after base candidates and preferences.
+    pub expansion: Option<Vec<String>>,
 }
 impl Clause {
     pub fn new(reading: String, mut candidates: Vec<String>) -> Self {
@@ -102,6 +106,8 @@ impl Clause {
             raw: None,
             changed: false,
             translations: Vec::new(),
+            standalone: None,
+            expansion: None,
         }
     }
     pub fn literal(reading: String, ordinary_english: bool) -> Self {
@@ -126,6 +132,9 @@ struct CommittedInput {
 }
 
 pub struct Session {
+    profile_dictionary: Option<Dictionary>,
+    candidate_sources: std::sync::Arc<crate::candidate_sources::Sources>,
+    profile_misspellings: Option<Linguistics>,
     probe_cache: std::sync::Arc<romaji::probes::Cache>,
     raw: String,
     candidates: Vec<String>,
@@ -183,6 +192,9 @@ pub struct Session {
 impl Default for Session {
     fn default() -> Self {
         Self {
+            profile_dictionary: None,
+            candidate_sources: crate::candidate_sources::Sources::bundled(),
+            profile_misspellings: None,
             probe_cache: Default::default(),
             raw: String::new(),
             candidates: vec![],
@@ -239,7 +251,14 @@ impl Default for Session {
 }
 
 impl Session {
+    fn dictionary(&self) -> &Dictionary {
+        self.profile_dictionary
+            .as_ref()
+            .unwrap_or_else(|| Dictionary::bundled())
+    }
     pub fn open(store: Store) -> std::io::Result<Self> {
+        let candidate_sources =
+            crate::candidate_sources::Sources::load(&store.directory.join("dictionaries"))?;
         let settings = store.settings()?;
         let state = store.load()?;
         let (custom_romaji, storage_error) =
@@ -248,8 +267,15 @@ impl Session {
                 Err(error) => (None, Some(format!("romaji.txt: {error}"))),
             };
         let mut hook_session = crate::input_session::InputSession::default();
+        let profile_dictionary =
+            Dictionary::profile(&store.directory.join("dictionaries"), custom_romaji.clone());
         hook_session.set_model(state.prefix_model.clone());
         Ok(Self {
+            profile_dictionary,
+            candidate_sources,
+            profile_misspellings: Linguistics::profile_misspellings(
+                &store.directory.join("dictionaries"),
+            ),
             hook_session,
             preferences: state.preferences.clone(),
             state,
@@ -295,10 +321,18 @@ impl Session {
             self.hook_session.set_model(self.state.prefix_model.clone());
             self.preferences = self.state.preferences.clone();
             if self.raw.is_empty() {
+                self.candidate_sources =
+                    crate::candidate_sources::Sources::load(&store.directory.join("dictionaries"))?;
+                self.profile_misspellings =
+                    Linguistics::profile_misspellings(&store.directory.join("dictionaries"));
                 match romaji::CustomTable::load(&store.directory.join("dictionaries")) {
                     Ok(table) => self.custom_romaji = table,
                     Err(error) => self.storage_error = Some(format!("romaji.txt: {error}")),
                 }
+                self.profile_dictionary = Dictionary::profile(
+                    &store.directory.join("dictionaries"),
+                    self.custom_romaji.clone(),
+                );
             }
         }
         Ok(())
@@ -392,7 +426,8 @@ impl Session {
         } else {
             vec![]
         };
-        for word in Dictionary::bundled()
+        for word in self
+            .dictionary()
             .predict_english(&self.raw)
             .into_iter()
             .filter(|_| english || self.raw.len() >= 4)
@@ -535,8 +570,10 @@ impl Session {
     /// This is separate from the reading used by edit and repair operations.
     pub fn conversion_reading(&self) -> String {
         let _romaji = romaji::Scope::new(self.custom_romaji.clone());
-        if self.reconversion_origin.is_some() || self.uses_kana() {
+        if self.reconversion_origin.is_some() {
             self.reading()
+        } else if self.uses_kana() {
+            self.kana_display(true)
         } else {
             self.mixed_reading(true)
         }
@@ -547,12 +584,38 @@ impl Session {
     fn detect_composition(&self, raw: &str, final_input: bool) -> String {
         let _language = crate::language_memory::Scope::new(&self.preferences.english);
         let _probes = romaji::probes::Scope::new(self.probe_cache.clone());
-        let dictionary = Dictionary::bundled();
+        let dictionary = self.dictionary();
         let level = if self.balanced_override {
             "Balanced"
         } else {
             self.settings.text("DetectionLevel")
         };
+        let words: Vec<_> = self
+            .before
+            .trim_end()
+            .split(' ')
+            .filter(|w| !w.is_empty())
+            .collect();
+        let last = words
+            .last()
+            .map(|w| w.to_ascii_lowercase())
+            .unwrap_or_default();
+        let name_context = dictionary.before_evidence(&self.before) == 2
+            && (["called", "named"].contains(&last.as_str())
+                || last == "is"
+                    && words.len() >= 2
+                    && ["name", "surname", "nickname"]
+                        .contains(&words[words.len() - 2].to_ascii_lowercase().as_str()));
+        if !self.uses_kana()
+            && name_context
+            && dictionary.after_evidence(&self.after) >= 0
+            && level != "Manual"
+            && !raw.is_empty()
+            && raw.bytes().all(|c| c.is_ascii_alphabetic())
+            && self.preferences.english.get(&raw.to_ascii_lowercase()) != Some(&false)
+        {
+            return raw.into();
+        }
         if Dictionary::uses_scored(self.settings.boolean("ScoredSegmentation")) {
             dictionary.composition_scored_units(
                 raw,
@@ -587,28 +650,21 @@ impl Session {
             }
             self.kana_text.push(kana);
         }
-        if self.settings.text("InputStyle") == "Both" && self.raw.is_ascii() {
-            let keys: Vec<_> = self.typed_keys.iter().map(|(vk, _, _)| *vk).collect();
-            let score = crate::detection::evaluate(
-                &self.raw.to_ascii_lowercase(),
-                &keys,
-                false,
-                &self.settings,
-            );
-            let kana_score: i32 = score
-                .contributions
-                .iter()
-                .filter(|c| c.source == "Kana")
-                .map(|c| c.japanese)
-                .sum();
-            let romaji_score: i32 = score
-                .contributions
-                .iter()
-                .filter(|c| c.source != "Kana")
-                .map(|c| c.japanese)
-                .sum();
-            self.composition_kana = kana_score >= 2 && kana_score > romaji_score;
-        }
+    }
+    fn kana_display(&self, final_input: bool) -> String {
+        let _memory = crate::language_memory::Scope::new(&self.preferences.english);
+        self.dictionary().composition_kana(
+            &self.raw,
+            &self.kana_text,
+            final_input,
+            &self.before,
+            &self.after,
+            if self.balanced_override {
+                "Balanced"
+            } else {
+                self.settings.text("DetectionLevel")
+            },
+        )
     }
     fn uses_kana(&self) -> bool {
         self.settings.text("InputStyle") == "Kana"
@@ -625,7 +681,7 @@ impl Session {
         let fix = corrector.fix(&self.raw, true)?;
         // English word + Japanese particle/suffix is intentional mixed input.
         // Do not reinterpret that word while repairing a following syllable.
-        let dictionary = Dictionary::bundled();
+        let dictionary = self.dictionary();
         let mixed = dictionary.mixed(&self.raw, true);
         if mixed == self.raw && (self.raw.len() >= 4 || dictionary.is_common_english(&self.raw))
             || mixed.split(|c: char| !c.is_ascii_alphabetic()).any(|word| {
@@ -674,7 +730,7 @@ impl Session {
             return self.live_clauses.iter().map(Clause::text).collect();
         }
         if self.uses_kana() {
-            return self.punctuate(self.kana_text.clone());
+            return self.punctuate(self.kana_display(final_input));
         }
         if final_input {
             if let Some(fix) = self.romaji_fix() {
@@ -683,7 +739,7 @@ impl Session {
                 return self.punctuate(self.detect_composition(&fix.right, true));
             }
         }
-        let dictionary = Dictionary::bundled();
+        let dictionary = self.dictionary();
         let detect_whole = || self.detect_composition(&self.raw, final_input);
         let detected = detect_whole;
         let text = crate::protection::transform(&self.raw, |part| {
@@ -716,17 +772,22 @@ impl Session {
             || self.function_key != 0
             || self.explicit.is_some()
             || self.is_converting()
-            || self.uses_kana()
         {
             return None;
         }
-        let suggested = Dictionary::bundled().composition(
-            &self.raw,
-            false,
-            &self.before,
-            &self.after,
-            "Balanced",
-        );
+        let suggested = if self.uses_kana() {
+            self.dictionary().composition_kana(
+                &self.raw,
+                &self.kana_text,
+                false,
+                &self.before,
+                &self.after,
+                "Balanced",
+            )
+        } else {
+            self.dictionary()
+                .composition(&self.raw, false, &self.before, &self.after, "Balanced")
+        };
         if suggested == self.display(false) {
             return None;
         }
@@ -742,7 +803,7 @@ impl Session {
         self.function_key == 0
             && self.explicit.is_none()
             && !self.uses_kana()
-            && Dictionary::bundled().rendered_english_tail(
+            && self.dictionary().rendered_english_tail(
                 &self.detect_composition(&self.raw, true),
                 self.settings.text("DetectionLevel"),
             )
@@ -751,7 +812,7 @@ impl Session {
         if self.settings.text("DetectionLevel") == "Manual"
             || self.raw.len() < 2
             || !self.raw.bytes().all(|c| c.is_ascii_alphabetic())
-            || !Dictionary::bundled().known_english(&self.raw)
+            || !self.dictionary().known_english(&self.raw)
         {
             return false;
         }
@@ -761,7 +822,7 @@ impl Session {
             && !["n", "nn"].contains(&analysis.partial.as_str())
     }
     fn punctuate(&self, text: String) -> String {
-        self.punctuate_with_context(text, Dictionary::bundled().english_context(&self.before))
+        self.punctuate_with_context(text, self.dictionary().english_context(&self.before))
     }
     fn punctuate_with_context(&self, text: String, mut english: bool) -> String {
         let (comma, period) = match self.settings.text("Punctuation") {
@@ -811,7 +872,6 @@ impl Session {
         (!self.is_converting()
             && self.function_key == 0
             && self.explicit.is_none()
-            && !self.uses_kana()
             && self.raw.eq_ignore_ascii_case("go"))
         .then(|| vec![self.raw.clone(), "ご".into()])
     }
@@ -861,7 +921,9 @@ impl Session {
                             .get(self.selected_clause)
                             .map(|c| c.reading.clone())
                             .unwrap_or_else(|| self.reading());
-                        Linguistics::bundled().meaning(&text, &reading)
+                        Linguistics::bundled()
+                            .meaning(&text, &reading)
+                            .or_else(|| Linguistics::bundled().translation_meaning(&text))
                     } else {
                         None
                     },
@@ -877,14 +939,44 @@ impl Session {
                     } else {
                         None
                     },
-                    notes: self
-                        .candidates
+                    notes: preview
+                        .as_ref()
+                        .unwrap_or(&self.candidates)
                         .iter()
                         .map(|c| {
-                            if self.translation_candidates.contains(c) {
+                            if self
+                                .clauses
+                                .get(self.selected_clause)
+                                .map(|clause| &clause.translations)
+                                .unwrap_or(&self.translation_candidates)
+                                .contains(c)
+                            {
                                 Some("英訳".into())
                             } else {
-                                None
+                                let values = preview.as_ref().unwrap_or(&self.candidates);
+                                let half: String = c
+                                    .chars()
+                                    .map(|ch| {
+                                        if ('！'..='～').contains(&ch) {
+                                            char::from_u32(ch as u32 - 0xfee0).unwrap()
+                                        } else if ch == '　' {
+                                            ' '
+                                        } else {
+                                            ch
+                                        }
+                                    })
+                                    .collect();
+                                let full = crate::kana::fullwidth(c);
+                                if self.is_converting() && half != *c && values.contains(&half) {
+                                    Some("全角".into())
+                                } else if self.is_converting()
+                                    && full != *c
+                                    && values.contains(&full)
+                                {
+                                    Some("半角".into())
+                                } else {
+                                    None
+                                }
                             }
                         })
                         .collect(),
@@ -1079,7 +1171,7 @@ impl Session {
         }
         let english =
             !text.trim().is_empty() && text.trim().bytes().all(|b| b.is_ascii_alphabetic());
-        let after_english = Dictionary::bundled().english_context(&self.before);
+        let after_english = self.dictionary().english_context(&self.before);
         let chosen = self.function_key != 0
             || self.chosen_conversion
             || self.selected_prediction >= 0
@@ -1109,7 +1201,7 @@ impl Session {
             self.before.push_str(replacement);
             records.clear();
         }
-        let dictionary = Dictionary::bundled();
+        let dictionary = self.dictionary();
         if !self.private
             && !chosen
             && self.settings.text("DetectionLevel") != "Manual"
@@ -1222,7 +1314,7 @@ impl Session {
                     .find(|(_, word)| word.as_str() == text)
                     .map(|(r, _)| r.clone())
             })
-            .or_else(|| Dictionary::bundled().reading_for(text))
+            .or_else(|| self.dictionary().reading_for(text))
             .unwrap_or_else(|| romaji::hiragana(&crate::user_dictionary::hiragana(text), true));
         let reading = crate::user_dictionary::hiragana(&reading);
         let literal =
@@ -1376,8 +1468,8 @@ impl Session {
             // callbacks. With no converter result, preserve the complete reading.
             candidates.push(reading.clone());
         } else {
-            candidates.extend(Dictionary::bundled().candidates(&self.display(true)));
-            candidates.extend(Dictionary::bundled().candidates(&reading));
+            candidates.extend(self.dictionary().candidates(&self.display(true)));
+            candidates.extend(self.dictionary().candidates(&reading));
             candidates.extend(Linguistics::bundled().words(&reading));
             if let Some(context) =
                 Linguistics::bundled().context(&reading, &format!("{}{}", self.before, self.after))
@@ -1399,7 +1491,7 @@ impl Session {
                 unique.push(candidate);
             }
         }
-        let emoji = Dictionary::bundled().emoji(&reading);
+        let emoji = self.dictionary().emoji(&reading);
         unique.retain(|candidate| !emoji.contains(candidate));
         unique.extend(emoji);
         crate::math_candidates::augment(&reading, &self.before, &mut unique);
@@ -1439,7 +1531,8 @@ impl Session {
         }
         if reading.encode_utf16().count() < 4
             || romaji::hiragana(&self.raw, false) != reading
-            || Dictionary::bundled()
+            || self
+                .dictionary()
                 .mixed(&self.raw, false)
                 .chars()
                 .any(|c| c.is_ascii_alphabetic())
@@ -1471,6 +1564,69 @@ impl Session {
         true
     }
     /// Accept segments only when they cover the entire current reading.
+    pub fn registered_conversion_plan(
+        &self,
+        reading: &str,
+        engine: &[Clause],
+    ) -> Option<Vec<(String, Option<String>)>> {
+        let mut words = self.candidate_sources.registrations();
+        for (reading, entries) in &self.preferences.user_dictionary {
+            if let Some(word) = entries.first() {
+                words.insert(reading.clone(), (word.clone(), true));
+            }
+        }
+        let mut boundaries = std::collections::BTreeMap::new();
+        let mut at = 0;
+        for clause in engine {
+            boundaries.insert(at, clause);
+            at += clause.reading.len();
+        }
+        let mut pieces = vec![];
+        let mut cursor = 0;
+        let mut plain = String::new();
+        let mut found = false;
+        while cursor < reading.len() {
+            let matched = words
+                .iter()
+                .filter(|(key, (_, user))| {
+                    reading[cursor..].starts_with(key.as_str())
+                        && (!*user || engine.is_empty() || boundaries.contains_key(&cursor))
+                })
+                .max_by_key(|(key, _)| key.len());
+            if let Some((key, (word, _))) = matched.filter(|(_, (word, _))| {
+                !boundaries
+                    .get(&cursor)
+                    .is_some_and(|clause| clause.text().starts_with(word))
+            }) {
+                if !plain.is_empty() {
+                    pieces.push((std::mem::take(&mut plain), None));
+                }
+                pieces.push((key.clone(), Some(word.clone())));
+                cursor += key.len();
+                found = true;
+            } else {
+                let ch = reading[cursor..].chars().next().unwrap();
+                plain.push(ch);
+                cursor += ch.len_utf8();
+            }
+        }
+        if !plain.is_empty() {
+            pieces.push((plain, None));
+        }
+        (found && pieces.len() > 1).then_some(pieces)
+    }
+    /// Adapters must retain Space provenance when they fetch engine clauses
+    /// before Core handles the key; post-commit correction uses that separator.
+    pub fn begin_key_clauses(&mut self, clauses: Vec<Clause>, space: bool) -> bool {
+        let starting = !self.is_converting();
+        if !self.begin_clauses(clauses) {
+            return false;
+        }
+        if starting && space {
+            self.space_started_conversion = true;
+        }
+        true
+    }
     pub fn begin_clauses(&mut self, mut clauses: Vec<Clause>) -> bool {
         let _romaji = romaji::Scope::new(self.custom_romaji.clone());
         if self.raw.is_empty()
@@ -1487,15 +1643,60 @@ impl Session {
             return false;
         }
         clauses = crate::time_candidates::join(clauses);
+        for clause in &mut clauses {
+            if clause.english {
+                continue;
+            }
+            let digits = clause.reading.chars().any(|c| c.is_ascii_digit());
+            let letters = clause.reading.chars().any(|c| c.is_ascii_alphabetic());
+            for candidate in clause
+                .candidates
+                .iter_mut()
+                .chain(clause.expansion.iter_mut().flatten())
+                .chain(clause.standalone.iter_mut())
+            {
+                *candidate = candidate
+                    .chars()
+                    .map(|c| {
+                        if digits && ('０'..='９').contains(&c)
+                            || letters && (('Ａ'..='Ｚ').contains(&c) || ('ａ'..='ｚ').contains(&c))
+                        {
+                            char::from_u32(c as u32 - 0xfee0).unwrap()
+                        } else {
+                            c
+                        }
+                    })
+                    .collect();
+            }
+        }
         if !self.is_converting() {
             self.tab_started_conversion = false;
             self.conversion_origin_display = self.explicit.clone();
         }
         let original_inputs = self.clause_original_inputs(&clauses);
+        let surroundings: Vec<String> = clauses
+            .iter()
+            .enumerate()
+            .map(|(index, _)| {
+                format!(
+                    "{}{}{}",
+                    self.before,
+                    clauses
+                        .iter()
+                        .enumerate()
+                        .filter(|(other, _)| *other != index)
+                        .map(|(_, clause)| clause.text())
+                        .collect::<String>(),
+                    self.after
+                )
+            })
+            .collect();
         self.translation_candidates.clear();
         let mut preceding = self.before.clone();
         let mut previous_english = false;
-        for (clause, original_input) in clauses.iter_mut().zip(original_inputs) {
+        for ((clause, original_input), surrounding) in
+            clauses.iter_mut().zip(original_inputs).zip(surroundings)
+        {
             clause.raw = original_input;
             if clause.english {
                 if clause.kana.is_some() {
@@ -1504,8 +1705,7 @@ impl Session {
                     // Shift+Space/reconversion may carry Japanese converter
                     // choices while still excluding this clause from learning.
                     if clause.candidates.len() == 1 && clause.candidates[0] == clause.reading {
-                        clause.candidates =
-                            Dictionary::bundled().english_candidates(&clause.reading);
+                        clause.candidates = self.dictionary().english_candidates(&clause.reading);
                         clause.selected = 0;
                     }
                 }
@@ -1513,6 +1713,10 @@ impl Session {
                 previous_english = true;
                 continue;
             }
+            let more = clause
+                .expansion
+                .clone()
+                .unwrap_or_else(|| clause.candidates.clone());
             let mut values = vec![clause.text().to_owned()];
             values.extend(
                 self.preferences
@@ -1521,27 +1725,77 @@ impl Session {
                     .cloned()
                     .unwrap_or_default(),
             );
-            values.extend(clause.candidates.clone());
+            let registered = self.candidate_sources.registered(&clause.reading);
+            values.extend(registered.clone());
+            if let Some(standalone) = clause.standalone.as_ref() {
+                values.push(standalone.clone());
+            }
             if !self.external_converter_only {
-                values.extend(Dictionary::bundled().candidates(&clause.reading));
+                values.extend(self.candidate_sources.candidates(&clause.reading));
                 // MeaningDictionary supplies annotations in the original, not
                 // extra conversion candidates. Adding its reverse readings
                 // changes both candidate numbering and the final-page size.
-                if let Some(context) = Linguistics::bundled()
-                    .context(&clause.reading, &format!("{}{}", self.before, self.after))
+                if let Some(user) = self
+                    .preferences
+                    .user_dictionary
+                    .get(&clause.reading)
+                    .and_then(|words| words.first())
+                    .or_else(|| registered.first())
+                {
+                    values.insert(0, user.clone());
+                }
+                if let Some(learned) = self.preferences.selected.get(&clause.reading) {
+                    values.insert(0, learned.clone());
+                }
+                if let Some(context) = self
+                    .candidate_sources
+                    .context(&clause.reading, &surrounding)
                 {
                     values.insert(0, context);
+                }
+                if !self.preferences.selected.contains_key(&clause.reading)
+                    && self
+                        .candidate_sources
+                        .context(&clause.reading, &surrounding)
+                        .is_none()
+                    && values.first().is_some_and(|text| {
+                        !text.is_empty() && !text.chars().any(char::is_alphanumeric)
+                    })
+                    && clause.reading.chars().all(|c| ('ぁ'..='ゖ').contains(&c))
+                {
+                    values.insert(0, clause.reading.clone());
                 }
             } else if !values.contains(&clause.reading) {
                 values.push(clause.reading.clone());
             }
             let translations = if self.settings.boolean("TranslationCandidates") {
-                let translations = Linguistics::bundled().translations(
+                let mut translations = Linguistics::bundled().translations(
                     values.first().map(String::as_str).unwrap_or(""),
                     &clause.reading,
                 );
+                translations.retain(|word| !values.contains(word));
+                if let Some(learned) = self.state.translations.get(&clause.reading) {
+                    translations.sort_by_key(|word| {
+                        std::cmp::Reverse(learned.get(word).copied().unwrap_or(0))
+                    });
+                }
                 self.translation_candidates.extend(translations.clone());
-                values.extend(translations.clone());
+                let often = translations.iter().find(|word| {
+                    self.state
+                        .translations
+                        .get(&clause.reading)
+                        .and_then(|learned| learned.get(*word))
+                        .is_some_and(|count| *count >= 2)
+                });
+                if let Some(word) = often {
+                    values.insert(1.min(values.len()), word.clone());
+                }
+                values.extend(
+                    translations
+                        .iter()
+                        .filter(|word| Some(*word) != often)
+                        .cloned(),
+                );
                 translations
             } else {
                 Vec::new()
@@ -1557,13 +1811,24 @@ impl Session {
             {
                 values.extend([raw.clone(), crate::kana::fullwidth(raw)]);
             }
-            let emoji = Dictionary::bundled().emoji(&clause.reading);
-            values.retain(|candidate| !emoji.contains(candidate));
+            let math = crate::math_candidates::candidate(&clause.reading, &preceding)
+                .map(|(symbol, _)| symbol);
+            let emoji: Vec<_> = self
+                .candidate_sources
+                .emoji(&clause.reading)
+                .into_iter()
+                .filter(|text| math.as_ref() != Some(text))
+                .collect();
+            let primary = values.first().cloned();
+            values.retain(|candidate| {
+                !emoji.contains(candidate) || primary.as_ref() == Some(candidate)
+            });
             values.extend(emoji);
             let has_preference = self.preferences.selected.contains_key(&clause.reading)
                 || !self.external_converter_only
-                    && Linguistics::bundled()
-                        .context(&clause.reading, &format!("{}{}", self.before, self.after))
+                    && self
+                        .candidate_sources
+                        .context(&clause.reading, &surrounding)
                         .is_some();
             let particle = [
                 "は", "が", "を", "に", "で", "と", "も", "へ", "の", "や", "か", "から", "まで",
@@ -1594,6 +1859,11 @@ impl Session {
                     .is_some_and(|ch| !crate::linguistics::kana(ch));
             if !has_preference && particle || suru {
                 values.insert(0, clause.reading.clone());
+            }
+            // MoreCandidates is expanded after the base list is complete;
+            // its emoji and engine ordering must not be moved with the block.
+            if !values.is_empty() {
+                values.splice(1..1, more);
             }
             let raw = clause.raw.take();
             *clause = Clause::new(clause.reading.clone(), values);
@@ -1670,7 +1940,7 @@ impl Session {
             .unwrap_or_default();
         candidates.extend(external);
         if !self.external_converter_only {
-            candidates.extend(Dictionary::bundled().candidates(&reading));
+            candidates.extend(self.dictionary().candidates(&reading));
             candidates.extend(Linguistics::bundled().words(&reading));
         }
         if let Some(learned) = self.preferences.selected.get(&reading) {
@@ -2076,8 +2346,8 @@ impl Session {
                         || self.before.is_empty()
                             && !["Manual", "Conservative"]
                                 .contains(&self.settings.text("DetectionLevel"))
-                            && Dictionary::bundled().is_common_english(&self.raw)
-                            && (!Dictionary::bundled().is_japanese(&self.raw)
+                            && self.dictionary().is_common_english(&self.raw)
+                            && (!self.dictionary().is_japanese(&self.raw)
                                 || self.raw.starts_with(|c: char| c.is_ascii_uppercase())
                                 || [
                                     "no", "i", "we", "you", "they", "he", "she", "it", "the",
@@ -2086,8 +2356,8 @@ impl Session {
                                     "open", "run",
                                 ]
                                 .contains(&self.raw.to_ascii_lowercase().as_str())))
-                    && (Dictionary::bundled().known_english(&self.raw)
-                        || Dictionary::bundled().english_context(&self.before)
+                    && (self.dictionary().known_english(&self.raw)
+                        || self.dictionary().english_context(&self.before)
                             && self.raw.bytes().all(|c| c.is_ascii_alphabetic()))
                 {
                     self.space_started_conversion = true;
@@ -2117,6 +2387,8 @@ impl Session {
                         },
                         changed: self.chosen_conversion,
                         translations: self.translation_candidates.clone(),
+                        standalone: None,
+                        expansion: None,
                     });
                 }
                 if modifiers & 1 != 0 {
@@ -2248,6 +2520,21 @@ impl Session {
                 // Retain the old commit when a new character starts after conversion.
                 let commits =
                     if self.is_converting() && !self.settings.boolean("ContinueAfterConversion") {
+                        // A non-deleting host cannot later recover the typed
+                        // separator when an uppercase English word follows
+                        // a Japanese conversion (site Space PR).
+                        if !self.can_delete
+                            && self.space_started_conversion
+                            && char::from_u32(ch as u32).is_some_and(|c| c.is_ascii_uppercase())
+                            && ![
+                                "は", "が", "を", "に", "で", "と", "も", "へ", "の", "や", "か",
+                                "から", "まで", "より",
+                            ]
+                            .contains(&self.reading().as_str())
+                            && self.display(true).chars().any(crate::linguistics::kana)
+                        {
+                            self.explicit = Some(self.display(true) + " ");
+                        }
                         self.commit().commits
                     } else {
                         self.candidates.clear();

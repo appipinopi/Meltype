@@ -105,7 +105,12 @@ impl Session {
                 reading.push('ん');
                 offsets.push(reading.len());
             }
-            if let Some(found) = Linguistics::bundled().find_misspelling(&reading) {
+            if let Some(found) = self
+                .profile_misspellings
+                .as_ref()
+                .unwrap_or(Linguistics::bundled())
+                .find_misspelling(&reading)
+            {
                 if let (Some(first), Some(last)) = (
                     offsets.iter().position(|p| *p == found.start),
                     offsets.iter().position(|p| *p == found.end),

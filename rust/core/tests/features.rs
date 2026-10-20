@@ -38,7 +38,8 @@ fn settings_profiles_preserve_shared_and_future_values() {
 #[test]
 fn app_rules_last_override_and_custom_kind() {
     let s=Settings::parse(r#"{"SettingsVersion":5,"AppRules":[{"Process":"Code.exe","Enabled":true},{"Process":"code.exe","Enabled":false}],"AppKinds":[]}"#).unwrap();
-    assert!(!s.for_app("CODE").boolean("Enabled"));
+    assert!(!s.for_app("CODE.EXE").boolean("Enabled"));
+    assert!(s.for_app("CODE").boolean("Enabled"));
     let s=Settings::parse(r#"{"SettingsVersion":5,"AppRules":[{"Process":"chat","Kind":"会話"}],"AppKinds":[{"Name":"会話","Base":"General","DetectionLevel":"Conservative","LiveConversion":false}]}"#).unwrap();
     assert_eq!(s.for_app("chat").text("DetectionLevel"), "Conservative");
     assert!(!s.for_app("chat").boolean("LiveConversion"));

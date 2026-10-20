@@ -358,7 +358,7 @@ unsafe fn external_conversion_unprotected(
                     segments = clauses
                         .into_iter()
                         .map(|(r, t)| {
-                            let mut candidates = vec![t.to_owned()];
+                            let mut candidates = vec![];
                             if let (Some(callback), Ok(input)) =
                                 (callbacks.candidates, CString::new(r))
                             {
@@ -368,7 +368,10 @@ unsafe fn external_conversion_unprotected(
                                     );
                                 }
                             }
-                            Clause::new(r.to_owned(), candidates)
+                            let mut clause = Clause::new(r.to_owned(), vec![t.to_owned()]);
+                            clause.expansion = Some(candidates);
+                            clause.standalone = Some(standalone_conversion(r, callbacks));
+                            clause
                         })
                         .collect();
                 }
@@ -383,6 +386,27 @@ unsafe fn external_conversion_unprotected(
     (segments, external)
 }
 
+unsafe fn standalone_conversion(reading: &str, callbacks: Callbacks) -> String {
+    let Ok(input) = CString::new(reading) else {
+        return reading.into();
+    };
+    if let Some(callback) = callbacks.convert {
+        return take(callback(input.as_ptr()))
+            .filter(|text| !text.is_empty())
+            .unwrap_or_else(|| reading.into());
+    }
+    if let Some(callback) = callbacks.clauses {
+        if let Some(text) = take(callback(input.as_ptr(), std::ptr::null())) {
+            let parts: Option<Vec<_>> = text.lines().map(|line| line.split_once('\t')).collect();
+            if let Some(parts) = parts.filter(|parts| {
+                !parts.is_empty() && parts.iter().map(|(r, _)| *r).collect::<String>() == reading
+            }) {
+                return parts.iter().map(|(_, text)| *text).collect();
+            }
+        }
+    }
+    reading.into()
+}
 unsafe fn external_reconversion(reading: &str) -> Vec<String> {
     let callbacks = CALLBACKS.lock().map(|c| *c).unwrap_or_default();
     if let Some(convert) = callbacks.convert {
@@ -406,6 +430,40 @@ unsafe fn external_reconversion(reading: &str) -> Vec<String> {
         }
         candidates
     }
+}
+unsafe fn registered_conversion(
+    handle: *mut c_void,
+    reading: &str,
+    before: *const c_char,
+    original: Vec<Clause>,
+) -> Vec<Clause> {
+    let plan = sessions().lock().ok().and_then(|all| {
+        all.get(&(handle as usize))
+            .and_then(|session| session.registered_conversion_plan(reading, &original))
+    });
+    let Some(plan) = plan else {
+        return original;
+    };
+    let mut result = vec![];
+    for (reading, word) in plan {
+        let (clauses, extra) = external_conversion_unprotected(&reading, before);
+        if let Some(word) = word {
+            let mut clause = Clause::new(reading.clone(), vec![word]);
+            clause.standalone = Some(standalone_conversion(
+                &reading,
+                CALLBACKS.lock().map(|c| *c).unwrap_or_default(),
+            ));
+            clause.expansion = Some(extra);
+            result.push(clause);
+        } else if clauses.is_empty() {
+            let mut values = vec![reading.clone()];
+            values.extend(extra);
+            result.push(Clause::new(reading, values));
+        } else {
+            result.extend(clauses);
+        }
+    }
+    result
 }
 
 unsafe fn external_selection_conversion(reading: &str, prefer_romaji: bool) -> Vec<Clause> {
@@ -521,6 +579,8 @@ pub unsafe extern "C" fn meltype_handle_key(
                         && s.settings.boolean("Enabled")
                         && !s.code_english()
                         && (s.display(true) != s.raw()
+                            || s.raw().chars().any(meltype_core::linguistics::kana)
+                            || s.raw().bytes().all(|c| !c.is_ascii_alphabetic())
                             || s.settings.boolean("SeparateKeyRoles")
                             || vk == 0x1c
                             || vk == 0x20 && modifiers & 1 != 0)
@@ -528,7 +588,7 @@ pub unsafe extern "C" fn meltype_handle_key(
                 })
                 .map(Session::conversion_reading)
         });
-        let (segments, external) = reading
+        let (mut segments, external) = reading
             .as_deref()
             .map(|r| {
                 if vk == 0x1c || vk == 0x20 && modifiers & 1 != 0 {
@@ -538,6 +598,17 @@ pub unsafe extern "C" fn meltype_handle_key(
                 }
             })
             .unwrap_or_default();
+        if let Some(reading) = reading.as_ref() {
+            segments = registered_conversion(handle, reading, before, segments);
+        }
+        if segments.is_empty()
+            && external.is_empty()
+            && CALLBACKS.lock().is_ok_and(|c| c.clauses.is_some())
+        {
+            if let Some(reading) = reading.as_ref() {
+                segments.push(Clause::new(reading.clone(), vec![reading.clone()]));
+            }
+        }
         // Resize reconverts both affected clauses using their new readings.
         // Keep callbacks outside the registry mutex, as for initial conversion.
         let resize_before = if matches!(vk, 0x25 | 0x27) && modifiers & 15 == 1 {
@@ -565,7 +636,7 @@ pub unsafe extern "C" fn meltype_handle_key(
         };
         let result = run(handle, |s| {
             s.set_context(read(before).as_deref(), read(after).as_deref());
-            if !segments.is_empty() && s.begin_clauses(segments) {
+            if !segments.is_empty() && s.begin_key_clauses(segments, vk == 0x20) {
                 s.result(true)
             } else if !external.is_empty() {
                 s.begin_conversion(external);
@@ -592,8 +663,11 @@ pub unsafe extern "C" fn meltype_handle_key(
         };
         let result = if let Some(reading) = tab_reading {
             let (mut clauses, candidates) = external_conversion(&reading, before);
-            if clauses.is_empty() && !candidates.is_empty() {
-                clauses.push(Clause::new(reading, candidates));
+            clauses = registered_conversion(handle, &reading, before, clauses);
+            if clauses.is_empty() && CALLBACKS.lock().is_ok_and(|c| c.clauses.is_some()) {
+                let mut values = vec![reading.clone()];
+                values.extend(candidates);
+                clauses.push(Clause::new(reading, values));
             }
             if !clauses.is_empty() {
                 if let Some(text) = take(result) {

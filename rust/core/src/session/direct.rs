@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Port of CompositionController direct detection and MeltypeSession word lifetime.
-use super::{romaji, Dictionary, Session, SessionResult, TextEdit};
+use super::{romaji, Session, SessionResult, TextEdit};
 
 impl Session {
     pub fn set_direct(&mut self, enabled: bool) {
@@ -211,7 +211,7 @@ impl Session {
             &self.settings,
             Some(&self.state.prefix_model),
         );
-        if Self::hyphenated_word(&typed) {
+        if self.hyphenated_word(&typed) {
             result.verdict = crate::detection::Verdict::English;
         }
         let fragment = romaji::analyze(part, true);
@@ -278,7 +278,7 @@ impl Session {
         ]
         .contains(&word)
     }
-    fn hyphenated_word(word: &str) -> bool {
+    fn hyphenated_word(&self, word: &str) -> bool {
         if [
             "bio-break",
             "co-op",
@@ -322,7 +322,7 @@ impl Session {
             Self::hyphen_prefix(head)
                 && rest.len() >= 3
                 && rest.bytes().all(|b| b.is_ascii_lowercase())
-                && Dictionary::bundled().known_english(rest)
+                && self.dictionary().known_english(rest)
         })
     }
 }

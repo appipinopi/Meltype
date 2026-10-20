@@ -15,6 +15,119 @@ const PARTICLES: &[&str] = &[
 ];
 
 impl Dictionary {
+    pub(crate) fn composition_kana(
+        &self,
+        raw: &str,
+        kana: &str,
+        final_input: bool,
+        before: &str,
+        after: &str,
+        level: &str,
+    ) -> String {
+        let raw_bounds: Vec<_> = raw
+            .char_indices()
+            .map(|(i, _)| i)
+            .chain(std::iter::once(raw.len()))
+            .collect();
+        let kana_bounds: Vec<_> = kana
+            .char_indices()
+            .map(|(i, _)| i)
+            .chain(std::iter::once(kana.len()))
+            .collect();
+        if raw_bounds.len() != kana_bounds.len() {
+            return kana.into();
+        }
+        static JAPANESE: std::sync::OnceLock<super::PrefixIndex> = std::sync::OnceLock::new();
+        let japanese = self.custom_kana.as_ref().unwrap_or_else(|| {
+            JAPANESE.get_or_init(|| {
+                let _builtins = romaji::Scope::new(None);
+                super::PrefixIndex::new(
+                    &self
+                        .japanese
+                        .iter()
+                        .map(|word| romaji::hiragana(word, true))
+                        .collect(),
+                )
+            })
+        });
+        let mut out = String::new();
+        let mut i = 0;
+        let mut previous = self.before_evidence(before);
+        while i + 1 < raw_bounds.len() {
+            let chosen = (i + 1..raw_bounds.len()).rev().find(|j| {
+                let span = &raw[raw_bounds[i]..raw_bounds[*j]];
+                if !span.bytes().all(|c| c.is_ascii_alphabetic()) {
+                    return false;
+                }
+                let lower = span.to_ascii_lowercase();
+                let at_end = *j + 1 == raw_bounds.len();
+                let listed = self.common_english.contains(&lower)
+                    || lower.len() >= 4 && self.proper.contains(&lower);
+                let word = listed || lower.len() >= 4 && self.spell_word(&lower);
+                let prefix = at_end
+                    && !final_input
+                    && level == "Aggressive"
+                    && lower.len() >= 4
+                    && self.common_index.contains(&lower);
+                if span.starts_with(|c: char| c.is_ascii_uppercase())
+                    && ((word || prefix) && span.len() >= 2 || at_end)
+                {
+                    return true;
+                }
+                if level == "Manual" {
+                    return false;
+                }
+                if let Some(choice) = crate::language_memory::get(&lower) {
+                    return choice;
+                }
+                if !(word || prefix) || lower.len() < 2 {
+                    return false;
+                }
+                let following = if at_end {
+                    self.after_evidence(after)
+                } else {
+                    -1
+                };
+                let context = if following < 0 {
+                    previous.min(1)
+                } else {
+                    previous
+                } + following;
+                if context >= if level == "Conservative" { 2 } else { 1 } {
+                    return true;
+                }
+                let reading = &kana[kana_bounds[i]..kana_bounds[*j]];
+                if japanese.contains(reading) {
+                    return false;
+                }
+                if context < 0 {
+                    return (listed && lower.len() >= 4 || word && lower.len() >= 6)
+                        && !(0..reading.len())
+                            .filter(|at| reading.is_char_boundary(*at))
+                            .any(|at| {
+                                reading[at..].chars().count() >= 3
+                                    && japanese.contains(&reading[at..])
+                            });
+                }
+                lower.len()
+                    >= match level {
+                        "Aggressive" => 2,
+                        "Conservative" => 4,
+                        _ => 3,
+                    }
+            });
+            if let Some(j) = chosen {
+                out.push_str(&raw[raw_bounds[i]..raw_bounds[j]]);
+                i = j;
+                previous = 1;
+            } else {
+                out.push_str(&kana[kana_bounds[i]..kana_bounds[i + 1]]);
+                i += 1;
+                previous = -1;
+            }
+        }
+        out
+    }
     fn side_character(c: char) -> Option<i32> {
         if c.is_ascii_alphanumeric() {
             Some(1)
@@ -72,7 +185,7 @@ impl Dictionary {
                         .all(|c| c.is_ascii_alphanumeric() || b",.'-!?:;".contains(&c))
             })
     }
-    pub(super) fn before_evidence(&self, before: &str) -> i32 {
+    pub(crate) fn before_evidence(&self, before: &str) -> i32 {
         for c in before.chars().rev() {
             if let Some(score) = Self::side_character(c) {
                 return if score == 1 && Self::english_sentence(before) {
@@ -87,7 +200,7 @@ impl Dictionary {
         }
         0
     }
-    pub(super) fn after_evidence(&self, after: &str) -> i32 {
+    pub(crate) fn after_evidence(&self, after: &str) -> i32 {
         for c in after.chars() {
             if matches!(c, '\r' | '\n') {
                 break;
@@ -125,6 +238,7 @@ impl Dictionary {
     ) -> String {
         if !["Aggressive", "Conservative", "Manual"].contains(&level)
             && !crate::language_memory::relevant(raw)
+            && self.custom_kana.is_none()
         {
             // IsEnglishSpan requires two sides for a two-letter spelling
             // which also reads as Japanese. One preceding Latin word is not

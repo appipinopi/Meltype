@@ -8,6 +8,7 @@ use std::{
 };
 use unicode_normalization::{char::canonical_combining_class, UnicodeNormalization};
 
+#[derive(Clone)]
 pub struct Linguistics {
     meanings: HashMap<String, Vec<(String, String)>>,
     stems: HashMap<String, String>,
@@ -38,6 +39,55 @@ fn ends(text: &str) -> impl Iterator<Item = usize> + '_ {
     text.char_indices().map(|(i, c)| i + c.len_utf8()).rev()
 }
 impl Linguistics {
+    pub(crate) fn profile_misspellings(directory: &std::path::Path) -> Option<Self> {
+        let bytes = std::fs::read(directory.join("misspellings.txt")).ok()?;
+        let (text, _) = crate::user_dictionary::decode(&bytes).ok()?;
+        let mut dictionary = Self::bundled().clone();
+        for line in text.lines() {
+            let fields: Vec<_> = line
+                .split('#')
+                .next()
+                .unwrap_or("")
+                .split('\t')
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .collect();
+            let Some(right) = fields.last().map(|s| romaji::katakana(s)) else {
+                continue;
+            };
+            if fields.len() >= 2 {
+                let wrong = romaji::katakana(fields[0]);
+                let right = romaji::katakana(fields[1]);
+                if wrong != right {
+                    if let Some(entry) = dictionary
+                        .misspellings
+                        .iter_mut()
+                        .find(|(word, _)| word == &wrong)
+                    {
+                        entry.1 = right;
+                    } else {
+                        dictionary.misspellings.push((wrong, right));
+                    }
+                }
+            }
+            if dictionary.correct.insert(right.clone()) && right.encode_utf16().count() >= 5 {
+                dictionary
+                    .shapes
+                    .entry(shape(&right))
+                    .or_default()
+                    .push(right);
+            }
+        }
+        dictionary
+            .misspellings
+            .sort_by_key(|(word, _)| std::cmp::Reverse(word.len()));
+        dictionary.ascii_misspellings = dictionary
+            .misspellings
+            .iter()
+            .any(|(word, _)| word.is_ascii())
+            || dictionary.shapes.keys().any(|word| word.is_ascii());
+        Some(dictionary)
+    }
     pub fn bundled() -> &'static Self {
         static DATA: OnceLock<Linguistics> = OnceLock::new();
         DATA.get_or_init(|| {
@@ -190,6 +240,31 @@ impl Linguistics {
                         .collect::<Vec<_>>()
                         .join("\n")
                 });
+            }
+        }
+        None
+    }
+    pub fn translation_meaning(&self, text: &str) -> Option<String> {
+        if !text.chars().any(|c| kanji(c) || ('ァ'..='ヶ').contains(&c)) {
+            return None;
+        }
+        for end in ends(text) {
+            if let Some(entries) = self.translations.get(&text[..end]) {
+                if text[end..]
+                    .chars()
+                    .any(|c| kanji(c) || ('ァ'..='ヶ').contains(&c))
+                {
+                    return None;
+                }
+                let mut words = vec![];
+                for (_, values) in entries {
+                    for word in values {
+                        if words.len() < 4 && !words.contains(word) {
+                            words.push(word.clone());
+                        }
+                    }
+                }
+                return (!words.is_empty()).then(|| words.join(", "));
             }
         }
         None

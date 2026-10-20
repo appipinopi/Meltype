@@ -428,6 +428,9 @@ mod tests {
     fn ordinary_input_has_clause_local_raw_and_boundary_edits_clear_it() {
         let mut s = Session {
             raw: "hashikami".into(),
+            // Isolate provenance from context ranking: the bundled rules now
+            // correctly prefer 端 when another clause contains 紙.
+            candidate_sources: std::sync::Arc::new(Default::default()),
             ..Default::default()
         };
         s.settings

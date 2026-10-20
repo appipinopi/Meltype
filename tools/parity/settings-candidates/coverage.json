@@ -1,0 +1,540 @@
+{
+  "settings": 68,
+  "pairwise_configurations": 42,
+  "covered_value_pairs": 12595,
+  "interaction_switches": [
+    "TranslationCandidates",
+    "ShowCandidateMeanings",
+    "PredictiveCandidates",
+    "TabConversion",
+    "LiveConversion",
+    "SeparateKeyRoles",
+    "ContinueAfterConversion"
+  ],
+  "interaction_configurations": 128,
+  "input_configurations": 32,
+  "cases": 648,
+  "domains": {
+    "Enabled": [
+      false,
+      true
+    ],
+    "JapaneseKeyboardOnly": [
+      false,
+      true
+    ],
+    "AllowInjectedInput": [
+      false,
+      true
+    ],
+    "Mode": [
+      "Keyboard",
+      "AutoSwitch",
+      "Tsf"
+    ],
+    "HankakuTogglesKeyboard": [
+      false,
+      true
+    ],
+    "ConvertKeysSwitchKeyboard": [
+      false,
+      true
+    ],
+    "AltKeysSwitchKeyboard": [
+      false,
+      true
+    ],
+    "AutoCorrectAfterCommit": [
+      false,
+      true
+    ],
+    "DirectModeAutoDetect": [
+      false,
+      true
+    ],
+    "SigilWordsDirect": [
+      false,
+      true
+    ],
+    "SnippetMark": [
+      ";",
+      "matrix"
+    ],
+    "SpaceAroundEnglish": [
+      false,
+      true
+    ],
+    "Punctuation": [
+      "Japanese",
+      "FullWidthCommaPeriod",
+      "FullWidthCommaKuten",
+      "ToutenFullWidthPeriod"
+    ],
+    "JapanesePunctuationAfterEnglish": [
+      false,
+      true
+    ],
+    "LiveConversion": [
+      false,
+      true
+    ],
+    "ConversionEngine": [
+      "Hybrid",
+      "Mozc",
+      "System"
+    ],
+    "TranslationCandidates": [
+      false,
+      true
+    ],
+    "PredictiveCandidates": [
+      false,
+      true
+    ],
+    "TabConversion": [
+      false,
+      true
+    ],
+    "ContinueAfterConversion": [
+      false,
+      true
+    ],
+    "SeparateKeyRoles": [
+      false,
+      true
+    ],
+    "ShowCandidateMeanings": [
+      false,
+      true
+    ],
+    "ShowTypedKeys": [
+      false,
+      true
+    ],
+    "CorrectTypos": [
+      false,
+      true
+    ],
+    "SlashAsMiddleDot": [
+      false,
+      true
+    ],
+    "ShowModeIndicator": [
+      false,
+      true
+    ],
+    "ShowModeIndicatorOnFocus": [
+      false,
+      true
+    ],
+    "ModeIndicatorJapaneseColor": [
+      "",
+      "#183A5C"
+    ],
+    "ModeIndicatorDirectColor": [
+      "",
+      "#183A5C"
+    ],
+    "ModeIndicatorTextColor": [
+      "",
+      "#183A5C"
+    ],
+    "CompositionPlacement": [
+      "Overlay",
+      "BelowCaret",
+      "AboveCaret"
+    ],
+    "CompositionSize": [
+      "Auto",
+      "Small",
+      "Medium",
+      "Large",
+      "ExtraLarge",
+      "Huge"
+    ],
+    "CompositionFont": [
+      "",
+      "matrix"
+    ],
+    "CompositionTheme": [
+      "Dark",
+      "Light",
+      "System"
+    ],
+    "CompositionOpacity": [
+      "Opaque",
+      "Percent90",
+      "Percent80",
+      "Percent70"
+    ],
+    "ShowNotifications": [
+      false,
+      true
+    ],
+    "AutoUpdate": [
+      false,
+      true
+    ],
+    "InputStyle": [
+      "Romaji",
+      "Kana",
+      "Both"
+    ],
+    "DetectionLevel": [
+      "Aggressive",
+      "Balanced",
+      "Conservative",
+      "Manual"
+    ],
+    "ScoredSegmentation": [
+      false,
+      true
+    ],
+    "JapaneseThreshold": [
+      4,
+      0,
+      99999
+    ],
+    "TypoEnabled": [
+      false,
+      true
+    ],
+    "MaxPendingKeys": [
+      6,
+      0,
+      99999
+    ],
+    "IdleFlushMs": [
+      700,
+      0,
+      99999
+    ],
+    "MaxHoldMs": [
+      2500,
+      0,
+      99999
+    ],
+    "SettingsVersion": [
+      5,
+      0,
+      99999
+    ],
+    "WelcomeShown": [
+      false,
+      true
+    ],
+    "TsfIntroduced": [
+      false,
+      true
+    ],
+    "TsfOffered": [
+      false,
+      true
+    ],
+    "SettingsShowHelp": [
+      false,
+      true
+    ],
+    "SettingsWheelChangesValue": [
+      false,
+      true
+    ],
+    "Profiles": [
+      [],
+      [
+        {
+          "Name": "標準",
+          "Values": null
+        },
+        {
+          "Name": "仕事",
+          "Values": {
+            "LiveConversion": false,
+            "DetectionLevel": "Manual"
+          }
+        }
+      ]
+    ],
+    "ActiveProfile": [
+      "標準",
+      "matrix"
+    ],
+    "SessionIdleMs": [
+      1500,
+      0,
+      99999
+    ],
+    "ContinueEnglishAfterSpace": [
+      false,
+      true
+    ],
+    "LearningEnabled": [
+      false,
+      true
+    ],
+    "FeedbackWindowMs": [
+      4000,
+      0,
+      99999
+    ],
+    "UseTsf": [
+      false,
+      true
+    ],
+    "ImeTimeoutMs": [
+      300,
+      0,
+      99999
+    ],
+    "PasteApps": [
+      "Resolve.exe",
+      "matrix.exe"
+    ],
+    "NoPasteApps": [
+      "",
+      "matrix.exe"
+    ],
+    "TextInputApps": [
+      "",
+      "matrix.exe"
+    ],
+    "ExcludeFullscreen": [
+      false,
+      true
+    ],
+    "StopInGames": [
+      false,
+      true
+    ],
+    "AppRules": [
+      [],
+      [
+        {
+          "Process": "matrix.exe",
+          "Enabled": false,
+          "Profile": "Code",
+          "Kind": "matrix"
+        }
+      ],
+      [
+        {
+          "Process": "mstsc.exe",
+          "Enabled": false,
+          "Profile": "General",
+          "Kind": null
+        },
+        {
+          "Process": "msrdc.exe",
+          "Enabled": false,
+          "Profile": "General",
+          "Kind": null
+        },
+        {
+          "Process": "vmconnect.exe",
+          "Enabled": false,
+          "Profile": "General",
+          "Kind": null
+        },
+        {
+          "Process": "VirtualBoxVM.exe",
+          "Enabled": false,
+          "Profile": "General",
+          "Kind": null
+        },
+        {
+          "Process": "vmware-vmx.exe",
+          "Enabled": false,
+          "Profile": "General",
+          "Kind": null
+        },
+        {
+          "Process": "vmware.exe",
+          "Enabled": false,
+          "Profile": "General",
+          "Kind": null
+        },
+        {
+          "Process": "Code.exe",
+          "Enabled": true,
+          "Profile": "Code",
+          "Kind": null
+        },
+        {
+          "Process": "Code - Insiders.exe",
+          "Enabled": true,
+          "Profile": "Code",
+          "Kind": null
+        },
+        {
+          "Process": "Cursor.exe",
+          "Enabled": true,
+          "Profile": "Code",
+          "Kind": null
+        },
+        {
+          "Process": "Windsurf.exe",
+          "Enabled": true,
+          "Profile": "Code",
+          "Kind": null
+        },
+        {
+          "Process": "zed.exe",
+          "Enabled": true,
+          "Profile": "Code",
+          "Kind": null
+        },
+        {
+          "Process": "devenv.exe",
+          "Enabled": true,
+          "Profile": "Code",
+          "Kind": null
+        },
+        {
+          "Process": "idea64.exe",
+          "Enabled": true,
+          "Profile": "Code",
+          "Kind": null
+        },
+        {
+          "Process": "pycharm64.exe",
+          "Enabled": true,
+          "Profile": "Code",
+          "Kind": null
+        },
+        {
+          "Process": "webstorm64.exe",
+          "Enabled": true,
+          "Profile": "Code",
+          "Kind": null
+        },
+        {
+          "Process": "rider64.exe",
+          "Enabled": true,
+          "Profile": "Code",
+          "Kind": null
+        },
+        {
+          "Process": "clion64.exe",
+          "Enabled": true,
+          "Profile": "Code",
+          "Kind": null
+        },
+        {
+          "Process": "goland64.exe",
+          "Enabled": true,
+          "Profile": "Code",
+          "Kind": null
+        },
+        {
+          "Process": "phpstorm64.exe",
+          "Enabled": true,
+          "Profile": "Code",
+          "Kind": null
+        },
+        {
+          "Process": "rubymine64.exe",
+          "Enabled": true,
+          "Profile": "Code",
+          "Kind": null
+        },
+        {
+          "Process": "datagrip64.exe",
+          "Enabled": true,
+          "Profile": "Code",
+          "Kind": null
+        },
+        {
+          "Process": "studio64.exe",
+          "Enabled": true,
+          "Profile": "Code",
+          "Kind": null
+        },
+        {
+          "Process": "sublime_text.exe",
+          "Enabled": true,
+          "Profile": "Code",
+          "Kind": null
+        },
+        {
+          "Process": "notepad++.exe",
+          "Enabled": true,
+          "Profile": "Code",
+          "Kind": null
+        },
+        {
+          "Process": "WindowsTerminal.exe",
+          "Enabled": true,
+          "Profile": "Code",
+          "Kind": null
+        },
+        {
+          "Process": "cmd.exe",
+          "Enabled": true,
+          "Profile": "Code",
+          "Kind": null
+        },
+        {
+          "Process": "powershell.exe",
+          "Enabled": true,
+          "Profile": "Code",
+          "Kind": null
+        },
+        {
+          "Process": "pwsh.exe",
+          "Enabled": true,
+          "Profile": "Code",
+          "Kind": null
+        },
+        {
+          "Process": "wezterm-gui.exe",
+          "Enabled": true,
+          "Profile": "Code",
+          "Kind": null
+        },
+        {
+          "Process": "alacritty.exe",
+          "Enabled": true,
+          "Profile": "Code",
+          "Kind": null
+        },
+        {
+          "Process": "mintty.exe",
+          "Enabled": true,
+          "Profile": "Code",
+          "Kind": null
+        },
+        {
+          "Process": "rio.exe",
+          "Enabled": true,
+          "Profile": "Code",
+          "Kind": null
+        },
+        {
+          "Process": "maya.exe",
+          "Enabled": true,
+          "Profile": "Code",
+          "Kind": null
+        }
+      ]
+    ],
+    "AppKinds": [
+      [],
+      [
+        {
+          "Name": "matrix",
+          "Base": "Code",
+          "LiveConversion": false,
+          "DetectionLevel": "Conservative"
+        }
+      ]
+    ],
+    "FileLog": [
+      false,
+      true
+    ],
+    "LogTypedText": [
+      false,
+      true
+    ]
+  }
+}

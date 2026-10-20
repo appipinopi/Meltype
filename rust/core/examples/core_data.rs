@@ -13,6 +13,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let store = Store::new(&args[2]);
     fs::create_dir_all(&store.directory)?;
     match args[1].as_str() {
+        "apps" => {
+            let rows: Vec<Value> = serde_json::from_slice(&fs::read(&args[3])?)?;
+            for row in rows {
+                let settings =
+                    meltype_core::settings::Settings::parse(&row["settings"].to_string())?;
+                let mut policy = settings.app_policy(
+                    row["process"].as_str().unwrap(),
+                    row["looksLikeGame"].as_bool().unwrap(),
+                );
+                policy["name"] = row["name"].clone();
+                println!("{policy}");
+            }
+        }
         "settings" => {
             let rows: Vec<Value> = serde_json::from_slice(&fs::read(&args[3])?)?;
             for row in rows {
