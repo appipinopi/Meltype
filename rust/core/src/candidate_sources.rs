@@ -53,20 +53,20 @@ impl Sources {
             .get_or_init(|| {
                 let mut source = Self::default();
                 for text in [
-                    include_str!("../../../dictionaries/candidates.txt"),
-                    include_str!("../../../dictionaries/loanwords.txt"),
-                    include_str!("../../../dictionaries/brands.txt"),
+                    crate::system_data::text("candidates.txt"),
+                    crate::system_data::text("loanwords.txt"),
+                    crate::system_data::text("brands.txt"),
                 ] {
                     source.add_words(text);
                 }
                 for text in [
-                    include_str!("../../../dictionaries/emoji.txt"),
-                    include_str!("../../../dictionaries/emoji-cldr.txt"),
+                    crate::system_data::text("emoji.txt"),
+                    crate::system_data::text("emoji-cldr.txt"),
                 ] {
                     source.add_emoji(text);
                 }
-                source.add_contexts(include_str!("../../../dictionaries/contexts.txt"));
-                for line in include_str!("../../../dictionaries/phrases.txt")
+                source.add_contexts(crate::system_data::text("contexts.txt"));
+                for line in crate::system_data::text("phrases.txt")
                     .lines()
                     .filter(|line| !line.starts_with('#'))
                 {

@@ -55,7 +55,7 @@ fn lexicon() -> &'static Lexicon {
         let _builtins = romaji::Scope::new(None);
         let mut japanese = HashSet::new();
         let mut kana = HashSet::new();
-        for word in words(include_str!("../../../dictionaries/japanese.txt")) {
+        for word in words(crate::system_data::text("japanese.txt")) {
             japanese.extend(romaji::spelling_variants(word, 64));
             let mut analysis = romaji::analyze(word, false);
             if analysis.valid && analysis.partial == "n" {
@@ -65,8 +65,8 @@ fn lexicon() -> &'static Lexicon {
                 kana.insert(analysis.kana());
             }
         }
-        let english: HashSet<String> = words(include_str!("../../../dictionaries/english.txt"))
-            .chain(words(include_str!("../../../dictionaries/propernouns.txt")))
+        let english: HashSet<String> = words(crate::system_data::text("english.txt"))
+            .chain(words(crate::system_data::text("propernouns.txt")))
             .map(str::to_ascii_lowercase)
             .collect();
         Lexicon {

@@ -5,7 +5,7 @@ use std::{collections::HashMap, sync::OnceLock};
 fn boundaries() -> &'static HashMap<String, Vec<usize>> {
     static BOUNDARIES: OnceLock<HashMap<String, Vec<usize>>> = OnceLock::new();
     BOUNDARIES.get_or_init(|| {
-        include_str!("../../../dictionaries/english-phrases.txt")
+        crate::system_data::text("english-phrases.txt")
             .lines()
             .filter_map(|line| {
                 if line.starts_with('#') {

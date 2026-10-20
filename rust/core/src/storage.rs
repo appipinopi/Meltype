@@ -12,6 +12,7 @@ use std::{
     io::{self, Write},
     path::{Path, PathBuf},
 };
+mod sqlite_dictionary;
 mod upstream;
 
 pub fn now() -> i64 {
@@ -351,6 +352,9 @@ impl Store {
             Err(e) if e.kind() == io::ErrorKind::NotFound => self.import_legacy(),
             Err(e) => Err(e),
         }?;
+        if let Some(words) = sqlite_dictionary::read(&self.directory)? {
+            state.preferences.user_dictionary = words;
+        }
         state.rebuild_language_preferences();
         for (key, stats) in &state.prefix_model.prefixes {
             state.used.insert(format!("prefix:{key}"), stats.used());
@@ -360,11 +364,37 @@ impl Store {
     pub fn update<T>(&self, f: impl FnOnce(&mut State) -> io::Result<T>) -> io::Result<T> {
         let _lock = self.lock()?;
         let mut state = self.load()?;
+        let previous_dictionary = sqlite_dictionary::read(&self.directory)?;
         let result = f(&mut state)?;
-        atomic_write(
-            &self.directory.join("state.json"),
-            &serde_json::to_vec_pretty(&state)?,
-        )?;
+        let path = self.directory.join("state.json");
+        let original = match fs::read(&path) {
+            Ok(bytes) => Some(bytes),
+            Err(error) if error.kind() == io::ErrorKind::NotFound => None,
+            Err(error) => return Err(error),
+        };
+        let dictionary = if previous_dictionary.as_ref() == Some(&state.preferences.user_dictionary)
+        {
+            None
+        } else {
+            Some(sqlite_dictionary::Write::prepare(
+                &self.directory,
+                &state.preferences.user_dictionary,
+            )?)
+        };
+        // JSON retains learning/snippets and is not a second writable dictionary.
+        let words = std::mem::take(&mut state.preferences.user_dictionary);
+        let bytes = serde_json::to_vec_pretty(&state);
+        state.preferences.user_dictionary = words;
+        atomic_write(&path, &bytes?)?;
+        if let Err(error) = dictionary.map_or(Ok(()), |writer| writer.commit()) {
+            let rollback = match original {
+                Some(bytes) => atomic_write(&path, &bytes),
+                None => fs::remove_file(&path),
+            };
+            return Err(io::Error::other(format!(
+                "{error}; JSON rollback: {rollback:?}"
+            )));
+        }
         Ok(result)
     }
     pub fn record(&self, changes: Vec<Change>) -> io::Result<State> {
@@ -530,8 +560,15 @@ impl Store {
                 files.insert((*name).to_owned(), STANDARD.encode(fs::read(path)?));
             }
         }
-        if self.directory.join("state.json").exists() {
-            for (name, bytes) in self.upstream_files(&self.load()?)? {
+        if self.directory.join("state.json").exists()
+            || self.directory.join("userdict.sqlite3").exists()
+        {
+            let state = self.load()?;
+            files.insert(
+                "state.json".into(),
+                STANDARD.encode(serde_json::to_vec_pretty(&state)?),
+            );
+            for (name, bytes) in self.upstream_files(&state)? {
                 files.insert(name, STANDARD.encode(bytes));
             }
         }
@@ -658,6 +695,16 @@ impl Store {
                 serde_json::to_vec_pretty(&current)?,
             ));
         }
+        // Parse an incoming canonical state before any write. Dictionary rows
+        // and file restoration share rollback on observable failures.
+        let restored_words = files
+            .iter()
+            .find(|(path, _)| path.file_name().is_some_and(|name| name == "state.json"))
+            .map(|(_, bytes)| {
+                serde_json::from_slice::<State>(bytes)
+                    .map(|state| state.preferences.user_dictionary)
+            })
+            .transpose()?;
         // Snapshot every target first, including directory/read failures.
         let originals: Vec<_> = files
             .iter()
@@ -677,25 +724,31 @@ impl Store {
                 atomic_write(&backup, original)?;
             }
         }
-        for (index, (path, bytes)) in files.iter().enumerate() {
-            if let Err(error) = atomic_write(path, bytes) {
-                let mut rollback_errors = vec![];
-                for ((path, _), previous) in files[..=index].iter().zip(&originals).rev() {
-                    let restored = match previous {
-                        Some(bytes) => atomic_write(path, bytes),
-                        None => match fs::remove_file(path) {
-                            Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(()),
-                            result => result,
-                        },
-                    };
-                    if let Err(e) = restored {
-                        rollback_errors.push(e.to_string());
-                    }
+        let dictionary = restored_words
+            .as_ref()
+            .map(|words| sqlite_dictionary::Write::prepare(&self.directory, words))
+            .transpose()?;
+        let written = files
+            .iter()
+            .try_for_each(|(path, bytes)| atomic_write(path, bytes))
+            .and_then(|_| dictionary.map_or(Ok(()), |writer| writer.commit()));
+        if let Err(error) = written {
+            let mut rollback_errors = vec![];
+            for ((path, _), previous) in files.iter().zip(&originals).rev() {
+                let restored = match previous {
+                    Some(bytes) => atomic_write(path, bytes),
+                    None => match fs::remove_file(path) {
+                        Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(()),
+                        result => result,
+                    },
+                };
+                if let Err(e) = restored {
+                    rollback_errors.push(e.to_string());
                 }
-                return Err(io::Error::other(format!(
-                    "restore failed: {error}; rollback errors: {rollback_errors:?}"
-                )));
             }
+            return Err(io::Error::other(format!(
+                "restore failed: {error}; rollback errors: {rollback_errors:?}"
+            )));
         }
         Ok(supplied_count)
     }

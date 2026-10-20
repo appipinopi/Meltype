@@ -9,7 +9,8 @@ api=c.CDLL(str(Path(sys.argv[1]).resolve()))
 api.meltype_windows_converter_probe.argtypes=[c.c_char_p]
 api.meltype_windows_converter_probe.restype=c.c_void_p
 api.meltype_free.argtypes=[c.c_void_p]
-cases=json.loads((Path(__file__).resolve().parents[3]/'tools/parity/windows-converter/cases.json').read_text(encoding='utf-8'))
+case_file=Path(sys.argv[3]) if len(sys.argv)>3 else Path(__file__).resolve().parents[3]/'tools/parity/windows-converter/cases.json'
+cases=json.loads(case_file.read_text(encoding='utf-8'))
 reference={row['name']:row for line in Path(sys.argv[2]).read_text(encoding='utf-8-sig').splitlines() if line.startswith('{') for row in [json.loads(line)]}
 assert len(cases)==len(reference)
 available=0;retries=0

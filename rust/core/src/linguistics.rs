@@ -102,7 +102,7 @@ impl Linguistics {
                 ascii_misspellings: false,
                 readings: BTreeMap::new(),
             };
-            for line in lines(include_str!("../../../dictionaries/meanings.txt")) {
+            for line in lines(crate::system_data::text("meanings.txt")) {
                 let fields: Vec<_> = line.split('\t').collect();
                 if fields.len() < 3 {
                     continue;
@@ -133,7 +133,7 @@ impl Linguistics {
                     }
                 }
             }
-            for line in lines(include_str!("../../../dictionaries/translations.txt")) {
+            for line in lines(crate::system_data::text("translations.txt")) {
                 let p: Vec<_> = line.split('\t').collect();
                 if p.len() >= 3 {
                     d.translations.entry(p[0].into()).or_default().push((
@@ -145,7 +145,7 @@ impl Linguistics {
                     ));
                 }
             }
-            for line in lines(include_str!("../../../dictionaries/contexts.txt")) {
+            for line in lines(crate::system_data::text("contexts.txt")) {
                 let line = line.split('#').next().unwrap_or("");
                 if let Some((head, cues)) = line.split_once(':') {
                     let head: Vec<_> = head.split_whitespace().collect();
@@ -157,7 +157,7 @@ impl Linguistics {
                     }
                 }
             }
-            for line in lines(include_str!("../../../dictionaries/misspellings.txt")) {
+            for line in lines(crate::system_data::text("misspellings.txt")) {
                 let p: Vec<_> = line.split('\t').collect();
                 let right = romaji::katakana(p[p.len() - 1]);
                 if p.len() > 1 {

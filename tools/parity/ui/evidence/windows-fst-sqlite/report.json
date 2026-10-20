@@ -1,0 +1,54 @@
+{
+  "binary_sha256": "3c272f4b5523331f00e74ad76869a1382fb392c01604c938660981a38f88eed1",
+  "pages": [
+    {
+      "page": "settings",
+      "width": 740,
+      "height": 740,
+      "rgba_sha256": "f6409a4fb8f7b78d5ef7228213726728068d1d817277c63c8a3ba9f95c442d99",
+      "captured": true,
+      "origin_pixel_equivalence_verified": false
+    },
+    {
+      "page": "dictionary",
+      "width": 740,
+      "height": 740,
+      "rgba_sha256": "0ce4046358e29250e7d86338f770f8fb83fe8a0e036c38bb815075e161d5460f",
+      "captured": true,
+      "origin_pixel_equivalence_verified": false
+    },
+    {
+      "page": "snippets",
+      "width": 740,
+      "height": 740,
+      "rgba_sha256": "9b8ee3e1c9ea45839e46a686a7775406712adb2c6b409e4906b5c756dab2656b",
+      "captured": true,
+      "origin_pixel_equivalence_verified": false
+    },
+    {
+      "page": "learning",
+      "width": 740,
+      "height": 740,
+      "rgba_sha256": "9cf099e61469271cf0f90f90d074d5a7faac3a48b4e3ad00eef14e1934a5cc4a",
+      "captured": true,
+      "origin_pixel_equivalence_verified": false
+    },
+    {
+      "page": "backup",
+      "width": 740,
+      "height": 740,
+      "rgba_sha256": "c02e661bc08c9c92243ba3dc107b0ac362e89c20f09f61f8a2fee38727c413af",
+      "captured": true,
+      "origin_pixel_equivalence_verified": false
+    },
+    {
+      "page": "input-test",
+      "width": 740,
+      "height": 740,
+      "rgba_sha256": "206749a2f9584e65699b25c4299ea46ae0c6935d121580dd8016891c29e5cef9",
+      "captured": true,
+      "origin_pixel_equivalence_verified": false
+    }
+  ],
+  "all_screens_equivalent": false
+}

@@ -25,7 +25,7 @@ pub struct Corrector {
 impl Corrector {
     pub fn bundled() -> &'static Self {
         static INSTANCE: OnceLock<Corrector> = OnceLock::new();
-        INSTANCE.get_or_init(|| Self::new(include_str!("../../../dictionaries/readings.txt")))
+        INSTANCE.get_or_init(|| Self::new(crate::system_data::text("readings.txt")))
     }
     pub fn new(readings: &str) -> Self {
         let function: HashSet<String> = include_str!("../data/function-words.txt")

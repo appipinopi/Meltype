@@ -24,3 +24,6 @@ cargo test -p meltype-core --test upstream_settings_apps
 `check.py --reference-only` はC#のみを採取する。再照合の `--reference <採取ディレクトリー>` はケースとC# DLLのハッシュが一致する場合だけ使用できる。`freeze.py --output <固定先> <成功記録...>` はRust比較が全成功したC#出力のみを期待値として固定する。
 
 全68項目の直積、OSスペルサービスの全応答、実System/Mozc辞書の全語彙、全UI操作や全OS実動の一致を証明するものではない。固定変換器でエンジン結果の扱いを検査し、実変換器/ワーカーは既存の別試験で確認する。設定UI・更新・OS起動設定などはCore入力トレースだけでは実動を確認できない。
+
+
+`exhaustive.py dist/batch --offset 0 --limit 128` は定義済み値域の直積から128構成（2入力ずつ）を生成する。`coverage.json` のnext_offsetを次回のoffsetに渡し、domains_sha256/設定順/strideが一致する同一の値域で再開する。組合せ数は2,067,895,430,987,964,852,731,904で、offsetを進めたこと自体は過去の全範囲の照合成功を証明しない。追加256入力のC#由来期待値は `upstream-settings-exhaustive-batch.json` に固定し、通常の候補replay.pyへ --fixture で渡せる。任意の数値・文字列や入力履歴の完全網羅ではない。

@@ -465,9 +465,18 @@ mod tests {
                 .unwrap()["edit"]["name"],
             "テスト"
         );
-        assert!(profile
+        // The upstream management operation removes the active profile and
+        // switches back to another profile; it is not the strict editor API.
+        profile
             .act(json!({"action":"profile_delete"}), json!({"name":"テスト"}))
-            .is_err());
+            .unwrap();
+        assert_ne!(
+            request(h, json!({"op":"settings_get"})).unwrap()["ActiveProfile"],
+            "テスト"
+        );
+        profile
+            .act(json!({"action":"profile_add"}), json!({"name":"テスト"}))
+            .unwrap();
         profile
             .act(json!({"action":"profile_switch"}), json!({"name":original}))
             .unwrap();

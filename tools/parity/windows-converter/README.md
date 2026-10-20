@@ -35,3 +35,6 @@ workerの試験は独立した一時フォルダーで実際のフレーム通�
 - ビルドと並行した先行実行は、長文256の候補がC#では空・Rustでは5件で不一致だった。変換・文節の差はなく、この失敗ログを保持した。最終照合はビルド終了後に参照も採り直したもので、負荷に依存する候補取得の期限境界まで常に同時に完了することは保証しない。
 
 元版の候補応答はOSの辞書を含むためコミットせず、ローカルの`dist/windows-converter-reference-idle.jsonl`と`dist/windows-converter-idle-*.log`に保存。先行失敗は`dist/windows-converter-private-x64-live.log`。SDKの保存先は`dist/windows-converter-sdk-verified/`と同名のログ。実Systemを使う公開TSF SDKホストの追加CIは、このローカルの外部変換器なしの検証と区別する。
+
+
+`corpus.py <出力フォルダー> --sample 128` は20,181件の同梱読みから均等に128件を選び、既存の境界26入力と合わせ154入力を生成する。参照ホストへ生成した cases.json を渡し、`windows_converter_smoke.py <DLL> <参照JSONL> <生成cases.json>` で同じ実OS応答を照合する。これは有限のサンプルであり、OS辞書の全入力・全応答を網羅するものではない。

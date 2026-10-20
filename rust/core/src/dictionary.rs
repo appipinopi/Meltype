@@ -27,19 +27,36 @@ pub struct Dictionary {
     proper_index: PrefixIndex,
 }
 
-/// Sorted dictionary keys keep prefix queries logarithmic without materializing
-/// every prefix. Build once with the immutable bundled dictionary.
-#[derive(Default, Clone)]
-struct PrefixIndex(Vec<String>);
+/// Immutable FST prefix queries share prebuilt system bytes across profiles.
+#[derive(Clone)]
+struct PrefixIndex(std::sync::Arc<fst::Set<std::borrow::Cow<'static, [u8]>>>);
+impl Default for PrefixIndex {
+    fn default() -> Self {
+        Self::new(&HashSet::new())
+    }
+}
 impl PrefixIndex {
     fn new(words: &HashSet<String>) -> Self {
-        let mut keys: Vec<_> = words.iter().cloned().collect();
+        let mut keys: Vec<_> = words.iter().collect();
         keys.sort_unstable();
-        Self(keys)
+        let set = fst::Set::from_iter(keys).expect("sorted dictionary keys");
+        Self(std::sync::Arc::new(
+            fst::Set::new(std::borrow::Cow::Owned(set.into_fst().into_inner())).unwrap(),
+        ))
+    }
+    fn bundled(bytes: &'static [u8]) -> Self {
+        Self(std::sync::Arc::new(
+            fst::Set::new(std::borrow::Cow::Borrowed(bytes)).expect("build-checked prefix FST"),
+        ))
     }
     fn contains(&self, prefix: &str) -> bool {
-        let i = self.0.partition_point(|word| word.as_str() < prefix);
-        self.0.get(i).is_some_and(|word| word.starts_with(prefix))
+        use fst::{IntoStreamer, Streamer};
+        self.0
+            .range()
+            .ge(prefix)
+            .into_stream()
+            .next()
+            .is_some_and(|key| key.starts_with(prefix.as_bytes()))
     }
 }
 
@@ -118,7 +135,7 @@ impl Dictionary {
         static CANONICAL: OnceLock<HashMap<String, String>> = OnceLock::new();
         let names = CANONICAL.get_or_init(|| {
             let mut names = HashMap::new();
-            for word in words(include_str!("../../../dictionaries/propernouns.txt"))
+            for word in words(crate::system_data::text("propernouns.txt"))
                 .flat_map(|s| s.split(','))
                 .filter(|s| !s.is_empty() && s.bytes().all(|b| b.is_ascii_alphanumeric()))
             {
@@ -167,7 +184,7 @@ impl Dictionary {
                 japanese_origin: {
                     let mut section = false;
                     let mut result = HashSet::new();
-                    for line in include_str!("../../../dictionaries/english.txt").lines() {
+                    for line in crate::system_data::text("english.txt").lines() {
                         if line.starts_with("# ---") {
                             section = line.contains("日本語由来");
                         } else if line.trim().is_empty() {
@@ -178,42 +195,42 @@ impl Dictionary {
                     }
                     result
                 },
-                proper: words(include_str!("../../../dictionaries/propernouns.txt"))
-                    .chain(words(include_str!("../../../dictionaries/brands.txt")))
+                proper: words(crate::system_data::text("propernouns.txt"))
+                    .chain(words(crate::system_data::text("brands.txt")))
                     .filter(|word| word.is_ascii())
                     .map(str::to_ascii_lowercase)
                     .collect(),
-                japanese: words(include_str!("../../../dictionaries/japanese.txt"))
+                japanese: words(crate::system_data::text("japanese.txt"))
                     .map(str::to_owned)
                     .collect(),
                 candidates: HashMap::new(),
                 emoji: HashMap::new(),
-                kana_words: include_str!("../../../dictionaries/readings.txt")
+                kana_words: crate::system_data::text("readings.txt")
                     .lines()
                     .filter(|l| !l.starts_with('#'))
                     .filter_map(|l| l.split_whitespace().next())
                     .map(str::to_owned)
                     .collect(),
-                common_english: words(include_str!("../../../dictionaries/english.txt"))
+                common_english: words(crate::system_data::text("english.txt"))
                     .map(str::to_owned)
                     .collect(),
-                readable_english: words(include_str!("../../../dictionaries/english-readable.txt"))
+                readable_english: words(crate::system_data::text("english-readable.txt"))
                     .map(str::to_owned)
                     .collect(),
             };
             for source in [
-                include_str!("../../../dictionaries/english.txt"),
-                include_str!("../../../dictionaries/english-words.txt"),
-                include_str!("../../../dictionaries/propernouns.txt"),
-                include_str!("../../../dictionaries/brands.txt"),
+                crate::system_data::text("english.txt"),
+                crate::system_data::text("english-words.txt"),
+                crate::system_data::text("propernouns.txt"),
+                crate::system_data::text("brands.txt"),
             ] {
                 dict.english
                     .extend(words(source).map(str::to_ascii_lowercase));
             }
             dict.english.extend(dict.readable_english.iter().cloned());
             for source in [
-                include_str!("../../../dictionaries/candidates.txt"),
-                include_str!("../../../dictionaries/loanwords.txt"),
+                crate::system_data::text("candidates.txt"),
+                crate::system_data::text("loanwords.txt"),
             ] {
                 for line in source.lines() {
                     let fields: Vec<_> = line
@@ -228,9 +245,9 @@ impl Dictionary {
                 }
             }
             for (source, emoji) in [
-                (include_str!("../../../dictionaries/phrases.txt"), false),
-                (include_str!("../../../dictionaries/emoji.txt"), true),
-                (include_str!("../../../dictionaries/emoji-cldr.txt"), true),
+                (crate::system_data::text("phrases.txt"), false),
+                (crate::system_data::text("emoji.txt"), true),
+                (crate::system_data::text("emoji-cldr.txt"), true),
             ] {
                 for line in source.lines().filter(|l| !l.starts_with('#')) {
                     let fields: Vec<_> = line.split('\t').collect();
@@ -248,10 +265,14 @@ impl Dictionary {
                     }
                 }
             }
-            dict.english_index = PrefixIndex::new(&dict.english);
-            dict.japanese_index = PrefixIndex::new(&dict.japanese);
-            dict.common_index = PrefixIndex::new(&dict.common_english);
-            dict.proper_index = PrefixIndex::new(&dict.proper);
+            dict.english_index =
+                PrefixIndex::bundled(include_bytes!(concat!(env!("OUT_DIR"), "/english.fst")));
+            dict.japanese_index =
+                PrefixIndex::bundled(include_bytes!(concat!(env!("OUT_DIR"), "/japanese.fst")));
+            dict.common_index =
+                PrefixIndex::bundled(include_bytes!(concat!(env!("OUT_DIR"), "/common.fst")));
+            dict.proper_index =
+                PrefixIndex::bundled(include_bytes!(concat!(env!("OUT_DIR"), "/proper.fst")));
             dict
         })
     }
@@ -1153,7 +1174,7 @@ impl Dictionary {
     fn allows_mixed_case(raw: &str) -> bool {
         !raw.starts_with(|c: char| c.is_ascii_lowercase())
             || !raw.bytes().skip(1).any(|c| c.is_ascii_uppercase())
-            || words(include_str!("../../../dictionaries/propernouns.txt")).any(|name| name == raw)
+            || words(crate::system_data::text("propernouns.txt")).any(|name| name == raw)
     }
     pub(crate) fn unknown_english_word(&self, lower: &str) -> bool {
         if lower.len() < 4 || !lower.bytes().all(|b| b.is_ascii_alphabetic()) {
