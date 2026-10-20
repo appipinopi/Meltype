@@ -1,5 +1,7 @@
 # Meltype 1.2.1〜1.3.1-pre.1のRust版未対応・未確認一覧
 
+この一覧は着手前の差分記録。1.3.0までの取り込み作業は [UPGRADE-1.3.0.md](UPGRADE-1.3.0.md) に更新しており、下表の「未対応」を現在の全実装状況としては扱わない。
+
 確認日: 2026-10-20。対象は元版 [v1.3.1-pre.1](https://github.com/yksr-melt/Meltype/releases/tag/v1.3.1-pre.1)、コミット `ecaf80f6208b7cb75a480fcee2b5296465ff5dfe`。Rustの従来の実API比較基準は `45e14f86558aa6ea34f2c2ecd038ba95ca8c3c46` のまま。今回の一覧作成は最新版の取り込み・完全互換の確認ではない。
 
 1.3.0には1.2.2-pre.1/2までの変更が含まれるため、[1.3.0の更新内容](https://github.com/yksr-melt/Meltype/releases/tag/v1.3.0)、1.3.1-pre.1の更新内容、両基準間のCore・UI・OS連携のソース差分を参照した。追加設定の定義とRust既定値・実装参照の照合は [inventory.json](../tools/parity/pre1/inventory.json)。未知のJSON項目が保存されることと、その機能が働くことは区別する。
@@ -13,7 +15,7 @@
 | [1.2.1](https://github.com/yksr-melt/Meltype/releases/tag/v1.2.1) | Meltype IME導入の初回案内・利用不可時のキーボード方式への復帰、Windowsキーボード方式の製品接続、専用の誤判定報告画面、更新前の変換差の案内、winget/正式インストーラー連携。モード表示の色は保存されるが元版相当の専用色選択UIはない。最近の学習削除はRustに1時間の操作があり、元版の「今日」も含む同じ選択UIはない。LINE/Affinity/遠隔入力等のアプリ別動作は実アプリ確認が必要。定型文・Tab変換・F8・Ctrl+H・日時/記号候補等は既存の部分検証があり、未実装とは数えない |
 | [1.2.2-pre.1](https://github.com/yksr-melt/Meltype/releases/tag/v1.2.2-pre.1) | IME利用不可時のモード項目の無効化・設定からのIME切替、色選択UI、報告/更新の修正一式、Mac/Linuxの同等な導入処理。予測一覧・英字読み・文節伸縮・設定の競合保存・バックアップなどは部分実装と回帰試験があるが、元版と同じ画面/実操作は未受入。37件修正のまとめを丸ごと対応済みとはしない |
 | [1.2.2-pre.2](https://github.com/yksr-melt/Meltype/releases/tag/v1.2.2-pre.2) | 下表の追加設定27項目が未対応。数字/記号の学習、入力候補のクリック、ローマ字・Enter/Esc・Shift/フォーカス・破損JSONなどの最新動作も再比較が必要 |
-| [1.3.0](https://github.com/yksr-melt/Meltype/releases/tag/v1.3.0) | FullWidthSpaceByDefaultが追加。AutoSwitch/Bothの廃止と移行、数字/元号/単位/季節候補、予測Delete削除、辞書の追従、キーボードだけで動くポータブル配布、Linux ARM64/apt・Mac Homebrew、最新のTSF/IBus/fcitx5・安全性修正の実動確認が残る。1.2.2-pre.1/2の内容を含む |
+| [1.3.0](https://github.com/yksr-melt/Meltype/releases/tag/v1.3.0) | EnglishNamePredictionsが追加。AutoSwitch/Bothの廃止と移行、数字/元号/単位/季節候補、予測Delete削除、辞書の追従、キーボードだけで動くポータブル配布、Linux ARM64/apt・Mac Homebrew、最新のTSF/IBus/fcitx5・安全性修正の実動確認が残る。1.2.2-pre.1/2の内容を含む |
 | [1.3.1-pre.1](https://github.com/yksr-melt/Meltype/releases/tag/v1.3.1-pre.1) | Zenzai関連の3設定とサーバー/モデル連携・Mozc文節への割当、Mozc-UT任意ビルド、学習保存/予測探索の新しい最適化、文頭スラッシュ修正、macOSアイコン・rpm/dnf・Homebrew再ビルドの配布修正。辞書メモリはRustが独自のFST方式なので、元版のPackedLines移植の有無とは別に評価する |
 
 上表は製品機能・配布・安全性の対応状況。サイト・寄付者一覧・bot等の運営変更はRust IMEの未対応機能には数えない。全OS実動の未確認を、機能が必ず欠けているという意味では使わない。

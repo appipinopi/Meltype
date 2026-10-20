@@ -30,7 +30,11 @@ pub mod tip_transport;
 #[cfg(windows)]
 mod tsf;
 #[cfg(windows)]
+mod windows_clipboard;
+#[cfg(windows)]
 pub mod windows_converter;
+#[cfg(windows)]
+mod windows_github;
 mod word_checker;
 use std::{
     collections::HashMap,
@@ -562,6 +566,36 @@ pub unsafe extern "C" fn meltype_handle_key(
         else {
             return std::ptr::null_mut();
         };
+        #[cfg(windows)]
+        let clipboard = if matches!(vk, 0x20 | 0x1c | 9)
+            && modifiers & 14 == 0
+            && sessions().lock().ok().is_some_and(|all| {
+                all.get(&(handle as usize))
+                    .is_some_and(Session::wants_clipboard_candidate)
+            }) {
+            windows_clipboard::read()
+        } else {
+            None
+        };
+        #[cfg(windows)]
+        if let Ok(mut all) = sessions().lock() {
+            if let Some(s) = all.get_mut(&(handle as usize)) {
+                s.set_clipboard_candidate(clipboard.as_deref());
+            }
+        }
+        #[cfg(windows)]
+        if matches!(vk, 0x20 | 0x1c | 9) && modifiers & 14 == 0 {
+            let request = sessions().lock().ok().and_then(|all| {
+                all.get(&(handle as usize))
+                    .and_then(Session::github_title_request)
+            });
+            let title = request.and_then(|(repo, number)| windows_github::lookup(&repo, number));
+            if let Ok(mut all) = sessions().lock() {
+                if let Some(s) = all.get_mut(&(handle as usize)) {
+                    s.set_github_title(title);
+                }
+            }
+        }
         let reading = sessions().lock().ok().and_then(|all| {
             all.get(&(handle as usize))
                 .filter(|s| {
@@ -611,16 +645,17 @@ pub unsafe extern "C" fn meltype_handle_key(
         }
         // Resize reconverts both affected clauses using their new readings.
         // Keep callbacks outside the registry mutex, as for initial conversion.
-        let resize_before = if matches!(vk, 0x25 | 0x27) && modifiers & 15 == 1 {
-            sessions().lock().ok().and_then(|all| {
-                all.get(&(handle as usize))
-                    .filter(|s| s.is_converting())
-                    .map(Session::clause_readings)
-            })
-        } else {
-            None
-        };
-        let starting_tab = vk == 0x09
+        let resize_before =
+            if matches!(vk, 0x25 | 0x27) && modifiers & 15 == 1 || modifiers & 14 == 2 {
+                sessions().lock().ok().and_then(|all| {
+                    all.get(&(handle as usize))
+                        .filter(|s| s.is_converting())
+                        .map(Session::clause_readings)
+                })
+            } else {
+                None
+            };
+        let starting_conversion = !matches!(vk, 0x20 | 0x1c)
             && sessions().lock().ok().is_some_and(|all| {
                 all.get(&(handle as usize))
                     .is_some_and(|s| !s.is_converting())
@@ -645,14 +680,14 @@ pub unsafe extern "C" fn meltype_handle_key(
                 s.key(vk, ch, modifiers)
             }
         });
-        // Let Core decide whether Tab starts conversion: suggestions,
+        // Let Core decide whether Tab, arrows or configured Control keys start conversion: suggestions,
         // predictions and protected input take precedence. Only then request
         // converter clauses, outside the session mutex as for Space.
-        let tab_reading = if starting_tab || tab_raw.is_some() {
+        let tab_reading = if starting_conversion || tab_raw.is_some() {
             sessions().lock().ok().and_then(|all| {
                 all.get(&(handle as usize))
                     .filter(|s| {
-                        starting_tab && s.tab_conversion_started()
+                        starting_conversion && s.is_converting()
                             || s.is_converting()
                                 && tab_raw.as_deref().is_some_and(|raw| raw != s.raw())
                     })

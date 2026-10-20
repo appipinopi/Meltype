@@ -47,11 +47,9 @@ fn original_levels_context_learning_custom_tables_and_retained_edits() {
     }
 }
 
-fn known_settings(settings: &Settings) -> Value {
-    let defaults: Value =
-        serde_json::from_str(include_str!("../data/settings-defaults.json")).unwrap();
+fn known_settings(settings: &Settings, baseline: &Value) -> Value {
     let mut value = serde_json::to_value(settings).unwrap();
-    let known = defaults.as_object().unwrap();
+    let known = baseline.as_object().unwrap();
     value
         .as_object_mut()
         .unwrap()
@@ -70,7 +68,9 @@ fn original_known_settings_normalization_and_profile_lifecycle() {
     assert_eq!(fixture["settings"].as_array().unwrap().len(), 120);
     for case in fixture["settings"].as_array().unwrap() {
         let mut settings = Settings::parse(&case["config"].to_string()).unwrap();
-        let mut trace = vec![json!({"accepted":true,"settings":known_settings(&settings)})];
+        let mut trace = vec![
+            json!({"accepted":true,"settings":known_settings(&settings, &fixture["settings"][0]["expected"][0]["settings"])}),
+        ];
         if let Some(ops) = case["ops"].as_array() {
             for op in ops {
                 let name = op["name"].as_str().unwrap();
@@ -82,7 +82,7 @@ fn original_known_settings_normalization_and_profile_lifecycle() {
                     _ => panic!("unknown profile operation"),
                 }
                 .is_ok();
-                trace.push(json!({"accepted":accepted,"settings":known_settings(&settings)}));
+                trace.push(json!({"accepted":accepted,"settings":known_settings(&settings, &fixture["settings"][0]["expected"][0]["settings"])}));
             }
         }
         assert_eq!(json!(trace), case["expected"], "{}", case["name"]);

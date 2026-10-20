@@ -24,7 +24,7 @@ import tarfile
 sys.path.insert(0, str(Path(__file__).resolve().parent / "performance/windows"))
 from resources import measure_process
 
-BASELINE = "45e14f86558aa6ea34f2c2ecd038ba95ca8c3c46"
+BASELINE = "6310c44b728d5ad88284853f9ef37ea224993b18"
 REPO = Path(__file__).resolve().parent.parent
 
 

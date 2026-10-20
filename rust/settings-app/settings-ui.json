@@ -3,21 +3,21 @@
   "fields": [
     {
       "key": "Enabled",
-      "type": "bool",
+      "type": "Boolean",
       "category": "1. 全般",
       "label": "Meltype を有効にする",
       "description": ""
     },
     {
       "key": "JapaneseKeyboardOnly",
-      "type": "bool",
+      "type": "Boolean",
       "category": "1. 全般",
       "label": "日本語キーボードのときだけ動作",
       "description": "Windows の入力言語が日本語のときだけ動作します。韓国語・英語などでは入力処理と IME の自動制御を停止し、日本語に戻すと再開します。物理キーボードの JIS / US 配列や IME の「あ」「A」の状態は問いません。全プロファイル共通です。"
     },
     {
       "key": "AllowInjectedInput",
-      "type": "bool",
+      "type": "Boolean",
       "category": "1. 全般",
       "label": "遠隔操作などの入力も処理する",
       "description": "AnyDesk・VNC などの遠隔操作ソフトや、ULE4JIS などキー配列を変えるソフト (JIS キーボードを US 配列で使う) から届いたキーも、手で打ったキーと同じように処理します (OFF だと、ほかのソフトが送ったキーはそのままアプリに渡し、変換ボックスを開きません。キー配列を変えるソフトは Meltype より後に起動してください)。遠隔操作ソフトとキーボードのマクロ・自動入力のソフトは見分けられないので、ON にするとどちらも処理の対象になります。Meltype 自身が送ったキーは、ON でも処理しません。Chrome リモート デスクトップ・Parsec で操作されている間は、OFF でも処理します (Parsec は、接続していなくても Parsec が動いている間はずっと処理するので、AutoHotkey などが送ったキーも変換の対象になります)。全プロファイル共通です。"
@@ -27,63 +27,238 @@
       "type": "InputMode",
       "category": "1. 全般",
       "label": "動作モード",
-      "description": "Tsf = Windows の IME として入力欄に直接入力 (Win + Space で Meltype を選ぶ) / Keyboard = Meltype の変換ボックスで入力 (英単語は自動で英字、Space で変換、Enter で確定) / AutoSwitch = 入力開始時に判定して Microsoft IME を自動で ON にする"
+      "description": "Tsf = Windows の IME として入力欄に直接入力 (Win + Space で Meltype を選ぶ) / Keyboard = Meltype の変換ボックスで入力 (英単語は自動で英字、Space で変換、Enter で確定)"
     },
     {
       "key": "HankakuTogglesKeyboard",
-      "type": "bool",
+      "type": "Boolean",
       "category": "1. 全般",
       "label": "半角/全角 で Meltype を ON/OFF",
       "description": "Keyboard モードで、変換ボックスが出ていないときの 半角/全角 キーを Meltype キーボードの ON/OFF (直接入力) に使います。"
     },
     {
       "key": "ConvertKeysSwitchKeyboard",
-      "type": "bool",
+      "type": "Boolean",
       "category": "1. 全般",
       "label": "無変換で英数 / 変換で日本語",
       "description": "Keyboard モードで、変換ボックスが出ていないときの 無変換 キーで英数 (直接入力) に、変換 キーで日本語入力にします (Mac の 英数 / かな キーと同じく、押す前のモードによらず決まったモードになります)。もう日本語入力のときの 変換 キーは今までどおり選択した文字の再変換です。変換ボックスが出ている間の 無変換・変換 は今までどおりで、切り替えません。「コード」のアプリのコードの行では、変換 キーでその行を日本語にします (半角/全角 と同じ)。"
     },
     {
       "key": "AltKeysSwitchKeyboard",
-      "type": "bool",
+      "type": "Boolean",
       "category": "1. 全般",
       "label": "左 Alt で英数 / 右 Alt で日本語",
-      "description": "Keyboard モードで、左 Alt の単独押しで英数 (直接入力) に、右 Alt の単独押しで日本語入力にします (半角/全角 キーの無い US 配列向け)。Alt + Tab などの組み合わせや Alt + クリックでは切り替えません。単独押しでアプリのメニューバーに移らなくなります。変換ボックスが出ている間は切り替えません。「コード」のアプリのコードの行では、右 Alt でその行を日本語にします (半角/全角 と同じ)。"
+      "description": "左 Alt の単独押しで英数 (直接入力) に、右 Alt の単独押しで日本語入力にします (半角/全角 キーの無い US 配列向け。Meltype キーボードと Meltype IME で使えます)。Alt + Tab などの組み合わせや Alt + クリックでは切り替えません。単独押しでアプリのメニューバーに移らなくなります。Meltype キーボードでは、変換ボックスが出ている間は切り替えません (Meltype IME では、変換中の文字を確定して切り替えます)。「コード」のアプリのコードの行では、右 Alt でその行を日本語にします (半角/全角 と同じ。Meltype キーボード)。"
     },
     {
       "key": "AutoCorrectAfterCommit",
-      "type": "bool",
+      "type": "Boolean",
       "category": "1. 全般",
       "label": "確定後も文脈に合わせて直す",
       "description": "英語とも日本語とも読める語 (i, sushi など) を確定した後、次の語で英語か日本語かがはっきりしたら自動で確定し直します (i → 胃 と確定した後に want と打つと I want)。"
     },
     {
       "key": "DirectModeAutoDetect",
-      "type": "bool",
+      "type": "Boolean",
       "category": "1. 全般",
       "label": "英数状態でもローマ字を検知",
       "description": "Keyboard モードまたは Meltype IME の英数状態でも単語の打ち始めを判定し、ローマ字 (日本語) なら自動で日本語入力に戻します。"
     },
     {
       "key": "SigilWordsDirect",
-      "type": "bool",
+      "type": "Boolean",
       "category": "1. 全般",
       "label": "/ $ @ で始まる語はそのまま入力",
       "description": "Keyboard モードで、入力欄・行の先頭か空白の直後に打った / $ @ と、続く名前 (空白まで) は変換せず、打つたびにそのままアプリに渡します (AI エージェントの /command・$skill・@ファイル名 の補完を選びやすく)。名前の後に空白を打つと、普通の自動判定に戻ります。"
     },
     {
       "key": "SnippetMark",
-      "type": "string",
+      "type": "String",
       "category": "1. 全般",
       "label": "定型文を出す記号",
       "description": "Keyboard モードで、入力欄・行の先頭か空白の直後にこの記号と名前を打って Space / Tab を押すと、トレイの「定型文...」で登録した文に置き換えます (;sig + Space → 署名)。名前が登録したものでなければ何もしません。置き換えた直後に Esc を押すと、打った ;名前 に戻します。空にすると使いません。定型文を 1 つも登録していなければ、記号は今までどおり入力します。"
     },
     {
       "key": "SpaceAroundEnglish",
-      "type": "bool",
+      "type": "Boolean",
       "category": "1. 全般",
       "label": "英単語の前後に半角スペース",
       "description": "確定するときに、日本語と英単語の間に半角スペースを入れます (今日はGitHubにpushした → 今日は GitHub に push した)。数字だけの語 (3時) には入れません。"
+    },
+    {
+      "key": "ShiftSpaceHalfWidth",
+      "type": "Boolean",
+      "category": "1. 全般",
+      "label": "Shift + Space で半角スペース",
+      "description": "日本語入力のときの Shift + Space を、全角スペースではなく半角スペースにします (プログラミングの癖で Shift + Space を半角スペースに使う人向け)。"
+    },
+    {
+      "key": "EnterCommitsAsShown",
+      "type": "Boolean",
+      "category": "1. 全般",
+      "label": "Enter は見えているとおりに確定",
+      "description": "Enter で確定するとき、打ち間違いの自動修正をせず、変換ボックスに見えているとおりに確定します (Space で変換するときの修正は今までどおりです)。"
+    },
+    {
+      "key": "AlphanumericKeyStartsAsTyped",
+      "type": "Boolean",
+      "category": "1. 全般",
+      "label": "F9 / F10 の 1 回目は打ったまま",
+      "description": "入力中の表示が英字でも、F10 (Ctrl+O) の 1 回目は常に打ったまま (小文字) の英字にして、2 回目以降で すべて大文字 → 先頭だけ大文字 と切り替えます (Microsoft IME・Google 日本語入力と同じ)。OFF のときは、英字で見えている語の 1 回目の F10 で すべて大文字になります。"
+    },
+    {
+      "key": "FullWidthParentheses",
+      "type": "Boolean",
+      "category": "1. 全般",
+      "label": "カッコを全角で入力",
+      "description": "日本語入力中の ( ) を全角の（ ）にします。英字の直後でも全角のままです (OFF のときは、打った幅の半角のままで、英語の中では半角です)。"
+    },
+    {
+      "key": "FullWidthSlash",
+      "type": "Boolean",
+      "category": "1. 全般",
+      "label": "/ を全角のスラッシュ／にする",
+      "description": "かなのすぐ後ろで打った / を、中黒「・」ではなく全角のスラッシュ／にします。「/ キーで中黒「・」」が ON のときは、そちらが優先です。"
+    },
+    {
+      "key": "SquareBrackets",
+      "type": "Boolean",
+      "category": "1. 全般",
+      "label": "[ ] を角括弧［ ］にする",
+      "description": "日本語入力中の [ ] を「」ではなく全角の角括弧［ ］にします (Google 日本語入力の「記号」の設定と同じ)。"
+    },
+    {
+      "key": "EscStepsBack",
+      "type": "Boolean",
+      "category": "1. 全般",
+      "label": "Esc で一段ずつ戻す",
+      "description": "入力中の Esc を、打った内容を全部消すのではなく一段ずつ戻します (漢字 → ひらがな → 打ったローマ字 → 消す。見た目が変わらない段は飛ばします)。戻した語は、日本語 / 英語の判定として覚えません。"
+    },
+    {
+      "key": "EscRevertsSelectedClause",
+      "type": "Boolean",
+      "category": "1. 全般",
+      "label": "変換中の Esc は選んだ文節だけをかなに戻す",
+      "description": "文節に分けて変換しているとき、Esc で変換全体をやめるのではなく、選んでいる文節だけをひらがなに戻します (ほかの文節はそのまま)。もうひらがなの文節か、文節が 1 つだけのときの Esc は、今までどおり変換をやめます。"
+    },
+    {
+      "key": "FunctionKeysAffectSelectedClause",
+      "type": "Boolean",
+      "category": "1. 全般",
+      "label": "変換中の F6〜F10 は選んだ文節だけに効かせる",
+      "description": "文節に分けて変換しているとき、F6〜F10 (ひらがな・カタカナ・半角カタカナ・全角英数・半角英数) を全体ではなく、選んでいる文節だけに効かせます (今日は|Google の「今日は」だけをカタカナにするなど)。"
+    },
+    {
+      "key": "CompatibleShortcuts",
+      "type": "Boolean",
+      "category": "1. 全般",
+      "label": "Ctrl + K / L で文節の長さを変える",
+      "description": "変換中の Ctrl + K で選んでいる文節を縮め、Ctrl + L で伸ばします (Shift + ← → と同じ。以前の IME の手グセのショートカット)。"
+    },
+    {
+      "key": "PartialCommit",
+      "type": "Boolean",
+      "category": "1. 全般",
+      "label": "Shift + Enter で選んだ文節までを確定",
+      "description": "文節に分けて変換しているとき、Shift + Enter で、選んでいる文節までを確定し、残りの文節は未確定のまま (ひらがなに戻して) 続けて編集できるようにします。"
+    },
+    {
+      "key": "MacControlKeys",
+      "type": "Boolean",
+      "category": "1. 全般",
+      "label": "Control キーを macOS 標準の日本語入力と同じにする",
+      "description": "入力中の Control + J / K / L をひらがな / カタカナ / 全角英字 (F6 / F7 / F9) に、Control + H / D を前 / 後ろの 1 文字を消す、N / P を次 / 前の候補、B / F / A / E をカーソル移動、O / I を変換中の文節を伸ばす / 縮める、にします (macOS 標準の日本語入力と同じ)。ON のときは、ATOK 風の Control + U / I / O / P より優先します。"
+    },
+    {
+      "key": "CursorIntoBrackets",
+      "type": "Boolean",
+      "category": "1. 全般",
+      "label": "カッコを打ったら中にカーソルを移動",
+      "description": "カッコだけ（「」・（）・() など）を確定したときに、カーソルをカッコの中へ移動します (← キーを自動で送ります)。"
+    },
+    {
+      "key": "ControlKeyBindings",
+      "type": "String",
+      "category": "1. 全般",
+      "label": "Control キーの割り当て",
+      "description": "入力中の Control + 英字に、別のキーの働きを割り当てます。「T=F6;Y=F7;U=F8;I=F9;O=F10」のように、英字=キー名を ; で区切って書きます (F キーが無い HHKB やノートパソコン向け)。キー名: F6〜F10・Left・Right・Up・Down・Home・End・Delete・Back・Enter・Esc・Tab。ここに書いた英字は、組み込みの Control + U/I/O/P/H より優先します。"
+    },
+    {
+      "key": "CalculatorCandidates",
+      "type": "Boolean",
+      "category": "1. 全般",
+      "label": "計算式を変換すると結果を候補に出す",
+      "description": "数字と + - * / ( ) だけの式を打って Space で変換すると、計算した結果 (1+2*3 → 7) と「式=結果」を候補に出します。"
+    },
+    {
+      "key": "LogKeyIntervals",
+      "type": "Boolean",
+      "category": "1. 全般",
+      "label": "打鍵の間隔を判定の記録に残す (実験)",
+      "description": "判定の記録 (ログ) に、キーとキーの間の時間 (ミリ秒) だけを残します (打った文字は残しません)。英語と日本語の見分けに打鍵のリズムが使えるかを調べるための実験用です。"
+    },
+    {
+      "key": "LaughterAfterKana",
+      "type": "Boolean",
+      "category": "1. 全般",
+      "label": "かな + w を笑い (ねw・さw) にする",
+      "description": "ね・さ などの 1 文字のかなの後ろの w を、英単語 (new・saw) にせず笑いの w にします (なるほどnew → なるほどねw)。英単語の new や saw を打つ人は OFF のままにしてください。"
+    },
+    {
+      "key": "ContextualLearning",
+      "type": "Boolean",
+      "category": "1. 全般",
+      "label": "英語 / 日本語の学習を前の文脈ごとに分ける",
+      "description": "英字 / かなに直した語 (new → ねw など) の学習を、直前が英語だったか日本語だったかごとに別々に覚えます。同じローマ字でも、英語の文の中と日本語の文の中で使い分けられます。ON にする前に覚えた学習は、どちらの文脈でも使います。"
+    },
+    {
+      "key": "FullWidthSpaceByDefault",
+      "type": "Boolean",
+      "category": "1. 全般",
+      "label": "スペースを全角で入力 (Shift + Space で半角)",
+      "description": "日本語入力のときの Space (何も打っていないとき) を全角スペースにし、Shift + Space を半角スペースにします (全角スペースを多く使う人向け。Meltype キーボード・Meltype IME で使えます)。"
+    },
+    {
+      "key": "ShowCandidatesWhileTyping",
+      "type": "Boolean",
+      "category": "1. 全般",
+      "label": "入力中も変換候補をいくつか表示",
+      "description": "ひらがなを打っている間も、Space を押す前から変換候補を (5 件まで) 変換ボックスに出します。候補をクリックすると、その候補で変換を始めます。"
+    },
+    {
+      "key": "ToggleKeyboardShortcuts",
+      "type": "String",
+      "category": "1. 全般",
+      "label": "日本語 / 英数を切り替えるキーを追加",
+      "description": "Meltype キーボードの 日本語 / 英数 (直接入力) の切り替えに使うキーの組み合わせを、半角/全角 のほかに追加します。「Ctrl+Space; Alt+Backquote」のように ; で区切って書きます。修飾キーは Ctrl・Alt・Shift・Win、キー名は A〜Z・0〜9・F1〜F12・Space・Tab・Enter・Esc・Backquote・Muhenkan・Henkan・Kanji。"
+    },
+    {
+      "key": "GitHubIssueCandidates",
+      "type": "Boolean",
+      "category": "1. 全般",
+      "label": "#番号で GitHub の Issue・PR のタイトルを候補に出す",
+      "description": "#123 のように打って Space で変換すると、下の「GitHub のリポジトリ」の Issue・Pull Request のタイトルを候補に出します (開発者向け)。打った番号を GitHub (api.github.com) に問い合わせるので、既定は OFF です。非公開のリポジトリは、環境変数 MELTYPE_GITHUB_TOKEN にトークンを入れると読めます。調べた結果はこのセッションの間だけ覚えます。"
+    },
+    {
+      "key": "GitHubRepository",
+      "type": "String",
+      "category": "1. 全般",
+      "label": "GitHub のリポジトリ",
+      "description": "「#番号で GitHub の Issue・PR のタイトルを候補に出す」で問い合わせるリポジトリ。「所有者/名前」の形で書きます (例: yksr-melt/Meltype)。"
+    },
+    {
+      "key": "ClipboardCandidates",
+      "type": "Boolean",
+      "category": "1. 全般",
+      "label": "クリップボードの文字を変換候補に出す",
+      "description": "「くりっぷぼーど」「ぺーすと」を変換したとき、クリップボードにある 1 行の文字 (200 文字まで) を候補に出します。変換した瞬間に 1 回だけ読み、監視・保存・送信はしません。パスワード管理ソフトなど、履歴に残さない印のついた内容は読みません。Windows のみ。既定は OFF です。"
+    },
+    {
+      "key": "PauseHotkey",
+      "type": "String",
+      "category": "1. 全般",
+      "label": "Meltype の一時停止 / 再開のホットキー",
+      "description": "Meltype 全体の一時停止 / 再開に使うキーの組み合わせ (例: Ctrl+Alt+F10)。空のときは Ctrl+Alt+F12 (使えなければ Ctrl+Alt+F11 など)。変更は Meltype を起動し直すと効きます。Windows のみ。変換・無変換キーが無い US 配列のキーボード向けです。"
     },
     {
       "key": "Punctuation",
@@ -94,14 +269,14 @@
     },
     {
       "key": "JapanesePunctuationAfterEnglish",
-      "type": "bool",
+      "type": "Boolean",
       "category": "1. 全般",
       "label": "英字の後ろの , . も句読点にする",
       "description": "英字のすぐ後ろで打った , . も、日本語の句読点 (設定「句読点」の形) にします (IME, → IME、)。OFF だと、変換ボックスの中が英字だけなら半角の , . のままです (英文を打つとき)。ON でも、キャレットの前が英語 (Hello + world.) のときと、英単語の中の . (tetr.io) は半角のままです。"
     },
     {
       "key": "LiveConversion",
-      "type": "bool",
+      "type": "Boolean",
       "category": "1. 全般",
       "label": "ライブ変換",
       "description": "Keyboard モードで、Space を押さなくても打ったそばから漢字に変換して表示します。"
@@ -115,98 +290,119 @@
     },
     {
       "key": "TranslationCandidates",
-      "type": "bool",
+      "type": "Boolean",
       "category": "1. 全般",
       "label": "英訳の候補",
       "description": "変換の候補の後ろに英訳も出します (複雑な → complex, complicated)。JMdict のよく使う語から。選んだ英訳は少しずつ前に出ます。"
     },
     {
       "key": "PredictiveCandidates",
-      "type": "bool",
+      "type": "Boolean",
       "category": "1. 全般",
       "label": "予測変換の候補",
       "description": "打っている途中に、続きの候補を変換ボックスの下に出します (前に確定した語句・ユーザー辞書・選び直した変換の学習・英単語の続き)。Tab / Shift+Tab で選んで Enter で確定します。確定した語句は %LOCALAPPDATA%\\Meltype\\phrases.txt に暗号化せずに覚え (この PC の外には送りません)、「学習データをリセット」で消えます。"
     },
     {
+      "key": "EnglishNamePredictions",
+      "type": "Boolean",
+      "category": "1. 全般",
+      "label": "予測変換に英字の社名・サービス名",
+      "description": "「予測変換の候補」が ON のとき、読みを打ちかけたところで、英字で書く社名・サービス名・語の候補も出します (しゃお → Xiaomi、ぎっとは → GitHub)。読みを 3 文字以上打ったときだけ出します。英単語の続き (decis → decision) は「予測変換の候補」だけで出ます。"
+    },
+    {
       "key": "TabConversion",
-      "type": "bool",
+      "type": "Boolean",
       "category": "1. 全般",
       "label": "Tab で変換",
       "description": "打っている途中に Tab を押すと、Space と同じく変換を始めます (Microsoft IME と同じ)。Tab で始めた変換の中では Tab で次の候補、Shift+Tab で前の候補、Enter で確定します。もしかして・手動の提案・予測変換の候補が出ているときは、今までどおりそちらに使います。英語で終わっているとき・Space で始めた変換の中では、今までどおり確定してから Tab をアプリに渡します。"
     },
     {
       "key": "ContinueAfterConversion",
-      "type": "bool",
+      "type": "Boolean",
       "category": "1. 全般",
       "label": "変換したあとに続けて打っても確定しない",
       "description": "Space で変換したあとに続けて文字を打っても、変換した部分を確定せず、続けて打った文字と一緒に変換ボックスに残します (選んだ候補は、もう一度変換したときにも使います)。OFF なら Microsoft IME と同じく、変換した部分を確定してから続きを打ちます。"
     },
     {
       "key": "SeparateKeyRoles",
-      "type": "bool",
+      "type": "Boolean",
       "category": "1. 全般",
       "label": "入力中のキーの役割を分ける",
       "description": "入力中 (変換ボックスに文字があるとき) の Space・変換・無変換・ひらがな/カタカナ キーの役割を分けます。Space: 英語・日本語の判定にかかわらず候補を開く (英字で見えている語も、確定して空白を入れずに候補を出す)。変換: 日本語を優先して変換。無変換: 英字にする。ひらがな/カタカナ: ひらがな ⇔ カタカナ。確定は Enter です。何も打っていないときの各キーは今までどおりです。"
     },
     {
+      "key": "EnglishFirstInput",
+      "type": "Boolean",
+      "category": "1. 全般",
+      "label": "英字を主に入力 (変換キー / ↓ で日本語に)",
+      "description": "自動判定をせず、打った英字をそのまま入力中にします (Space は空白、Enter は英字のまま確定)。日本語にしたい語は、変換キーか ↓ を押すと、ローマ字として読んで変換します。コマンドを多く打つ使い方向けで、Microsoft IME の「主に英語を入力する」と同じ動きです。"
+    },
+    {
+      "key": "ConsonantAbbreviations",
+      "type": "Boolean",
+      "category": "1. 全般",
+      "label": "子音の略入力を候補に出す",
+      "description": "子音だけの略入力 (ast → 明日、ngt → ノート など) を、変換の候補に出します。候補は同梱の candidates.txt の英字の読みから出します。既定は OFF です。"
+    },
+    {
       "key": "ShowCandidateMeanings",
-      "type": "bool",
+      "type": "Boolean",
       "category": "1. 全般",
       "label": "候補の意味を表示",
       "description": "変換中に同じ候補で少し (約 1.5 秒) 止まると、その候補の意味をウィクショナリー日本語版から候補の一覧の横に出します (日本語の意味が無い語は JMdict の英訳: 橋 → bridge)。同音異義語を選ぶときの手がかりに。"
     },
     {
       "key": "ShowTypedKeys",
-      "type": "bool",
+      "type": "Boolean",
       "category": "1. 全般",
       "label": "打ったキーを表示",
       "description": "打ったキー (ローマ字: kyouhagoogle) を小さく出します。Meltype キーボードでは変換ボックスの文字の下に、Meltype IME では候補の一覧の上に出します。打ち間違いに気づきやすくなります。"
     },
     {
       "key": "CorrectTypos",
-      "type": "bool",
+      "type": "Boolean",
       "category": "1. 全般",
       "label": "打ち間違いを直す",
       "description": "Space・Enter で変換・確定するときに打ち間違いを直します。ローマ字: 読めない子音が残ったとき、隣のキーの押し間違い・入れ替わり・抜けを 1 文字だけ直します (onegaishimsu → お願いします、sumimasne → すみません。よく使う語の読みになるときだけ)。英語: Windows の自動修正の一覧にある打ち間違いを直します (teh → the、recieve → receive)。"
     },
     {
       "key": "SlashAsMiddleDot",
-      "type": "bool",
+      "type": "Boolean",
       "category": "1. 全般",
       "label": "/ キーで中黒「・」",
       "description": "かなのすぐ後ろで打った / を中黒「・」にします (いーろん/ますく → イーロン・マスク)。英字・数字の後ろ (and/or、3/4、URL) と、打ち始めの / (/help) は / のままです。OFF のときも、z/ または / を打って Space で「・」にできます。"
     },
     {
       "key": "ShowModeIndicator",
-      "type": "bool",
+      "type": "Boolean",
       "category": "1. 全般",
       "label": "入力モードをカーソルの近くに表示",
       "description": "入力欄をクリックしたときと 半角/全角 を押したときに、カーソルの近くに「あ」(日本語) か「A」(英数) を一瞬表示します。Meltype キーボードの使用中は Windows の IME を OFF にしているので、タスクバーの IME の表示は常に「A」になります。今のモードはこの表示かトレイの Meltype のアイコンで確認してください。"
     },
     {
       "key": "ShowModeIndicatorOnFocus",
-      "type": "bool",
+      "type": "Boolean",
       "category": "1. 全般",
       "label": "入力欄に入ったときも入力モードを表示",
       "description": "「入力モードをカーソルの近くに表示」が ON のとき、入力欄をクリックしたとき (フォーカスが入ったとき) にも「あ」「A」を出します。OFF にすると、半角/全角 を押したときだけ出します。"
     },
     {
       "key": "ModeIndicatorJapaneseColor",
-      "type": "string",
+      "type": "String",
       "category": "1. 全般",
       "label": "入力モードの表示の色: 日本語 (あ)",
       "description": "「あ」の背景色を #RRGGBB で書きます (例: #007ACC)。空なら青。壁紙・アプリのテーマで見えにくいときに変えます。"
     },
     {
       "key": "ModeIndicatorDirectColor",
-      "type": "string",
+      "type": "String",
       "category": "1. 全般",
       "label": "入力モードの表示の色: 英数 (A)",
       "description": "「A」の背景色を #RRGGBB で書きます (例: #D32F2F で赤)。空なら灰色。英数になっているのに気づかずに打ち始めてしまうときは、目立つ色にします。"
     },
     {
       "key": "ModeIndicatorTextColor",
-      "type": "string",
+      "type": "String",
       "category": "1. 全般",
       "label": "入力モードの表示の色: 文字",
       "description": "「あ」「A」の文字の色を #RRGGBB で書きます (例: #000000)。空なら白。"
@@ -227,7 +423,7 @@
     },
     {
       "key": "CompositionFont",
-      "type": "string",
+      "type": "String",
       "category": "1. 全般",
       "label": "変換ボックスのフォント",
       "description": "変換ボックスの文字のフォントです。既定は Yu Gothic UI です。この PC に無いフォントを選んでいたときは既定のフォントで出します。絵文字はカラーで出せるときはそのフォントで描きます。"
@@ -248,14 +444,14 @@
     },
     {
       "key": "ShowNotifications",
-      "type": "bool",
+      "type": "Boolean",
       "category": "1. 全般",
       "label": "通知を出す",
       "description": "Meltype を有効・一時停止にしたときなどに、画面の右下に通知を出します (Windows の通知の音も鳴ります)。OFF にすると通知も音も出しません。"
     },
     {
       "key": "AutoUpdate",
-      "type": "bool",
+      "type": "Boolean",
       "category": "9. 更新",
       "label": "自動で更新する",
       "description": "新しい版が公開されたら自動でダウンロードし、次に Meltype を起動したとき (Windows にサインインしたとき) に更新します。トレイの「更新して再起動」で今すぐ更新もできます。設定・学習データはそのまま残ります。"
@@ -265,158 +461,116 @@
       "type": "InputStyle",
       "category": "1. 全般",
       "label": "入力方式",
-      "description": "ローマ字入力 / かな入力 (JIS、α版: 試験中) / 両方を判定。Meltype キーボードでは、かな入力を選ぶと JIS かな配列で入力し (Shift+E = ぃ, Shift+Z = っ, Shift+ね = 、)、打ったキーの英字が英単語なら英字で見せます。「両方を判定」は IME 自動切替のみ (Meltype キーボードではローマ字入力)。"
+      "description": "ローマ字入力 / かな入力 (JIS、α版: 試験中)。Meltype キーボードでは、かな入力を選ぶと JIS かな配列で入力し (Shift+E = ぃ, Shift+Z = っ, Shift+ね = 、)、打ったキーの英字が英単語なら英字で見せます。"
     },
     {
       "key": "DetectionLevel",
       "type": "DetectionLevel",
       "category": "2. 判定",
       "label": "自動判定の強さ",
-      "description": "積極的 = 英語らしければすぐ英字 / 標準 = 短い語 (no, to, ga) は前後が英語のときだけ英字 / 慎重 = 確信度が高いときだけ英字 / 手動 = 自動では切り替えず提案だけ (変換ボックスで Tab を押すと提案どおり英字に)。Meltype キーボード・IME 自動切替・英数状態の検知・かな入力のすべてに効きます。"
+      "description": "積極的 = 英語らしければすぐ英字 / 標準 = 短い語 (no, to, ga) は前後が英語のときだけ英字 / 慎重 = 確信度が高いときだけ英字 / 手動 = 自動では切り替えず提案だけ (変換ボックスで Tab を押すと提案どおり英字に)。Meltype キーボード・英数状態の検知・かな入力のすべてに効きます。"
     },
     {
       "key": "ScoredSegmentation",
-      "type": "bool",
+      "type": "Boolean",
       "category": "2. 判定",
       "label": "区切りを点数で選ぶ (α版)",
       "description": "変換ボックスの中で英語と日本語をどこで区切るかを、あり得る区切り方を全部比べて一番自然なもので決めます (α版: 試験中)。英単語の後ろの「は」(medalsha → medalsは、presidentha → presidentは) などが正しく分かれやすくなります。OFF なら今までどおり、先頭から順に決めます。"
     },
     {
       "key": "JapaneseThreshold",
-      "type": "int",
+      "type": "Int32",
       "category": "2. 判定",
       "label": "日本語判定の閾値",
       "description": "JapaneseScore がこの値以上、かつ EnglishScore をこの値以上上回ったときだけ切り替えます。大きいほど誤爆が減ります。"
     },
     {
       "key": "TypoEnabled",
-      "type": "bool",
+      "type": "Boolean",
       "category": "2. 判定",
       "label": "Typo 判定を使う",
       "description": "辞書語との編集距離 1 以内を補助的な日本語スコアとして加点します。Typo 一致だけでは切り替えません。"
     },
     {
       "key": "MaxPendingKeys",
-      "type": "int",
+      "type": "Int32",
       "category": "3. 保留",
       "label": "最大保留キー数",
       "description": "判定のために保留する文字数の上限。超えたら判定不能としてそのまま出力します。"
     },
     {
-      "key": "IdleFlushMs",
-      "type": "int",
-      "category": "3. 保留",
-      "label": "無入力で出力するまでの時間 (ms)",
-      "description": ""
-    },
-    {
-      "key": "MaxHoldMs",
-      "type": "int",
-      "category": "3. 保留",
-      "label": "最大保留時間 (ms)",
-      "description": "最初のキーからこの時間が経ったら、判定途中でも保留分を出力します。"
-    },
-    {
-      "key": "SessionIdleMs",
-      "type": "int",
-      "category": "4. セッション",
-      "label": "新しいセッションとみなす無入力時間 (ms)",
-      "description": ""
-    },
-    {
-      "key": "ContinueEnglishAfterSpace",
-      "type": "bool",
-      "category": "4. セッション",
-      "label": "英語の後の Space では判定しない",
-      "description": "英語と判定した直後に Space で区切られた次の単語は、保留せずそのまま通します (英文入力中の遅延を減らします)。"
-    },
-    {
       "key": "LearningEnabled",
-      "type": "bool",
+      "type": "Boolean",
       "category": "5. 学習",
       "label": "ユーザー学習を使う",
-      "description": "OFF にすると、自動切替の学習 (model.json) を使わず、選び直した変換・英字 / かなに直した語・予測変換の語句・選んだ英訳も新しく覚えません (今まで覚えた分は使います)。今まで覚えた分を消すときは、トレイの「学習データを消す」を使います。"
-    },
-    {
-      "key": "FeedbackWindowMs",
-      "type": "int",
-      "category": "5. 学習",
-      "label": "誤判定フィードバックの受付時間 (ms)",
-      "description": "自動判定の後、この時間内に 半角/全角 などの IME 切替キーが押されたら誤判定として学習します。"
-    },
-    {
-      "key": "UseTsf",
-      "type": "bool",
-      "category": "6. IME",
-      "label": "TSF を使う",
-      "description": "IMM32 で入力言語を切り替えられなかったとき、TSF のプロファイル切替を試します。"
+      "description": "OFF にすると、選び直した変換・英字 / かなに直した語・予測変換の語句・選んだ英訳を新しく覚えません (今まで覚えた分は使います)。今まで覚えた分を消すときは、トレイの「学習データを消す」を使います。"
     },
     {
       "key": "ImeTimeoutMs",
-      "type": "int",
+      "type": "Int32",
       "category": "6. IME",
       "label": "IME 操作のタイムアウト (ms)",
       "description": ""
     },
     {
       "key": "PasteApps",
-      "type": "string",
+      "type": "String",
       "category": "7. アプリ",
       "label": "貼り付けで入力するアプリ",
       "description": "確定した文字を 1 文字ずつ送ると取り違えるアプリ (DaVinci Resolve で「あいうえお」→「あああああ」)。ここに書いたアプリ (プロセス名、カンマ区切り) では、クリップボードを使って貼り付けで入れます (元のクリップボードの中身は戻します)。Qt アプリはここに書かなくても自動で貼り付けになります。"
     },
     {
       "key": "NoPasteApps",
-      "type": "string",
+      "type": "String",
       "category": "7. アプリ",
       "label": "貼り付けを使わないアプリ",
       "description": "Qt アプリ (LINE・OBS など) では、確定した文字をクリップボード経由 (貼り付け) で入れます。1 文字ずつキーとして送ると、keyup がアプリに届かない環境で最初の 1 文字が繰り返されるためです。ここに書いたアプリ (プロセス名、カンマ区切り) では貼り付けを使わず、これまでどおり 1 文字ずつ送ります (Ctrl+V が貼り付けではないアプリなど)。"
     },
     {
       "key": "TextInputApps",
-      "type": "string",
+      "type": "String",
       "category": "7. アプリ",
       "label": "入力欄とみなすアプリ",
       "description": "画面を自分で描くため、文字を打つ所なのに入力欄と判定されず変換ボックスが出ないアプリ (Premiere Pro など)。ここに書いたアプリ (プロセス名、カンマ区切り。例: Adobe Premiere Pro.exe) では、入力欄と判定できなくても、フォーカスのある所を入力欄として扱います。1 文字のショートカット (V・C など) も変換ボックスに入るようになるので、ショートカットを使うときは Ctrl + 半角/全角 で一時停止してください。"
     },
     {
       "key": "ExcludeFullscreen",
-      "type": "bool",
+      "type": "Boolean",
       "category": "7. アプリ",
       "label": "全画面アプリでは無効",
       "description": "ゲームや動画など全画面のウィンドウではキーを保留しません。"
     },
     {
       "key": "StopInGames",
-      "type": "bool",
+      "type": "Boolean",
       "category": "7. アプリ",
       "label": "ゲームでは止める",
       "description": "Steam・Epic Games・Riot Games・EA・Ubisoft・Battle.net・Xbox のゲームのフォルダーにあるアプリ (ウィンドウ表示のゲームも) では、Meltype は何もしません (キーを横取りせず、Windows の IME にも触らないので、ゲームのチャットは Windows の IME で打てます)。ほかのゲームは、アプリ別設定で種類を「ゲーム」にしてください。"
     },
     {
       "key": "AppRules",
-      "type": "List<AppRule>",
+      "type": "List`1",
       "category": "7. アプリ",
       "label": "アプリ別設定",
-      "description": "プロセス名ごとに、自動切替の ON/OFF と種類を指定します。種類「コード」(コードエディター・ターミナル) では基本は英数のままで、コメント (// # -- など) と文字列 (\"…\" など) の中だけ日本語を判定します。コードの行で 半角/全角 を押すと、その行だけ日本語で入力できます。README.md などの文章ファイルを開いているときは一般として扱います。"
+      "description": "プロセス名ごとに、ON/OFF と種類を指定します。種類「コード」(コードエディター・ターミナル) では基本は英数のままで、コメント (// # -- など) と文字列 (\"…\" など) の中だけ日本語を判定します。コードの行で 半角/全角 を押すと、その行だけ日本語で入力できます。README.md などの文章ファイルを開いているときは一般として扱います。"
     },
     {
       "key": "AppKinds",
-      "type": "List<AppKind>",
+      "type": "List`1",
       "category": "7. アプリ",
       "label": "独自の種類",
       "description": "アプリ別設定の「種類」に使える、自分で作る種類です。一般 / コード を元に、判定の強さ・ライブ変換・最初は英数にするか を変えられます (「全体と同じ」なら上の設定のまま)。"
     },
     {
       "key": "FileLog",
-      "type": "bool",
+      "type": "Boolean",
       "category": "8. ログ",
       "label": "ファイルにログを書く",
       "description": "%LOCALAPPDATA%\\Meltype\\meltype.log にログを書きます (OFF でも、トレイの「ログ / 判定理由」で見られるログは Meltype が動いている間だけメモリに残ります)。判定した語の先頭の数文字・アプリ名・入力欄の名前が含まれます。確定した文字列などは「ログに入力した文字を残す」が ON のときだけ残ります。"
     },
     {
       "key": "LogTypedText",
-      "type": "bool",
+      "type": "Boolean",
       "category": "8. ログ",
       "label": "ログに入力した文字を残す",
       "description": "確定した文字列・打った英字・読み・直した語をログに残します (不具合を調べるとき用)。OFF なら文字数だけを残します。パスワード欄では入力を扱わないので残りません。"
@@ -425,8 +579,7 @@
   "enums": {
     "InputStyle": {
       "Romaji": "ローマ字入力",
-      "Kana": "かな入力 (JIS、α版)",
-      "Both": "両方を判定"
+      "Kana": "かな入力 (JIS、α版)"
     },
     "DetectionLevel": {
       "Aggressive": "積極的 (Aggressive)",
@@ -471,7 +624,6 @@
     },
     "InputMode": {
       "Keyboard": "Meltype キーボード (変換ボックスで入力)",
-      "AutoSwitch": "IME 自動切替 (Microsoft IME を使う)",
       "Tsf": "Meltype IME (入力欄に直接入力)"
     },
     "AppProfile": {

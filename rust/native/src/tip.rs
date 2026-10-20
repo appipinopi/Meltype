@@ -163,7 +163,7 @@ unsafe fn request_inner(connection: *mut c_void, request: *const c_char) -> Opti
             if request["prediction"] == true {
                 meltype_select_prediction(handle, number("index"))
             } else {
-                meltype_select_candidate(handle, number("index"))
+                run(handle, |s| s.select_composing(number("index") as usize))
             }
         }
         "mode" => run(handle, |s| s.result(false)),

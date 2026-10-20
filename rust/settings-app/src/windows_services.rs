@@ -44,7 +44,7 @@ struct Sink {
 pub struct Hotkey {
     hwnd: HWND,
     sink: Box<Sink>,
-    pub name: Option<&'static str>,
+    pub name: Option<String>,
 }
 fn choose(mut register: impl FnMut(u32, u32) -> bool) -> Option<&'static str> {
     [
@@ -56,8 +56,38 @@ fn choose(mut register: impl FnMut(u32, u32) -> bool) -> Option<&'static str> {
     .into_iter()
     .find_map(|(modifiers, key, name)| register(modifiers | MOD_NOREPEAT, key).then_some(name))
 }
+fn choose_configured(text: &str, mut register: impl FnMut(u32, u32) -> bool) -> Option<String> {
+    if let Some(shortcut) = meltype_core::shortcuts::parse_list(text).first() {
+        let modifiers = if shortcut.modifiers & 1 != 0 {
+            MOD_SHIFT
+        } else {
+            0
+        } | if shortcut.modifiers & 2 != 0 {
+            MOD_CONTROL
+        } else {
+            0
+        } | if shortcut.modifiers & 4 != 0 {
+            MOD_ALT
+        } else {
+            0
+        } | if shortcut.modifiers & 8 != 0 { 8 } else { 0 };
+        if register(modifiers | MOD_NOREPEAT, shortcut.vk as u32) {
+            return Some(text.trim().to_owned());
+        }
+    }
+    choose(register).map(str::to_owned)
+}
 impl Hotkey {
+    #[cfg(test)]
     pub fn attach(hwnd: HWND, sender: Sender<()>, ctx: &egui::Context) -> Result<Self, String> {
+        Self::attach_configured(hwnd, sender, ctx, "")
+    }
+    pub fn attach_configured(
+        hwnd: HWND,
+        sender: Sender<()>,
+        ctx: &egui::Context,
+        setting: &str,
+    ) -> Result<Self, String> {
         let sink = Box::new(Sink {
             sender,
             ctx: ctx.clone(),
@@ -74,7 +104,7 @@ impl Hotkey {
         {
             return Err(std::io::Error::last_os_error().to_string());
         }
-        let name = choose(|modifiers, key| unsafe {
+        let name = choose_configured(setting, |modifiers, key| unsafe {
             RegisterHotKey(hwnd, HOTKEY_ID, modifiers, key) != 0
         });
         Ok(Self { hwnd, sink, name })
@@ -156,6 +186,27 @@ pub fn notify(hwnd: HWND, guid: u128, title: &str, text: &str) -> Result<(), Str
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn custom_pause_key_is_first_and_failure_or_invalid_input_uses_defaults() {
+        let mut attempts = Vec::new();
+        let selected = choose_configured("Shift+Win+F10", |modifiers, key| {
+            attempts.push((modifiers, key));
+            true
+        });
+        assert_eq!(selected.as_deref(), Some("Shift+Win+F10"));
+        assert_eq!(attempts, [(MOD_SHIFT | 8 | MOD_NOREPEAT, 0x79)]);
+        attempts.clear();
+        let selected = choose_configured("Ctrl+Alt+F10", |modifiers, key| {
+            attempts.push((modifiers, key));
+            attempts.len() == 2
+        });
+        assert_eq!(selected.as_deref(), Some("Ctrl+Alt+F12"));
+        assert_eq!(attempts.len(), 2);
+        assert_eq!(
+            choose_configured("invalid", |_, _| true).as_deref(),
+            Some("Ctrl+Alt+F12")
+        );
+    }
     #[test]
     fn hotkeys_fall_back_and_never_repeat_or_override_a_failed_registration() {
         let mut attempts = vec![];

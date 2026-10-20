@@ -395,6 +395,9 @@ impl Linguistics {
         }
         None
     }
+    pub fn predict_english_names(&self, reading: &str) -> Vec<String> {
+        crate::candidate_sources::Sources::english_names(reading)
+    }
     pub fn predict(&self, reading: &str, state: &State) -> Vec<String> {
         if reading.chars().count() < 2 {
             return vec![];

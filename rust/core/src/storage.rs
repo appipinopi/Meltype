@@ -65,6 +65,10 @@ pub struct LanguageEntry {
 }
 impl LanguageEntry {
     pub fn active(&self, word: &str) -> bool {
+        let word = word
+            .strip_suffix("@e")
+            .or_else(|| word.strip_suffix("@j"))
+            .unwrap_or(word);
         if !self.english || self.count.max(1) >= 2 {
             return true;
         }
@@ -92,6 +96,12 @@ pub enum Change {
         english: bool,
         explicit: bool,
     },
+    ContextualLanguage {
+        raw: String,
+        english: bool,
+        explicit: bool,
+        context: bool,
+    },
     Conversion {
         reading: String,
         text: String,
@@ -106,7 +116,11 @@ impl State {
     fn rebuild_language_preferences(&mut self) {
         for (word, entry) in &mut self.language_counts {
             entry.count = entry.count.max(1);
-            if entry.active(word) {
+            if entry.active(
+                word.strip_suffix("@e")
+                    .or_else(|| word.strip_suffix("@j"))
+                    .unwrap_or(word),
+            ) {
                 self.preferences.english.insert(word.clone(), entry.english);
             } else {
                 self.preferences.english.remove(word);
@@ -126,6 +140,41 @@ impl State {
             }
         }
     }
+    fn remember_language(
+        &mut self,
+        raw: String,
+        english: bool,
+        explicit: bool,
+        context: Option<bool>,
+    ) {
+        let raw = raw.to_ascii_lowercase();
+        if raw.len() < 2 || !raw.bytes().all(|c| c.is_ascii_lowercase()) {
+            return;
+        }
+        let spelling = raw.clone();
+        let raw = match context {
+            Some(true) => raw + "@e",
+            Some(false) => raw + "@j",
+            None => raw,
+        };
+        let entry = self.language_counts.entry(raw.clone()).or_default();
+        if entry.english != english {
+            *entry = LanguageEntry::default();
+        }
+        entry.english = english;
+        entry.count = entry.count.saturating_add(1);
+        entry.explicit |= explicit;
+        entry.used = now();
+        if entry.active(&spelling) {
+            self.preferences.english.insert(raw.clone(), english);
+        } else {
+            self.preferences.english.remove(&raw);
+        }
+        self.used.insert(format!("language:{raw}"), now());
+        if self.language_counts.len() > 3000 {
+            self.rebuild_language_preferences();
+        }
+    }
     pub fn apply(&mut self, change: Change) {
         match change {
             Change::Language {
@@ -133,27 +182,15 @@ impl State {
                 english,
                 explicit,
             } => {
-                let raw = raw.to_ascii_lowercase();
-                if raw.len() < 2 || !raw.bytes().all(|c| c.is_ascii_lowercase()) {
-                    return;
-                }
-                let entry = self.language_counts.entry(raw.clone()).or_default();
-                if entry.english != english {
-                    *entry = LanguageEntry::default();
-                }
-                entry.english = english;
-                entry.count = entry.count.saturating_add(1);
-                entry.explicit |= explicit;
-                entry.used = now();
-                if entry.active(&raw) {
-                    self.preferences.english.insert(raw.clone(), english);
-                } else {
-                    self.preferences.english.remove(&raw);
-                }
-                self.used.insert(format!("language:{raw}"), now());
-                if self.language_counts.len() > 3000 {
-                    self.rebuild_language_preferences();
-                }
+                self.remember_language(raw, english, explicit, None);
+            }
+            Change::ContextualLanguage {
+                raw,
+                english,
+                explicit,
+                context,
+            } => {
+                self.remember_language(raw, english, explicit, Some(context));
             }
             Change::Conversion {
                 reading,

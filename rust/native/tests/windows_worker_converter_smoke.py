@@ -18,7 +18,7 @@ with tempfile.TemporaryDirectory(prefix='meltype-windows-converter-') as directo
     shutil.copy2(worker,root/worker.name)
     (root/'mozc').mkdir();shutil.copy2(helper,root/'mozc/meltype_mozc_helper.exe')
     config=profile/'config.json'
-    def configure(mode,enabled=True,learning=False,separate=False,level='Manual',tab=False):config.write_text(json.dumps(dict(Enabled=enabled,ConversionEngine=mode,LiveConversion=False,PredictiveCandidates=False,LearningEnabled=learning,SeparateKeyRoles=separate,DetectionLevel=level,TabConversion=tab)),encoding='utf-8')
+    def configure(mode,enabled=True,learning=False,separate=False,level='Manual',tab=False,**extra):config.write_text(json.dumps(dict(Enabled=enabled,ConversionEngine=mode,LiveConversion=False,PredictiveCandidates=False,LearningEnabled=learning,SeparateKeyRoles=separate,DetectionLevel=level,TabConversion=tab,**extra)),encoding='utf-8')
     configure('System')
     env=dict(os.environ,MELTYPE_RUST_DATA_DIR=str(profile));env.pop('MELTYPE_TEST_TIP_NO_CONVERTERS',None)
     process=subprocess.Popen([str(root/worker.name),'--stdio-tip-worker'],stdin=subprocess.PIPE,stdout=subprocess.PIPE,env=env)
@@ -53,7 +53,19 @@ with tempfile.TemporaryDirectory(prefix='meltype-windows-converter-') as directo
         assert view['text']=='MOZC:はし',view
         assert view['candidates'].index('MOZC:はし')<view['candidates'].index('ALT:はし'),view
         selected=call('select',index=view['candidates'].index('ALT:はし'))
-        assert selected['commits'][0]['text']=='ALT:はし',selected
+        # C# 1.3.0 SelectCandidate changes the composition; Enter commits it.
+        assert selected['commits']==[] and selected['view']['text']=='ALT:はし',selected
+        committed=call('key',vk=13)
+        assert committed['commits'][0]['text']=='ALT:はし',committed
+        # New keys must reach the same actual converter as Space, not only
+        # build local kana alternatives in Core.
+        for extra,vk,mods in [(dict(EnglishFirstInput=True),40,0),(dict(MacControlKeys=True),78,2),(dict(ControlKeyBindings='T=Down'),84,2)]:
+            configure('Mozc',**extra)
+            call('reset')
+            for ch in 'hashi':call('key',vk=ord(ch.upper()),ch=ord(ch))
+            converted=call('key',vk=vk,mods=mods)
+            assert converted['view']['converting'] and converted['view']['text']=='MOZC:はし',converted
+            call('key',vk=13)
         # Tab starts conversion only when enabled. Its candidates must come
         # through the worker's converter, and cancellation keeps the input.
         configure('Mozc',tab=True)
@@ -99,7 +111,8 @@ with tempfile.TemporaryDirectory(prefix='meltype-windows-converter-') as directo
         view=call('key',vk=32,ch=32)['view']
         (profile/'mozc/fixture-slow-learning').touch()
         started=time.monotonic()
-        assert call('select',index=view['candidates'].index('ALT:はし'))['commits'][0]['text']=='ALT:はし'
+        assert call('select',index=view['candidates'].index('ALT:はし'))['commits']==[]
+        assert call('key',vk=13)['commits'][0]['text']=='ALT:はし'
         assert time.monotonic()-started<.5,'commit must not wait for slow helper learning'
         configure('System')
         assert reconvert('nihongo')==expected,'System stays usable while Mozc learns'
@@ -196,7 +209,8 @@ with tempfile.TemporaryDirectory(prefix='meltype-windows-converter-') as directo
             time.sleep(.025)
         for ch in 'hashi':assert call('key',vk=ord(ch.upper()),ch=ord(ch))['consumed']
         view=call('key',vk=32,ch=32)['view']
-        assert call('select',index=view['candidates'].index('ALT:はし'))['commits'][0]['text']=='ALT:はし'
+        assert call('select',index=view['candidates'].index('ALT:はし'))['commits']==[]
+        assert call('key',vk=13)['commits'][0]['text']=='ALT:はし'
         assert reconvert('nihongo')==expected,'learning transport failure must release ownership and fall back'
         configure('System');call('reset');call('close')
     finally:

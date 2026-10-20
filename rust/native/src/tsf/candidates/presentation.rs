@@ -7,16 +7,30 @@ use windows::{
     Win32::{System::Threading::GetCurrentThreadId, UI::TextServices::*},
 };
 
+fn nullable_text<'de, D: serde::Deserializer<'de>>(d: D) -> Result<String, D::Error> {
+    Ok(Option::<String>::deserialize(d)?.unwrap_or_default())
+}
+fn nullable_notes<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Vec<String>, D::Error> {
+    Ok(Option::<Vec<Option<String>>>::deserialize(d)?
+        .unwrap_or_default()
+        .into_iter()
+        .map(Option::unwrap_or_default)
+        .collect())
+}
 #[derive(Default, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 struct ReplyView {
     candidates: Vec<String>,
+    #[serde(deserialize_with = "nullable_notes")]
     notes: Vec<String>,
     predictions: Vec<String>,
     selected_index: i32,
     selected_prediction: i32,
+    #[serde(deserialize_with = "nullable_text")]
     suggestion: String,
+    #[serde(deserialize_with = "nullable_text")]
     meaning: String,
+    #[serde(deserialize_with = "nullable_text")]
     typed: String,
     text: String,
     converting: bool,
@@ -30,7 +44,7 @@ impl ReplyView {
         } else {
             self.typed.clone()
         };
-        if !(self.converting && self.candidates.len() > 1
+        if !(self.candidates.len() > 1
             || !self.suggestion.is_empty()
             || !self.converting && !self.predictions.is_empty()
             || !typed.is_empty())
@@ -50,7 +64,7 @@ impl ReplyView {
             view.candidates.clear();
             view.meaning.clear();
         }
-        if !self.converting {
+        if !self.converting && self.candidates.len() <= 1 {
             view.candidates = self.predictions.clone();
             view.notes.clear();
             view.meaning.clear();
@@ -196,4 +210,25 @@ pub unsafe extern "C" fn meltype_tsf_candidate_show_tsf(
             text_anchor(context, composition, cookie, &reply).unwrap_or_else(|| fallback_anchor());
         with(handle as usize, |s| s.show(view, anchor)).is_some_and(|v| v) as i32
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn typing_candidates_keep_their_click_action_and_accept_actual_core_nulls() {
+        let reply:ReplyView=serde_json::from_value(serde_json::json!({"text":"かな","converting":false,"candidates":["かな","カナ"],"notes":[null,null],"meaning":null,"suggestion":null,"typed":null,"predictions":["予測"]})).unwrap();
+        let view = reply.project().unwrap();
+        assert_eq!(view.candidates, ["かな", "カナ"]);
+        assert!(!view.prediction);
+        assert_eq!(view.notes, ["", ""]);
+    }
+    #[test]
+    fn predictions_are_used_when_there_is_no_typing_candidate_list() {
+        let reply:ReplyView=serde_json::from_value(serde_json::json!({"text":"かな","converting":false,"predictions":["予測"],"selectedPrediction":0,"meaning":null,"suggestion":null,"typed":null})).unwrap();
+        let view = reply.project().unwrap();
+        assert_eq!(view.candidates, ["予測"]);
+        assert!(view.prediction);
+        assert_eq!(view.selected, 0);
+    }
 }

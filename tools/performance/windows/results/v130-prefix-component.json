@@ -1,0 +1,66 @@
+{
+  "scope": "FST prefix query only; not whole-IME speed. Same release test executable, warm caches, no concurrent builds or benchmark processes launched by this task. Ambient machine load is not controlled.",
+  "queries_per_trial": 200000,
+  "rounds": 4,
+  "binary_sha256": "0d01d3194070250dd200c17e8858f320736f8c684404f682e7bbf94146276ed1",
+  "range_median_ms": 152.3145,
+  "node_median_ms": 23.448050000000002,
+  "rows": [
+    {
+      "hits": 100000,
+      "method": "range",
+      "ms": 152.7349,
+      "queries": 200000,
+      "round": 0
+    },
+    {
+      "hits": 100000,
+      "method": "node",
+      "ms": 28.4111,
+      "queries": 200000,
+      "round": 0
+    },
+    {
+      "hits": 100000,
+      "method": "node",
+      "ms": 23.9971,
+      "queries": 200000,
+      "round": 1
+    },
+    {
+      "hits": 100000,
+      "method": "range",
+      "ms": 187.9908,
+      "queries": 200000,
+      "round": 1
+    },
+    {
+      "hits": 100000,
+      "method": "range",
+      "ms": 141.4839,
+      "queries": 200000,
+      "round": 2
+    },
+    {
+      "hits": 100000,
+      "method": "node",
+      "ms": 22.899,
+      "queries": 200000,
+      "round": 2
+    },
+    {
+      "hits": 100000,
+      "method": "node",
+      "ms": 22.6501,
+      "queries": 200000,
+      "round": 3
+    },
+    {
+      "hits": 100000,
+      "method": "range",
+      "ms": 151.8941,
+      "queries": 200000,
+      "round": 3
+    }
+  ]
+}

@@ -26,6 +26,7 @@ impl Session {
         if self.engine_learning.is_none()
             || self.private
             || self.no_learning
+            || self.v130.esc_reverted
             || !self.settings.boolean("LearningEnabled")
             || !self.is_converting()
             || self.explicit.is_some()
@@ -207,6 +208,7 @@ mod tests {
                             }
                             assert!(s.begin_clauses(vec![clause]));
                         } else {
+                            s.clauses.clear();
                             s.candidates = vec![target];
                             s.selected = 0;
                         }

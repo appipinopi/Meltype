@@ -121,6 +121,49 @@ impl Sources {
         }
         Ok(Arc::new(source))
     }
+    pub fn english_names(reading: &str) -> Vec<String> {
+        if reading.chars().count() < 3 {
+            return vec![];
+        }
+        type Name = (&'static str, &'static str, bool, usize);
+        static NAMES: OnceLock<Vec<Name>> = OnceLock::new();
+        let names = NAMES.get_or_init(|| {
+            let mut names = Vec::new();
+            for (file, brand) in [("brands.txt", true), ("loanwords.txt", false)] {
+                for line in crate::system_data::text(file).lines() {
+                    let mut parts = line.split('#').next().unwrap_or("").split_whitespace();
+                    if let Some(kana) = parts.next() {
+                        for word in parts {
+                            if word.bytes().any(|c| c.is_ascii_alphabetic()) {
+                                names.push((kana, word, brand, names.len()));
+                            }
+                        }
+                    }
+                }
+            }
+            names.sort_by_key(|n| (n.0, n.3));
+            names
+        });
+        let start = names.partition_point(|n| n.0 < reading);
+        let mut matches: Vec<_> = names[start..]
+            .iter()
+            .take_while(|n| n.0.starts_with(reading))
+            .collect();
+        matches.sort_by_key(|n| (!n.2, n.0.chars().count(), n.3));
+        let mut result = Vec::new();
+        for n in matches {
+            if !result.iter().any(|v| v == n.1) {
+                result.push(n.1.to_owned());
+                if result.len() == 5 {
+                    break;
+                }
+            }
+        }
+        result
+    }
+    pub fn abbreviations(&self, reading: &str) -> Vec<String> {
+        lookup(&self.words, reading)
+    }
     pub fn registered(&self, reading: &str) -> Vec<String> {
         self.imported
             .get(reading)

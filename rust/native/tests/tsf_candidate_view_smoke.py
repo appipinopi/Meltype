@@ -221,6 +221,14 @@ class ProjectionTests(unittest.TestCase):
         user.SendMessageW(window, 0x0202, 0, x | y << 16)
         self.assertEqual(self.actual.events, [(0, 1)])
 
+    def test_typing_candidates_accept_nulls_and_click_as_candidates(self):
+        window=self.compare({"candidates":["かな","カナ"],"notes":[None,None],"meaning":None,
+            "suggestion":None,"typed":None,"text":"かな","selectedIndex":1,"predictions":["予測"]},
+            {"candidates":["かな","カナ"],"notes":["",""],"selected":1})
+        scale=user.GetDpiForWindow(window)/96
+        user.SendMessageW(window,0x0202,0,int(30*scale)|(int(20*scale)<<16))
+        self.assertEqual(self.actual.events,[(0,0)])
+
     def test_single_candidate_typed_and_suggestion_only_views(self):
         for reply, expected in [
             ({"converting": True, "candidates": ["候補"], "meaning": "unused", "typed": "kouho", "text": "候補"},

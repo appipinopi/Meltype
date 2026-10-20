@@ -1,0 +1,4115 @@
+{
+  "upstream": "v1.3.0",
+  "commit": "6310c44b728d5ad88284853f9ef37ea224993b18",
+  "source_sha256": {
+    "Composition/Calculator.cs": "314e0e8928d2378a22ac80098cf069ee83db501a31203efd786aae911707ef28",
+    "Composition/NumberCandidates.cs": "29fa43fcfdc41372ddce6b75a5be69066be1a0010e082717e3adca7dbf6c6030",
+    "Composition/CompositionController.cs": "836382c46c177b18401348c21f8c6aa05e88782621dde7b11fd5a02a7d676268",
+    "Input/KeyShortcut.cs": "7b32d3e7548e9081eca7c43308abadeed64e1a9beb61f2428b1eae90a44c57f1",
+    "Composition/Predictor.cs": "191b28df7b0c92ab077808f636f3df9f59948c2a9738450b0975670fc2179d24",
+    "Composition/GitHubIssueTitles.cs": "7ddbac93d9449cc524db2ca0b82d8692b940706125e6af550f96ffa8e5baa2f8"
+  },
+  "cases": [
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "1+2*3"
+      },
+      "expected": "7"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "(1+2)*3"
+      },
+      "expected": "9"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "-1+2"
+      },
+      "expected": "1"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "--1+2"
+      },
+      "expected": "3"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "+1+2"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "1/3"
+      },
+      "expected": "0.3333333333"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "1/0"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "0/0"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "1..2+3"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "1e2+3"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "1.5+2.25"
+      },
+      "expected": "3.75"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "１+２"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "1＋2"
+      },
+      "expected": "3"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "3×4÷2"
+      },
+      "expected": "6"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": " 1 + 2 ==="
+      },
+      "expected": "3"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "1+2 = "
+      },
+      "expected": "3"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "0.00000000005+0"
+      },
+      "expected": "0"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "-0.00000000005+0"
+      },
+      "expected": "-0"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "999999999999999+1"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "9999999999999999-9999999999999998"
+      },
+      "expected": "2"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "1"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "1+"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "(1+2"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "1+2)"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "1+2\n"
+      },
+      "expected": "3"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "1\n+2"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "1+2;System()"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "1+11111111111111111111111111111111111111111111111111111111111111111111111111111111"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "0+0"
+      },
+      "expected": "0"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "0+3"
+      },
+      "expected": "3"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "0+.5"
+      },
+      "expected": "0.5"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "0-0"
+      },
+      "expected": "0"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "0-3"
+      },
+      "expected": "-3"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "0-.5"
+      },
+      "expected": "-0.5"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "0*0"
+      },
+      "expected": "0"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "0*3"
+      },
+      "expected": "0"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "0*.5"
+      },
+      "expected": "0"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "0/0"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "0/3"
+      },
+      "expected": "0"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "0/.5"
+      },
+      "expected": "0"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "1+0"
+      },
+      "expected": "1"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "1+3"
+      },
+      "expected": "4"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "1+.5"
+      },
+      "expected": "1.5"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "1-0"
+      },
+      "expected": "1"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "1-3"
+      },
+      "expected": "-2"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "1-.5"
+      },
+      "expected": "0.5"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "1*0"
+      },
+      "expected": "0"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "1*3"
+      },
+      "expected": "3"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "1*.5"
+      },
+      "expected": "0.5"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "1/0"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "1/3"
+      },
+      "expected": "0.3333333333"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "1/.5"
+      },
+      "expected": "2"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "2+0"
+      },
+      "expected": "2"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "2+3"
+      },
+      "expected": "5"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "2+.5"
+      },
+      "expected": "2.5"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "2-0"
+      },
+      "expected": "2"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "2-3"
+      },
+      "expected": "-1"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "2-.5"
+      },
+      "expected": "1.5"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "2*0"
+      },
+      "expected": "0"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "2*3"
+      },
+      "expected": "6"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "2*.5"
+      },
+      "expected": "1"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "2/0"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "2/3"
+      },
+      "expected": "0.6666666667"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "2/.5"
+      },
+      "expected": "4"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "10+0"
+      },
+      "expected": "10"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "10+3"
+      },
+      "expected": "13"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "10+.5"
+      },
+      "expected": "10.5"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "10-0"
+      },
+      "expected": "10"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "10-3"
+      },
+      "expected": "7"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "10-.5"
+      },
+      "expected": "9.5"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "10*0"
+      },
+      "expected": "0"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "10*3"
+      },
+      "expected": "30"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "10*.5"
+      },
+      "expected": "5"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "10/0"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "10/3"
+      },
+      "expected": "3.3333333333"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "10/.5"
+      },
+      "expected": "20"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "99+0"
+      },
+      "expected": "99"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "99+3"
+      },
+      "expected": "102"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "99+.5"
+      },
+      "expected": "99.5"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "99-0"
+      },
+      "expected": "99"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "99-3"
+      },
+      "expected": "96"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "99-.5"
+      },
+      "expected": "98.5"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "99*0"
+      },
+      "expected": "0"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "99*3"
+      },
+      "expected": "297"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "99*.5"
+      },
+      "expected": "49.5"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "99/0"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "99/3"
+      },
+      "expected": "33"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "99/.5"
+      },
+      "expected": "198"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": ".5+0"
+      },
+      "expected": "0.5"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": ".5+3"
+      },
+      "expected": "3.5"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": ".5+.5"
+      },
+      "expected": "1"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": ".5-0"
+      },
+      "expected": "0.5"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": ".5-3"
+      },
+      "expected": "-2.5"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": ".5-.5"
+      },
+      "expected": "0"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": ".5*0"
+      },
+      "expected": "0"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": ".5*3"
+      },
+      "expected": "1.5"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": ".5*.5"
+      },
+      "expected": "0.25"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": ".5/0"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": ".5/3"
+      },
+      "expected": "0.1666666667"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": ".5/.5"
+      },
+      "expected": "1"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "1.25+0"
+      },
+      "expected": "1.25"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "1.25+3"
+      },
+      "expected": "4.25"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "1.25+.5"
+      },
+      "expected": "1.75"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "1.25-0"
+      },
+      "expected": "1.25"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "1.25-3"
+      },
+      "expected": "-1.75"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "1.25-.5"
+      },
+      "expected": "0.75"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "1.25*0"
+      },
+      "expected": "0"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "1.25*3"
+      },
+      "expected": "3.75"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "1.25*.5"
+      },
+      "expected": "0.625"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "1.25/0"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "1.25/3"
+      },
+      "expected": "0.4166666667"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "1.25/.5"
+      },
+      "expected": "2.5"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "-2+0"
+      },
+      "expected": "-2"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "-2+3"
+      },
+      "expected": "1"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "-2+.5"
+      },
+      "expected": "-1.5"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "-2-0"
+      },
+      "expected": "-2"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "-2-3"
+      },
+      "expected": "-5"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "-2-.5"
+      },
+      "expected": "-2.5"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "-2*0"
+      },
+      "expected": "-0"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "-2*3"
+      },
+      "expected": "-6"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "-2*.5"
+      },
+      "expected": "-1"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "-2/0"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "-2/3"
+      },
+      "expected": "-0.6666666667"
+    },
+    {
+      "request": {
+        "kind": "calculator",
+        "text": "-2/.5"
+      },
+      "expected": "-4"
+    },
+    {
+      "request": {
+        "kind": "number",
+        "text": ""
+      },
+      "expected": []
+    },
+    {
+      "request": {
+        "kind": "number",
+        "text": "0"
+      },
+      "expected": [
+        "〇"
+      ]
+    },
+    {
+      "request": {
+        "kind": "number",
+        "text": "00"
+      },
+      "expected": [
+        "〇〇"
+      ]
+    },
+    {
+      "request": {
+        "kind": "number",
+        "text": "0000"
+      },
+      "expected": [
+        "〇〇〇〇"
+      ]
+    },
+    {
+      "request": {
+        "kind": "number",
+        "text": "1"
+      },
+      "expected": [
+        "一",
+        "壱"
+      ]
+    },
+    {
+      "request": {
+        "kind": "number",
+        "text": "10"
+      },
+      "expected": [
+        "一〇",
+        "十",
+        "壱拾"
+      ]
+    },
+    {
+      "request": {
+        "kind": "number",
+        "text": "11"
+      },
+      "expected": [
+        "一一",
+        "十一",
+        "壱拾壱"
+      ]
+    },
+    {
+      "request": {
+        "kind": "number",
+        "text": "100"
+      },
+      "expected": [
+        "一〇〇",
+        "百",
+        "壱百"
+      ]
+    },
+    {
+      "request": {
+        "kind": "number",
+        "text": "1000"
+      },
+      "expected": [
+        "一〇〇〇",
+        "千",
+        "壱千"
+      ]
+    },
+    {
+      "request": {
+        "kind": "number",
+        "text": "10000"
+      },
+      "expected": [
+        "一〇〇〇〇",
+        "一万",
+        "壱万"
+      ]
+    },
+    {
+      "request": {
+        "kind": "number",
+        "text": "10001"
+      },
+      "expected": [
+        "一〇〇〇一",
+        "一万一",
+        "壱万壱"
+      ]
+    },
+    {
+      "request": {
+        "kind": "number",
+        "text": "100000000"
+      },
+      "expected": [
+        "一〇〇〇〇〇〇〇〇",
+        "一億",
+        "壱億"
+      ]
+    },
+    {
+      "request": {
+        "kind": "number",
+        "text": "1234567890123456"
+      },
+      "expected": [
+        "一二三四五六七八九〇一二三四五六",
+        "千二百三十四兆五千六百七十八億九千十二万三千四百五十六",
+        "壱千弐百参拾四兆五千六百七拾八億九千壱拾弐万参千四百五拾六"
+      ]
+    },
+    {
+      "request": {
+        "kind": "number",
+        "text": "12345678901234567"
+      },
+      "expected": []
+    },
+    {
+      "request": {
+        "kind": "number",
+        "text": "1,234"
+      },
+      "expected": [
+        "一二三四",
+        "千二百三十四",
+        "壱千弐百参拾四"
+      ]
+    },
+    {
+      "request": {
+        "kind": "number",
+        "text": "1,,2"
+      },
+      "expected": [
+        "一二",
+        "十二",
+        "壱拾弐"
+      ]
+    },
+    {
+      "request": {
+        "kind": "number",
+        "text": " 123"
+      },
+      "expected": []
+    },
+    {
+      "request": {
+        "kind": "number",
+        "text": "-1"
+      },
+      "expected": []
+    },
+    {
+      "request": {
+        "kind": "number",
+        "text": "1.0"
+      },
+      "expected": []
+    },
+    {
+      "request": {
+        "kind": "number",
+        "text": "１２３"
+      },
+      "expected": [
+        "一二三",
+        "百二十三",
+        "壱百弐拾参"
+      ]
+    },
+    {
+      "request": {
+        "kind": "number",
+        "text": "２，０２６"
+      },
+      "expected": []
+    },
+    {
+      "request": {
+        "kind": "number",
+        "text": "2026"
+      },
+      "expected": [
+        "二〇二六",
+        "二千二十六",
+        "弐千弐拾六",
+        "令和8年"
+      ]
+    },
+    {
+      "request": {
+        "kind": "number",
+        "text": "1867"
+      },
+      "expected": [
+        "一八六七",
+        "千八百六十七",
+        "壱千八百六拾七"
+      ]
+    },
+    {
+      "request": {
+        "kind": "number",
+        "text": "1868"
+      },
+      "expected": [
+        "一八六八",
+        "千八百六十八",
+        "壱千八百六拾八",
+        "明治元年"
+      ]
+    },
+    {
+      "request": {
+        "kind": "number",
+        "text": "1912"
+      },
+      "expected": [
+        "一九一二",
+        "千九百十二",
+        "壱千九百壱拾弐",
+        "大正元年"
+      ]
+    },
+    {
+      "request": {
+        "kind": "number",
+        "text": "1926"
+      },
+      "expected": [
+        "一九二六",
+        "千九百二十六",
+        "壱千九百弐拾六",
+        "昭和元年"
+      ]
+    },
+    {
+      "request": {
+        "kind": "number",
+        "text": "1989"
+      },
+      "expected": [
+        "一九八九",
+        "千九百八十九",
+        "壱千九百八拾九",
+        "平成元年"
+      ]
+    },
+    {
+      "request": {
+        "kind": "number",
+        "text": "2019"
+      },
+      "expected": [
+        "二〇一九",
+        "二千十九",
+        "弐千壱拾九",
+        "令和元年"
+      ]
+    },
+    {
+      "request": {
+        "kind": "number",
+        "text": "2100"
+      },
+      "expected": [
+        "二一〇〇",
+        "二千百",
+        "弐千壱百",
+        "令和82年"
+      ]
+    },
+    {
+      "request": {
+        "kind": "number",
+        "text": "2101"
+      },
+      "expected": [
+        "二一〇一",
+        "二千百一",
+        "弐千壱百壱"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "れいわがんねん"
+      },
+      "expected": [
+        "2019年",
+        "2019"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "れいわ0ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "れいわ00ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "れいわ1ねん"
+      },
+      "expected": [
+        "2019年",
+        "2019"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "れいわ01ねん"
+      },
+      "expected": [
+        "2019年",
+        "2019"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "れいわ2ねん"
+      },
+      "expected": [
+        "2020年",
+        "2020"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "れいわ31ねん"
+      },
+      "expected": [
+        "2049年",
+        "2049"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "れいわ32ねん"
+      },
+      "expected": [
+        "2050年",
+        "2050"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "れいわ64ねん"
+      },
+      "expected": [
+        "2082年",
+        "2082"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "れいわ65ねん"
+      },
+      "expected": [
+        "2083年",
+        "2083"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "れいわ99ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "れいわ100ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "れいわ８ねん"
+      },
+      "expected": [
+        "2026年",
+        "2026"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "れいわ１ねん"
+      },
+      "expected": [
+        "2019年",
+        "2019"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "れいわ001ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "れいわ-1ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "へいせいがんねん"
+      },
+      "expected": [
+        "1989年",
+        "1989"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "へいせい0ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "へいせい00ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "へいせい1ねん"
+      },
+      "expected": [
+        "1989年",
+        "1989"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "へいせい01ねん"
+      },
+      "expected": [
+        "1989年",
+        "1989"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "へいせい2ねん"
+      },
+      "expected": [
+        "1990年",
+        "1990"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "へいせい31ねん"
+      },
+      "expected": [
+        "2019年",
+        "2019"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "へいせい32ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "へいせい64ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "へいせい65ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "へいせい99ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "へいせい100ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "へいせい８ねん"
+      },
+      "expected": [
+        "1996年",
+        "1996"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "へいせい１ねん"
+      },
+      "expected": [
+        "1989年",
+        "1989"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "へいせい001ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "へいせい-1ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "しょうわがんねん"
+      },
+      "expected": [
+        "1926年",
+        "1926"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "しょうわ0ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "しょうわ00ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "しょうわ1ねん"
+      },
+      "expected": [
+        "1926年",
+        "1926"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "しょうわ01ねん"
+      },
+      "expected": [
+        "1926年",
+        "1926"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "しょうわ2ねん"
+      },
+      "expected": [
+        "1927年",
+        "1927"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "しょうわ31ねん"
+      },
+      "expected": [
+        "1956年",
+        "1956"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "しょうわ32ねん"
+      },
+      "expected": [
+        "1957年",
+        "1957"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "しょうわ64ねん"
+      },
+      "expected": [
+        "1989年",
+        "1989"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "しょうわ65ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "しょうわ99ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "しょうわ100ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "しょうわ８ねん"
+      },
+      "expected": [
+        "1933年",
+        "1933"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "しょうわ１ねん"
+      },
+      "expected": [
+        "1926年",
+        "1926"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "しょうわ001ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "しょうわ-1ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "たいしょうがんねん"
+      },
+      "expected": [
+        "1912年",
+        "1912"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "たいしょう0ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "たいしょう00ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "たいしょう1ねん"
+      },
+      "expected": [
+        "1912年",
+        "1912"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "たいしょう01ねん"
+      },
+      "expected": [
+        "1912年",
+        "1912"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "たいしょう2ねん"
+      },
+      "expected": [
+        "1913年",
+        "1913"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "たいしょう31ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "たいしょう32ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "たいしょう64ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "たいしょう65ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "たいしょう99ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "たいしょう100ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "たいしょう８ねん"
+      },
+      "expected": [
+        "1919年",
+        "1919"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "たいしょう１ねん"
+      },
+      "expected": [
+        "1912年",
+        "1912"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "たいしょう001ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "たいしょう-1ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "めいじがんねん"
+      },
+      "expected": [
+        "1868年",
+        "1868"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "めいじ0ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "めいじ00ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "めいじ1ねん"
+      },
+      "expected": [
+        "1868年",
+        "1868"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "めいじ01ねん"
+      },
+      "expected": [
+        "1868年",
+        "1868"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "めいじ2ねん"
+      },
+      "expected": [
+        "1869年",
+        "1869"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "めいじ31ねん"
+      },
+      "expected": [
+        "1898年",
+        "1898"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "めいじ32ねん"
+      },
+      "expected": [
+        "1899年",
+        "1899"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "めいじ64ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "めいじ65ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "めいじ99ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "めいじ100ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "めいじ８ねん"
+      },
+      "expected": [
+        "1875年",
+        "1875"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "めいじ１ねん"
+      },
+      "expected": [
+        "1868年",
+        "1868"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "めいじ001ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "めいじ-1ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "れいわ8ねん\n"
+      },
+      "expected": [
+        "2026年",
+        "2026"
+      ]
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "れいわ8ねん\r\n"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": " れいわ8ねん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "令和8年"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "era",
+        "text": "れいわ8年"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "0しゃく"
+      },
+      "expected": [
+        "0尺",
+        "約0cm"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1しゃく"
+      },
+      "expected": [
+        "1尺",
+        "約30.3cm"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "3しゃく"
+      },
+      "expected": [
+        "3尺",
+        "約90.91cm"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "12しゃく"
+      },
+      "expected": [
+        "12尺",
+        "約364cm"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "0.5しゃく"
+      },
+      "expected": [
+        "0.5尺",
+        "約15.15cm"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1.125しゃく"
+      },
+      "expected": [
+        "1.125尺",
+        "約34.09cm"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "999999しゃく"
+      },
+      "expected": [
+        "999999尺",
+        "約30303000cm"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1000000しゃく"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": ".5しゃく"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1.しゃく"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1.1234しゃく"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "３．５しゃく"
+      },
+      "expected": [
+        "3.5尺",
+        "約106cm"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "-1しゃく"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "0すん"
+      },
+      "expected": [
+        "0寸",
+        "約0cm"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1すん"
+      },
+      "expected": [
+        "1寸",
+        "約3.03cm"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "3すん"
+      },
+      "expected": [
+        "3寸",
+        "約9.09cm"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "12すん"
+      },
+      "expected": [
+        "12寸",
+        "約36.36cm"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "0.5すん"
+      },
+      "expected": [
+        "0.5寸",
+        "約1.52cm"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1.125すん"
+      },
+      "expected": [
+        "1.125寸",
+        "約3.41cm"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "999999すん"
+      },
+      "expected": [
+        "999999寸",
+        "約3030300cm"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1000000すん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": ".5すん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1.すん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1.1234すん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "３．５すん"
+      },
+      "expected": [
+        "3.5寸",
+        "約10.61cm"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "-1すん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "0けん"
+      },
+      "expected": [
+        "0間",
+        "約0m"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1けん"
+      },
+      "expected": [
+        "1間",
+        "約1.82m"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "3けん"
+      },
+      "expected": [
+        "3間",
+        "約5.45m"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "12けん"
+      },
+      "expected": [
+        "12間",
+        "約21.82m"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "0.5けん"
+      },
+      "expected": [
+        "0.5間",
+        "約0.91m"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1.125けん"
+      },
+      "expected": [
+        "1.125間",
+        "約2.05m"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "999999けん"
+      },
+      "expected": [
+        "999999間",
+        "約1818180m"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1000000けん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": ".5けん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1.けん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1.1234けん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "３．５けん"
+      },
+      "expected": [
+        "3.5間",
+        "約6.36m"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "-1けん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "0じょう"
+      },
+      "expected": [
+        "0丈",
+        "約0m"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1じょう"
+      },
+      "expected": [
+        "1丈",
+        "約3.03m"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "3じょう"
+      },
+      "expected": [
+        "3丈",
+        "約9.09m"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "12じょう"
+      },
+      "expected": [
+        "12丈",
+        "約36.36m"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "0.5じょう"
+      },
+      "expected": [
+        "0.5丈",
+        "約1.52m"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1.125じょう"
+      },
+      "expected": [
+        "1.125丈",
+        "約3.41m"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "999999じょう"
+      },
+      "expected": [
+        "999999丈",
+        "約3030300m"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1000000じょう"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": ".5じょう"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1.じょう"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1.1234じょう"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "３．５じょう"
+      },
+      "expected": [
+        "3.5丈",
+        "約10.61m"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "-1じょう"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "0つぼ"
+      },
+      "expected": [
+        "0坪",
+        "約0㎡"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1つぼ"
+      },
+      "expected": [
+        "1坪",
+        "約3.31㎡"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "3つぼ"
+      },
+      "expected": [
+        "3坪",
+        "約9.92㎡"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "12つぼ"
+      },
+      "expected": [
+        "12坪",
+        "約39.67㎡"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "0.5つぼ"
+      },
+      "expected": [
+        "0.5坪",
+        "約1.65㎡"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1.125つぼ"
+      },
+      "expected": [
+        "1.125坪",
+        "約3.72㎡"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "999999つぼ"
+      },
+      "expected": [
+        "999999坪",
+        "約3305782㎡"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1000000つぼ"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": ".5つぼ"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1.つぼ"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1.1234つぼ"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "３．５つぼ"
+      },
+      "expected": [
+        "3.5坪",
+        "約11.57㎡"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "-1つぼ"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "0ごう"
+      },
+      "expected": [
+        "0合",
+        "約0mL"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1ごう"
+      },
+      "expected": [
+        "1合",
+        "約180mL"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "3ごう"
+      },
+      "expected": [
+        "3合",
+        "約541mL"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "12ごう"
+      },
+      "expected": [
+        "12合",
+        "約2165mL"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "0.5ごう"
+      },
+      "expected": [
+        "0.5合",
+        "約90.2mL"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1.125ごう"
+      },
+      "expected": [
+        "1.125合",
+        "約203mL"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "999999ごう"
+      },
+      "expected": [
+        "999999合",
+        "約180389820mL"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1000000ごう"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": ".5ごう"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1.ごう"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1.1234ごう"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "３．５ごう"
+      },
+      "expected": [
+        "3.5合",
+        "約631mL"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "-1ごう"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "0しょう"
+      },
+      "expected": [
+        "0升",
+        "約0L"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1しょう"
+      },
+      "expected": [
+        "1升",
+        "約1.8L"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "3しょう"
+      },
+      "expected": [
+        "3升",
+        "約5.41L"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "12しょう"
+      },
+      "expected": [
+        "12升",
+        "約21.65L"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "0.5しょう"
+      },
+      "expected": [
+        "0.5升",
+        "約0.9L"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1.125しょう"
+      },
+      "expected": [
+        "1.125升",
+        "約2.03L"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "999999しょう"
+      },
+      "expected": [
+        "999999升",
+        "約1803898L"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1000000しょう"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": ".5しょう"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1.しょう"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1.1234しょう"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "３．５しょう"
+      },
+      "expected": [
+        "3.5升",
+        "約6.31L"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "-1しょう"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "0と"
+      },
+      "expected": [
+        "0斗",
+        "約0L"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1と"
+      },
+      "expected": [
+        "1斗",
+        "約18.04L"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "3と"
+      },
+      "expected": [
+        "3斗",
+        "約54.12L"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "12と"
+      },
+      "expected": [
+        "12斗",
+        "約216L"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "0.5と"
+      },
+      "expected": [
+        "0.5斗",
+        "約9.02L"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1.125と"
+      },
+      "expected": [
+        "1.125斗",
+        "約20.29L"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "999999と"
+      },
+      "expected": [
+        "999999斗",
+        "約18038982L"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1000000と"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": ".5と"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1.と"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1.1234と"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "３．５と"
+      },
+      "expected": [
+        "3.5斗",
+        "約63.14L"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "-1と"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "0かん"
+      },
+      "expected": [
+        "0貫",
+        "約0kg"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1かん"
+      },
+      "expected": [
+        "1貫",
+        "約3.75kg"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "3かん"
+      },
+      "expected": [
+        "3貫",
+        "約11.25kg"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "12かん"
+      },
+      "expected": [
+        "12貫",
+        "約45kg"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "0.5かん"
+      },
+      "expected": [
+        "0.5貫",
+        "約1.88kg"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1.125かん"
+      },
+      "expected": [
+        "1.125貫",
+        "約4.22kg"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "999999かん"
+      },
+      "expected": [
+        "999999貫",
+        "約3749996kg"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1000000かん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": ".5かん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1.かん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1.1234かん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "３．５かん"
+      },
+      "expected": [
+        "3.5貫",
+        "約13.12kg"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "-1かん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "0もんめ"
+      },
+      "expected": [
+        "0匁",
+        "約0g"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1もんめ"
+      },
+      "expected": [
+        "1匁",
+        "約3.75g"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "3もんめ"
+      },
+      "expected": [
+        "3匁",
+        "約11.25g"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "12もんめ"
+      },
+      "expected": [
+        "12匁",
+        "約45g"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "0.5もんめ"
+      },
+      "expected": [
+        "0.5匁",
+        "約1.88g"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1.125もんめ"
+      },
+      "expected": [
+        "1.125匁",
+        "約4.22g"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "999999もんめ"
+      },
+      "expected": [
+        "999999匁",
+        "約3749996g"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1000000もんめ"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": ".5もんめ"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1.もんめ"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1.1234もんめ"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "３．５もんめ"
+      },
+      "expected": [
+        "3.5匁",
+        "約13.12g"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "-1もんめ"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "0きん"
+      },
+      "expected": [
+        "0斤",
+        "約0g"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1きん"
+      },
+      "expected": [
+        "1斤",
+        "約600g"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "3きん"
+      },
+      "expected": [
+        "3斤",
+        "約1800g"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "12きん"
+      },
+      "expected": [
+        "12斤",
+        "約7200g"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "0.5きん"
+      },
+      "expected": [
+        "0.5斤",
+        "約300g"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1.125きん"
+      },
+      "expected": [
+        "1.125斤",
+        "約675g"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "999999きん"
+      },
+      "expected": [
+        "999999斤",
+        "約599999400g"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1000000きん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": ".5きん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1.きん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1.1234きん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "３．５きん"
+      },
+      "expected": [
+        "3.5斤",
+        "約2100g"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "-1きん"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "0りょう"
+      },
+      "expected": [
+        "0両",
+        "約0g"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1りょう"
+      },
+      "expected": [
+        "1両",
+        "約37.5g"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "3りょう"
+      },
+      "expected": [
+        "3両",
+        "約112g"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "12りょう"
+      },
+      "expected": [
+        "12両",
+        "約450g"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "0.5りょう"
+      },
+      "expected": [
+        "0.5両",
+        "約18.75g"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1.125りょう"
+      },
+      "expected": [
+        "1.125両",
+        "約42.19g"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "999999りょう"
+      },
+      "expected": [
+        "999999両",
+        "約37499962g"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1000000りょう"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": ".5りょう"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1.りょう"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1.1234りょう"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "３．５りょう"
+      },
+      "expected": [
+        "3.5両",
+        "約131g"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "-1りょう"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1しゃく\n"
+      },
+      "expected": [
+        "1尺",
+        "約30.3cm"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1しゃく\r\n"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "1.000しゃく"
+      },
+      "expected": [
+        "1.000尺",
+        "約30.3cm"
+      ]
+    },
+    {
+      "request": {
+        "kind": "unit",
+        "text": "000001つぼ"
+      },
+      "expected": [
+        "000001坪",
+        "約3.31㎡"
+      ]
+    },
+    {
+      "request": {
+        "kind": "seasonal",
+        "month": 1
+      },
+      "expected": [
+        "新春の候",
+        "初春の候",
+        "厳寒の候",
+        "大寒の候",
+        "初冬の候",
+        "師走の候",
+        "寒冷の候",
+        "歳晩の候",
+        "余寒の候",
+        "立春の候",
+        "春寒の候",
+        "梅花の候",
+        "拝啓　新春の候、"
+      ]
+    },
+    {
+      "request": {
+        "kind": "seasonal",
+        "month": 2
+      },
+      "expected": [
+        "余寒の候",
+        "立春の候",
+        "春寒の候",
+        "梅花の候",
+        "新春の候",
+        "初春の候",
+        "厳寒の候",
+        "大寒の候",
+        "早春の候",
+        "春分の候",
+        "春暖の候",
+        "浅春の候",
+        "拝啓　余寒の候、"
+      ]
+    },
+    {
+      "request": {
+        "kind": "seasonal",
+        "month": 3
+      },
+      "expected": [
+        "早春の候",
+        "春分の候",
+        "春暖の候",
+        "浅春の候",
+        "余寒の候",
+        "立春の候",
+        "春寒の候",
+        "梅花の候",
+        "桜花の候",
+        "陽春の候",
+        "晩春の候",
+        "拝啓　早春の候、"
+      ]
+    },
+    {
+      "request": {
+        "kind": "seasonal",
+        "month": 4
+      },
+      "expected": [
+        "桜花の候",
+        "陽春の候",
+        "春暖の候",
+        "晩春の候",
+        "早春の候",
+        "春分の候",
+        "浅春の候",
+        "新緑の候",
+        "薫風の候",
+        "若葉の候",
+        "立夏の候",
+        "拝啓　桜花の候、"
+      ]
+    },
+    {
+      "request": {
+        "kind": "seasonal",
+        "month": 5
+      },
+      "expected": [
+        "新緑の候",
+        "薫風の候",
+        "若葉の候",
+        "立夏の候",
+        "桜花の候",
+        "陽春の候",
+        "春暖の候",
+        "晩春の候",
+        "入梅の候",
+        "梅雨の候",
+        "向暑の候",
+        "初夏の候",
+        "拝啓　新緑の候、"
+      ]
+    },
+    {
+      "request": {
+        "kind": "seasonal",
+        "month": 6
+      },
+      "expected": [
+        "入梅の候",
+        "梅雨の候",
+        "向暑の候",
+        "初夏の候",
+        "新緑の候",
+        "薫風の候",
+        "若葉の候",
+        "立夏の候",
+        "盛夏の候",
+        "猛暑の候",
+        "大暑の候",
+        "酷暑の候",
+        "拝啓　入梅の候、"
+      ]
+    },
+    {
+      "request": {
+        "kind": "seasonal",
+        "month": 7
+      },
+      "expected": [
+        "盛夏の候",
+        "猛暑の候",
+        "大暑の候",
+        "酷暑の候",
+        "入梅の候",
+        "梅雨の候",
+        "向暑の候",
+        "初夏の候",
+        "晩夏の候",
+        "残暑の候",
+        "立秋の候",
+        "暮夏の候",
+        "拝啓　盛夏の候、"
+      ]
+    },
+    {
+      "request": {
+        "kind": "seasonal",
+        "month": 8
+      },
+      "expected": [
+        "晩夏の候",
+        "残暑の候",
+        "立秋の候",
+        "暮夏の候",
+        "盛夏の候",
+        "猛暑の候",
+        "大暑の候",
+        "酷暑の候",
+        "初秋の候",
+        "新秋の候",
+        "秋晴の候",
+        "野分の候",
+        "拝啓　晩夏の候、"
+      ]
+    },
+    {
+      "request": {
+        "kind": "seasonal",
+        "month": 9
+      },
+      "expected": [
+        "初秋の候",
+        "新秋の候",
+        "秋晴の候",
+        "野分の候",
+        "晩夏の候",
+        "残暑の候",
+        "立秋の候",
+        "暮夏の候",
+        "秋冷の候",
+        "紅葉の候",
+        "秋涼の候",
+        "寒露の候",
+        "拝啓　初秋の候、"
+      ]
+    },
+    {
+      "request": {
+        "kind": "seasonal",
+        "month": 10
+      },
+      "expected": [
+        "秋冷の候",
+        "紅葉の候",
+        "秋涼の候",
+        "寒露の候",
+        "初秋の候",
+        "新秋の候",
+        "秋晴の候",
+        "野分の候",
+        "晩秋の候",
+        "霜降の候",
+        "向寒の候",
+        "初霜の候",
+        "拝啓　秋冷の候、"
+      ]
+    },
+    {
+      "request": {
+        "kind": "seasonal",
+        "month": 11
+      },
+      "expected": [
+        "晩秋の候",
+        "霜降の候",
+        "向寒の候",
+        "初霜の候",
+        "秋冷の候",
+        "紅葉の候",
+        "秋涼の候",
+        "寒露の候",
+        "初冬の候",
+        "師走の候",
+        "寒冷の候",
+        "歳晩の候",
+        "拝啓　晩秋の候、"
+      ]
+    },
+    {
+      "request": {
+        "kind": "seasonal",
+        "month": 12
+      },
+      "expected": [
+        "初冬の候",
+        "師走の候",
+        "寒冷の候",
+        "歳晩の候",
+        "晩秋の候",
+        "霜降の候",
+        "向寒の候",
+        "初霜の候",
+        "新春の候",
+        "初春の候",
+        "厳寒の候",
+        "大寒の候",
+        "拝啓　初冬の候、"
+      ]
+    },
+    {
+      "request": {
+        "kind": "clipboard",
+        "text": ""
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "clipboard",
+        "text": " hello "
+      },
+      "expected": "hello"
+    },
+    {
+      "request": {
+        "kind": "clipboard",
+        "text": "a\nb"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "clipboard",
+        "text": "a\tb"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "clipboard",
+        "text": "a\u0000b"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "clipboard",
+        "text": "\nhello\n"
+      },
+      "expected": "hello"
+    },
+    {
+      "request": {
+        "kind": "clipboard",
+        "text": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"
+      },
+      "expected": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"
+    },
+    {
+      "request": {
+        "kind": "clipboard",
+        "text": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "clipboard",
+        "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "expected": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "request": {
+        "kind": "clipboard",
+        "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "expected": null
+    },
+    {
+      "request": {
+        "kind": "shortcuts",
+        "text": "Ctrl+Space;Alt+Backquote"
+      },
+      "expected": [
+        {
+          "Vk": 32,
+          "Ctrl": true,
+          "Alt": false,
+          "Shift": false,
+          "Win": false
+        },
+        {
+          "Vk": 192,
+          "Ctrl": false,
+          "Alt": true,
+          "Shift": false,
+          "Win": false
+        }
+      ]
+    },
+    {
+      "request": {
+        "kind": "shortcuts",
+        "text": "Ctrl+Alt+Shift+Win+F12"
+      },
+      "expected": [
+        {
+          "Vk": 123,
+          "Ctrl": true,
+          "Alt": true,
+          "Shift": true,
+          "Win": true
+        }
+      ]
+    },
+    {
+      "request": {
+        "kind": "shortcuts",
+        "text": "Ctrl"
+      },
+      "expected": []
+    },
+    {
+      "request": {
+        "kind": "shortcuts",
+        "text": "Ctrl+A+B"
+      },
+      "expected": []
+    },
+    {
+      "request": {
+        "kind": "shortcuts",
+        "text": "Control + ++ a"
+      },
+      "expected": [
+        {
+          "Vk": 65,
+          "Ctrl": true,
+          "Alt": false,
+          "Shift": false,
+          "Win": false
+        }
+      ]
+    },
+    {
+      "request": {
+        "kind": "shortcuts",
+        "text": "ctrl+capslock"
+      },
+      "expected": [
+        {
+          "Vk": 20,
+          "Ctrl": true,
+          "Alt": false,
+          "Shift": false,
+          "Win": false
+        }
+      ]
+    },
+    {
+      "request": {
+        "kind": "shortcuts",
+        "text": "Alt+Henkan,Shift+Muhenkan\nWin+Kanji"
+      },
+      "expected": [
+        {
+          "Vk": 28,
+          "Ctrl": false,
+          "Alt": true,
+          "Shift": false,
+          "Win": false
+        },
+        {
+          "Vk": 29,
+          "Ctrl": false,
+          "Alt": false,
+          "Shift": true,
+          "Win": false
+        },
+        {
+          "Vk": 25,
+          "Ctrl": false,
+          "Alt": false,
+          "Shift": false,
+          "Win": true
+        }
+      ]
+    },
+    {
+      "request": {
+        "kind": "shortcuts",
+        "text": "F0;F13;F01;F1;F12"
+      },
+      "expected": [
+        {
+          "Vk": 112,
+          "Ctrl": false,
+          "Alt": false,
+          "Shift": false,
+          "Win": false
+        },
+        {
+          "Vk": 112,
+          "Ctrl": false,
+          "Alt": false,
+          "Shift": false,
+          "Win": false
+        },
+        {
+          "Vk": 123,
+          "Ctrl": false,
+          "Alt": false,
+          "Shift": false,
+          "Win": false
+        }
+      ]
+    },
+    {
+      "request": {
+        "kind": "shortcuts",
+        "text": "Shift+1"
+      },
+      "expected": [
+        {
+          "Vk": 49,
+          "Ctrl": false,
+          "Alt": false,
+          "Shift": true,
+          "Win": false
+        }
+      ]
+    },
+    {
+      "request": {
+        "kind": "shortcuts",
+        "text": "Ctrl+Delete"
+      },
+      "expected": []
+    },
+    {
+      "request": {
+        "kind": "shortcuts",
+        "text": "Grave"
+      },
+      "expected": [
+        {
+          "Vk": 192,
+          "Ctrl": false,
+          "Alt": false,
+          "Shift": false,
+          "Win": false
+        }
+      ]
+    },
+    {
+      "request": {
+        "kind": "shortcuts",
+        "text": "F001"
+      },
+      "expected": []
+    },
+    {
+      "request": {
+        "kind": "names",
+        "text": ""
+      },
+      "expected": []
+    },
+    {
+      "request": {
+        "kind": "names",
+        "text": "ぎ"
+      },
+      "expected": []
+    },
+    {
+      "request": {
+        "kind": "names",
+        "text": "ぎっ"
+      },
+      "expected": []
+    },
+    {
+      "request": {
+        "kind": "names",
+        "text": "ぎっと"
+      },
+      "expected": [
+        "GitHub",
+        "GitLab"
+      ]
+    },
+    {
+      "request": {
+        "kind": "names",
+        "text": "ぎっとは"
+      },
+      "expected": [
+        "GitHub"
+      ]
+    },
+    {
+      "request": {
+        "kind": "names",
+        "text": "しゃお"
+      },
+      "expected": [
+        "Xiaomi"
+      ]
+    },
+    {
+      "request": {
+        "kind": "names",
+        "text": "ちゃっと"
+      },
+      "expected": [
+        "ChatGPT"
+      ]
+    },
+    {
+      "request": {
+        "kind": "names",
+        "text": "まいくろ"
+      },
+      "expected": [
+        "Microsoft"
+      ]
+    },
+    {
+      "request": {
+        "kind": "names",
+        "text": "あるふぁ"
+      },
+      "expected": []
+    },
+    {
+      "request": {
+        "kind": "names",
+        "text": "あっぷ"
+      },
+      "expected": [
+        "Apple",
+        "UP",
+        "UPSERT",
+        "AppleTalk"
+      ]
+    },
+    {
+      "request": {
+        "kind": "names",
+        "text": "ぶら"
+      },
+      "expected": []
+    },
+    {
+      "request": {
+        "kind": "names",
+        "text": "ぱそ"
+      },
+      "expected": []
+    },
+    {
+      "request": {
+        "kind": "names",
+        "text": "にほんご"
+      },
+      "expected": []
+    },
+    {
+      "request": {
+        "kind": "github-normalize",
+        "text": ""
+      },
+      "expected": ""
+    },
+    {
+      "request": {
+        "kind": "github-normalize",
+        "text": "a/b"
+      },
+      "expected": "a/b"
+    },
+    {
+      "request": {
+        "kind": "github-normalize",
+        "text": " a / b "
+      },
+      "expected": "a/b"
+    },
+    {
+      "request": {
+        "kind": "github-normalize",
+        "text": "https://github.com/owner/repo.git/"
+      },
+      "expected": "owner/repo"
+    },
+    {
+      "request": {
+        "kind": "github-normalize",
+        "text": "HTTP://WWW.GITHUB.COM/Owner/Repo/issues/12"
+      },
+      "expected": "Owner/Repo"
+    },
+    {
+      "request": {
+        "kind": "github-normalize",
+        "text": "github.com/owner/repo/pull/3"
+      },
+      "expected": "owner/repo"
+    },
+    {
+      "request": {
+        "kind": "github-normalize",
+        "text": "a//b"
+      },
+      "expected": "a/"
+    },
+    {
+      "request": {
+        "kind": "github-normalize",
+        "text": "a/b?query=1"
+      },
+      "expected": "a/b?query=1"
+    },
+    {
+      "request": {
+        "kind": "github-normalize",
+        "text": "a/日本語"
+      },
+      "expected": "a/日本語"
+    },
+    {
+      "request": {
+        "kind": "github-normalize",
+        "text": "日本語"
+      },
+      "expected": "日本語"
+    },
+    {
+      "request": {
+        "kind": "github-normalize",
+        "text": "😊abc"
+      },
+      "expected": "😊abc"
+    },
+    {
+      "request": {
+        "kind": "github-normalize",
+        "text": "https://evil.example/a/b"
+      },
+      "expected": "evil.example/a"
+    },
+    {
+      "request": {
+        "kind": "github-normalize",
+        "text": "owner/repo.git/issues/1"
+      },
+      "expected": "owner/repo.git"
+    },
+    {
+      "request": {
+        "kind": "github-valid",
+        "text": ""
+      },
+      "expected": false
+    },
+    {
+      "request": {
+        "kind": "github-valid",
+        "text": "a/b"
+      },
+      "expected": true
+    },
+    {
+      "request": {
+        "kind": "github-valid",
+        "text": " a / b "
+      },
+      "expected": false
+    },
+    {
+      "request": {
+        "kind": "github-valid",
+        "text": "https://github.com/owner/repo.git/"
+      },
+      "expected": false
+    },
+    {
+      "request": {
+        "kind": "github-valid",
+        "text": "HTTP://WWW.GITHUB.COM/Owner/Repo/issues/12"
+      },
+      "expected": false
+    },
+    {
+      "request": {
+        "kind": "github-valid",
+        "text": "github.com/owner/repo/pull/3"
+      },
+      "expected": false
+    },
+    {
+      "request": {
+        "kind": "github-valid",
+        "text": "a//b"
+      },
+      "expected": false
+    },
+    {
+      "request": {
+        "kind": "github-valid",
+        "text": "a/b?query=1"
+      },
+      "expected": false
+    },
+    {
+      "request": {
+        "kind": "github-valid",
+        "text": "a/日本語"
+      },
+      "expected": false
+    },
+    {
+      "request": {
+        "kind": "github-valid",
+        "text": "日本語"
+      },
+      "expected": false
+    },
+    {
+      "request": {
+        "kind": "github-valid",
+        "text": "😊abc"
+      },
+      "expected": false
+    },
+    {
+      "request": {
+        "kind": "github-valid",
+        "text": "https://evil.example/a/b"
+      },
+      "expected": false
+    },
+    {
+      "request": {
+        "kind": "github-valid",
+        "text": "owner/repo.git/issues/1"
+      },
+      "expected": false
+    }
+  ]
+}

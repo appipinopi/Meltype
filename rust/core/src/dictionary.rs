@@ -50,13 +50,15 @@ impl PrefixIndex {
         ))
     }
     fn contains(&self, prefix: &str) -> bool {
-        use fst::{IntoStreamer, Streamer};
-        self.0
-            .range()
-            .ge(prefix)
-            .into_stream()
-            .next()
-            .is_some_and(|key| key.starts_with(prefix.as_bytes()))
+        let fst = self.0.as_fst();
+        let mut node = fst.root();
+        for byte in prefix.bytes() {
+            let Some(index) = node.find_input(byte) else {
+                return false;
+            };
+            node = fst.node(node.transition_addr(index));
+        }
+        node.is_final() || !node.is_empty()
     }
 }
 
@@ -852,6 +854,9 @@ impl Dictionary {
                         && romaji::analyze(&piece[1..], true).valid);
                 let english_piece = boundaries[i]
                     && boundaries[end]
+                    && !(end < n && raw.as_bytes()[end-1] == raw.as_bytes()[end]
+                        && raw.as_bytes()[end].is_ascii_alphabetic()
+                        && !b"aeioun".contains(&raw.as_bytes()[end]))
                     // In FindSpans, a span ending at the final completed unit
                     // must include Pending. It cannot stop just before it.
                     && (pending_start != Some(end) || end == n)
@@ -1291,5 +1296,88 @@ impl Dictionary {
                 }
             })
             .collect()
+    }
+}
+
+#[cfg(test)]
+mod prefix_tests {
+    use super::*;
+    #[test]
+    #[ignore = "manual performance comparison; run with --release --ignored --nocapture"]
+    fn prefix_lookup_timing() {
+        use fst::{IntoStreamer, Streamer};
+        use std::{hint::black_box, time::Instant};
+        let index = PrefixIndex::bundled(include_bytes!(concat!(env!("OUT_DIR"), "/english.fst")));
+        let mut stream = index.0.stream();
+        let mut probes = Vec::new();
+        while let Some(word) = stream.next() {
+            let word = std::str::from_utf8(word).unwrap();
+            if word.is_ascii() && word.len() >= 3 {
+                probes.push(word[..3].to_owned());
+                probes.push(format!("{}!", &word[..3]));
+            }
+            if probes.len() >= 20000 {
+                break;
+            }
+        }
+        let mut rows = Vec::new();
+        for round in 0..4 {
+            for direct in if round % 2 == 0 {
+                [false, true]
+            } else {
+                [true, false]
+            } {
+                let start = Instant::now();
+                let mut hits = 0usize;
+                for _ in 0..10 {
+                    for probe in &probes {
+                        let found = if direct {
+                            index.contains(black_box(probe))
+                        } else {
+                            index
+                                .0
+                                .range()
+                                .ge(black_box(probe))
+                                .into_stream()
+                                .next()
+                                .is_some_and(|key| key.starts_with(probe.as_bytes()))
+                        };
+                        hits += usize::from(found);
+                    }
+                }
+                rows.push(serde_json::json!({"round":round,"method":if direct {"node"} else {"range"},"queries":probes.len()*10,"hits":hits,"ms":start.elapsed().as_secs_f64()*1000.0}));
+            }
+        }
+        assert!(rows.windows(2).all(|r| r[0]["hits"] == r[1]["hits"]));
+        println!("PREFIX_BENCH={}", serde_json::json!(rows));
+    }
+    #[test]
+    fn node_prefix_matches_range_lookup() {
+        use fst::{IntoStreamer, Streamer};
+        for words in [vec![], vec!["", "a", "abc", "abd", "日本語", "😊"]] {
+            let index = PrefixIndex::new(&words.iter().map(|w| w.to_string()).collect());
+            let mut probes = vec![
+                "".to_string(),
+                "missing".into(),
+                "日本".into(),
+                "😊x".into(),
+            ];
+            for word in words {
+                for end in word.char_indices().map(|(i, c)| i + c.len_utf8()) {
+                    probes.push(word[..end].into());
+                    probes.push(format!("{}?", &word[..end]));
+                }
+            }
+            for probe in probes {
+                let expected = index
+                    .0
+                    .range()
+                    .ge(&probe)
+                    .into_stream()
+                    .next()
+                    .is_some_and(|key| key.starts_with(probe.as_bytes()));
+                assert_eq!(index.contains(&probe), expected, "{probe}");
+            }
+        }
     }
 }

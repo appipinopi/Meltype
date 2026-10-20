@@ -843,7 +843,17 @@ impl App {
                     .striped(true)
                     .show(ui, |ui| {
                         for (key, text) in rows {
-                            ui.label(&key);
+                            if group == "languages" {
+                                if let Some(word) = key.strip_suffix("@e") {
+                                    ui.label(format!("{word} (英語の後)"));
+                                } else if let Some(word) = key.strip_suffix("@j") {
+                                    ui.label(format!("{word} (日本語の後)"));
+                                } else {
+                                    ui.label(&key);
+                                }
+                            } else {
+                                ui.label(&key);
+                            }
                             ui.add(egui::Label::new(text).wrap());
                             if ui
                                 .button("忘れる")
@@ -1006,6 +1016,32 @@ impl App {
 }
 fn supported(key: &str) -> bool {
     [
+        "GitHubIssueCandidates",
+        "GitHubRepository",
+        "ClipboardCandidates",
+        "LogKeyIntervals",
+        "PauseHotkey",
+        "ContextualLearning",
+        "ShiftSpaceHalfWidth",
+        "EnterCommitsAsShown",
+        "AlphanumericKeyStartsAsTyped",
+        "FullWidthParentheses",
+        "FullWidthSlash",
+        "SquareBrackets",
+        "EscStepsBack",
+        "EscRevertsSelectedClause",
+        "FunctionKeysAffectSelectedClause",
+        "CompatibleShortcuts",
+        "PartialCommit",
+        "MacControlKeys",
+        "ControlKeyBindings",
+        "CalculatorCandidates",
+        "LaughterAfterKana",
+        "FullWidthSpaceByDefault",
+        "EnglishFirstInput",
+        "ConsonantAbbreviations",
+        "EnglishNamePredictions",
+        "ShowCandidatesWhileTyping",
         "Enabled",
         "LiveConversion",
         "DirectModeAutoDetect",
@@ -1038,14 +1074,14 @@ fn supported(key: &str) -> bool {
 fn choices(key: &str) -> Option<&'static [&'static str]> {
     Some(match key {
         "DetectionLevel" => &["Aggressive", "Balanced", "Conservative", "Manual"],
-        "InputStyle" => &["Romaji", "Kana", "Both"],
+        "InputStyle" => &["Romaji", "Kana"],
         "Punctuation" => &[
             "Japanese",
             "FullWidthCommaPeriod",
             "FullWidthCommaKuten",
             "ToutenFullWidthPeriod",
         ],
-        "Mode" => &["Keyboard", "AutoSwitch", "Tsf"],
+        "Mode" => &["Keyboard", "Tsf"],
         "ConversionEngine" => &["Hybrid", "Mozc", "System"],
         "CompositionPlacement" => &["Overlay", "BelowCaret", "AboveCaret"],
         "CompositionSize" => &["Auto", "Small", "Medium", "Large", "ExtraLarge", "Huge"],

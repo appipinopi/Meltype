@@ -60,6 +60,14 @@ pub fn candidates(reading: &str, now: NaiveDateTime) -> Vec<String> {
     if let Some(typed) = typed(reading, now.year()) {
         return typed;
     }
+    if matches!(reading, "じこう" | "じこうのあいさつ") {
+        return crate::number_candidates::seasonal(now.month());
+    }
+    if let Some(values) = crate::number_candidates::era_to_year(reading)
+        .or_else(|| crate::number_candidates::traditional_units(reading))
+    {
+        return values;
+    }
     let is_now = ["いま", "なう"].contains(&reading);
     if !is_now && reading != "きょう" {
         return vec![];
@@ -98,7 +106,8 @@ pub fn candidates(reading: &str, now: NaiveDateTime) -> Vec<String> {
     ]
 }
 pub fn is_dynamic_choice(reading: &str, text: &str) -> bool {
-    crate::math_candidates::is_choice(reading, text)
+    ["くりっぷぼーど", "ぺーすと"].contains(&reading)
+        || crate::math_candidates::is_choice(reading, text)
         || ["いま", "なう", "きょう"].contains(&reading)
             && (text.chars().any(|c| c.is_ascii_digit()) || text.ends_with("曜日"))
         || shape(reading).is_some() && text.contains(['/', ':'])

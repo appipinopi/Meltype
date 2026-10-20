@@ -1,0 +1,348 @@
+{
+  "measured_at": "2026-10-20T13:00:56.240202+00:00",
+  "old_ref": "f3ede6a5321bbac2b2e604c2f1ec49da3ed1ec2d",
+  "new_ref": "198ecddd62373a16e58301cc35165c627f079ed1",
+  "samples": 5,
+  "warmups": 2,
+  "rounds": 2,
+  "order": [
+    "old",
+    "new",
+    "new",
+    "old"
+  ],
+  "binary_sha256": {
+    "old": "d1fff8ac215f347c1985e806db0887fbe9de7c019873dec80312928d9847c02a",
+    "new": "9ae9bcc422be04a2e2ca4d0e9095b9e12cff52e3de06eb94295724720e920fe1"
+  },
+  "binaries_unchanged": true,
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-pc-windows-msvc\nrelease: 1.99.1\nLLVM version: 23.1.1",
+  "results": [
+    {
+      "case": "japanese_32",
+      "medians_ms": {
+        "old": 9.6814,
+        "new": 7.51
+      },
+      "new_over_old": 0.7757142562026152,
+      "matching_projection": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "japanese_64",
+      "medians_ms": {
+        "old": 47.7444,
+        "new": 47.2397
+      },
+      "new_over_old": 0.9894291267666994,
+      "matching_projection": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "japanese_128",
+      "medians_ms": {
+        "old": 274.80920000000003,
+        "new": 231.24720000000002
+      },
+      "new_over_old": 0.841482745119159,
+      "matching_projection": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "japanese_256",
+      "medians_ms": {
+        "old": 1369.71205,
+        "new": 1258.9983499999998
+      },
+      "new_over_old": 0.9191700912611521,
+      "matching_projection": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "mixed_32",
+      "medians_ms": {
+        "old": 12.83595,
+        "new": 10.96585
+      },
+      "new_over_old": 0.8543076281849025,
+      "matching_projection": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "mixed_64",
+      "medians_ms": {
+        "old": 50.58825,
+        "new": 52.1923
+      },
+      "new_over_old": 1.03170795589885,
+      "matching_projection": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "mixed_128",
+      "medians_ms": {
+        "old": 250.36765,
+        "new": 253.8793
+      },
+      "new_over_old": 1.0140259734035129,
+      "matching_projection": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "mixed_256",
+      "medians_ms": {
+        "old": 1155.3782500000002,
+        "new": 967.1723999999999
+      },
+      "new_over_old": 0.8371045586153277,
+      "matching_projection": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "english_32",
+      "medians_ms": {
+        "old": 6.8081,
+        "new": 5.764600000000001
+      },
+      "new_over_old": 0.846726693203684,
+      "matching_projection": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "english_64",
+      "medians_ms": {
+        "old": 32.92335,
+        "new": 26.8596
+      },
+      "new_over_old": 0.8158222052130175,
+      "matching_projection": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "english_128",
+      "medians_ms": {
+        "old": 130.38765,
+        "new": 111.55855
+      },
+      "new_over_old": 0.8555913846134967,
+      "matching_projection": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "english_256",
+      "medians_ms": {
+        "old": 656.04925,
+        "new": 481.50415
+      },
+      "new_over_old": 0.7339451268330845,
+      "matching_projection": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "url_32",
+      "medians_ms": {
+        "old": 0.8876999999999999,
+        "new": 0.68345
+      },
+      "new_over_old": 0.7699110059704856,
+      "matching_projection": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "url_64",
+      "medians_ms": {
+        "old": 2.06345,
+        "new": 1.88035
+      },
+      "new_over_old": 0.9112651142504059,
+      "matching_projection": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "url_128",
+      "medians_ms": {
+        "old": 7.56255,
+        "new": 6.3483
+      },
+      "new_over_old": 0.83943907808874,
+      "matching_projection": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "url_256",
+      "medians_ms": {
+        "old": 26.19725,
+        "new": 25.93875
+      },
+      "new_over_old": 0.9901325520808482,
+      "matching_projection": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "short_japanese",
+      "medians_ms": {
+        "old": 1.26915,
+        "new": 1.9946500000000003
+      },
+      "new_over_old": 1.571642437852106,
+      "matching_projection": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "short_mixed",
+      "medians_ms": {
+        "old": 1.26905,
+        "new": 1.3816000000000002
+      },
+      "new_over_old": 1.088688388952366,
+      "matching_projection": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "short_english",
+      "medians_ms": {
+        "old": 0.2156,
+        "new": 0.21645
+      },
+      "new_over_old": 1.0039424860853432,
+      "matching_projection": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "short_url",
+      "medians_ms": {
+        "old": 0.3572,
+        "new": 0.38754999999999995
+      },
+      "new_over_old": 1.0849664053751398,
+      "matching_projection": true,
+      "eligible_for_speed_claim": true
+    },
+    {
+      "case": "edit_and_katakana",
+      "medians_ms": {
+        "old": 1.53445,
+        "new": 1.7573
+      },
+      "new_over_old": 1.1452311903287822,
+      "matching_projection": true,
+      "eligible_for_speed_claim": true
+    }
+  ],
+  "process_resources": [
+    {
+      "version": "old",
+      "round": 0,
+      "wall_seconds": 23.96106869999494,
+      "cpu_seconds": 22.53125,
+      "cpu_percent_one_core": 94.03274237098097,
+      "cpu_percent_machine": 7.836061864248414,
+      "logical_processors": 12,
+      "peak_working_set_bytes": 44883968,
+      "sampled_mean_working_set_bytes": 43043394.19525066,
+      "sampled_peak_private_bytes": 36352000,
+      "peak_commit_bytes": 36352000,
+      "peak_working_set_percent_physical": 0.06592981861658807,
+      "memory_sample_count": 379,
+      "poll_interval_seconds": 0.05,
+      "system_memory_before": {
+        "total_bytes": 68078403584,
+        "used_bytes": 23061909504,
+        "load_percent": 33
+      },
+      "system_memory_after": {
+        "total_bytes": 68078403584,
+        "used_bytes": 22925901824,
+        "load_percent": 33
+      },
+      "scope": "Whole benchmark process: startup, dictionary/session construction, warmups, timed keys, verification JSON output. Not per-key CPU or whole IME application. Working set includes shared resident pages; private bytes are committed memory."
+    },
+    {
+      "version": "new",
+      "round": 0,
+      "wall_seconds": 26.09309470000153,
+      "cpu_seconds": 24.28125,
+      "cpu_percent_one_core": 93.05622916395032,
+      "cpu_percent_machine": 7.754685763662526,
+      "logical_processors": 12,
+      "peak_working_set_bytes": 48111616,
+      "sampled_mean_working_set_bytes": 46156657.98540146,
+      "sampled_peak_private_bytes": 36483072,
+      "peak_commit_bytes": 36483072,
+      "peak_working_set_percent_physical": 0.07067089336288042,
+      "memory_sample_count": 411,
+      "poll_interval_seconds": 0.05,
+      "system_memory_before": {
+        "total_bytes": 68078403584,
+        "used_bytes": 22920732672,
+        "load_percent": 33
+      },
+      "system_memory_after": {
+        "total_bytes": 68078403584,
+        "used_bytes": 23011786752,
+        "load_percent": 33
+      },
+      "scope": "Whole benchmark process: startup, dictionary/session construction, warmups, timed keys, verification JSON output. Not per-key CPU or whole IME application. Working set includes shared resident pages; private bytes are committed memory."
+    },
+    {
+      "version": "new",
+      "round": 1,
+      "wall_seconds": 25.079950399987865,
+      "cpu_seconds": 24.078125,
+      "cpu_percent_one_core": 96.00547296142838,
+      "cpu_percent_machine": 8.000456080119033,
+      "logical_processors": 12,
+      "peak_working_set_bytes": 43585536,
+      "sampled_mean_working_set_bytes": 42057218.54726368,
+      "sampled_peak_private_bytes": 36651008,
+      "peak_commit_bytes": 36651008,
+      "peak_working_set_percent_physical": 0.06402255885189942,
+      "memory_sample_count": 402,
+      "poll_interval_seconds": 0.05,
+      "system_memory_before": {
+        "total_bytes": 68078403584,
+        "used_bytes": 23010025472,
+        "load_percent": 33
+      },
+      "system_memory_after": {
+        "total_bytes": 68078403584,
+        "used_bytes": 22973222912,
+        "load_percent": 33
+      },
+      "scope": "Whole benchmark process: startup, dictionary/session construction, warmups, timed keys, verification JSON output. Not per-key CPU or whole IME application. Working set includes shared resident pages; private bytes are committed memory."
+    },
+    {
+      "version": "old",
+      "round": 1,
+      "wall_seconds": 36.56721429999743,
+      "cpu_seconds": 33.09375,
+      "cpu_percent_one_core": 90.50115146453014,
+      "cpu_percent_machine": 7.541762622044177,
+      "logical_processors": 12,
+      "peak_working_set_bytes": 43216896,
+      "sampled_mean_working_set_bytes": 41670785.53162393,
+      "sampled_peak_private_bytes": 36384768,
+      "peak_commit_bytes": 36384768,
+      "peak_working_set_percent_physical": 0.06348106554331272,
+      "memory_sample_count": 585,
+      "poll_interval_seconds": 0.05,
+      "system_memory_before": {
+        "total_bytes": 68078403584,
+        "used_bytes": 22966366208,
+        "load_percent": 33
+      },
+      "system_memory_after": {
+        "total_bytes": 68078403584,
+        "used_bytes": 23282356224,
+        "load_percent": 34
+      },
+      "scope": "Whole benchmark process: startup, dictionary/session construction, warmups, timed keys, verification JSON output. Not per-key CPU or whole IME application. Working set includes shared resident pages; private bytes are committed memory."
+    }
+  ],
+  "scope": "In-memory keys and JSON, no OS engine/live conversion/prediction/learning. Same compiler must be used when building both binaries. Source/dependency revisions differ; this does not isolate one code change.",
+  "provenance": {
+    "old": "Fresh build from f3ede6a, cargo +stable build -p meltype-core --example benchmark --release --locked; rustc 1.99.1",
+    "new": "Frozen 198ecdd binary; SHA-256 matches the prior accepted run, which records rustc 1.99.1",
+    "note": "The prior f3ede6a report used rustc 1.94.1; do not use its timings to isolate source changes."
+  }
+}

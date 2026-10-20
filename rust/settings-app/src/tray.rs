@@ -124,9 +124,14 @@ impl Tray {
             .map_err(|e| e.to_string())?;
         let mut warnings = vec![];
         let (hotkey_sender, hotkey_receiver) = mpsc::channel();
-        let hotkey = match Hotkey::attach(icon.window_handle(), hotkey_sender, ctx) {
+        let hotkey = match Hotkey::attach_configured(
+            icon.window_handle(),
+            hotkey_sender,
+            ctx,
+            settings.text("PauseHotkey"),
+        ) {
             Ok(hotkey) => {
-                if let Some(name) = hotkey.name {
+                if let Some(name) = hotkey.name.as_deref() {
                     enabled.set_text(format!("Meltype を有効にする ({name})"));
                 } else {
                     warnings.push("一時停止/再開のホットキーは、候補がすべて使用中のため登録できませんでした。".into());
@@ -305,7 +310,7 @@ impl Tray {
     }
     #[cfg(feature = "visual-test")]
     pub fn hotkey_name(&self) -> Option<&str> {
-        self._hotkey.as_ref().and_then(|h| h.name)
+        self._hotkey.as_ref().and_then(|h| h.name.as_deref())
     }
     #[cfg(feature = "visual-test")]
     pub fn startup_status(&self) -> (Option<bool>, bool) {
