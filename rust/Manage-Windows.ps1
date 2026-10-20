@@ -2,7 +2,7 @@
 # Versioned installation; personal data and old versions are retained.
 [CmdletBinding(SupportsShouldProcess=$true)]
 param(
-    [ValidateSet('Inspect','Install','Update','Uninstall')][string]$Action = 'Inspect',
+    [ValidateSet('Inspect','Install','Update','Uninstall','Cleanup')][string]$Action = 'Inspect',
     [string]$Package = $PSScriptRoot,
     [switch]$ReplaceExisting,
     [switch]$SkipCurrentUserStartup
@@ -54,7 +54,7 @@ function Test-Package([string]$Root) {
     return $manifest
 }
 $packageRoot = (Resolve-Path -LiteralPath $Package).Path.TrimEnd('\')
-if ($Action -ne 'Uninstall') {
+if ($Action -notin @('Uninstall','Cleanup')) {
     $manifest = Test-Package $packageRoot
     Write-Host "Package hashes verified: $packageRoot"
     if ($Action -eq 'Inspect') { return }
@@ -64,7 +64,7 @@ $statePath = Assert-Child $installRoot (Join-Path $installRoot 'installed.json')
 $state = if (Test-Path -LiteralPath $statePath) { Get-Content -LiteralPath $statePath -Raw | ConvertFrom-Json } else { $null }
 $old = @{ x64 = (Get-Server ([Microsoft.Win32.RegistryView]::Registry64)); x86 = (Get-Server ([Microsoft.Win32.RegistryView]::Registry32)) }
 if ($Action -eq 'Update' -and $null -eq $state) { throw 'No managed installation. Use Install first.' }
-if ($Action -ne 'Uninstall') {
+if ($Action -notin @('Uninstall','Cleanup')) {
     foreach ($arch in 'x64','x86') {
         if ($old[$arch] -and -not $old[$arch].StartsWith($installRoot+'\',[StringComparison]::OrdinalIgnoreCase) -and -not $ReplaceExisting) {
             throw "Another Meltype is registered: $($old[$arch]). Back up its data; use -ReplaceExisting to replace the shared registration."
@@ -84,7 +84,7 @@ function Register-Server([string]$Arch,[string]$Dll,[switch]$Remove) {
     $process = Start-Process -FilePath $exe -ArgumentList $arguments -WindowStyle Hidden -Wait -PassThru
     if ($process.ExitCode -ne 0) { throw "regsvr32 $Arch failed: $($process.ExitCode)" }
 }
-function Invoke-StartupMaintenance([string]$Exe, [ValidateSet('rebind','disable')][string]$Operation) {
+function Invoke-StartupMaintenance([string]$Exe, [ValidateSet('rebind','disable','stop-tray')][string]$Operation) {
     if (-not (Test-Path -LiteralPath $Exe -PathType Leaf)) { throw "Startup helper missing: $Exe" }
     $report = [IO.Path]::GetTempFileName()
     $process = $null
@@ -104,6 +104,75 @@ function Invoke-StartupMaintenance([string]$Exe, [ValidateSet('rebind','disable'
         Remove-Item -LiteralPath $report -Force -ErrorAction SilentlyContinue
     }
 }
+function Assert-NoReparse([string]$Root, [string]$Path) {
+    $cursor = Get-Item -LiteralPath $Path -Force
+    while ($true) {
+        if ($cursor.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw "Reparse point in installation: $($cursor.FullName)" }
+        if ($cursor.FullName -eq $Root) { break }
+        $parent = Split-Path -Parent $cursor.FullName
+        if (-not $parent) { throw 'Installation root not found in parent chain' }
+        $cursor = Get-Item -LiteralPath $parent -Force
+    }
+}
+function Remove-ManagedFiles([string]$Root) {
+    # Preflight every deletion before touching files. Never traverse a link or
+    # recursively remove a directory that might contain user-created files.
+    Assert-NoReparse $Root $Root
+    $versions = Assert-Child $Root (Join-Path $Root 'versions')
+    $plans = @()
+    if (Test-Path -LiteralPath $versions) {
+        Assert-NoReparse $Root $versions
+        foreach ($version in Get-ChildItem -LiteralPath $versions -Directory -Force) {
+            $folder = Assert-Child $Root $version.FullName
+            Assert-NoReparse $Root $folder
+            $manifestPath = Join-Path $folder 'SHA256SUMS.json'
+            if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) { continue }
+            Assert-NoReparse $Root $manifestPath
+            $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+            $files = @(); $directories = @($folder)
+            foreach ($item in $manifest.PSObject.Properties) {
+                $path = Assert-Child $folder (Join-Path $folder $item.Name)
+                if (Test-Path -LiteralPath $path) {
+                    Assert-NoReparse $Root $path
+                    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Manifest path is not a file: $path" }
+                    if ((Get-FileHash -LiteralPath $path).Hash -ne $item.Value) { throw "Modified installed file retained; cleanup stopped: $path" }
+                    $files += $path
+                }
+                $parent = Split-Path -Parent $path
+                while ($parent -ne $folder) {
+                    $directories += (Assert-Child $folder $parent)
+                    $parent = Split-Path -Parent $parent
+                }
+            }
+            $plans += @{ files = $files; manifest = $manifestPath; directories = $directories }
+        }
+    }
+    $pending = @()
+    foreach ($plan in $plans) {
+        foreach ($path in $plan.files) {
+            try { Remove-Item -LiteralPath $path -Force -ErrorAction Stop } catch { $pending += $path }
+        }
+        # Keep the manifest when locked files remain so Cleanup can retry later.
+        if (@($plan.files | Where-Object { Test-Path -LiteralPath $_ }).Count -eq 0) {
+            try { Remove-Item -LiteralPath $plan.manifest -Force -ErrorAction Stop } catch { $pending += $plan.manifest }
+        }
+        foreach ($directory in $plan.directories | Sort-Object -Unique | Sort-Object Length -Descending) {
+            if ((Test-Path -LiteralPath $directory) -and @(Get-ChildItem -LiteralPath $directory -Force).Count -eq 0) {
+                try { Remove-Item -LiteralPath $directory -ErrorAction Stop } catch { $pending += $directory }
+            }
+        }
+    }
+    if ($pending.Count) { Write-Warning "Locked files retained. Close applications or reboot, then run -Action Cleanup: $($pending -join ', ')" }
+    Write-Host 'Removed verified package files. User data and unlisted files were retained.'
+}
+if ($Action -eq 'Cleanup') {
+    if ($null -eq $state -or $state.unregistered -ne $true) { throw 'Uninstall must complete before Cleanup.' }
+    foreach ($arch in 'x64','x86') {
+        if ($old[$arch] -and $old[$arch].StartsWith($installRoot+'\',[StringComparison]::OrdinalIgnoreCase)) { throw 'Installed IME is still registered; cleanup refused.' }
+    }
+    Remove-ManagedFiles $installRoot
+    return
+}
 if ($Action -eq 'Uninstall') {
     if ($null -eq $state) { throw 'No managed installation; nothing removed.' }
     foreach ($arch in 'x64','x86') {
@@ -115,10 +184,15 @@ if ($Action -eq 'Uninstall') {
             throw 'This old installation has no startup helper. Update first, or disable startup manually and pass -SkipCurrentUserStartup.'
         }
         $helper = Assert-Child $installRoot (Join-Path ([string]$state.package) 'meltype-settings.exe')
+        $null = Invoke-StartupMaintenance $helper 'stop-tray'
         $null = Invoke-StartupMaintenance $helper 'disable'
     }
     foreach ($arch in 'x64','x86') { Register-Server $arch ([string]$state.$arch) -Remove }
-    Write-Host "IME unregistered. Current-user startup was processed unless explicitly skipped. Close the tray. Files remain at $installRoot for removal after applications close/reboot. User data is retained."
+    $state | Add-Member -NotePropertyName unregistered -NotePropertyValue $true -Force
+    $state | ConvertTo-Json | Set-Content -LiteralPath "$statePath.tmp" -Encoding UTF8
+    Move-Item -LiteralPath "$statePath.tmp" -Destination $statePath -Force
+    Remove-ManagedFiles $installRoot
+    Write-Host 'IME unregistered. Current-user tray/startup were processed unless explicitly skipped. User data is retained.'
     return
 }
 $stamp = (Get-FileHash -LiteralPath (Join-Path $packageRoot 'SHA256SUMS.json') -Algorithm SHA256).Hash.Substring(0,16)
@@ -141,6 +215,10 @@ if (Test-Path -LiteralPath (Join-Path $versionRoot 'SHA256SUMS.json')) {
     $null = Test-Package $versionRoot
 }
 $attempted = @()
+if (-not $SkipCurrentUserStartup) {
+    # Use the new helper so older trays produce an explicit manual-close error.
+    $null = Invoke-StartupMaintenance (Join-Path $versionRoot 'meltype-settings.exe') 'stop-tray'
+}
 try {
     foreach ($arch in 'x64','x86') {
         $attempted += $arch

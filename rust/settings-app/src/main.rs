@@ -11,6 +11,8 @@ mod rules;
 mod startup;
 #[cfg(windows)]
 mod tray;
+#[cfg(windows)]
+mod tray_control;
 mod widgets;
 #[cfg(windows)]
 mod windows_services;
@@ -241,6 +243,16 @@ impl App {
         ctx.send_viewport_cmd(egui::ViewportCommand::Close);
     }
     #[cfg(windows)]
+    fn maintenance_quit(&mut self, ctx: &egui::Context) {
+        if self.settings.0 != self.opened.0 {
+            self.status = "更新・削除のための終了要求があります。未保存の設定を保存または取り消してください。".into();
+            ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
+            return;
+        }
+        self.closing = true;
+        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+    }
+    #[cfg(windows)]
     fn update_tray(&mut self, ctx: &egui::Context) {
         if !self.resident {
             return;
@@ -296,6 +308,9 @@ impl App {
                     }) {
                         self.status = e.to_string();
                     }
+                }
+                tray::Action::MaintenanceQuit => {
+                    self.maintenance_quit(ctx);
                 }
                 tray::Action::Quit => {
                     if self.save() {
@@ -1370,6 +1385,28 @@ impl eframe::App for App {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(windows)]
+    #[test]
+    fn maintenance_exit_preserves_unsaved_drafts_and_enabled_preference() {
+        let directory = tempfile::tempdir().unwrap();
+        let store = Store::new(directory.path());
+        let mut app = App::with_store(store.clone());
+        app.resident = true;
+        let ctx = egui::Context::default();
+        app.settings.set("LiveConversion", json!(false)).unwrap();
+        let _ = ctx.run(egui::RawInput::default(), |ctx| app.maintenance_quit(ctx));
+        assert!(!app.closing);
+        assert!(!app.settings.boolean("LiveConversion"), "draft lost");
+        assert!(!directory.path().join("config.json").exists());
+        app.settings = app.opened.clone();
+        let _ = ctx.run(egui::RawInput::default(), |ctx| app.maintenance_quit(ctx));
+        assert!(app.closing);
+        assert!(store.settings().unwrap().boolean("Enabled"));
+        assert!(
+            !directory.path().join("config.json").exists(),
+            "maintenance exit must not change settings"
+        );
+    }
     #[test]
     fn all_added_fields_have_target_labels_help_and_typed_controls() {
         let inventory: Value =

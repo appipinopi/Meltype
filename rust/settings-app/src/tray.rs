@@ -22,6 +22,7 @@ pub enum Action {
     Folder,
     About,
     Quit,
+    MaintenanceQuit,
     Startup,
     Status(String),
     Error(String),
@@ -31,7 +32,7 @@ enum Event {
     Toggle,
 }
 pub struct Tray {
-    _lock: std::fs::File,
+    stop_event: crate::tray_control::StopEvent,
     // Drop the subclass/hotkey before dropping its tray-owned native window.
     _hotkey: Option<Hotkey>,
     hotkey_receiver: Receiver<()>,
@@ -51,6 +52,8 @@ pub struct Tray {
     ctx: egui::Context,
     warnings: Vec<String>,
     guid: u128,
+    // Release only after the tray icon, callbacks and hotkeys have been dropped.
+    _lock: std::fs::File,
 }
 impl Tray {
     pub fn new(ctx: &egui::Context, settings: &Settings, store: &Store) -> Result<Self, String> {
@@ -167,6 +170,7 @@ impl Tray {
             }
         }));
         let mut tray = Self {
+            stop_event: crate::tray_control::StopEvent::new(&store.directory)?,
             _lock: lock,
             _hotkey: hotkey,
             hotkey_receiver,
@@ -266,6 +270,9 @@ impl Tray {
         Ok(())
     }
     pub fn poll(&mut self) -> Vec<Action> {
+        if self.stop_event.requested() {
+            return vec![Action::MaintenanceQuit];
+        }
         let mut actions: Vec<Action> = self
             .receiver
             .try_iter()

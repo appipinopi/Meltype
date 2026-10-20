@@ -6,7 +6,7 @@ $root = Join-Path ([IO.Path]::GetTempPath()) ('meltype-lifecycle-' + [Guid]::New
 New-Item -ItemType Directory -Path $root | Out-Null
 $global:MeltypeLifecycleTest = @{
     install = (Join-Path $root 'installed'); registration = @{}; enabled = $false
-    calls = [Collections.Generic.List[string]]::new(); failArch = ''; failStartup = $false; startupExe = ''
+    calls = [Collections.Generic.List[string]]::new(); failArch = ''; failStartup = $false; startupExe = ''; failStop = $false
 }
 function Assert-That([bool]$Value, [string]$Message) { if (-not $Value) { throw $Message } }
 function Package([string]$PackageLabel) {
@@ -49,7 +49,8 @@ function Register-Server([string]$Arch,[string]$Dll,[switch]$Remove) {
 function Invoke-StartupMaintenance([string]$Exe,[string]$Operation) {
     $state = $global:MeltypeLifecycleTest
     $state.calls.Add("startup:$Operation")
-    if ($state.failStartup) { throw 'controlled startup failure' }
+    if ($state.failStop -and $Operation -eq 'stop-tray') { throw 'controlled stop failure' }
+    if ($state.failStartup -and $Operation -ne 'stop-tray') { throw 'controlled startup failure' }
     if ($Operation -eq 'disable') { $state.enabled = $false }
     elseif ($state.enabled) { $state.startupExe = $Exe }
     return @{ protocol = 1; ok = $true; enabled = $state.enabled }
@@ -90,6 +91,12 @@ Assert-That (Test-Path -LiteralPath $first.x64) 'Update removed old live DLL'
 $locked = [IO.File]::Open($second.x64, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
 try { & $driver -Action Update -Package $two } finally { $locked.Dispose() }
 $before = Get-Content -LiteralPath $receipt -Raw
+$state.failStop = $true
+Reject { & $driver -Action Update -Package $three } '*controlled stop failure*'
+Assert-That ((Get-Content -LiteralPath $receipt -Raw) -eq $before) 'Stop failure published new state'
+Assert-That ($state.registration.x64 -eq $second.x64) 'Stop failure changed registration'
+$state.failStop = $false
+Reject { & $driver -Action Cleanup -Package $three } '*Uninstall must complete*'
 $state.failArch = 'x86'
 Reject { & $driver -Action Update -Package $three } '*controlled registration failure*'
 Assert-That ((Get-Content -LiteralPath $receipt -Raw) -eq $before) 'Failed registration published new state'
@@ -110,9 +117,33 @@ $state.failStartup = $true
 Reject { & $driver -Action Uninstall -Package $three } '*controlled startup failure*'
 Assert-That ($state.registration.x64 -eq $third.x64) 'Startup failure should stop before unregistering'
 $state.failStartup = $false; $state.calls.Clear()
-& $driver -Action Uninstall -Package $three
+$unlisted = Join-Path $third.package 'my-notes.txt'
+[IO.File]::WriteAllText($unlisted, 'preserve unlisted file')
+$lockedPath = $third.x64
+$locked = [IO.File]::Open($lockedPath, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+try { & $driver -Action Uninstall -Package $three } finally { $locked.Dispose() }
+Assert-That (Test-Path -LiteralPath $lockedPath) 'Locked DLL was unexpectedly removed'
+Assert-That (Test-Path -LiteralPath (Join-Path $third.package 'SHA256SUMS.json')) 'Retry manifest was removed'
+Assert-That (-not (Test-Path -LiteralPath $third.x86)) 'Unlocked DLL was not removed'
+Assert-That ((Get-Content -LiteralPath $unlisted -Raw) -eq 'preserve unlisted file') 'Unlisted file was removed'
+& $driver -Action Cleanup -Package $three
+Assert-That (-not (Test-Path -LiteralPath $lockedPath)) 'Cleanup did not remove previously locked DLL'
+Assert-That (Test-Path -LiteralPath $unlisted) 'Cleanup removed unlisted file'
 Assert-That (-not $state.enabled -and $state.registration.Count -eq 0) 'Uninstall left startup or IME registrations'
-Assert-That (($state.calls -join ',') -eq 'admin,startup:disable,register:x64:True,register:x86:True') 'Uninstall did not disable startup first'
+Assert-That (($state.calls -join ',') -eq 'admin,startup:stop-tray,startup:disable,register:x64:True,register:x86:True,admin') 'Uninstall did not disable startup first'
 Assert-That ((Get-Content -LiteralPath $data -Raw) -eq 'keep learning and settings') 'User data changed'
+$badFolder = Join-Path $state.install 'versions/modified'
+New-Item -ItemType Directory -Path $badFolder -Force | Out-Null
+$badFile = Join-Path $badFolder 'owned.txt'
+[IO.File]::WriteAllText($badFile, 'original')
+$digest = (Get-FileHash -LiteralPath $badFile).Hash
+$badManifest = Join-Path $badFolder 'SHA256SUMS.json'
+@{ 'owned.txt' = $digest } | ConvertTo-Json | Set-Content -LiteralPath $badManifest -Encoding UTF8
+[IO.File]::WriteAllText($badFile, 'user modified')
+Reject { & $driver -Action Cleanup -Package $three } '*Modified installed file retained*'
+Assert-That ((Get-Content -LiteralPath $badFile -Raw) -eq 'user modified') 'Modified file deleted'
+@{ '../outside.txt' = $digest } | ConvertTo-Json | Set-Content -LiteralPath $badManifest -Encoding UTF8
+Reject { & $driver -Action Cleanup -Package $three } '*Path leaves root*'
+Assert-That (Test-Path -LiteralPath $unlisted) 'Preflight touched unrelated files'
 Write-Host "PASS: isolated install/update/idempotency/rollback/startup failure/ownership/uninstall/WhatIf. Files: $root"
 Remove-Variable -Name MeltypeLifecycleTest -Scope Global

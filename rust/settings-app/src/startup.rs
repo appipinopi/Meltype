@@ -293,6 +293,7 @@ fn run(args: &[OsString]) -> Result<i32, String> {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Maintenance {
+    StopTray,
     Query,
     Rebind,
     Disable,
@@ -300,10 +301,11 @@ enum Maintenance {
 impl Maintenance {
     fn parse(text: &str) -> Result<Self, String> {
         match text {
+            "stop-tray" => Ok(Self::StopTray),
             "query" => Ok(Self::Query),
             "rebind" => Ok(Self::Rebind),
             "disable" => Ok(Self::Disable),
-            _ => Err("startup action must be query, rebind or disable".into()),
+            _ => Err("startup action must be query, rebind, disable or stop-tray".into()),
         }
     }
 }
@@ -345,6 +347,7 @@ fn maintain(
 ) -> Result<(bool, bool), String> {
     let enabled = spec.query_combined(run, registry)?;
     match action {
+        Maintenance::StopTray => Err("stop-tray requires the cooperative tray endpoint".into()),
         Maintenance::Query => Ok((enabled, false)),
         Maintenance::Rebind if !enabled => Ok((false, false)),
         Maintenance::Rebind => {
@@ -376,11 +379,16 @@ pub fn command_line(args: &[OsString]) -> Option<i32> {
             return Some(2);
         }
     };
-    let result = Spec::current().and_then(|spec| {
-        maintain(&spec, request.0, &mut run, &mut |action| {
-            registry(&spec, action)
+    let result = if request.0 == Maintenance::StopTray {
+        crate::tray_control::stop(&meltype_core::storage::Store::default_directory())
+            .map(|stopped| (false, stopped))
+    } else {
+        Spec::current().and_then(|spec| {
+            maintain(&spec, request.0, &mut run, &mut |action| {
+                registry(&spec, action)
+            })
         })
-    });
+    };
     let value = match &result {
         Ok((enabled, changed)) => {
             serde_json::json!({"protocol":1,"ok":true,"enabled":enabled,"changed":changed})
