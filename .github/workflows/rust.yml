@@ -76,6 +76,8 @@ jobs:
         run: python rust/native/tests/number_keys_smoke.py target/release/${{ runner.os == 'Windows' && 'meltype_native.dll' || runner.os == 'macOS' && 'libmeltype_native.dylib' || 'libmeltype_native.so' }} rust/core/tests/data/upstream-misspelling-keys.json
       - name: Custom romaji original key traces through native ABI
         run: python rust/native/tests/custom_romaji_smoke.py
+      - name: Core levels learning context and custom data through native ABI
+        run: python rust/native/tests/core_data_smoke.py
       - name: Scored segmentation original key traces through native ABI
         run: python rust/native/tests/scored_smoke.py
       - name: Long and boundary original key traces through native ABI

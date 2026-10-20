@@ -545,6 +545,7 @@ impl Session {
         crate::protection::transform(&self.raw, |part| self.detect_composition(part, final_input))
     }
     fn detect_composition(&self, raw: &str, final_input: bool) -> String {
+        let _language = crate::language_memory::Scope::new(&self.preferences.english);
         let _probes = romaji::probes::Scope::new(self.probe_cache.clone());
         let dictionary = Dictionary::bundled();
         let level = if self.balanced_override {
@@ -684,12 +685,7 @@ impl Session {
         }
         let dictionary = Dictionary::bundled();
         let detect_whole = || self.detect_composition(&self.raw, final_input);
-        let detected = || match self.preferences.english.get(&self.raw.to_ascii_lowercase()) {
-            _ if self.settings.text("DetectionLevel") == "Manual" => detect_whole(),
-            Some(true) => self.raw.clone(),
-            Some(false) => romaji::hiragana(&self.raw, final_input),
-            None => detect_whole(),
-        };
+        let detected = detect_whole;
         let text = crate::protection::transform(&self.raw, |part| {
             if part == self.raw {
                 detected()
@@ -706,6 +702,11 @@ impl Session {
             .as_ref()
             .filter(|u| u.raw() == self.raw)
             .filter(|_| !Dictionary::uses_scored(self.settings.boolean("ScoredSegmentation")))
+            .filter(|_| {
+                !crate::protection::scan(&self.raw)
+                    .iter()
+                    .any(|span| span.start == 0 && span.end == self.raw.len())
+            })
             .map_or(text.clone(), |u| u.render(&text, final_input));
         self.punctuate(text)
     }
@@ -1046,11 +1047,27 @@ impl Session {
                 }
             }
             if self.function_key != 0 && !self.is_converting() {
-                changes.push(Change::Language {
-                    raw: self.raw.clone(),
-                    english: self.function_key >= 0x78,
-                    explicit: true,
-                });
+                // Like LearnLanguage, remember an explicit mode only when it
+                // changes the automatic choice. Retained sound units matter:
+                // deleting kou from gakkou leaves がっ, not an English gak.
+                let detected = self.detect_composition(&self.raw, true);
+                let automatic = self
+                    .edited_units
+                    .as_ref()
+                    .filter(|u| u.raw() == self.raw)
+                    .map_or(detected.clone(), |u| u.render(&detected, true));
+                let english = self.function_key >= 0x78;
+                if if english {
+                    !automatic.bytes().all(|c| c.is_ascii_alphabetic())
+                } else {
+                    automatic.chars().any(|c| c.is_ascii_alphabetic())
+                } {
+                    changes.push(Change::Language {
+                        raw: self.raw.clone(),
+                        english,
+                        explicit: true,
+                    });
+                }
             }
             self.learn(changes);
         }
@@ -1925,7 +1942,7 @@ impl Session {
                         ));
                     }
                     let units = self.edited_units.as_mut().expect("captured composition");
-                    units.remove_last(english_tail, displayed == self.raw);
+                    units.remove_last(english_tail);
                     self.raw = units.raw().to_owned();
                 }
                 self.candidates.clear();

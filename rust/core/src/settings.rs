@@ -52,7 +52,9 @@ impl Settings {
             }
         }
         if version < 4 {
-            let rules = loaded.entry("AppRules").or_insert_with(|| json!([]));
+            let rules = loaded
+                .entry("AppRules")
+                .or_insert_with(|| defaults.0["AppRules"].clone());
             if let Some(rules) = rules.as_array_mut() {
                 for rule in defaults.0["AppRules"]
                     .as_array()
@@ -156,15 +158,29 @@ impl Settings {
             rules.reverse();
             for r in rules {
                 r["Process"] = json!(r["Process"].as_str().unwrap().trim());
+                for (key, value) in [
+                    ("Enabled", json!(true)),
+                    ("Profile", json!("General")),
+                    ("Kind", Value::Null),
+                ] {
+                    r.as_object_mut().unwrap().entry(key).or_insert(value);
+                }
             }
         }
-        let name = self.text("ActiveProfile").trim().to_owned();
-        let name = if name.is_empty() {
-            "標準".to_owned()
-        } else {
-            name
-        };
-        self.0.insert("ActiveProfile".into(), json!(name));
+        if let Some(kinds) = self.0.get_mut("AppKinds").and_then(Value::as_array_mut) {
+            for kind in kinds.iter_mut().filter_map(Value::as_object_mut) {
+                for (key, value) in [
+                    ("Name", json!("")),
+                    ("Base", json!("General")),
+                    ("DetectionLevel", Value::Null),
+                    ("LiveConversion", Value::Null),
+                    ("StartInEnglish", json!(false)),
+                ] {
+                    kind.entry(key).or_insert(value);
+                }
+            }
+        }
+        let active = self.text("ActiveProfile").trim().to_owned();
         let profiles = self.0["Profiles"].as_array().unwrap();
         let mut seen = HashSet::new();
         let mut profiles: Vec<_> = profiles
@@ -177,6 +193,16 @@ impl Settings {
                 Some(json!({"Name":name,"Values":p["Values"]}))
             })
             .collect();
+        let name = if active.is_empty() {
+            profiles
+                .first()
+                .and_then(|p| p["Name"].as_str())
+                .unwrap_or("標準")
+                .to_owned()
+        } else {
+            active
+        };
+        self.0.insert("ActiveProfile".into(), json!(name));
         if !profiles.iter().any(|p| p["Name"] == name) {
             profiles.insert(0, json!({"Name":name,"Values":null}));
         }
@@ -277,13 +303,26 @@ impl Settings {
             return Err("profile already exists".into());
         }
         let values = self.profile_values();
+        let active = self.text("ActiveProfile").to_owned();
+        if let Some(current) = self.0["Profiles"]
+            .as_array_mut()
+            .unwrap()
+            .iter_mut()
+            .find(|p| p["Name"] == active)
+        {
+            current["Values"] = values.clone();
+        }
         self.0["Profiles"]
             .as_array_mut()
             .unwrap()
             .push(json!({"Name":name,"Values":values}));
+        self.0.insert("ActiveProfile".into(), json!(name));
         Ok(())
     }
     pub fn switch_profile(&mut self, name: &str) -> Result<(), String> {
+        if name == self.text("ActiveProfile") {
+            return Ok(());
+        }
         let target = self.0["Profiles"]
             .as_array()
             .unwrap()
@@ -403,6 +442,7 @@ impl Settings {
             unique = format!("{name} ({i})");
             i += 1;
         }
+        let previous = self.text("ActiveProfile").to_owned();
         self.add_profile(&unique)?;
         let profile = self.0["Profiles"]
             .as_array_mut()
@@ -410,6 +450,7 @@ impl Settings {
             .last_mut()
             .unwrap();
         profile["Values"] = imported.profile_values();
+        self.0.insert("ActiveProfile".into(), json!(previous));
         self.switch_profile(&unique)?;
         Ok(unique)
     }

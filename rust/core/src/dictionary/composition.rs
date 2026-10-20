@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Yukishiro, appipinopi
 //! Level-dependent English spans, following CompositionDetector's evidence rules.
 use super::Dictionary;
-use crate::{linguistics, protection, romaji};
+use crate::{protection, romaji};
 
 #[derive(Clone, Copy)]
 struct Evidence<'a> {
@@ -15,51 +15,91 @@ const PARTICLES: &[&str] = &[
 ];
 
 impl Dictionary {
-    fn side(&self, word: &str) -> i32 {
-        if word
-            .chars()
-            .any(|c| linguistics::kana(c) || linguistics::kanji(c))
-        {
-            return -1;
-        }
-        if !word.is_empty()
-            && word.bytes().all(|c| c.is_ascii_alphabetic())
-            && (self.is_english(word)
-                || word.starts_with(|c: char| c.is_ascii_uppercase())
-                || word.len() >= 3 && !romaji::analyze(&word.to_ascii_lowercase(), true).valid)
-        {
-            1
+    fn side_character(c: char) -> Option<i32> {
+        if c.is_ascii_alphanumeric() {
+            Some(1)
+        } else if c >= '\u{2000}' && !c.is_whitespace() {
+            Some(-1)
         } else {
-            0
+            None
         }
+    }
+    fn english_sentence(before: &str) -> bool {
+        if !before.ends_with(' ') {
+            return false;
+        }
+        let start = before
+            .char_indices()
+            .rev()
+            .find(|(_, c)| !c.is_ascii() || matches!(c, '\r' | '\n'))
+            .map_or(0, |(i, c)| i + c.len_utf8());
+        let line_start = start == 0 || before[..start].ends_with(['\r', '\n']);
+        let words: Vec<_> = before[start..]
+            .split(' ')
+            .filter(|w| !w.is_empty())
+            .collect();
+        if let [word] = words.as_slice() {
+            let lower = word.trim_end_matches([',', '!', '.']).to_ascii_lowercase();
+            if line_start
+                && [
+                    "hey", "hi", "hello", "oh", "wow", "yeah", "yes", "well", "so", "hmm", "ah",
+                    "ooh", "oops", "thanks", "sorry", "please", "dear", "yay", "whoa", "nope",
+                    "yep",
+                ]
+                .contains(&lower.as_str())
+                || [
+                    "oh", "wow", "yeah", "ooh", "oops", "whoa", "woah", "yay", "hmm", "hey",
+                ]
+                .contains(&lower.as_str())
+            {
+                return true;
+            }
+            if line_start
+                && word.split_once('\'').is_some_and(|(a, b)| {
+                    !a.is_empty()
+                        && a.bytes().all(|c| c.is_ascii_alphabetic())
+                        && (1..=2).contains(&b.len())
+                        && b.bytes().all(|c| c.is_ascii_alphabetic())
+                })
+            {
+                return true;
+            }
+        }
+        words.len() >= 2
+            && words.iter().all(|w| {
+                w.bytes().any(|c| c.is_ascii_alphabetic())
+                    && w.bytes()
+                        .all(|c| c.is_ascii_alphanumeric() || b",.'-!?:;".contains(&c))
+            })
     }
     pub(super) fn before_evidence(&self, before: &str) -> i32 {
-        let sentence = before
-            .rsplit(['。', '！', '？', '.', '!', '?', '\n', '\r'])
-            .next()
-            .unwrap_or_default();
-        let mut words = sentence.split_whitespace().rev();
-        let Some(last) = words.next() else {
-            return 0;
-        };
-        let score = self.side(last.trim_matches(|c: char| c.is_ascii_punctuation()));
-        if score == 1
-            && before.ends_with(char::is_whitespace)
-            && words.next().is_some_and(|w| self.side(w) == 1)
-        {
-            2
-        } else {
-            score
+        for c in before.chars().rev() {
+            if let Some(score) = Self::side_character(c) {
+                return if score == 1 && Self::english_sentence(before) {
+                    2
+                } else {
+                    score
+                };
+            }
+            if !c.is_ascii() && !c.is_whitespace() {
+                break;
+            }
         }
+        0
     }
     pub(super) fn after_evidence(&self, after: &str) -> i32 {
-        self.side(
-            after
-                .trim_start()
-                .split([' ', '\t', '\n', '\r', '。', '.', '!', '?'])
-                .next()
-                .unwrap_or_default(),
-        )
+        for c in after.chars() {
+            if matches!(c, '\r' | '\n') {
+                break;
+            }
+            if let Some(score) = Self::side_character(c) {
+                return score;
+            }
+            if !c.is_ascii() && !c.is_whitespace() {
+                break;
+            }
+        }
+        0
     }
     pub fn composition(
         &self,
@@ -83,7 +123,9 @@ impl Dictionary {
         after: &str,
         level: &str,
     ) -> String {
-        if !["Aggressive", "Conservative", "Manual"].contains(&level) {
+        if !["Aggressive", "Conservative", "Manual"].contains(&level)
+            && !crate::language_memory::relevant(raw)
+        {
             // IsEnglishSpan requires two sides for a two-letter spelling
             // which also reads as Japanese. One preceding Latin word is not
             // an English sentence (k|ai after a direct-mode change).
@@ -97,7 +139,13 @@ impl Dictionary {
                     return self.mixed_context(raw, final_input, false);
                 }
             }
-            return self.mixed_context(raw, final_input, self.english_context(before));
+            return self.mixed_context_evidence(
+                raw,
+                final_input,
+                self.before_evidence(before),
+                self.after_evidence(after),
+                level,
+            );
         }
         if raw.starts_with('$') && raw.bytes().all(|c| c.is_ascii_graphic()) {
             return raw.into();
@@ -111,7 +159,7 @@ impl Dictionary {
                     let end = part[cursor..]
                         .find(|c: char| !c.is_ascii_alphabetic())
                         .map_or(part.len(), |n| cursor + n);
-                    let history = format!("{before}{}", &part[..cursor]);
+                    let history = format!("{before}{result}");
                     let next = if end == part.len() {
                         after
                     } else {
@@ -141,60 +189,25 @@ impl Dictionary {
         at_end: bool,
         final_input: bool,
         evidence: Evidence<'_>,
+        start: bool,
+        next: &str,
     ) -> bool {
-        if raw.starts_with(|c: char| c.is_ascii_uppercase()) {
-            return true;
-        }
-        if evidence.level == "Manual" {
-            return false;
-        }
-        let lower = raw.to_ascii_lowercase();
-        if lower.len() >= 3 && self.readable_english.contains(&lower) {
-            return true;
-        }
-        // Compound English words can be joined by the span search below.
-        // Avoid repeatedly re-segmenting unknown fragments inside that search.
-        let abbreviation = lower.len() >= 3 && lower.bytes().all(|c| !b"aiueo".contains(&c));
-        let strict = romaji::analyze(&lower, false);
-        let fragment = romaji::analyze(&lower, true);
-        let small_kana =
-            !strict.valid && fragment.valid && fragment.partial.is_empty() && lower.len() < 6;
-        let spell_word = self.spell_word(&lower) && !small_kana && !self.is_japanese(&lower);
-        if !self.english.contains(&lower) && !abbreviation && !spell_word {
-            return false;
-        }
-        if !fragment.valid {
-            return lower.len() >= 3 || self.common_english.contains(&lower);
-        }
-        if strict.sokuon > 0 && lower.len() >= 4 && !self.is_japanese(&lower) {
-            return true;
-        }
-        if at_end
-            && lower.len() >= 3
-            && !fragment.partial.is_empty()
-            && fragment.partial != "n"
-            && (final_input || !self.japanese_index.contains(&lower))
-        {
-            return true;
-        }
-        if evidence.level == "Conservative" && lower.len() < 3 && evidence.before < 2 {
-            return false;
-        }
-        // A readable proper name requires context in Conservative, too.
-        // Aggressive otherwise uses the existing dictionary rendering rules.
-        let needed = if evidence.level == "Conservative"
-            || spell_word && strict.valid && fragment.partial.is_empty()
-        {
-            2
-        } else {
-            1
-        };
-        let before = if evidence.after < 0 {
-            evidence.before.min(1)
-        } else {
-            evidence.before
-        };
-        before + evidence.after >= needed
+        let analysis = romaji::analyze(&raw.to_ascii_lowercase(), false);
+        let unreadable = !analysis.valid
+            || !at_end
+                && !analysis.partial.is_empty()
+                && !["n", "nn"].contains(&analysis.partial.as_str());
+        self.scored_english(
+            raw,
+            at_end,
+            final_input,
+            evidence.before,
+            evidence.after,
+            start,
+            unreadable,
+            next,
+            evidence.level,
+        )
     }
     fn composition_word(&self, raw: &str, final_input: bool, evidence: Evidence<'_>) -> String {
         let lower = raw.to_ascii_lowercase();
@@ -225,38 +238,34 @@ impl Dictionary {
             }
             return romaji::hiragana(raw, final_input);
         }
-        if self.allows_english(raw, true, final_input, evidence) {
+        if self.allows_english(raw, true, final_input, evidence, true, "") {
             return raw.into();
         }
-        if evidence.level == "Aggressive" {
-            if !final_input
-                && lower.len() >= 3
-                && evidence.before >= 1
-                && self.english_prefix(&lower)
-                && !self.is_japanese(raw)
-            {
-                return raw.into();
-            }
-            return self.mixed_context(raw, final_input, evidence.before + evidence.after >= 1);
-        }
-        if self.is_english(raw) || self.is_japanese(raw) {
+        if (self.is_english(raw) || self.is_japanese(raw))
+            && crate::language_memory::get(&lower) != Some(false)
+        {
             return romaji::hiragana(raw, final_input);
         }
         // Keep Japanese spans together while allowing confident English islands
         // (googleで検索, 日本語の後の unreadable words) in Conservative.
         let n = raw.len();
+        let (bounds, pending_start) = romaji::unit_boundaries(
+            &lower,
+            |prefix| {
+                (0..prefix.len().saturating_sub(2)).any(|start| {
+                    let word = &prefix[start..];
+                    self.common_english.contains(word)
+                        || self.proper.contains(word)
+                        || self.readable_english.contains(word)
+                        || word.len() >= 4 && self.known_english(word)
+                })
+            },
+            |word| self.known_english(word),
+        );
         let mut costs = vec![f64::INFINITY; n + 1];
         let mut paths = vec![(0, false); n + 1];
         let after_scores: Vec<_> = (0..=n)
-            .map(|end| {
-                if end == n {
-                    evidence.after
-                } else if PARTICLES.iter().any(|p| lower[end..].starts_with(p)) {
-                    -1
-                } else {
-                    self.side(&raw[end..])
-                }
-            })
+            .map(|end| if end == n { evidence.after } else { -1 })
             .collect();
         costs[0] = 0.;
         for start in 0..n {
@@ -269,16 +278,21 @@ impl Dictionary {
                 } else {
                     -1
                 };
-                let english = self.allows_english(
-                    piece,
-                    end == n,
-                    final_input,
-                    Evidence {
-                        before,
-                        after: after_scores[end],
-                        ..evidence
-                    },
-                );
+                let english = bounds[start]
+                    && bounds[end]
+                    && (pending_start != Some(end) || end == n)
+                    && self.allows_english(
+                        piece,
+                        end == n,
+                        final_input,
+                        Evidence {
+                            before,
+                            after: after_scores[end],
+                            ..evidence
+                        },
+                        start == 0,
+                        &raw[end..],
+                    );
                 let cost = if english {
                     1.
                 } else if self.is_japanese(piece) || PARTICLES.contains(&piece) {

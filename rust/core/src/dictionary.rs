@@ -307,6 +307,23 @@ impl Dictionary {
         self.mixed_context(raw, final_input, english_sentence)
     }
     pub fn mixed_context(&self, raw: &str, final_input: bool, english_context: bool) -> String {
+        self.mixed_context_evidence(
+            raw,
+            final_input,
+            if english_context { 2 } else { 0 },
+            0,
+            "Balanced",
+        )
+    }
+    fn mixed_context_evidence(
+        &self,
+        raw: &str,
+        final_input: bool,
+        before: i32,
+        after: i32,
+        level: &str,
+    ) -> String {
+        let english_context = before + after > 0;
         let mut out = String::new();
         let mut start = 0;
         // Preserve URLs, email, file names, and agent commands as whole spans.
@@ -338,7 +355,29 @@ impl Dictionary {
                         run.push(c);
                     } else {
                         if !run.is_empty() {
-                            if english_context && (self.is_english(&run) || !self.is_japanese(&run))
+                            let preceding = if out.is_empty() {
+                                before
+                            } else if out
+                                .chars()
+                                .next_back()
+                                .is_some_and(crate::linguistics::kana)
+                            {
+                                -1
+                            } else {
+                                before
+                            };
+                            if english_context
+                                && self.scored_english(
+                                    &run,
+                                    true,
+                                    final_input,
+                                    preceding,
+                                    after,
+                                    true,
+                                    false,
+                                    "",
+                                    level,
+                                )
                             {
                                 out.push_str(&run);
                             } else {

@@ -103,7 +103,7 @@ def main():
                            "tools/performance/windows/Compare.csproj", "Cargo.toml", "Cargo.lock",
                            "rust/core/Cargo.toml"} | {
         p.relative_to(REPO).as_posix()
-        for root in (REPO / "rust/core/src", REPO / "rust/core/examples", REPO / "dictionaries")
+        for root in (REPO / "rust/core/src", REPO / "rust/core/data", REPO / "rust/core/examples", REPO / "dictionaries")
         for p in root.rglob("*") if p.is_file()
     })
     source_hashes = {p: sha(REPO / p) for p in source_paths}

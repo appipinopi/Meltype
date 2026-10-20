@@ -60,7 +60,9 @@ fn conservative_requires_two_sides_or_an_english_sentence_for_readable_words() {
         ("I ", " please", "sushi"),
         ("I love ", "が好き", "すし"),
         ("日本語の後に", "", "すし"),
-        ("I like. ", "", "すし"),
+        // Verified against the upstream public session: IsEnglishSentence
+        // permits a period inside either of the two preceding ASCII words.
+        ("I like. ", "", "sushi"),
     ] {
         assert_eq!(
             session("Conservative", "sushi", before, after).display(false),

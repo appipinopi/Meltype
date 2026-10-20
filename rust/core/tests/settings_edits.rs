@@ -22,6 +22,9 @@ fn unchanged_window_preserves_current_settings_and_unknown_values() {
 fn window_edits_merge_into_original_profile_after_external_switch() {
     let mut opened = settings();
     opened.add_profile("仕事").unwrap();
+    // Upstream AddProfile selects the new profile. This scenario opens the
+    // settings window on 標準 before a separate window switches to 仕事.
+    opened.switch_profile("標準").unwrap();
     let mut edited = opened.clone();
     edited.set("LiveConversion", json!(false)).unwrap();
     let mut current = opened.clone();
@@ -41,10 +44,12 @@ fn window_edits_merge_into_original_profile_after_external_switch() {
 fn edited_profile_switch_and_addition_preserve_external_edits_in_each_profile() {
     let mut opened = settings();
     opened.add_profile("仕事").unwrap();
+    opened.switch_profile("標準").unwrap();
     let mut edited = opened.clone();
     edited.switch_profile("仕事").unwrap();
     edited.set("LiveConversion", json!(false)).unwrap();
     edited.add_profile("趣味").unwrap();
+    edited.switch_profile("仕事").unwrap();
     let mut current = opened.clone();
     current.set("PredictiveCandidates", json!(false)).unwrap();
     current.switch_profile("仕事").unwrap();
@@ -128,6 +133,7 @@ fn rename_and_remove_current_profile_use_upstream_rules_and_merge_on_save() {
     assert!(edited.rename_profile("仕事", " ").is_err());
     assert!(edited.remove_profile("仕事").is_err());
     edited.add_profile("趣味").unwrap();
+    edited.switch_profile("仕事").unwrap();
     assert!(edited.rename_profile("仕事", "趣味").is_err());
     let mut merged = Settings::merge_edits(&opened, &edited, &opened);
     assert_eq!(merged.text("ActiveProfile"), "仕事");

@@ -97,7 +97,10 @@ impl Cache {
     ) -> String {
         // Host spelling scopes also collect missing queries. Do not bypass
         // those side effects, or retain text from unbounded document context.
-        if crate::spelling::active() || raw.len() + before.len() + after.len() > 8192 {
+        if crate::spelling::active()
+            || crate::language_memory::active()
+            || raw.len() + before.len() + after.len() > 8192
+        {
             return compute();
         }
         {

@@ -11,10 +11,10 @@ fn field<'a>(r: &'a Value, n: &str) -> io::Result<&'a str> {
     r[n].as_str()
         .ok_or_else(|| io::Error::other(format!("missing {n}")))
 }
-fn snippet_name_valid(name: &str) -> bool {
+pub(crate) fn snippet_name_valid(name: &str) -> bool {
     !name.is_empty() && name.chars().all(|c| c.is_ascii_graphic() && c != ';')
 }
-fn snippet_text(text: &str) -> String {
+pub(crate) fn snippet_text(text: &str) -> String {
     text.replace("\r\n", "\n")
         .replace(['\r', '\u{000c}', '\u{0085}', '\u{2028}', '\u{2029}'], "\n")
 }
@@ -81,7 +81,7 @@ pub fn execute(store: &Store, r: &Value) -> io::Result<Value> {
             store.change_settings(|s| match field(r, "op").unwrap() {
                 "profile_add" => s.add_profile(name),
                 "profile_switch" => s.switch_profile(name),
-                _ => s.delete_profile(name),
+                _ => s.remove_profile(name),
             })?;
             Ok(json!({"saved":true}))
         }
@@ -97,7 +97,7 @@ pub fn execute(store: &Store, r: &Value) -> io::Result<Value> {
             store.update(|s| {
                 let entries = s.preferences.user_dictionary.entry(reading).or_default();
                 if !entries.iter().any(|w| w == word) {
-                    entries.push(word.into());
+                    entries.insert(0, word.into());
                 }
                 Ok(())
             })?;
@@ -120,15 +120,16 @@ pub fn execute(store: &Store, r: &Value) -> io::Result<Value> {
         }
         "dictionary_import" => {
             let import = user_dictionary::parse(&std::fs::read(field(r, "path")?)?)?;
-            let count = import.words.len();
-            store.update(|s| {
+            let count = store.update(|s| {
+                let mut count = 0;
                 for (reading, word) in import.words {
                     let entries = s.preferences.user_dictionary.entry(reading).or_default();
                     if !entries.contains(&word) {
-                        entries.push(word);
+                        entries.insert(0, word);
+                        count += 1;
                     }
                 }
-                Ok(())
+                Ok(count)
             })?;
             Ok(json!({"imported":count,"skipped":import.skipped,"encoding":import.encoding}))
         }

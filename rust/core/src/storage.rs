@@ -12,6 +12,7 @@ use std::{
     io::{self, Write},
     path::{Path, PathBuf},
 };
+mod upstream;
 
 pub fn now() -> i64 {
     chrono::Utc::now().timestamp()
@@ -304,8 +305,11 @@ impl Store {
         Ok(Lock(file))
     }
     pub fn settings(&self) -> io::Result<Settings> {
-        match fs::read_to_string(self.directory.join("config.json")) {
-            Ok(text) => Settings::parse(&text).map_err(io::Error::other),
+        match fs::read(self.directory.join("config.json")) {
+            Ok(bytes) => {
+                let (text, _) = crate::user_dictionary::decode(&bytes)?;
+                Settings::parse(&text).map_err(io::Error::other)
+            }
             Err(e) if e.kind() == io::ErrorKind::NotFound => {
                 let mut s = Settings::default();
                 s.normalize();
@@ -331,7 +335,8 @@ impl Store {
         let path = self.directory.join("state.json");
         let mut state: State = match fs::read(&path) {
             Ok(bytes) => {
-                let mut document: Value = serde_json::from_slice(&bytes)?;
+                let (text, _) = crate::user_dictionary::decode(&bytes)?;
+                let mut document: Value = serde_json::from_str(&text)?;
                 let object = document
                     .as_object_mut()
                     .ok_or_else(|| io::Error::other("invalid state document"))?;
@@ -377,7 +382,10 @@ impl Store {
         };
         let read = |name: &str| -> io::Result<Value> {
             match fs::read(self.directory.join(name)) {
-                Ok(bytes) => serde_json::from_slice(&bytes).map_err(io::Error::other),
+                Ok(bytes) => {
+                    let (text, _) = crate::user_dictionary::decode(&bytes)?;
+                    serde_json::from_str(&text).map_err(io::Error::other)
+                }
                 Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(Value::Null),
                 Err(e) => Err(e),
             }
@@ -399,7 +407,10 @@ impl Store {
         }
         if let Some(conversions) = read("conversions.json")?.as_object() {
             for (reading, entry) in conversions {
-                if let Some(text) = entry["Text"].as_str() {
+                if let Some(text) = entry["Text"]
+                    .as_str()
+                    .filter(|_| reading.encode_utf16().count() >= 2)
+                {
                     state
                         .preferences
                         .selected
@@ -428,42 +439,66 @@ impl Store {
         }
         if let Some(snippets) = read("snippets.json")?.as_object() {
             for (name, text) in snippets {
-                if let Some(text) = text.as_str() {
-                    state.snippets.insert(name.clone(), text.into());
+                if let Some(text) = text
+                    .as_str()
+                    .filter(|text| !text.is_empty() && crate::control::snippet_name_valid(name))
+                {
+                    state
+                        .snippets
+                        .insert(name.clone(), crate::control::snippet_text(text));
                 }
             }
         }
         match fs::read(self.directory.join("userdict.txt")) {
             Ok(bytes) => {
-                for (reading, word) in crate::user_dictionary::parse(&bytes)?.words {
-                    state
-                        .preferences
-                        .user_dictionary
-                        .entry(reading)
-                        .or_default()
-                        .push(word);
+                let (text, _) = crate::user_dictionary::decode(&bytes)?;
+                for line in text.split('\n').filter(|l| !l.starts_with('#')) {
+                    let mut parts = line.trim_end_matches('\r').split('\t');
+                    if let (Some(reading), Some(word)) = (parts.next(), parts.next()) {
+                        let (reading, word) = (reading.trim(), word.trim());
+                        if reading.encode_utf16().count() >= 2 && !word.is_empty() {
+                            let words = state
+                                .preferences
+                                .user_dictionary
+                                .entry(reading.into())
+                                .or_default();
+                            words.retain(|w| w != word);
+                            words.insert(0, word.into());
+                        }
+                    }
                 }
             }
             Err(e) if e.kind() == io::ErrorKind::NotFound => {}
             Err(e) => return Err(e),
         }
-        if let Ok(text) = fs::read_to_string(self.directory.join("phrases.txt")) {
-            for line in text.lines() {
-                let p: Vec<_> = line.split('\t').collect();
-                if p.len() >= 4 {
-                    if let Ok(count) = p[2].parse() {
-                        state.phrases.push(Phrase {
-                            reading: p[0].into(),
-                            text: p[1].into(),
-                            count,
-                            used: p[3]
-                                .parse::<i64>()
-                                .map(|ticks| ticks / 10_000_000 - 62_135_596_800)
-                                .unwrap_or(0),
-                        });
+        match fs::read(self.directory.join("phrases.txt")) {
+            Ok(bytes) => {
+                let (text, _) = crate::user_dictionary::decode(&bytes)?;
+                for line in text.lines() {
+                    let p: Vec<_> = line.split('\t').collect();
+                    if p.len() >= 4 && !p[0].is_empty() && !p[1].is_empty() {
+                        if let (Ok(count), Ok(ticks)) = (p[2].parse::<i32>(), p[3].parse::<i64>()) {
+                            let phrase = Phrase {
+                                reading: p[0].into(),
+                                text: p[1].into(),
+                                count: count.max(1) as u32,
+                                used: ticks.div_euclid(10_000_000) - 62_135_596_800,
+                            };
+                            if let Some(old) = state
+                                .phrases
+                                .iter_mut()
+                                .find(|p| p.reading == phrase.reading && p.text == phrase.text)
+                            {
+                                *old = phrase;
+                            } else {
+                                state.phrases.push(phrase);
+                            }
+                        }
                     }
                 }
             }
+            Err(e) if e.kind() == io::ErrorKind::NotFound => {}
+            Err(e) => return Err(e),
         }
         for (raw, entry) in &state.language_counts {
             state.used.insert(format!("language:{raw}"), entry.used);
@@ -473,7 +508,9 @@ impl Store {
     fn legacy_prefix_model(&self) -> io::Result<crate::prefix_learning::Model> {
         let path = self.directory.join("model.json");
         match fs::read(&path) {
-            Ok(bytes) => match crate::prefix_learning::Model::parse(&bytes) {
+            Ok(bytes) => match crate::user_dictionary::decode(&bytes).and_then(|(text, _)| {
+                crate::prefix_learning::Model::parse(text.as_bytes()).map_err(io::Error::other)
+            }) {
                 Ok(model) => Ok(model),
                 Err(_) => {
                     let _ = atomic_write(&self.directory.join("model.json.broken"), &bytes);
@@ -491,6 +528,11 @@ impl Store {
             let path = safe_path(&self.directory, name)?;
             if path.is_file() {
                 files.insert((*name).to_owned(), STANDARD.encode(fs::read(path)?));
+            }
+        }
+        if self.directory.join("state.json").exists() {
+            for (name, bytes) in self.upstream_files(&self.load()?)? {
+                files.insert(name, STANDARD.encode(bytes));
             }
         }
         let dictionaries = self.directory.join("dictionaries");
@@ -527,19 +569,135 @@ impl Store {
     pub fn restore(&self, bytes: &[u8]) -> io::Result<usize> {
         let value = Self::inspect_backup(bytes)?;
         let _lock = self.lock()?;
-        let files = self.backup_entries(&value)?;
+        let mut files = self.backup_entries(&value)?;
+        let supplied_count = files.len();
+        let has_state = value["files"].get("state.json").is_some();
+        if !has_state
+            && upstream::FILES
+                .iter()
+                .any(|n| value["files"].get(*n).is_some())
+        {
+            // Merge the incoming upstream files over the latest canonical
+            // state before writing. Otherwise an existing state.json silently
+            // shadows learning/dictionary changes restored from a C# backup.
+            let staged = tempfile::tempdir_in(&self.directory)?;
+            let mut current = self.load()?;
+            for (name, bytes) in self.upstream_files(&current)? {
+                fs::write(staged.path().join(name), bytes)?;
+            }
+            for (path, bytes) in &files {
+                let relative = path
+                    .strip_prefix(&self.directory)
+                    .map_err(io::Error::other)?;
+                if relative.components().count() == 1
+                    && upstream::FILES.iter().any(|n| relative == Path::new(n))
+                {
+                    fs::write(staged.path().join(relative), bytes)?;
+                }
+            }
+            let imported = Store::new(staged.path()).load()?;
+            let present = |name: &str| value["files"].get(name).is_some();
+            if present("model.json") {
+                current.prefix_model = imported.prefix_model;
+                current.used.retain(|key, _| !key.starts_with("prefix:"));
+                current.used.extend(
+                    imported
+                        .used
+                        .iter()
+                        .filter(|(key, _)| key.starts_with("prefix:"))
+                        .map(|(k, v)| (k.clone(), *v)),
+                );
+            }
+            if present("languages.json") {
+                current.language_counts = imported.language_counts;
+                current.preferences.english = imported.preferences.english;
+                current.used.retain(|key, _| !key.starts_with("language:"));
+                current.used.extend(
+                    imported
+                        .used
+                        .iter()
+                        .filter(|(key, _)| key.starts_with("language:"))
+                        .map(|(k, v)| (k.clone(), *v)),
+                );
+            }
+            if present("conversions.json") {
+                let old_readings: Vec<_> = current.preferences.selected.keys().cloned().collect();
+                for reading in old_readings {
+                    if !current.translations.contains_key(&reading) {
+                        current.used.remove(&format!("conversion:{reading}"));
+                    }
+                }
+                current.preferences.selected = imported.preferences.selected;
+                for reading in current.preferences.selected.keys() {
+                    let key = format!("conversion:{reading}");
+                    if let Some(used) = imported.used.get(&key) {
+                        current.used.insert(key, *used);
+                    }
+                }
+            }
+            if present("translations.json") {
+                current.translations = imported.translations;
+                current.used.retain(|key, _| {
+                    key.strip_prefix("conversion:").is_none_or(|reading| {
+                        current.preferences.selected.contains_key(reading)
+                            || current.translations.contains_key(reading)
+                    })
+                });
+            }
+            if present("snippets.json") {
+                current.snippets = imported.snippets;
+            }
+            if present("userdict.txt") {
+                current.preferences.user_dictionary = imported.preferences.user_dictionary;
+            }
+            if present("phrases.txt") {
+                current.phrases = imported.phrases;
+            }
+            files.push((
+                safe_path(&self.directory, "state.json")?,
+                serde_json::to_vec_pretty(&current)?,
+            ));
+        }
+        // Snapshot every target first, including directory/read failures.
+        let originals: Vec<_> = files
+            .iter()
+            .map(|(path, _)| match fs::read(path) {
+                Ok(bytes) => Ok(Some(bytes)),
+                Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(None),
+                Err(e) => Err(e),
+            })
+            .collect::<io::Result<_>>()?;
         // Validate every entry before the first write; preserve old contents.
-        for (path, bytes) in &files {
-            if path.exists() {
+        for ((path, _), original) in files.iter().zip(&originals) {
+            if let Some(original) = original {
                 let backup = path.with_file_name(format!(
                     "{}.before-restore",
                     path.file_name().unwrap().to_string_lossy()
                 ));
-                atomic_write(&backup, &fs::read(path)?)?;
+                atomic_write(&backup, original)?;
             }
-            atomic_write(path, bytes)?;
         }
-        Ok(files.len())
+        for (index, (path, bytes)) in files.iter().enumerate() {
+            if let Err(error) = atomic_write(path, bytes) {
+                let mut rollback_errors = vec![];
+                for ((path, _), previous) in files[..=index].iter().zip(&originals).rev() {
+                    let restored = match previous {
+                        Some(bytes) => atomic_write(path, bytes),
+                        None => match fs::remove_file(path) {
+                            Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(()),
+                            result => result,
+                        },
+                    };
+                    if let Err(e) = restored {
+                        rollback_errors.push(e.to_string());
+                    }
+                }
+                return Err(io::Error::other(format!(
+                    "restore failed: {error}; rollback errors: {rollback_errors:?}"
+                )));
+            }
+        }
+        Ok(supplied_count)
     }
     /// Metadata for a restoration decision, without exposing encoded user data.
     /// Use the same target/path/base64 validation as restore, without writing.
@@ -589,7 +747,13 @@ impl Store {
         let created = value["created"]
             .as_str()
             .and_then(|text| chrono::DateTime::parse_from_rfc3339(text).ok())
-            .map(|date| date.to_rfc3339());
+            .map(|date| date.to_rfc3339())
+            .or_else(|| {
+                value["created"]
+                    .as_str()
+                    .filter(|text| naive_time(text).is_some())
+                    .map(str::to_owned)
+            });
         Ok(json!({"created":created,"fileCount":files.len(),
             "bytes":files.iter().map(|(_,bytes)|bytes.len() as u64).sum::<u64>(),
             "categories":categories,"ignoredFiles":value["files"].as_object().unwrap().len()-files.len()}))
@@ -615,9 +779,16 @@ impl Store {
 }
 fn parse_time(v: &Value) -> i64 {
     v.as_str()
-        .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
-        .map(|d| d.timestamp())
+        .and_then(|s| {
+            chrono::DateTime::parse_from_rfc3339(s)
+                .map(|d| d.timestamp())
+                .ok()
+                .or_else(|| naive_time(s).map(|d| d.and_utc().timestamp()))
+        })
         .unwrap_or(0)
+}
+fn naive_time(text: &str) -> Option<chrono::NaiveDateTime> {
+    chrono::NaiveDateTime::parse_from_str(text, "%Y-%m-%dT%H:%M:%S%.f").ok()
 }
 const ROOT_FILES: &[&str] = &[
     "config.json",
@@ -639,7 +810,7 @@ pub fn restorable_name(name: &str) -> bool {
     };
     if file.starts_with('.')
         || !file.ends_with(".txt")
-        || file.len() > 104
+        || file.encode_utf16().count() > 104
         || file
             .chars()
             .any(|c| c.is_control() || "\\/:*?\"<>|".contains(c))

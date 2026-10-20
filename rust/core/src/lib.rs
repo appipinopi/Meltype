@@ -8,6 +8,7 @@ pub mod detection;
 pub mod dictionary;
 pub mod input_session;
 pub mod kana;
+mod language_memory;
 pub mod linguistics;
 pub mod math_candidates;
 pub mod mozc;

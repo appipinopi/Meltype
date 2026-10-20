@@ -482,6 +482,7 @@ impl Dictionary {
         let strong = self.common_english.contains(&lower) || proper;
         let spelling = self.english.contains(&lower) || self.spell_word(&lower);
         let readable = lower.len() >= 3 && self.readable_english.contains(&lower);
+        let learned = crate::language_memory::get(&lower);
         let leading = PARTICLES.iter().find(|p| lower.starts_with(**p)).copied();
         if before < 0 && !strong && leading.is_some_and(|p| self.scored_known(&lower[p.len()..])) {
             return false;
@@ -494,6 +495,7 @@ impl Dictionary {
             && !spelling
             && !proper
             && !readable
+            && learned.is_none()
             && !pedia(&lower)
             && !(growing && prefix())
         {
@@ -517,6 +519,16 @@ impl Dictionary {
         }
         if readable {
             return true;
+        }
+        if let Some(choice) = learned {
+            if !(choice
+                && before < 0
+                && lower.len() <= 3
+                && fragment.valid
+                && fragment.partial.is_empty())
+            {
+                return choice;
+            }
         }
         if lower.len() >= 5
             && !conservative

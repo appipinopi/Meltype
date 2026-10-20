@@ -111,7 +111,8 @@ fn backup_round_trip_rejects_escapes_and_invalid_entries_before_writes() {
             Ok(())
         })
         .unwrap();
-    assert_eq!(store.restore(&bytes).unwrap(), 1);
+    // state.json plus the seven upstream data files used by C#.
+    assert_eq!(store.restore(&bytes).unwrap(), 8);
     assert_eq!(store.load().unwrap().snippets["sig"], "署名");
     let bad=serde_json::to_vec(&json!({"format":"meltype-backup","version":1,"files":{"config.json":"e30=","state.json":"!!!","../escape":"e30="}})).unwrap();
     assert!(store.restore(&bad).is_err());

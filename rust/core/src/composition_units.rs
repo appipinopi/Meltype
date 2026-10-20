@@ -3,12 +3,22 @@
 //! turn an already established small tsu back into a pending consonant.
 use crate::romaji::{self, Token};
 
+fn english_offset(raw: &str, cursor: usize, prefix: &str, english: &str) -> Option<usize> {
+    raw[cursor..]
+        .match_indices(english)
+        .find(|(offset, _)| {
+            let part = &raw[cursor..cursor + offset];
+            part == prefix || romaji::hiragana(part, true) == prefix
+        })
+        .map(|(offset, _)| offset)
+        .or_else(|| raw[cursor..].find(english))
+}
+
 #[derive(Clone, Default)]
 pub(crate) struct Units {
     raw: String,
     units: Vec<Token>,
     pending: String,
-    english_edit: bool,
     japanese_edit: bool,
 }
 impl Units {
@@ -38,22 +48,25 @@ impl Units {
             .map(|u| u.spelling.as_str())
             .collect::<String>()
             + &self.pending;
-        self.english_edit = false;
         self.japanese_edit = false;
     }
     pub fn capture(raw: &str, display: &str) -> Self {
         let mut value = Self::default();
         let mut cursor = 0;
+        let mut display_cursor = 0;
         // English islands end their units before a Japanese suffix (github|ya).
         for english in display
             .split(|c: char| !c.is_ascii_alphabetic())
             .filter(|s| !s.is_empty())
         {
-            let offset = if display.ends_with(english) && raw.ends_with(english) {
-                raw[cursor..].rfind(english)
-            } else {
-                raw[cursor..].find(english)
-            };
+            let display_start = display_cursor + display[display_cursor..].find(english).unwrap();
+            let offset = english_offset(
+                raw,
+                cursor,
+                &display[display_cursor..display_start],
+                english,
+            );
+            display_cursor = display_start + english.len();
             if let Some(offset) = offset {
                 let end = cursor + offset + english.len();
                 value.push(&raw[cursor..end]);
@@ -78,7 +91,6 @@ impl Units {
         self.kana_range(0, self.raw.len(), final_input)
     }
     pub fn push(&mut self, text: &str) {
-        self.english_edit = false;
         self.japanese_edit = false;
         // CompositionText.Append returns unreadable letters to Pending so a
         // following vowel/y can form a syllable after an edit (goog + ya).
@@ -150,8 +162,7 @@ impl Units {
         }
         self.pending.clear();
     }
-    pub fn remove_last(&mut self, raw_character: bool, english_word: bool) {
-        self.english_edit = english_word;
+    pub fn remove_last(&mut self, raw_character: bool) {
         if !self.pending.is_empty() {
             self.pending.pop();
         } else if let Some(last) = self.units.pop() {
@@ -196,23 +207,22 @@ impl Units {
         if self.japanese_edit {
             return self.kana_range(0, self.raw.len(), final_input);
         }
-        if self.english_edit
-            && self.raw.bytes().all(|c| c.is_ascii_alphabetic())
-            && !romaji::analyze(&self.raw.to_ascii_lowercase(), false).valid
-            && !self
-                .units
-                .iter()
-                .any(|u| u.kana == "っ" && u.spelling.len() == 1)
-        {
-            return self.raw.clone();
-        }
         let mut result = String::new();
         let mut cursor = 0;
+        let mut display_cursor = 0;
         for english in detected
             .split(|c: char| !c.is_ascii_alphabetic())
             .filter(|s| !s.is_empty())
         {
-            let Some(offset) = self.raw[cursor..].find(english) else {
+            let display_start = display_cursor + detected[display_cursor..].find(english).unwrap();
+            let offset = english_offset(
+                &self.raw,
+                cursor,
+                &detected[display_cursor..display_start],
+                english,
+            );
+            display_cursor = display_start + english.len();
+            let Some(offset) = offset else {
                 return detected.into();
             };
             let start = cursor + offset;
@@ -241,7 +251,9 @@ impl Units {
             let retained = self.units.iter().any(|u| {
                 let at = position;
                 position += u.spelling.len();
-                at >= start && position <= end && u.kana == "っ"
+                at >= start
+                    && position <= end
+                    && (u.kana == "っ" || u.kana == "ん" && english == "n")
             });
             if retained
                 && (english.len() == 1
