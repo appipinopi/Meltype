@@ -51,7 +51,7 @@ FSTの前方一致を範囲ストリーム生成からノード直接走査へ�
 
 Windows候補表示で、変換前の候補一覧が予測一覧で上書きされる箇所と、Coreのnull項目を直接読めない箇所を修正。Windowsワーカーの候補クリックは元1.3.0のSelectCandidateに合わせ、選択で変換を継続しEnterで確定するよう変更した。実候補ウィンドウの16試験とネイティブ43試験を通過。実ワーカーで追加キーによる変換・候補選択・Enter確定・学習非同期・無効/プライベート欄を確認した。
 
-最新の比較結果: [C# 1.3.0 / Rust](../tools/performance/windows/results/v130-initial.md)、[旧Rustを同じコンパイラで比較](../tools/performance/windows/results/rust-f3ede6a-vs-198ecdd.md)。前者は21/21の確定・比較対象の全打鍵が一致し、21/21でRustの中央値が短い。後者は14/21で新しい版が速く、7/21で遅い。以前の異なるrustcの記録だけからコード変更を遅延原因と断定しない。RAM増加と一部の短文の悪化は残る。
+以前の比較結果（Git履歴に保存）: [C# 1.3.0 / Rust](https://github.com/appipinopi/Meltype/blob/fa5ee4e43060b69ec8d4e6f1c985b46a1aac7b40/tools/performance/windows/results/v130-initial.md)、[旧Rustを同じコンパイラで比較](https://github.com/appipinopi/Meltype/blob/fa5ee4e43060b69ec8d4e6f1c985b46a1aac7b40/tools/performance/windows/results/rust-f3ede6a-vs-198ecdd.md)。前者は21/21の確定・比較対象の全打鍵が一致し、21/21でRustの中央値が短い。後者は14/21で新しい版が速く、7/21で遅い。以前の異なるrustcの記録だけからコード変更を遅延原因と断定しない。RAM増加と一部の短文の悪化は残る。
 
 ## 追加作業（設定移行・入力・Windows導入）
 

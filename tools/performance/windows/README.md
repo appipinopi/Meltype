@@ -59,11 +59,11 @@ python tools/check-core-parity.py --csharp dist/windows-common-benchmark/csharp/
 
 **[2026-10-21の再測定・全5枚の箱ひげ図](results/20261021-boxplots/README.md)** が現在の共通Coreの結果です。Rust `ed6067e` / C# v1.3.0 NativeAOT、各入力30試行・各版10プロセス。21/21入力が一致し、全入力でRustの中央値が短い結果でした。中央値・四分位・全外れ値を表示し、CSVと再現用summary.jsonを公開しています。画像生成は `python tools/plot-windows-benchmark.py <report.jsonまたはsummary.json> --output <新規フォルダー>`（matplotlib/numpyが必要）。実IME全体の測定ではありません。
 
-以下は過去の測定です。
+以下はGit履歴で参照する過去の測定です。旧報告の作業ツリー上の重複は整理し、現在の全5図と数値は上記の最新結果に集約しています。
 
-[1.3.0取り込み途中のC# / Rust比較](results/v130-initial.md)は21/21入力の確定・比較対象の全打鍵状態が一致し、21/21でRustの中央値が短い結果です。C#の基準はv1.3.0です。
+[1.3.0取り込み途中のC# / Rust比較](https://github.com/appipinopi/Meltype/blob/fa5ee4e43060b69ec8d4e6f1c985b46a1aac7b40/tools/performance/windows/results/v130-initial.md)は21/21入力の確定・比較対象の全打鍵状態が一致し、21/21でRustの中央値が短い結果です。C#の基準はv1.3.0です。
 
-[旧Rustと198ecddを同じrustc 1.99.1で比較](results/rust-f3ede6a-vs-198ecdd.md)したところ、14/21で新しい版が速く、7/21で遅い結果でした。以前はrustcの版と試行数が異なっていたため、そのままコード変更の回帰とは断定できません。RAM増加と混在短文の悪化は残っています。
+[旧Rustと198ecddを同じrustc 1.99.1で比較](https://github.com/appipinopi/Meltype/blob/fa5ee4e43060b69ec8d4e6f1c985b46a1aac7b40/tools/performance/windows/results/rust-f3ede6a-vs-198ecdd.md)したところ、14/21で新しい版が速く、7/21で遅い結果でした。以前はrustcの版と試行数が異なっていたため、そのままコード変更の回帰とは断定できません。RAM増加と混在短文の悪化は残っています。
 
 全機能・実アプリ・OS変換・候補描画の速度を示すものではありません。FST検索部分の改善は別に記録し、全IMEの倍率には使いません。
 

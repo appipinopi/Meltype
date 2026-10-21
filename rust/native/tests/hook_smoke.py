@@ -26,6 +26,8 @@ def project(row):
     return row
 
 golden=json.loads((Path(__file__).resolve().parents[2]/"core/tests/data/upstream-hook-session.json").read_text(encoding="utf8"))
+legacy_count=0
+migration_count=0
 with tempfile.TemporaryDirectory(prefix="meltype-hook-") as directory:
     root=Path(directory)
     for case in golden["cases"]:
@@ -33,16 +35,36 @@ with tempfile.TemporaryDirectory(prefix="meltype-hook-") as directory:
         model={key:dict(value,lastUsed="2026-10-18T00:00:00Z") for key,value in case["model"].items() if value is not None}
         (root/"state.json").write_text(json.dumps(dict(prefix_model=dict(version=1,prefixes=model))),encoding="utf8")
         handle=api.meltype_create_at(str(root).encode());assert handle
+        romaji_handle=None
         try:
             assert len(case["steps"])==len(case["expected"])
+            # The archived API oracle still contains Both. Product config has
+            # migrated that removed option to Romaji since 1.3.0. Keep the full
+            # 182 legacy API traces in upstream_hook_session.rs; at this ABI
+            # boundary verify the seven migrated traces against explicit Romaji.
+            migrated=case["settings"].get("InputStyle")=="Both"
+            if migrated:
+                assert request(handle,dict(op="settings_get"))["InputStyle"]=="Romaji"
+                romaji_root=root/"romaji-reference"
+                romaji_root.mkdir(exist_ok=True)
+                (romaji_root/"config.json").write_text(json.dumps(dict(case["settings"],InputStyle="Romaji")),encoding="utf8")
+                (romaji_root/"state.json").write_text(json.dumps(dict(prefix_model=dict(version=1,prefixes=model))),encoding="utf8")
+                romaji_handle=api.meltype_create_at(str(romaji_root).encode());assert romaji_handle
+                migration_count+=1
+            else:
+                legacy_count+=1
             for i,(step,expected) in enumerate(zip(case["steps"],case["expected"],strict=True)):
+                if migrated:
+                    expected=project(request(romaji_handle,dict(op="hook_session",command=step)))
                 actual=request(handle,dict(op="hook_session",command=step))
                 assert "error" not in actual,(case["name"],i,actual)
                 assert project(actual)==expected,(case["name"],i,expected,actual)
             before=request(handle,dict(op="hook_session",command=dict(op="snapshot")))
             assert "error" in request(handle,dict(op="hook_session",command=dict(op="bad")))
             assert request(handle,dict(op="hook_session",command=dict(op="snapshot")))==before
-        finally:api.meltype_destroy(handle)
+        finally:
+            if romaji_handle:api.meltype_destroy(romaji_handle)
+            api.meltype_destroy(handle)
     # Persist feedback through control, then reopen and verify the learned veto.
     (root/"config.json").write_text("{}",encoding="utf8")
     (root/"state.json").write_text("{}",encoding="utf8")
@@ -61,4 +83,5 @@ with tempfile.TemporaryDirectory(prefix="meltype-hook-") as directory:
         assert request(handle,dict(op="learning_clear"))["saved"]
         assert not request(handle,dict(op="learning_list"))["prefixes"]
     finally:api.meltype_destroy(handle)
-print(f"Hook native ABI: {len(golden['cases'])} original traces, durable feedback, privacy and invalid-command isolation passed")
+assert (legacy_count,migration_count)==(175,7)
+print(f"Hook native ABI: {legacy_count} original traces, {migration_count} Both-to-Romaji migration traces, durable feedback, privacy and invalid-command isolation passed")

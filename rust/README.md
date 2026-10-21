@@ -404,3 +404,6 @@ d378494では辞書取込みの選択・結果ダイアログと変更通知をR
 
 
 7578524ではmacOSの入力ソース重複修復・修復前バックアップとCarbonの登録／有効化をRustへ移しました。既存のHIToolboxキー、prefix除外の元仕様、無変更時のバックアップ保持、登録失敗・最初の有効化失敗での中断、一覧の解放を維持します。Apple Silicon／Intel型チェック、Clippy、Windowsの実ABI拒否試験と6条件の模擬Carbon制御試験が成功。[5a36cf9のmacOS SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39105438244)で両ジョブ成功。旧Swiftの324配列（結合文字／ZWJ／NUL境界を含む）と私用NSUserDefaults11条件、背景拒否、SDKヘッダーの7関数ABIと型幅の保存ログを確認。既存スタブ22操作・実変換器28操作と全Swiftコンパイルも通過。[同じ版のfcitx SDK CI](https://github.com/appipinopi/Meltype/actions/runs/39105438250)も成功。実OSでの登録・有効化は行っておらず、別実行ファイルRegisterInputSourceのSwift、IME実入力・全画面一致は残ります。
+
+
+721bd57／59a6ffcではインストール後の別実行ファイルRegisterInputSourceとselect-input-source.swiftの動作をRust製の登録／選択ツールへ移し、Rust版のビルド・同梱・インストールを接続しました。元の日本語表示・終了コード、最大30回／100msの登録反映待ち、入力メニュー更新、10回／300msの選択と選択後の照合を維持します。Swiftコマンドの実行を必要としない専用バイナリーで、旧パッケージのSwift fallbackは維持します。6制御テスト、Apple Silicon／Intel型チェックとClippyが成功。実Foundationプロセス／文字列、旧Swift CLIとの4条件比較、署名後の実パッケージと802f174で追加した元の自己試験全体をCI確認中です。詳細は[macOS登録ツール](mac-register/README.md)。実OS登録・選択・メニュー再起動は未実行です。
