@@ -119,7 +119,7 @@ def main():
             writer = csv.DictWriter(file, fieldnames=fields or list(rows[0]))
             writer.writeheader()
             writer.writerows(rows)
-    stats = {"speed": {}, "resources": {}}
+    stats = {"speed": {}, "resources": {}, "resource_units": {}}
     stamp = f"{report['measured_at'][:10]} | Rust {report['rust_commit'][:7]} | C# v1.3.0 | n={report['samples_per_round'] * (len(report['order'])//2)} sequences / version / case"
     partitions = [
         (IMAGES[0], [r for r in report["comparisons"] if r["case"].endswith(("_32", "_64"))], "32 / 64 character inputs"),
@@ -162,6 +162,7 @@ def main():
         for ax, (key, caption, unit, value) in zip(axes.flat, metrics):
             groups = {v: [value(r) for r in report["process_resources"] if r["version"] == v] for v in VERSIONS}
             stats["resources"][key] = boxes(ax, groups, unit, caption)
+            stats["resource_units"][key] = unit
         finish(fig, output / filename, title,
                "Each dot = one process run; includes startup, dictionaries, sessions, warmups and JSON output.\n"
                "RAM polled at ~50 ms; short peaks may be missed. This is the test host, not a resident IME.\n" + stamp.split(" | n=")[0] + f" | n={len(report['process_resources'])//2} processes / version")

@@ -818,5 +818,15 @@
         "maximum": 0.07074309247069198
       }
     }
+  },
+  "resource_units": {
+    "cpu_seconds": "seconds",
+    "wall_seconds": "seconds",
+    "cpu_percent_one_core": "%",
+    "cpu_percent_machine": "%",
+    "peak_working_set_bytes": "MiB",
+    "sampled_mean_working_set_bytes": "MiB",
+    "sampled_peak_private_bytes": "MiB",
+    "peak_working_set_percent_physical": "%"
   }
 }
