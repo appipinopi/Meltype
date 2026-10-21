@@ -1932,6 +1932,7 @@ name = "meltype-settings"
 version = "0.1.0"
 dependencies = [
  "ab_glyph",
+ "chrono",
  "eframe",
  "fs2",
  "meltype-core",

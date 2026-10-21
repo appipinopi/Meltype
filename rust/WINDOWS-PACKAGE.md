@@ -1,10 +1,10 @@
-# Rust Windows版・配布前確認用
+# Meltype-flash Windows版・配布前確認用
 
 Windows 10/11 x64向けの開発用プレビューです。x86のTIPとworkerは32bitアプリ用です。登録・更新・登録解除用の `Manage-Windows.ps1` を同梱します。管理者権限が必要です。クリーン環境での導入・更新・削除の実動確認は未完了です。
 
 ## 内容
 
-- `meltype-settings.exe`：設定画面。`--tray` で管理トレイを起動。
+- `meltype-flash.exe`：設定画面。`--tray` で管理トレイを起動。
 - `meltype-rs.exe`：共通CoreのCLI。
 - `tip/x64` と `tip/x86`：各アーキテクチャの `MeltypeTip.dll` と `meltype-tip-worker.exe`。workerはDLLの隣に必要です。
 - 各実行フォルダーのVisual C++ランタイムDLL：使用したVisual Studioの再配布可能CRTから同梱。
@@ -16,15 +16,15 @@ Windows 10/11 x64向けの開発用プレビューです。x86のTIPとworkerは
 既定のデータに触れずに設定画面を確認する場合は、PowerShellで一時的な試験用フォルダーを指定します。
 
 ```powershell
-$env:MELTYPE_RUST_DATA_DIR = Join-Path $env:TEMP 'Meltype-Rust-preview-check'
-./meltype-settings.exe
+$env:MELTYPE_FLASH_DATA_DIR = Join-Path $env:TEMP 'Meltype-flash-preview-check'
+./meltype-flash.exe
 ```
 
 ## 制限
 
 System変換にはWindowsの日本語言語コンポーネントが必要です。任意のMozcヘルパー・Mozc-UT・Zenzaiサーバーやモデルは同梱していません。Mozcが無い場合のSystemへのフォールバックは、実Mozcの動作確認とは別です。
 
-このZIPを展開しただけではIMEは登録されません。元版とRust版のTIPは同じCOM登録IDを使い、既存のIME登録に影響するため、普段使いの環境での上書き登録は配布前確認に含めていません。元版の `Register-Tip.ps1` ではなく、同梱の管理スクリプトを使用してください。
+このZIPを展開しただけではIMEは登録されません。Meltype-flashは本家と異なるCOM／入力プロファイルIDとインストール先を使用します。旧Rust版が共有していた本家の登録IDは変更しません。元版の `Register-Tip.ps1` ではなく、同梱の管理スクリプトを使用してください。
 
 検査の成功は、必要ファイル・PEのx64/x86・TSF公開関数・静的DLL依存・ZIP内ハッシュの確認です。クリーンなWindowsへの導入、OpenGL描画環境、動的ロードされる全コンポーネント、実アプリ入力・更新・削除の受入成功を意味しません。
 
@@ -53,7 +53,7 @@ python tools/check-rust-windows-package.py <展開フォルダー> --report <検
 .\Manage-Windows.ps1 -Action Uninstall
 ```
 
-SHA256SUMS.jsonの全ファイルを検査し、Program Files/MeltypeRust/versions/<配布ハッシュ>へ配置します。
+SHA256SUMS.jsonの全ファイルを検査し、Program Files/Meltype-flash/versions/<配布ハッシュ>へ配置します。
 両アーキテクチャのDLLとworker・CRTをまとめて配置し、登録失敗時は以前のDLLを再登録します。
 ハッシュは破損検知用です。配布元の認証や署名の代わりではありません。
 元版との共通COM登録を置き換える場合は、元版のトレイを終了して起動設定を解除し、`-ReplaceExisting` を明示してください。
@@ -90,9 +90,9 @@ Uninstallはトレイの終了を待ち、実行ユーザーのRust用タスク�
 タスクが使用できない場合は既存のRun項目と同じフォールバックを使用します。元版Meltypeなど別名のタスクは変更しません。
 
 ```powershell
-.\meltype-settings.exe --startup-action query --startup-result .\startup-state.json
-.\meltype-settings.exe --startup-action rebind --startup-result .\startup-state.json
-.\meltype-settings.exe --startup-action disable --startup-result .\startup-state.json
+.\meltype-flash.exe --startup-action query --startup-result .\startup-state.json
+.\meltype-flash.exe --startup-action rebind --startup-result .\startup-state.json
+.\meltype-flash.exe --startup-action disable --startup-result .\startup-state.json
 ```
 
 queryは参照のみ、rebindは有効な起動設定だけをこのEXEへ付け替え、disableはRust版が所有する現在ユーザーの起動項目を解除します。stop-trayは同じ保存先のトレイに通常終了を要求します。Enabled設定は変更せず、未保存の設定があるトレイを強制終了しません。
@@ -115,7 +115,7 @@ queryは参照のみ、rebindは有効な起動設定だけをこのEXEへ付け
 .\Test-InstalledIme.ps1 -Package . -ReportDirectory C:\Temp\Meltype-registration-exercise -ExerciseRegistration
 ```
 
-Applyは既存の管理導入が必要です。通常ユーザーからの適用では、更新後に同じユーザーで新トレイを起動します。適用を開始した表示は完了通知ではありません。起動した側の一時ログと `Program Files/MeltypeRust/update-logs` の記録で結果を確認できます。別管理者の認証で昇格した場合の自動起動設定については下記の制限に従ってください。Stageの取得物はWindowsのTemp内の `Meltype-Rust-update-*` に残します。署名・SmartScreenの配布者評価は別途必要です。
+Applyは既存の管理導入が必要です。通常ユーザーからの適用では、更新後に同じユーザーで新トレイを起動します。適用を開始した表示は完了通知ではありません。起動した側の一時ログと `Program Files/Meltype-flash/update-logs` の記録で結果を確認できます。別管理者の認証で昇格した場合の自動起動設定については下記の制限に従ってください。Stageの取得物はWindowsのTemp内の `Meltype-flash-update-*` に残します。署名・SmartScreenの配布者評価は別途必要です。
 
 実登録試験は元DLLのパス・ハッシュとCOM/TIPレジストリを保存し、管理配布のInstall、両ABIの実COM起動とTSFプロファイルを検査して、finallyで元版の登録を戻します。既存のRust管理導入が有効な場合や版別フォルダーにファイルがある場合は上書き試験しません。登録解除済みで配布ファイルが残っていない試験用の管理記録だけなら再試験できます。既存アプリを強制終了したり既定のIMEを切り替えたりしません。外部アプリの実TSF入力はこの登録試験に含みません。
 
@@ -137,4 +137,4 @@ Chromium/Electronの空のcontenteditableには、UIAのValue/TextPatternに加�
 
 「Meltype IME (入力欄に直接入力)」にはRust TIPのWindowsへの登録とWin+Spaceによる選択が必要です。トレイの選択だけでは登録されません。C#版とCOM登録IDを共有するため、Rustへ登録を切り替える際は元の登録先を保存し、`Manage-Windows.ps1 -Action Install -ReplaceExisting`を管理者として実行します。開いているアプリを再起動してください。
 
-直接入力用の設定・学習は通常`%LOCALAPPDATA%/MeltypeRust`です。`Start-Portable.ps1`はパッケージ内`data`を使うため、直接入力のトレイは`MELTYPE_RUST_DATA_DIR`を指定せず`meltype-settings.exe --tray`で起動してください。Rust設定のMode=Tsf/Enabled=trueと、Windows側でMeltypeが選択されていることの両方が必要です。C#プロセスとポータブル入力の同時動作は避けてください。
+直接入力用の設定・学習は通常`%LOCALAPPDATA%/Meltype-flash`です。`Start-Portable.ps1`はパッケージ内`data`を使うため、直接入力のトレイは`MELTYPE_FLASH_DATA_DIR`（旧 `MELTYPE_RUST_DATA_DIR` も明示指定時のみ対応）を指定せず`meltype-flash.exe --tray`で起動してください。Rust設定のMode=Tsf/Enabled=trueと、Windows側でMeltypeが選択されていることの両方が必要です。C#プロセスとポータブル入力の同時動作は避けてください。

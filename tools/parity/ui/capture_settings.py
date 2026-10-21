@@ -5,7 +5,7 @@ import argparse,hashlib,json,os,subprocess,struct,zlib
 from pathlib import Path
 p=argparse.ArgumentParser(description=__doc__);p.add_argument('binary',type=Path);p.add_argument('output',type=Path)
 p.add_argument('--pages',nargs='+',choices=['settings','dictionary','snippets','learning','backup','input-test'])
-p.add_argument('--lifecycle',choices=['welcome','about'],help='Capture a lifecycle window over the selected page.')
+p.add_argument('--lifecycle',choices=['welcome','about','updates','report','corrections','log'],help='Capture a lifecycle window over the selected page.')
 p.add_argument('--help-key',help='Show this settings explanation in a visual-test build.')
 a=p.parse_args();a.output.mkdir(parents=True,exist_ok=False)
 results=[]
@@ -16,7 +16,7 @@ for page,name in enumerate(['settings','dictionary','snippets','learning','backu
     (profile/'config.json').write_text(config,encoding='utf-8')
     (profile/'userdict.txt').write_text('はし\t橋\nはし\t箸\n',encoding='utf-8')
     output=(a.output/name).resolve()
-    env=dict(os.environ,MELTYPE_RUST_DATA_DIR=str(profile),MELTYPE_UI_CAPTURE=str(output),MELTYPE_UI_PAGE=str(page));env.pop('MELTYPE_TRAY_SMOKE',None)
+    env=dict(os.environ,MELTYPE_FLASH_DATA_DIR=str(profile),MELTYPE_RUST_DATA_DIR=str(profile),MELTYPE_UI_CAPTURE=str(output),MELTYPE_UI_PAGE=str(page));env.pop('MELTYPE_TRAY_SMOKE',None)
     env.pop('MELTYPE_UI_HELP_KEY',None)
     env.pop('MELTYPE_UI_LIFECYCLE',None)
     if a.lifecycle: env['MELTYPE_UI_LIFECYCLE']=a.lifecycle

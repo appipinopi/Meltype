@@ -1,4 +1,6 @@
-# Meltype Rust 移植プレビュー
+# Meltype-flash 移植プレビュー
+
+Windows の新しい配布は本家と異なる IME 登録 ID・実行ファイル・保存先を使用します。[名称と共存方針](BRANDING.md)を参照してください。
 
 Fork: https://github.com/appipinopi/Meltype · 元: https://github.com/yksr-melt/Meltype
 
@@ -33,11 +35,11 @@ CLIは引数なしでstdinからJSONを1行ずつ受け取ります。`{"op":"ke
 
 ## OSとの接続
 
-Linux IBusのRust版は `bash rust/build-linux.sh` で `linux/build/Meltype-Rust-linux/` と、実行権限を保持する配布用の `linux/build/Meltype-Rust-linux.tar.gz` に組み立てます。ビルドには `libibus-1.0-dev` が必要で、実行時はシステムのIBus/GLibを利用します。Rust側のエンジンとOS接続は同じ実行ファイルに含まれ、Python、GI、別のRust DLLは実行時に不要です。既存のPython版は上流実装の参照用として残っています。fcitx5は引き続き既存C++アダプターです。
+Linux IBusのRust版は `bash rust/build-linux.sh` で `linux/build/Meltype-flash-linux/` と、実行権限を保持する配布用の `linux/build/Meltype-flash-linux.tar.gz` に組み立てます。ビルドには `libibus-1.0-dev` が必要で、実行時はシステムのIBus/GLibを利用します。Rust側のエンジンとOS接続は同じ実行ファイルに含まれ、Python、GI、別のRust DLLは実行時に不要です。既存のPython版は上流実装の参照用として残っています。fcitx5は引き続き既存C++アダプターです。
 
 入力ソース用アイコンは元版の `linux/icon.png` をそのまま同梱し、登録XMLにインストール先の絶対パスを記録します。日本語・空白・引用符を含む配置先でも、アイコンの内容と登録パスをインストール試験で照合します。
 
-生成フォルダーで `sudo bash install.sh --system` を明示的に実行すると、`/usr/libexec/meltype-rust/ibus` にプログラムを置き、IBusが通常読み込む `/usr/share/ibus/component/meltype-rust.xml` を登録します。既存の上流版の登録やRustの設定・学習データは置き換えません。IBusの再起動や入力ソースの選択は行わず、サインインし直した後に「Meltype Rust」を選びます。`sudo bash /usr/libexec/meltype-rust/ibus/install.sh --system --uninstall` は専用マーカーと登録名を確認して配布ファイルを削除し、設定・学習と未知のファイルは保持します。`--prefix` は別の絶対パスへの配置用です。登録・削除は一時フォルダーだけで検証しています。
+生成フォルダーで `sudo bash install.sh --system` を明示的に実行すると、`/usr/libexec/meltype-rust/ibus` にプログラムを置き、IBusが通常読み込む `/usr/share/ibus/component/meltype-rust.xml` を登録します。既存の上流版の登録やRustの設定・学習データは置き換えません。IBusの再起動や入力ソースの選択は行わず、サインインし直した後に「Meltype-flash」を選びます。`sudo bash /usr/libexec/meltype-rust/ibus/install.sh --system --uninstall` は専用マーカーと登録名を確認して配布ファイルを削除し、設定・学習と未知のファイルは保持します。`--prefix` は別の絶対パスへの配置用です。登録・削除は一時フォルダーだけで検証しています。
 
 管理者権限を使わない `bash install.sh` はユーザーのデータフォルダーへ配置します。ただしIBusはこの登録先を通常は自動で読みません。この方式ではIBus起動前に `IBUS_COMPONENT_PATH` へ表示されたフォルダーとシステムの登録フォルダーを設定する必要があります。削除は `bash install.sh --uninstall` です。
 
@@ -47,9 +49,9 @@ Linux IBusのRust版は `bash rust/build-linux.sh` で `linux/build/Meltype-Rust
 
 | OS | ビルド | 残っているOS固有コード・制限 |
 |---|---|---|
-| Windows x64/x86 | `./rust/build-windows.ps1 -WithTip` | Rust単体のTSF DLLとRust worker。MSVCリンカー／Windows SDKで元のアイコン・版情報を結合し、製品DLLにC++ソースをリンクしません。出力は `native/tip/bin/rust-x64` と `rust-x86`。自動インストールしません。元と同じCOM登録IDなので、既存インストールと共存させる配布には未対応です。 |
+| Windows x64/x86 | `./rust/build-windows.ps1 -WithTip` | Rust単体のTSF DLLとRust worker。MSVCリンカー／Windows SDKで元のアイコン・版情報を結合し、製品DLLにC++ソースをリンクしません。出力は `native/tip/bin/rust-x64` と `rust-x86`。自動インストールしません。Meltype-flash専用のCOM／入力プロファイルIDを使用します。旧Rust版の共有登録は自動変更しません。 |
 | macOS | `bash rust/build-desktop.sh` | Swift InputMethodKitシェルとazooKey変換エンジンを再利用。出力 `mac/build/Meltype.app`。インストールしません。 |
-| Linux | `bash rust/build-desktop.sh` | Rust IBus実行ファイル。出力 `linux/build/Meltype-Rust-linux`。漢字変換には別途C++ Mozcヘルパーが必要です。fcitx5は既存C++アダプターを別途ビルドします。 |
+| Linux | `bash rust/build-desktop.sh` | Rust IBus実行ファイル。出力 `linux/build/Meltype-flash-linux`。漢字変換には別途C++ Mozcヘルパーが必要です。fcitx5は既存C++アダプターを別途ビルドします。 |
 | Android | [android/README.md](../android/README.md) | Java InputMethodServiceとJNI。補助辞書による変換。 |
 
 デスクトップの既存ビルド手順はそのままで、上記のRust用ビルドだけがRustエンジンを選びます。C APIは `rust/native/include/meltype.h` を参照。戻り値はmalloc由来で `meltype_free` で解放し、同一セッションの呼び出しを直列化してください。Macの変換コールバックはmalloc由来の文字列を返します。LinuxのMozcヘルパーには上流と同じC/US/RSプロトコルで接続し、応答のタイムアウトとサイズ制限を設けています。
@@ -136,7 +138,7 @@ Windowsの「再開できれば未確定入力に戻し、できなければ確�
 - 次の語に応じた直前の曖昧な語の訂正。最大4語まで保持し、削除能力と期待文字列を確認します。キャレット移動、手動選択、学習済みの言語選択を尊重します。共通の日本語を英字にする学習は2回目から有効です。
 - バックアップの作成・検査・復元、学習の全消去・期間指定削除。上流のデータファイルを指定したデータフォルダーから取り込む機能。
 
-設定アプリは `cargo run -p meltype-settings` で起動します。データは上流版と分離して `MeltypeRust` に保存します。Androidはアプリ専用のfilesディレクトリに保存し、バックアップは無効にしています。`MELTYPE_RUST_DATA_DIR` でデスクトップの保存先を指定できます。日本語フォントが見つからない場合は `MELTYPE_FONT` でフォントファイルを指定してください。
+設定アプリは `cargo run -p meltype-settings` で起動します。データは上流版と分離して `Meltype-flash` に保存します。Androidはアプリ専用のfilesディレクトリに保存し、バックアップは無効にしています。`MELTYPE_FLASH_DATA_DIR`（旧 `MELTYPE_RUST_DATA_DIR` も明示指定時のみ対応） でデスクトップの保存先を指定できます。日本語フォントが見つからない場合は `MELTYPE_FONT` でフォントファイルを指定してください。
 
 デスクトップの設定変更・プロファイルの編集は「OK」または×で保存し、「キャンセル」で破棄します。開いている間に他のプロセスが変えた項目は、画面で変更していなければ保持します。プロファイルの変更も名前ごとにマージします。判定テストは保存前の設定を使い、テスト入力の学習はディスクへ保存しません。辞書・定型文などの管理操作は各画面の登録・削除操作で保存します。プロファイルの入出力は元版と同じ `meltype-profile` 形式で、OS標準のファイル選択を使います。
 
@@ -146,7 +148,7 @@ Windowsの「再開できれば未確定入力に戻し、できなければ確�
 
 `SigilWordsDirect` が有効なローマ字入力では、先頭か空白直後の `/command`・`$skill`・`@src/app.ts` を変換ボックスへ溜めず、各キーをアプリへ渡して補完を利用できます。空白・改行の後は通常入力に戻ります。ホストが空白キーを送らない場合も、次に渡されるキャレット前の文字から名前の終了を判断します。Escで補完を閉じた後は名前を続けられ、Tab・キャレット移動・ショートカットの後は位置の情報を破棄します。名前の本文は保持せず、境界と文字数だけを追跡します。
 
-Windowsでは `meltype-settings --tray` でTSF用の管理トレイを起動できます。同じデータフォルダーでのトレイの二重起動を防ぎ、有効／一時停止、判定の強さ、プロファイル、設定・辞書・定型文・学習・バックアップ・判定テスト、データフォルダーを開く操作に対応します。ダブルクリックは有効／一時停止です。設定をOK・×で閉じると保存してトレイに戻り、キャンセルでは編集を破棄します。「終了」は設定を保存し、共有設定を無効にしてトレイを終了します。この管理トレイはIMEの登録や切替を行いません。
+Windowsでは `meltype-flash --tray` でTSF用の管理トレイを起動できます。同じデータフォルダーでのトレイの二重起動を防ぎ、有効／一時停止、判定の強さ、プロファイル、設定・辞書・定型文・学習・バックアップ・判定テスト、データフォルダーを開く操作に対応します。ダブルクリックは有効／一時停止です。設定をOK・×で閉じると保存してトレイに戻り、キャンセルでは編集を破棄します。「終了」は設定を保存し、共有設定を無効にしてトレイを終了します。この管理トレイはIMEの登録や切替を行いません。
 
 一時停止／再開のホットキーは元版と同じ順で `Ctrl+Alt+F12`、`Ctrl+Alt+F11`、`Ctrl+Shift+Alt+A`、`Ctrl+Alt+Pause` の登録を試み、使える組合せをメニューに表示します。終了時に登録を解除します。有効状態・プロファイル変更の通知は `ShowNotifications` に従います。「Windows の起動時に起動」は現在のユーザー用の専用タスクを登録し、タスク登録が拒否された場合はユーザーのRun登録へ切り替えます。解除では両方の専用登録を削除します。登録・解除はメニューで操作したときだけ行い、元版の起動登録は変更しません。
 

@@ -58,7 +58,7 @@ fn enabled() -> bool {
     *ENABLED.get_or_init(|| {
         std::env::var_os("MELTYPE_TIP_LOG").is_some_and(|v| v.to_string_lossy().starts_with('1'))
             || std::env::var_os("LOCALAPPDATA")
-                .is_some_and(|p| PathBuf::from(p).join("Meltype/tip-log").exists())
+                .is_some_and(|p| PathBuf::from(p).join("Meltype-flash/tip-log").exists())
     })
 }
 fn log(message: String) {
@@ -72,7 +72,7 @@ fn log(message: String) {
         .create(true)
         .append(true)
         .share_mode(3)
-        .open(PathBuf::from(path).join("Meltype/tip.log"))
+        .open(PathBuf::from(path).join("Meltype-flash/tip.log"))
     else {
         return;
     };
@@ -99,11 +99,11 @@ unsafe extern "C" fn mode(_: *mut c_void, op: u32, value: i32) {
     let _ = std::panic::catch_unwind(|| {
         let text = match op {
             0 => format!(
-                "Meltype.exe: {}",
+                "meltype-flash.exe: {}",
                 if value != 0 {
                     "つながりました"
                 } else {
-                    "使えません (動いていない・モードが Meltype IME でない)"
+                    "使えません (動いていない・モードが Meltype-flash IME でない)"
                 }
             ),
             1 => "応答を読めません".into(),
@@ -148,7 +148,7 @@ unsafe extern "C" fn mode(_: *mut c_void, op: u32, value: i32) {
                     "Ctrl・Alt・Windows キーを押している",
                     "この入力欄では使わない",
                     "英語の単語の続き",
-                    "Meltype.exe が使えない",
+                    "meltype-flash.exe が使えない",
                     "パスワードの入力欄",
                 ];
                 if !(1..reasons.len() as i32).contains(&value) {
@@ -172,7 +172,7 @@ unsafe extern "C" fn key(_: *mut c_void, op: u32, value: i32) {
             "編集セッションを始められません: 0x{:08X}",
             value as u32
         )),
-        3 => log("Meltype.exe から応答が来ないので、打った文字をそのまま入れました".into()),
+        3 => log("meltype-flash.exe から応答が来ないので、打った文字をそのまま入れました".into()),
         4 => mode(ptr::null_mut(), 1, 0),
         5 => mode(ptr::null_mut(), 2, value),
         6 => mode(ptr::null_mut(), 4, value),

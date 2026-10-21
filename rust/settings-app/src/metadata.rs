@@ -5,7 +5,10 @@ use std::sync::OnceLock;
 fn data() -> &'static Value {
     static DATA: OnceLock<Value> = OnceLock::new();
     DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("../settings-ui.json")).expect("settings UI metadata")
+        serde_json::from_str(
+            &include_str!("../settings-ui.json").replace("Meltype", "Meltype-flash"),
+        )
+        .expect("settings UI metadata")
     })
 }
 pub fn fields() -> &'static [Value] {
@@ -20,7 +23,8 @@ pub fn label(key: &str) -> &str {
 pub fn description(key: &str) -> &str {
     field(key)
         .and_then(|f| f["description"].as_str())
-        .unwrap_or("")
+        .filter(|text| !text.is_empty())
+        .unwrap_or_else(|| label(key))
 }
 pub fn choice<'a>(key: &str, value: &'a str) -> &'a str {
     field(key)

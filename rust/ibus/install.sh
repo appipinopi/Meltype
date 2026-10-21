@@ -19,28 +19,28 @@ while [[ $# -gt 0 ]]; do
 done
 if $system; then
     case "$prefix" in /*) ;; *) echo 'Prefix must be absolute.' >&2; exit 1 ;; esac
-    target="$prefix/libexec/meltype-rust/ibus"
+    target="$prefix/libexec/meltype-flash/ibus"
     components="$prefix/share/ibus/component"
 else
-    target="$data/MeltypeRust/ibus"
+    target="$data/Meltype-flash/ibus"
     components="$data/ibus/component"
 fi
-component="$components/meltype-rust.xml"
+component="$components/meltype-flash.xml"
 if [[ -L "$target" || -L "$target/mozc" || -L "$component" ]]; then
     echo 'Refusing to replace a symlink at the installation target.' >&2
     exit 1
 fi
 if $uninstall; then
-    if [[ ! -f "$target/.meltype-rust-ibus" ]]; then
+    if [[ ! -f "$target/.meltype-flash-ibus" ]]; then
         echo 'No owned Rust IBus installation found.' >&2
         exit 1
     fi
-    if [[ -e "$component" ]] && ! grep -q '<name>org.freedesktop.IBus.MeltypeRust</name>' "$component"; then
+    if [[ -e "$component" ]] && ! grep -q '<name>org.freedesktop.IBus.MeltypeFlash</name>' "$component"; then
         echo 'Component file belongs to another application; keeping it.' >&2
         exit 1
     fi
     rm -f -- "$component"
-    for file in meltype-ibus meltype-settings meltype-rs LICENSE THIRD-PARTY-NOTICES.md README.md MIGRATION.md install.sh icon.png .meltype-rust-ibus; do
+    for file in meltype-ibus meltype-flash meltype-rs LICENSE THIRD-PARTY-NOTICES.md README.md MIGRATION.md install.sh icon.png .meltype-flash-ibus; do
         rm -f -- "$target/$file"
     done
     for file in meltype_mozc_helper MOZC-LICENSE.txt MOZC-CREDITS.html; do
@@ -51,14 +51,14 @@ if $uninstall; then
     echo 'Removed the Rust IBus program and component. Settings and learning data remain.'
     exit 0
 fi
-for file in meltype-ibus meltype-settings meltype-rs icon.png; do
+for file in meltype-ibus meltype-flash meltype-rs icon.png; do
     [[ -f "$source_dir/$file" ]] || { echo "Missing $file" >&2; exit 1; }
 done
 mkdir -p "$target" "$components"
-for file in meltype-ibus meltype-settings meltype-rs LICENSE THIRD-PARTY-NOTICES.md README.md MIGRATION.md install.sh icon.png; do
+for file in meltype-ibus meltype-flash meltype-rs LICENSE THIRD-PARTY-NOTICES.md README.md MIGRATION.md install.sh icon.png; do
     if [[ -f "$source_dir/$file" ]]; then cp -- "$source_dir/$file" "$target/$file"; fi
 done
-chmod 755 "$target/meltype-ibus" "$target/meltype-settings" "$target/meltype-rs"
+chmod 755 "$target/meltype-ibus" "$target/meltype-flash" "$target/meltype-rs"
 if [[ -d "$source_dir/mozc" ]]; then
     mkdir -p "$target/mozc"
     for file in meltype_mozc_helper MOZC-LICENSE.txt MOZC-CREDITS.html; do
@@ -66,14 +66,14 @@ if [[ -d "$source_dir/mozc" ]]; then
     done
     if [[ -f "$target/mozc/meltype_mozc_helper" ]]; then chmod 755 "$target/mozc/meltype_mozc_helper"; fi
 fi
-printf 'Meltype Rust IBus\n' > "$target/.meltype-rust-ibus"
+printf 'Meltype-flash IBus\n' > "$target/.meltype-flash-ibus"
 # Generate paths after copying: current_exe must refer to the installed binary.
-temporary="$(mktemp "$components/.meltype-rust.XXXXXX")"
+temporary="$(mktemp "$components/.meltype-flash.XXXXXX")"
 trap 'rm -f -- "$temporary"' EXIT
 "$target/meltype-ibus" --print-component > "$temporary"
 mv -- "$temporary" "$component"
 if $system; then
-    echo 'Installed. Sign out/in, then select Meltype Rust in IBus input sources.'
+    echo 'Installed. Sign out/in, then select Meltype-flash in IBus input sources.'
     printf 'Remove with: sudo bash %q --system --prefix %q --uninstall\n' "$target/install.sh" "$prefix"
 else
     echo 'User files installed. IBus does not discover user components by default.'

@@ -19,6 +19,7 @@ mod focus;
 mod key_edit;
 mod key_state;
 mod keys;
+mod identity;
 mod langbar;
 mod mode;
 mod open_change;
@@ -53,22 +54,22 @@ struct Spec {
 }
 static SPECS: [Spec; 3] = [
     Spec {
-        guid: GUID::from_u128(0xc8107d36_2806_4d8f_a183_fd0aeb8ed862),
-        description: "Meltype: 入力中",
+        guid: GUID::from_u128(0x51987acc_d57a_5c81_ad25_5c1e8d83f258),
+        description: "Meltype-flash: 入力中",
         line: TF_LS_DOT,
         bold: false,
         attr: TF_ATTR_INPUT,
     },
     Spec {
-        guid: GUID::from_u128(0xe17aa399_c5eb_42e6_be45_c44f0651f2e2),
-        description: "Meltype: 変換した文節",
+        guid: GUID::from_u128(0x52a75cec_c221_5443_bb39_eb8d777c688f),
+        description: "Meltype-flash: 変換した文節",
         line: TF_LS_SOLID,
         bold: false,
         attr: TF_ATTR_CONVERTED,
     },
     Spec {
-        guid: GUID::from_u128(0xcef94813_c47f_48c1_b4ef_d4582d5d4054),
-        description: "Meltype: 選んでいる文節",
+        guid: GUID::from_u128(0x711d8fcb_cfbd_56d2_9a8e_672ee6ed74c1),
+        description: "Meltype-flash: 選んでいる文節",
         line: TF_LS_SOLID,
         bold: true,
         attr: TF_ATTR_TARGET_CONVERTED,

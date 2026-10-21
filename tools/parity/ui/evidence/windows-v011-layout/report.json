@@ -1,0 +1,54 @@
+{
+  "binary_sha256": "86d2930b40dc7d57af18904c66938a0f70cd329cf814efa7dfd004d80bf0af6e",
+  "pages": [
+    {
+      "page": "settings",
+      "width": 720,
+      "height": 700,
+      "rgba_sha256": "82c269c50842578aa5f86fa9b417cac3e34d7843b909c44fd763bcadd8fa6874",
+      "captured": true,
+      "origin_pixel_equivalence_verified": false
+    },
+    {
+      "page": "dictionary",
+      "width": 720,
+      "height": 700,
+      "rgba_sha256": "0ed8551a3df7e4c75ff7a264337400b95c53726b3c707e822e72729994baca2a",
+      "captured": true,
+      "origin_pixel_equivalence_verified": false
+    },
+    {
+      "page": "snippets",
+      "width": 720,
+      "height": 700,
+      "rgba_sha256": "cad097952860e76b8c04d08e0de43e3769a903d16e013476d66ec82578b2c3a4",
+      "captured": true,
+      "origin_pixel_equivalence_verified": false
+    },
+    {
+      "page": "learning",
+      "width": 720,
+      "height": 700,
+      "rgba_sha256": "466c24db5fba70f9f89dbede0706eaf34b2f14b1f894f5e40017ad4051e7a0d6",
+      "captured": true,
+      "origin_pixel_equivalence_verified": false
+    },
+    {
+      "page": "backup",
+      "width": 720,
+      "height": 700,
+      "rgba_sha256": "95952d8b1684a11c6105acd907f66121d516f47dcd1204ada05048a165cb8bc7",
+      "captured": true,
+      "origin_pixel_equivalence_verified": false
+    },
+    {
+      "page": "input-test",
+      "width": 720,
+      "height": 700,
+      "rgba_sha256": "9e60737aaa166e6f4a6284ddb6de185117e95d32de0c4799e2e89548c011b93f",
+      "captured": true,
+      "origin_pixel_equivalence_verified": false
+    }
+  ],
+  "all_screens_equivalent": false
+}

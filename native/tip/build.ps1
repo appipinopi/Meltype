@@ -49,7 +49,7 @@ if ($RustCore) {
         $cmd = @(
             "`"$vcvars`" $vcarch >nul",
             "cd /d `"$here`"", $compat,
-            "rc /nologo /fo `"$obj/MeltypeTip.res`" MeltypeTip.rc",
+            "rc /nologo /I `"$here`" /fo `"$obj/MeltypeTip.res`" `"$root/rust/FlashTip.rc`"",
             "cargo rustc --manifest-path `"$root/Cargo.toml`" -p meltype-native --lib --locked --features tsf-server --target $target --target-dir `"$serverTarget`" $release -- -C link-arg=`"$obj/MeltypeTip.res`" -C link-arg=/Brepro -C link-arg=/MAP:`"$obj/MeltypeTip.map`""
         ) -join ' && '
         Write-Host "== Rust TSF $arch =="

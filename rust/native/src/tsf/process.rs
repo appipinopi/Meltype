@@ -53,8 +53,8 @@ pub(super) fn own_process() -> bool {
     is_own_name(filename(&path))
 }
 fn is_own_name(name: &[u16]) -> bool {
-    name.len() == b"Meltype.exe".len()
-        && name.iter().zip(b"Meltype.exe").all(|(&a, &b)| {
+    name.len() == b"meltype-flash.exe".len()
+        && name.iter().zip(b"meltype-flash.exe").all(|(&a, &b)| {
             a == b.to_ascii_lowercase() as u16 || a == b.to_ascii_uppercase() as u16
         })
 }
@@ -119,7 +119,7 @@ mod tests {
     }
     #[test]
     fn path_growth_failure_and_exact_executable_identity() {
-        let expected: Vec<_> = format!("C:\\{}\\MeLtYpE.ExE", "あ".repeat(700))
+        let expected: Vec<_> = format!("C:\\{}\\MeLtYpE-fLaSh.ExE", "あ".repeat(700))
             .encode_utf16()
             .collect();
         let mut calls = 0;
@@ -134,7 +134,10 @@ mod tests {
         assert!(is_own_name(filename(&actual)));
         for name in [
             "Meltype",
+            "Meltype.exe",
             "OtherMeltype.exe",
+            "Othermeltype-flash.exe",
+            "meltype-flash.exe.old",
             "Meltype.exe.old",
             "Ｍeltype.exe",
         ] {

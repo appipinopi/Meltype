@@ -8,17 +8,17 @@ import sys
 
 def collect(source: Path, output: Path):
     assets = {
-        'Meltype-Rust-Windows-x64.zip': 'release-windows/Meltype-Rust-Windows-x64.zip',
-        'Meltype-Rust-Linux-x64.tar.gz': 'release-linux/Meltype-Rust-Linux-x64.tar.gz',
-        'Meltype-Rust-macOS-arm64.zip': 'release-macos-arm64/Meltype-Rust-macOS-arm64.zip',
-        'Meltype-Rust-macOS-x64.zip': 'release-macos-x64/Meltype-Rust-macOS-x64.zip',
-        'Meltype-Rust-ChromeOS.zip': 'Meltype-ChromeOS-preview/chromeos-preview.zip',
+        'Meltype-flash-Windows-x64.zip': 'release-windows/Meltype-flash-Windows-x64.zip',
+        'Meltype-flash-Linux-x64.tar.gz': 'release-linux/Meltype-flash-Linux-x64.tar.gz',
+        'Meltype-flash-macOS-arm64.zip': 'release-macos-arm64/Meltype-flash-macOS-arm64.zip',
+        'Meltype-flash-macOS-x64.zip': 'release-macos-x64/Meltype-flash-macOS-x64.zip',
+        'Meltype-flash-ChromeOS.zip': 'Meltype-ChromeOS-preview/chromeos-preview.zip',
     }
     apk = list((source / 'meltype-rust-android-debug').rglob('app-debug.apk'))
     if len(apk) != 1:
         raise ValueError(f'Expected one Android application APK, found {len(apk)}')
     inputs = {name: source / path for name, path in assets.items()}
-    inputs['Meltype-Rust-Android-debug.apk'] = apk[0]
+    inputs['Meltype-flash-Android-debug.apk'] = apk[0]
     for path in inputs.values():
         if not path.is_file() or path.stat().st_size == 0:
             raise ValueError(f'Missing or empty asset: {path}')

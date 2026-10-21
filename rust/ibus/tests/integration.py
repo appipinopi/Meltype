@@ -40,7 +40,7 @@ class EngineTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.directory = tempfile.TemporaryDirectory(prefix="meltype-rust-ibus-")
+        cls.directory = tempfile.TemporaryDirectory(prefix="meltype-flash-ibus-")
         cls.addClassCleanup(cls.directory.cleanup)
         cls.root = Path(cls.directory.name)
         cls.installed = os.environ.get("MELTYPE_IBUS_TEST_INSTALLED") == "1"
@@ -56,7 +56,7 @@ class EngineTests(unittest.TestCase):
             bundle.mkdir()
             shutil.copy2(cls.executable, bundle / "meltype-ibus")
             shutil.copy2(Path(__file__).resolve().parents[3] / "linux/icon.png", bundle / "icon.png")
-            for name in ["meltype-settings", "meltype-rs"]:
+            for name in ["meltype-flash", "meltype-rs"]:
                 (bundle / name).write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
             script = Path(__file__).resolve().parents[1] / "install.sh"
             shutil.copy2(script, bundle / "install.sh")
@@ -80,11 +80,11 @@ class EngineTests(unittest.TestCase):
         cls.addClassCleanup(cls.panel.destroy)
         cls.engine_log = (cls.root / "engine.log").open("w+")
         if cls.installed:
-            wait(lambda: any(e.get_name() == "meltype-rust" for e in cls.bus.list_engines()), "Rust component discovery")
+            wait(lambda: any(e.get_name() == "meltype-flash" for e in cls.bus.list_engines()), "Rust component discovery")
         else:
             cls.engine = subprocess.Popen([str(cls.executable)], stdout=cls.engine_log, stderr=subprocess.STDOUT, env={**os.environ, "G_DEBUG":"fatal-warnings"})
             cls.addClassCleanup(cls.stop, cls.engine)
-            wait(lambda: any(e.get_name() == "meltype-rust" for e in cls.bus.list_active_engines()), "Rust factory registration")
+            wait(lambda: any(e.get_name() == "meltype-flash" for e in cls.bus.list_active_engines()), "Rust factory registration")
 
     @staticmethod
     def stop(process):
@@ -105,7 +105,7 @@ class EngineTests(unittest.TestCase):
         self.auxiliary = ""
         self.context_requests = 0
         self.selection = None
-        self.context = self.bus.create_input_context("Meltype Rust integration")
+        self.context = self.bus.create_input_context("Meltype-flash integration")
         self.addCleanup(self.context.destroy)
         self.context.connect("commit-text", self.commit)
         self.context.connect("update-preedit-text", self.preedit)
@@ -118,11 +118,11 @@ class EngineTests(unittest.TestCase):
         self.context.focus_in()
         pump()
         def select():
-            self.bus.set_global_engine("meltype-rust")
-            self.context.set_engine("meltype-rust")
+            self.bus.set_global_engine("meltype-flash")
+            self.context.set_engine("meltype-flash")
             pump()
             description = self.context.get_engine()
-            return description is not None and description.get_name() == "meltype-rust"
+            return description is not None and description.get_name() == "meltype-flash"
         wait(select, "selected test engine")
         self.surrounding()
         pump()

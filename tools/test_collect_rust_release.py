@@ -11,10 +11,10 @@ spec.loader.exec_module(release)
 class CollectionTests(unittest.TestCase):
     def fixture(self, source):
         paths = [
-            'release-windows/Meltype-Rust-Windows-x64.zip',
-            'release-linux/Meltype-Rust-Linux-x64.tar.gz',
-            'release-macos-arm64/Meltype-Rust-macOS-arm64.zip',
-            'release-macos-x64/Meltype-Rust-macOS-x64.zip',
+            'release-windows/Meltype-flash-Windows-x64.zip',
+            'release-linux/Meltype-flash-Linux-x64.tar.gz',
+            'release-macos-arm64/Meltype-flash-macOS-arm64.zip',
+            'release-macos-x64/Meltype-flash-macOS-x64.zip',
             'Meltype-ChromeOS-preview/chromeos-preview.zip',
             'meltype-rust-android-debug/android/app/build/outputs/apk/debug/app-debug.apk',
         ]
@@ -33,14 +33,14 @@ class CollectionTests(unittest.TestCase):
             release.collect(source, output)
             self.assertEqual(len(list(output.iterdir())), 7)
             self.assertEqual(len((output / 'SHA256SUMS.txt').read_text().splitlines()), 6)
-            self.assertEqual((output / 'Meltype-Rust-Android-debug.apk').read_bytes(), b'fixture')
+            self.assertEqual((output / 'Meltype-flash-Android-debug.apk').read_bytes(), b'fixture')
 
     def test_missing_platform_prevents_staging(self):
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory) / 'inputs'
             output = Path(directory) / 'output'
             self.fixture(source)
-            (source / 'release-macos-x64/Meltype-Rust-macOS-x64.zip').unlink()
+            (source / 'release-macos-x64/Meltype-flash-macOS-x64.zip').unlink()
             with self.assertRaises(ValueError):
                 release.collect(source, output)
             self.assertFalse(output.exists())

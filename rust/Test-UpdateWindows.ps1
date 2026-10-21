@@ -39,7 +39,7 @@ function Archive([string]$Name, [string[]]$Entries) {
     return $path
 }
 function Release([string]$Archive) {
-    $asset = @{name='Meltype-Rust-Windows-x64.zip';size=(Get-Item -LiteralPath $Archive).Length;digest=('sha256:'+(Get-FileHash -LiteralPath $Archive).Hash);browser_download_url='https://github.com/appipinopi/Meltype/releases/download/rust-1/Meltype-Rust-Windows-x64.zip'}
+    $asset = @{name='Meltype-flash-Windows-x64.zip';size=(Get-Item -LiteralPath $Archive).Length;digest=('sha256:'+(Get-FileHash -LiteralPath $Archive).Hash);browser_download_url='https://github.com/appipinopi/Meltype/releases/download/rust-1/Meltype-flash-Windows-x64.zip'}
     return @{id=123;tag_name='rust-1';draft=$false;prerelease=$false;assets=@($asset)}
 }
 function Reject([scriptblock]$Run,[string]$Pattern) {

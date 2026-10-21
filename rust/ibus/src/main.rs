@@ -17,7 +17,7 @@ fn main() {
         return;
     }
     if std::env::args().any(|arg| arg == "--version") {
-        println!("Meltype Rust IBus {}", env!("CARGO_PKG_VERSION"));
+        println!("Meltype-flash IBus {}", env!("CARGO_PKG_VERSION"));
         return;
     }
     #[cfg(target_os = "linux")]
