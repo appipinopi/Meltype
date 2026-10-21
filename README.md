@@ -1,4 +1,4 @@
-> **Rust移植Fork（開発中）**: [Rust版の構成・ビルド手順・未移植機能](rust/README.md)。全機能のRust化・4OSでの実機動作確認はまだ完了していません。以下は上流版の説明です。
+> **Rust移植Fork（プレビュー）**: [Rust版のダウンロード](https://github.com/appipinopi/Meltype/releases) / [5環境の導入と制限](rust/RELEASE-NOTES.md) / [構成・ビルド手順・未移植機能](rust/README.md)。Windows・Linux・macOS・Android・ChromeOS向けです。全機能のRust化・全環境での実機動作確認はまだ完了していません。以下は上流版の説明です。
 
 > **ファイル解説**: [全ファイルの役割・処理の流れ・整理記録](FILE_GUIDE.md)。最新版の測定結果と、保持が必要な比較用コードについてもまとめています。
 

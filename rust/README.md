@@ -2,6 +2,8 @@
 
 Fork: https://github.com/appipinopi/Meltype · 元: https://github.com/yksr-melt/Meltype
 
+[Rustプレビューのダウンロード](https://github.com/appipinopi/Meltype/releases) · [Windows / Linux / macOS / Android / ChromeOSの配布内容・導入・制限](RELEASE-NOTES.md)
+
 [ChromeOS試験版](../chromeos/README.md)は`chrome.input.ime`と共通CoreのWebAssemblyを接続する別ホストです。作成・設定と模擬API/WASM試験を用意していますが、ChromeOS実機での導入・入力は未確認です。
 
 **全機能をRustに書き換えた完成版ではありません。** 元の実装を残したまま、OS共通のRustエンジンと4OSから接続する入口を追加しています。元のC#の機能・精度と同等とは保証できません。元のREADMEのダウンロードリンクは上流版です。
