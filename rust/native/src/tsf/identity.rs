@@ -22,7 +22,6 @@ mod tests {
         assert!(!manager.contains("417D801B-A9BD-4C26-BD16-356A825A6998"));
         for source in [manager, acceptance] {
             assert!(source.contains("C540BAF6-88B1-5B30-B524-2C8702B034FC"));
-
         }
     }
 }
