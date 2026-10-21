@@ -50,5 +50,26 @@ test("real service-worker listeners register before hydration and route keys int
     assert.deepEqual(await acknowledged, {id: "first-key", handled: true});
     assert.equal(reads, 1);
     assert.equal(calls.find(([name]) => name === "setComposition")[1].text, "あ");
+    // Legacy ChromeOS places requestId in keyData, with no third argument.
+    // Exercise the complete real-WASM -> candidate window -> commit route.
+    ime.onReset.listeners[0]("meltype-rust");
+    async function legacyKey(key, code, id) {
+      const ack = new Promise(resolve => {ime.keyEventHandled = (request, handled) => resolve({request, handled});});
+      assert.equal(ime.onKeyEvent.listeners[0]("meltype-rust", {type: "keydown", key, code, requestId: id}), undefined);
+      assert.deepEqual(await ack, {request: id, handled: true});
+    }
+    for (const [index, character] of [..."hashi"].entries()) {
+      await legacyKey(character, `Key${character.toUpperCase()}`, `legacy-${index}`);
+      ime.onInputContextUpdate.listeners[0]({contextID: 5, type: "text", shouldDoLearning: false});
+    }
+    await legacyKey(" ", "Space", "legacy-convert");
+    const candidates = calls.filter(([name]) => name === "setCandidates").at(-1)[1].candidates;
+    assert(candidates.some(row => row.candidate === "橋"));
+    const chopsticks = candidates.find(row => row.candidate === "箸");
+    assert(chopsticks);
+    const committed = new Promise(resolve => {ime.commitText = async args => {resolve(args); return true;};});
+    ime.onCandidateClicked.listeners[0]("meltype-rust", chopsticks.id, "left");
+    assert.deepEqual(await committed, {contextID: 5, text: "箸"});
+
   } finally { globalThis.fetch = originalFetch; }
 });

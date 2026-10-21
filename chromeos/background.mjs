@@ -25,7 +25,7 @@ if (controller) {
   ime.onActivate.addListener(engine => controller.activate(engine));
   ime.onDeactivated.addListener(engine => controller.deactivate(engine));
   ime.onFocus.addListener(context => controller.focus(context));
-  ime.onInputContextUpdate.addListener(context => controller.focus(context));
+  ime.onInputContextUpdate.addListener(context => controller.updateContext(context));
   ime.onBlur.addListener(id => controller.blur(id));
   ime.onReset.addListener(engine => { if (controller.engine === engine) controller.invalidate(); });
   ime.onKeyEvent.addListener((engine, event, requestId) => controller.key(engine, event, requestId));

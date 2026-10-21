@@ -136,7 +136,7 @@ Windowsで cargo test --workspace --locked は239件成功、手動試験2件は
 
 一覧の「主要要素」はそのファイルに存在する宣言・見出し・データの要点です。私用データや生成キャッシュはこの一覧へ含めません。C#とSDKホストは比較/互換経路のため保持しており、Rust以外のファイルがあるだけで不要とは判断しません。
 
-対象ファイル数: **1,107**。ファイル名はクリックすると実体を開きます。
+対象ファイル数: **1,115**。ファイル名はクリックすると実体を開きます。
 
 ### ルート（15件）
 
@@ -1311,6 +1311,19 @@ Windowsで cargo test --workspace --locked は239件成功、手動試験2件は
 |[chromeos/tests/controller.test.mjs](chromeos/tests/controller.test.mjs)|キー対応、UTF-16候補位置、非同期ack、初期化中のフォーカス移動、パスワード拒否、API失敗と学習保存禁止を検査する。|fixture|ChromeOSホスト・共有Core・回帰/配布に必要|
 |[chromeos/tests/wasm.test.mjs](chromeos/tests/wasm.test.mjs)|実WASMのFST候補、選択学習・復元・削除、学習禁止、設定移行・未知項目、F6/F7とEnterを検査する。|宣言・設定・文書|ChromeOSホスト・共有Core・回帰/配布に必要|
 |[rust/browser/Cargo.toml](rust/browser/Cargo.toml)|filesystemを無効にした共通Coreと固定wasm-bindgenを依存に持つcdylib/rlib crateを定義する。|宣言・設定・文書|ChromeOSホスト・共有Core・回帰/配布に必要|
-|[rust/browser/src/lib.rs](rust/browser/src/lib.rs)|BrowserSessionとして共通Sessionを公開し、キー・候補選択・周辺文・フォーカス・設定・スナップショットを橋渡しする。OS削除と括弧内移動を制限する。|new, key, select, view, reset, focus, context, configure, snapshot, clear_learning, validate|ChromeOSホスト・共有Core・回帰/配布に必要|
+|[rust/browser/src/lib.rs](rust/browser/src/lib.rs)|BrowserSessionとして共通Sessionを公開し、キー・候補選択・周辺文・フォーカス・設定・スナップショットを橋渡しする。OS削除と括弧内移動を制限する。|new, key, select, select_prediction, view, reset, focus, context, configure, snapshot, clear_learning, validate|ChromeOSホスト・共有Core・回帰/配布に必要|
 |[rust/core/src/storage/state.rs](rust/core/src/storage/state.rs)|デスクトップ/ブラウザーで同じState・学習変更・保持数制限・学習削除処理を共有する。旧storage.rsから動作を変えず抽出した。|active, rebuild_language_preferences, remember_language, apply, remove_learned, forget_since, clear_learning|ChromeOSホスト・共有Core・回帰/配布に必要|
 |[rust/core/src/storage_memory.rs](rust/core/src/storage_memory.rs)|filesystemなしで同じ学習型を公開する入口。StoreやSQLiteの代用品を偽装せず、永続化をホストに委ねる。|now|ChromeOSホスト・共有Core・回帰/配布に必要|
+
+### ChromeOS導入画面・個人情報の黒塗り（2026-10-21）
+
+|ファイル|役割|保持理由|
+|---|---|---|
+|[chromeos/docs/INSTALLATION.md](chromeos/docs/INSTALLATION.md)|実機の設定経路、入力方法の追加と選択、画像の黒塗り範囲と実機検証の限界。|導入案内|
+|[chromeos/docs/screenshots/add-input-method.png](chromeos/docs/screenshots/add-input-method.png)|入力方法追加の未選択画面。SSID・アカウント表示を黒塗り済み、メタデータなし。|公開許可のある導入参考画像|
+|[chromeos/docs/screenshots/add-input-selected.png](chromeos/docs/screenshots/add-input-selected.png)|Meltype Rustを選び追加する画面。SSID・アカウント表示を黒塗り済み、メタデータなし。|公開許可のある導入参考画像|
+|[chromeos/docs/screenshots/input-methods.png](chromeos/docs/screenshots/input-methods.png)|追加前の入力方法一覧。SSID・アカウント表示を黒塗り済み、メタデータなし。|公開許可のある導入参考画像|
+|[chromeos/docs/screenshots/device-settings.png](chromeos/docs/screenshots/device-settings.png)|デバイス設定の入口。SSID・アカウント表示を黒塗り済み、メタデータなし。|公開許可のある導入参考画像|
+|[chromeos/docs/screenshots/keyboard-settings.png](chromeos/docs/screenshots/keyboard-settings.png)|キーボードと入力の設定。SSID・アカウント表示を黒塗り済み、メタデータなし。|公開許可のある導入参考画像|
+|[chromeos/docs/screenshots/keyboard-input-options.png](chromeos/docs/screenshots/keyboard-input-options.png)|入力設定への入口。SSID・アカウント表示を黒塗り済み、メタデータなし。|公開許可のある導入参考画像|
+|[chromeos/docs/screenshots/network-settings.png](chromeos/docs/screenshots/network-settings.png)|ネットワーク設定。SSIDは中央も除去。SSID・アカウント表示を黒塗り済み、メタデータなし。|公開許可のある導入参考画像|

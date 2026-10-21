@@ -61,6 +61,11 @@ impl BrowserSession {
         serde_json::to_string(&self.session.select(index as usize)).map_err(|e| e.to_string())
     }
 
+    pub fn select_prediction(&mut self, index: u32) -> Result<String, String> {
+        serde_json::to_string(&self.session.select_prediction(index as usize))
+            .map_err(|e| e.to_string())
+    }
+
     pub fn view(&self) -> Result<String, String> {
         serde_json::to_string(&self.session.result(false)).map_err(|e| e.to_string())
     }

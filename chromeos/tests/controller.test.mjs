@@ -71,3 +71,31 @@ test("commits are persisted except for contexts that forbid learning", async () 
   f.controller.key("meltype-rust", event, "private"); await f.controller.queue;
   assert.equal(f.saved.length, 1);
 });
+
+test("new request ID takes priority, legacy ID is acknowledged, missing IDs pass through", async () => {
+  const f = fixture();
+  f.controller.key("meltype-rust", {...event, requestId: "old"}, "new");
+  await f.controller.queue;
+  assert.deepEqual(f.calls.filter(c => c[0] === "ack"), [["ack", "new", true]]);
+  f.calls.length = 0;
+  f.controller.key("meltype-rust", {...event, requestId: "legacy"});
+  await f.controller.queue;
+  assert.deepEqual(f.calls.filter(c => c[0] === "ack"), [["ack", "legacy", true]]);
+  f.calls.length = 0;
+  assert.equal(f.controller.key("meltype-rust", event), false);
+  assert.deepEqual(f.calls, []);
+});
+
+test("prediction rows and clicks use prediction selection instead of conversion selection", async () => {
+  const f = fixture();
+  const reply = {consumed: true, commits: [], view: {text: "はし", converting: false,
+    candidates: ["はし"], predictions: ["橋の近くで待っています"], selectedPrediction: -1}};
+  f.core.key = f.core.view = () => JSON.stringify(reply);
+  f.core.select_prediction = id => {assert.equal(id, 0); return JSON.stringify({consumed: true, commits: [{text: reply.view.predictions[id]}], view: null});};
+  f.core.select = () => assert.fail("prediction click must not select a conversion candidate");
+  f.controller.key("meltype-rust", event, "prediction"); await f.controller.queue;
+  assert.equal(f.calls.find(c => c[0] === "setCandidates")[1].candidates[0].candidate, reply.view.predictions[0]);
+  assert.equal(f.calls.some(c => c[0] === "setCursorPosition"), false);
+  f.controller.candidate("meltype-rust", 0, "left"); await f.controller.queue;
+  assert.equal(f.calls.find(c => c[0] === "commitText")[1].text, reply.view.predictions[0]);
+});

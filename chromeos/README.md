@@ -48,3 +48,13 @@ OS辞書/Mozcの接続、OSのクリップボード・GitHubへの取得、ア�
 ## 検証
 
 `python chromeos/build.py`は実WASMで変換・候補・選択学習・再起動復元・学習禁止・設定移行・F6/F7を検査し、APIアダプターの順序・UTF-16位置・フォーカス競合・パスワード拒否・初期化/IME API失敗を模擬APIで検査します。APIモック成功をChromeOS実機成功とは扱いません。ZIPには同梱ファイルのSHA256とライセンスを含めます。現在の移行状況は[移行記録](../rust/MIGRATION.md)、全体構成は[ファイル解説](../FILE_GUIDE.md)を参照してください。
+
+## 0.1.1: 漢字候補とキーイベントの互換対応
+
+`onKeyEvent`の第3引数と旧形式の`keyData.requestId`の両方から応答IDを取得します。以前は旧形式だとキーを処理せず素通ししていました。同じ入力欄の属性更新では未確定文字列を消さず、入力先・種別・学習許可が変わる場合は破棄します。漢字候補に加え、学習文章の予測表示と予測クリック確定を接続しました。[公式APIのKeyboardEvent/onKeyEvent定義](https://developer.chrome.com/docs/extensions/reference/api/input/ime)を参照しています。
+
+同梱FSTによる漢字変換は、`hashi` → Space → 「橋」「箸」の候補 → クリックまたはEnterで確定、の手順です。OS/Mozc辞書への接続追加ではありません。自動の日英判定により最初の表示が英語でも、Spaceで変換候補を確認できます。
+
+既存利用者は設定画面で必要ならスナップショットを保存し、新しいZIPの中身を既存の拡張機能フォルダーへ展開して`chrome://extensions`の再読み込みを押します。同じ拡張機能の更新として読み込み、学習を維持したい場合は削除して入れ直さないでください。入力方法からMeltype Rustを再度選択して確認します。
+
+[個人情報を黒塗りしたChromeOS実機の導入画面と手順](https://github.com/appipinopi/Meltype/blob/rust/chromeos/docs/INSTALLATION.md)。この画像は導入経路の記録で、修正版の漢字変換を実機で確認した証跡ではありません。

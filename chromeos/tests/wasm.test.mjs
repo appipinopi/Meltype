@@ -55,3 +55,18 @@ test("F6/F7 and Enter use the actual shared Core", () => {
   assert.equal(key(s, 13).commits[0].text, "にほんご");
   s.free();
 });
+
+test("real WASM exposes learned kanji predictions for browser candidate clicks", () => {
+  const phrase = "橋の近くで待っています";
+  const s = new BrowserSession(JSON.stringify({state: {phrases: [{
+    reading: "はしのちかくでまっています", text: phrase, count: 3, used: Math.floor(Date.now() / 1000)
+  }]}}));
+  s.focus(false);
+  type(s, "hashi");
+  const view = JSON.parse(s.view()).view;
+  const index = view.predictions.indexOf(phrase);
+  assert(index >= 0);
+  assert.equal(JSON.parse(s.select_prediction(index)).commits[0].text, phrase);
+  assert.deepEqual(JSON.parse(s.snapshot()).state.preferences.selected, {});
+  s.free();
+});

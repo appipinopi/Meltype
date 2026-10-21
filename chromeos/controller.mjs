@@ -30,6 +30,12 @@ export class ImeController {
     this.invalidate();
     this.context = editable.has(context.type) ? {...context} : null;
   }
+  updateContext(context) {
+    if (this.context?.contextID === context.contextID && this.context.type === context.type
+        && this.context.shouldDoLearning === context.shouldDoLearning) {
+      this.context = {...context};
+    } else this.focus(context);
+  }
   blur(id) {
     if (this.context?.contextID !== id) return;
     this.invalidate(); this.context = null;
@@ -60,17 +66,22 @@ export class ImeController {
       await this.call("clearComposition", {contextID: id});
     }
     if (!valid()) return;
-    const candidates = view?.converting ? view.candidates : [];
+    const prediction = view && !view.converting && (view.candidates?.length ?? 0) <= 1;
+    const candidates = (prediction ? view?.predictions : view?.candidates) ?? [];
+    const selected = prediction ? view.selectedPrediction : view?.selectedIndex;
     await this.call("setCandidates", {contextID: id, candidates: candidates.map((candidate, index) => ({
-      candidate, id: index, label: index < 9 ? String(index + 1) : "", annotation: view.notes?.[index] ?? ""}))});
+      candidate, id: index, label: index < 9 ? String(index + 1) : "", annotation: prediction ? "" : view.notes?.[index] ?? ""}))});
     if (!valid()) return;
     await this.call("setCandidateWindowProperties", {engineID: engine, properties: {
-      visible: candidates.length > 0, vertical: true, cursorVisible: true, pageSize: 9,
+      visible: candidates.length > 0, vertical: true, cursorVisible: Number.isInteger(selected) && selected >= 0, pageSize: 9,
       auxiliaryText: view?.hint ?? "", auxiliaryTextVisible: Boolean(view?.hint), windowPosition: "composition"}});
-    if (valid() && candidates.length) await this.call("setCursorPosition", {
-      contextID: id, candidateID: view.selectedIndex});
+    if (valid() && candidates.length && Number.isInteger(selected) && selected >= 0 && selected < candidates.length) await this.call("setCursorPosition", {
+      contextID: id, candidateID: selected});
   }
   key(engine, event, requestId) {
+    // Older ChromeOS sends the acknowledgement ID inside keyData instead of
+    // the third listener argument. Missing it used to pass every key through.
+    if (typeof requestId !== "string" || !requestId) requestId = event.requestId;
     const mapped = translateKey(event);
     const id = this.context?.contextID, generation = this.generation;
     if (!mapped || !this.valid(engine, id, generation) || id === undefined || event.extensionId || event.metaKey) return false;
@@ -106,8 +117,11 @@ export class ImeController {
       const core = await this.ready();
       if (!this.valid(engine, id, generation)) return;
       const view = JSON.parse(core.view()).view;
-      if (!view?.converting || candidateID >= view.candidates.length) return;
-      await this.render(JSON.parse(core.select(candidateID)), engine, id, generation);
+      const prediction = view && !view.converting && (view.candidates?.length ?? 0) <= 1;
+      const candidates = (prediction ? view?.predictions : view?.candidates) ?? [];
+      if (candidateID >= candidates.length) return;
+      const selected = prediction ? core.select_prediction(candidateID) : core.select(candidateID);
+      await this.render(JSON.parse(selected), engine, id, generation);
       if (this.valid(engine, id, generation) && this.learning()) await this.persist(core.snapshot());
     });
   }
