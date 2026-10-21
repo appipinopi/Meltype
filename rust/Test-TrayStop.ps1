@@ -17,7 +17,10 @@ try {
     $deadline = [DateTime]::UtcNow.AddSeconds(20)
     $ready = $false
     while ([DateTime]::UtcNow -lt $deadline) {
-        if ($tray.HasExited) { throw "Tray exited early: $($tray.ExitCode)" }
+        if ($tray.HasExited) {
+            $diagnostic = Get-Content -LiteralPath (Join-Path $root 'tray.log') -Raw -ErrorAction SilentlyContinue
+            throw "Tray exited early: $($tray.ExitCode). Stderr: $diagnostic"
+        }
         $lockPath = Join-Path $root '.tray.lock'
         if (Test-Path -LiteralPath $lockPath) {
             $lock = [IO.File]::Open($lockPath, [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::ReadWrite)

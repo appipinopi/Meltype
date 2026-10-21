@@ -5,22 +5,37 @@ import argparse
 import json
 from pathlib import Path
 import re
+import subprocess
 
 root = Path(__file__).resolve().parent.parent
-source = (root / "src/Meltype.Core/Config/Settings.cs").read_text(encoding="utf-8-sig")
+baseline = "6310c44b728d5ad88284853f9ef37ea224993b18"
+try:
+    source = subprocess.check_output(
+        ["git", "show", baseline + ":src/Meltype.Core/Config/Settings.cs"],
+        cwd=root, stderr=subprocess.PIPE,
+    ).decode("utf-8-sig")
+except subprocess.CalledProcessError as error:
+    raise SystemExit(f"Missing v1.3.0 reference; fetch it first: git fetch --no-tags origin {baseline}") from error
 
 def string(raw):
     return json.loads('"' + raw + '"')
 
 fields = []
-pattern = r"((?:\s*\[[^\]]*\]\s*)+)public\s+([\w<>?]+)\s+(\w+)\s*\{\s*get;\s*set;"
+pattern = r"public\s+([\w<>?\[\]]+)\s+(\w+)\s*\{\s*get;\s*set;"
+previous = 0
 for match in re.finditer(pattern, source):
-    attrs, typ, key = match.groups()
+    typ, key = match.groups()
+    attrs = source[previous:match.start()]
+    previous = match.end()
     if "Category(" not in attrs:
         continue
+    attrs = attrs[attrs.rfind("[Category("):]
     def attr(name):
         found = re.search(name + r'\("((?:\\.|[^"\\])*)"\)', attrs)
         return string(found.group(1)) if found else ""
+    typ = {"bool": "Boolean", "int": "Int32", "string": "String", "string[]": "String[]"}.get(typ, typ)
+    if typ.startswith("List<"):
+        typ = "List`1"
     fields.append(dict(key=key, type=typ, category=attr("Category"),
                        label=attr("DisplayName"), description=attr("Description")))
 enums = {}
@@ -29,7 +44,7 @@ for match in re.finditer(r"public enum (\w+)\s*\{(.*?)\n\}", source, re.S):
         r'\[Description\("((?:\\.|[^"\\])*)"\)\]\s*(\w+)', match[2])}
 assert fields and len({f["key"] for f in fields}) == len(fields)
 assert all(f["label"] and f["category"] for f in fields)
-data = dict(upstream="45e14f86558aa6ea34f2c2ecd038ba95ca8c3c46", fields=fields, enums=enums)
+data = dict(upstream=baseline, fields=fields, enums=enums)
 text = json.dumps(data, ensure_ascii=False, indent=2) + "\n"
 path = root / "rust/settings-app/settings-ui.json"
 parser = argparse.ArgumentParser(description=__doc__)
