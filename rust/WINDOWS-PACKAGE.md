@@ -127,6 +127,8 @@ Applyは既存の管理導入が必要です。通常ユーザーからの適用
 
 ## トレイの入力方式と予測表示（2026-10-21修正）
 
-トレイの「Meltype IME」はRustのMode=Tsfを、「Meltype キーボード」はMode=Keyboardを選びます。前者は登録やOSの入力方式切替を実行しません。公式C#版が登録されている環境では、Win+SpaceのMeltypeはそのC#版のままです。後者はCtrl+Alt+Jでポータブル入力を切り替えます。無効化・IMEモードへの変更でポータブル入力を止めます。
+トレイの「Meltype IME」はRustのMode=Tsfを、「Meltype キーボード」はMode=Keyboardを選びます。前者は登録やOSの入力方式切替を実行しません。公式C#版が登録されている環境では、Win+SpaceのMeltypeはそのC#版のままです。明示的な`Start-Portable.ps1`／`--portable-keyboard`起動では入力ONで始まり、Ctrl+Alt+Jで切り替えます。トレイ上部に実際のON/OFFを表示します。無効化・IMEモードへの変更でポータブル入力を止めます。
 
 ポータブル候補欄はCoreの予測を表示し、Tabで選択、Enterで確定します。読みの続きに一致する学習文章がRust側のデータに必要で、C#版の個人データを自動では取り込みません。表示位置は取得できるWin32キャレットを優先し、取得できない場合はUIA入力欄の下になります。元版の外観・マウス操作との完全一致、およびChrome/ChatGPT/Discord実入力の確認は未完了です。[現在の検査状況](https://github.com/appipinopi/Meltype/blob/rust/rust/MIGRATION.md)も参照してください。
+
+Chromium/Electronの空のcontenteditableには、UIAのValue/TextPatternに加えて元版と同じIAccessible2のEDITABLE状態を照会します。実際のChatGPT・Discordでの物理キー入力の確認は別途必要です。

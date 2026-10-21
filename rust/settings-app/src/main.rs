@@ -125,6 +125,7 @@ impl App {
                 app.opened = app.settings.clone();
                 match portable_keyboard::Keyboard::start(store) {
                     Ok(keyboard) => {
+                        keyboard.activate();
                         app.keyboard = Some(keyboard);
                         app.status =
                         "ポータブル入力: Ctrl+Alt+J で ON/OFF。登録済みIMEは英数にしてください。"
@@ -390,6 +391,10 @@ impl App {
                 if let Err(error) = tray.sync(&settings) {
                     self.status = error;
                 }
+                tray.input_status(
+                    &settings,
+                    self.keyboard.as_ref().is_some_and(|k| k.enabled()),
+                );
             }
         }
     }

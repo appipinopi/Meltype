@@ -223,17 +223,62 @@ unsafe fn writable(automation: &IUIAutomation) -> Option<IUIAutomationElement> {
             .and_then(|range| range.GetAttributeValue(UIA_IsReadOnlyAttributeId).ok())
             .and_then(read_only_bool)
     };
-    // Chromium/Electron contenteditable fields can expose TextPattern without
-    // ValuePattern. An explicit read-only answer still wins over any fallback.
     let readonly = value_readonly.or_else(text_readonly);
-    (element.CurrentIsPassword().is_ok_and(|v| !v.as_bool())
-        && element.CurrentIsEnabled().is_ok_and(|v| v.as_bool())
-        && readonly == Some(false)
-        && element
-            .CurrentControlType()
-            .is_ok_and(|kind| kind == UIA_EditControlTypeId || kind == UIA_DocumentControlTypeId))
-    .then_some(element)
+    if !element.CurrentIsPassword().is_ok_and(|v| !v.as_bool())
+        || !element.CurrentIsEnabled().is_ok_and(|v| v.as_bool())
+        || readonly == Some(true)
+    {
+        return None;
+    }
+    let kind = element.CurrentControlType().ok()?;
+    let focusable = element
+        .CurrentIsKeyboardFocusable()
+        .is_ok_and(|v| v.as_bool());
+    let editable = readonly == Some(false)
+        && (kind == UIA_EditControlTypeId || kind == UIA_DocumentControlTypeId || focusable)
+        || focusable && ia2_editable(&element);
+    editable.then_some(element)
 }
+
+// Chromium/Electron can expose an empty contenteditable as a Group with no
+// Value/TextPattern. Match the original host's IAccessible2 EDITABLE fallback.
+// Never read the accessible value or document text here.
+unsafe fn ia2_editable(element: &IUIAutomationElement) -> bool {
+    use windows::core::{IUnknown, Interface, GUID, HRESULT};
+    #[repr(C)]
+    struct Ia2Vtable {
+        unknown: windows::core::IUnknown_Vtbl,
+        // IDispatch + IAccessible + IAccessible2 methods before get_states.
+        before_states: [usize; 32],
+        states: unsafe extern "system" fn(*mut std::ffi::c_void, *mut i32) -> HRESULT,
+    }
+    let query = || -> windows::core::Result<bool> {
+        let legacy = element.GetCurrentPatternAs::<IUIAutomationLegacyIAccessiblePattern>(
+            UIA_LegacyIAccessiblePatternId,
+        )?;
+        // MSAA READONLY / PROTECTED must override the IA2 fallback.
+        if legacy.CurrentState()? & (0x40 | 0x20000000) != 0 {
+            return Ok(false);
+        }
+        let accessible = legacy.GetIAccessible()?;
+        let provider: IServiceProvider = accessible.cast()?;
+        let service = GUID::from_u128(0x618736e0_3c3d_11cf_810c_00aa00389b71);
+        let iid = GUID::from_u128(0xe89f726e_c4f4_4c19_bb19_b647d7fa8478);
+        let mut raw = std::ptr::null_mut();
+        (provider.vtable().QueryService)(provider.as_raw(), &service, &iid, &mut raw).ok()?;
+        if raw.is_null() {
+            return Ok(false);
+        }
+        // Own the queried interface so every return path releases it.
+        let ia2 = IUnknown::from_raw(raw);
+        let vtable = &**(ia2.as_raw() as *const *const Ia2Vtable);
+        let mut states = 0;
+        (vtable.states)(ia2.as_raw(), &mut states).ok()?;
+        Ok(states & 0x8 != 0)
+    };
+    query().unwrap_or(false)
+}
+
 fn read_only_bool(value: windows::core::VARIANT) -> Option<bool> {
     // UIA's NotSupported/MixedAttribute sentinels must never coerce to false.
     if unsafe { value.as_raw().Anonymous.Anonymous.vt }
@@ -280,6 +325,13 @@ pub struct Keyboard {
 impl Keyboard {
     pub fn enabled(&self) -> bool {
         self.shared.active.load(Ordering::Acquire)
+    }
+    pub fn activate(&self) {
+        if self.shared.permitted.load(Ordering::Acquire) {
+            self.shared.active.store(true, Ordering::Release);
+            self.shared.generation.fetch_add(1, Ordering::SeqCst);
+            let _ = self.shared.queue.try_send(Event::Reset);
+        }
     }
     pub fn configure(&mut self, settings: &Settings) {
         self.shared.permitted.store(

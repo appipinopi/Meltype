@@ -10,7 +10,9 @@ use eframe::egui;
 use meltype_core::{settings::Settings, storage::Store};
 use std::sync::mpsc::{self, Receiver};
 use tray_icon::{
-    menu::{CheckMenuItem, Menu, MenuEvent, MenuId, MenuItem, PredefinedMenuItem, Submenu},
+    menu::{
+        CheckMenuItem, ContextMenu, Menu, MenuEvent, MenuId, MenuItem, PredefinedMenuItem, Submenu,
+    },
     Icon, TrayIcon, TrayIconBuilder, TrayIconEvent,
 };
 #[derive(Clone, Debug)]
@@ -39,6 +41,7 @@ pub struct Tray {
     _hotkey: Option<Hotkey>,
     hotkey_receiver: Receiver<()>,
     icon: TrayIcon,
+    menu_handle: usize,
     enabled: CheckMenuItem,
     status: MenuItem,
     ime_mode: CheckMenuItem,
@@ -141,6 +144,7 @@ impl Tray {
         menu.append(&quit).map_err(|e| e.to_string())?;
         actions.push((quit.id().clone(), Action::Quit));
         let guid = windows_services::tray_guid(&store.directory);
+        let menu_handle = menu.hpopupmenu() as usize;
         let icon = TrayIconBuilder::new()
             .with_menu(Box::new(menu))
             .with_guid(guid)
@@ -196,6 +200,7 @@ impl Tray {
             _hotkey: hotkey,
             hotkey_receiver,
             icon,
+            menu_handle,
             enabled,
             status,
             ime_mode,
@@ -216,6 +221,15 @@ impl Tray {
         };
         tray.sync(settings)?;
         Ok(tray)
+    }
+    pub fn input_status(&self, settings: &Settings, active: bool) {
+        if settings.boolean("Enabled") && settings.text("Mode") == "Keyboard" {
+            self.status.set_text(if active {
+                "Meltype キーボード: 入力ON (Ctrl+Alt+J でOFF)"
+            } else {
+                "Meltype キーボード: 入力OFF (Ctrl+Alt+J でON)"
+            });
+        }
     }
     pub fn sync(&mut self, settings: &Settings) -> Result<(), String> {
         let enabled = settings.boolean("Enabled");
@@ -238,6 +252,22 @@ impl Tray {
         self.ime_mode.set_checked(settings.text("Mode") == "Tsf");
         self.keyboard_mode
             .set_checked(settings.text("Mode") == "Keyboard");
+        // The two input modes are mutually exclusive even when a check item
+        // auto-toggles while the native popup is tracking a click.
+        unsafe {
+            use windows_sys::Win32::UI::WindowsAndMessaging::{CheckMenuRadioItem, MF_BYPOSITION};
+            CheckMenuRadioItem(
+                self.menu_handle as _,
+                3,
+                4,
+                if settings.text("Mode") == "Keyboard" {
+                    4
+                } else {
+                    3
+                },
+                MF_BYPOSITION,
+            );
+        }
         self.status.set_text(if !enabled {
             "Meltype: 一時停止"
         } else if settings.text("Mode") == "Keyboard" {
