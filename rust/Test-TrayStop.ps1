@@ -35,6 +35,7 @@ try {
     Start-Sleep -Milliseconds 1000
     $report = Join-Path $root 'stop-result.json'
     $helper = Start-Process -FilePath $exe -ArgumentList @('--startup-action','stop-tray','--startup-result',('"'+$report+'"')) -WindowStyle Hidden -PassThru -RedirectStandardError (Join-Path $root 'helper.log')
+    $null = $helper.Handle # Retain a process handle before a fast helper exits.
     if (-not $helper.WaitForExit(15000)) { throw 'Stop helper timed out' }
     if ($helper.ExitCode -ne 0) { throw "Stop helper failed: $(Get-Content -LiteralPath $report -Raw)" }
     if (-not $tray.WaitForExit(5000)) { throw 'Tray lock released but process did not exit' }

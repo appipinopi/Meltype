@@ -90,6 +90,7 @@ function Invoke-StartupMaintenance([string]$Exe, [ValidateSet('rebind','disable'
     $process = $null
     try {
         $process = Start-Process -FilePath $Exe -ArgumentList @('--startup-action', $Operation, '--startup-result', ('"'+$report+'"')) -WindowStyle Hidden -PassThru
+        $null = $process.Handle
         if (-not $process.WaitForExit(45000)) {
             try { $process.Kill(); $process.WaitForExit() } catch { }
             throw 'Startup helper timed out; no further installation steps were attempted.'

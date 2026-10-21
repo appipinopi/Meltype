@@ -132,3 +132,9 @@ Applyは既存の管理導入が必要です。通常ユーザーからの適用
 ポータブル候補欄はCoreの予測を表示し、Tabで選択、Enterで確定します。読みの続きに一致する学習文章がRust側のデータに必要で、C#版の個人データを自動では取り込みません。表示位置は取得できるWin32キャレットを優先し、取得できない場合はUIA入力欄の下になります。元版の外観・マウス操作との完全一致、およびChrome/ChatGPT/Discord実入力の確認は未完了です。[現在の検査状況](https://github.com/appipinopi/Meltype/blob/rust/rust/MIGRATION.md)も参照してください。
 
 Chromium/Electronの空のcontenteditableには、UIAのValue/TextPatternに加えて元版と同じIAccessible2のEDITABLE状態を照会します。実際のChatGPT・Discordでの物理キー入力の確認は別途必要です。
+
+## 直接入力IMEとポータブル入力の違い
+
+「Meltype IME (入力欄に直接入力)」にはRust TIPのWindowsへの登録とWin+Spaceによる選択が必要です。トレイの選択だけでは登録されません。C#版とCOM登録IDを共有するため、Rustへ登録を切り替える際は元の登録先を保存し、`Manage-Windows.ps1 -Action Install -ReplaceExisting`を管理者として実行します。開いているアプリを再起動してください。
+
+直接入力用の設定・学習は通常`%LOCALAPPDATA%/MeltypeRust`です。`Start-Portable.ps1`はパッケージ内`data`を使うため、直接入力のトレイは`MELTYPE_RUST_DATA_DIR`を指定せず`meltype-settings.exe --tray`で起動してください。Rust設定のMode=Tsf/Enabled=trueと、Windows側でMeltypeが選択されていることの両方が必要です。C#プロセスとポータブル入力の同時動作は避けてください。

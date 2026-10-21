@@ -67,7 +67,17 @@ fn main() -> eframe::Result {
                     break;
                 }
             }
-            Ok(Box::new(App::new()))
+            let app = App::new();
+            #[cfg(windows)]
+            let mut app = app;
+            #[cfg(windows)]
+            if app.resident {
+                match windows_services::HiddenRepaint::start(cc) {
+                    Ok(worker) => app.hidden_repaint = Some(worker),
+                    Err(error) => app.status = error,
+                }
+            }
+            Ok(Box::new(app))
         }),
     )
 }
@@ -81,6 +91,8 @@ struct App {
     help: String,
     #[cfg(windows)]
     resident: bool,
+    #[cfg(windows)]
+    hidden_repaint: Option<windows_services::HiddenRepaint>,
     #[cfg(windows)]
     keyboard: Option<portable_keyboard::Keyboard>,
     #[cfg(windows)]
@@ -161,6 +173,8 @@ impl App {
                 .any(|a| matches!(a.as_str(), "--tray" | "--portable-keyboard")),
             #[cfg(windows)]
             keyboard: None,
+            #[cfg(windows)]
+            hidden_repaint: None,
             #[cfg(windows)]
             tray: None,
             page: 0,

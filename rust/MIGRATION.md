@@ -1,5 +1,15 @@
 # 全機能移植の作業表
 
+### 2026-10-21: 実環境をRustの直接入力IMEへ切替・非表示トレイの更新修正
+
+- [x] 公式C# 1.3.0の登録先を保存し、検査済みRustパッケージを管理者の承認でインストール。x64/x86の登録先がRust TIPを指すこと、両ABIで登録済みITfTextInputProcessorをCOM生成できることを確認。C#版の設定・辞書・学習データと起動登録は変更しない。
+- [x] 直接入力の共通保存先`%LOCALAPPDATA%/MeltypeRust`をMode=Tsf/Enabled=trueで準備。ポータブル用`package/data`とは分け、直接入力用のトレイは環境変数による保存先上書きを外して起動する。
+- [x] 設定画面を隠すとwinitのRedrawWindowによるWM_PAINTが届かず、メニュー操作・終了要求の処理が止まる問題を修正。所有する非表示ウィンドウだけに500ms間隔で描画要求を送り、表示やフォーカスを変えずに更新する。自プロセス所有確認と終了時の停止・joinを実装。実トレイの協調終了・プロセス終了・設定ファイル不変の検査が成功。
+- [x] PowerShellの短時間ヘルパー起動で終了コードを取得する前にプロセスハンドルを保持。実際に成功したヘルパーを失敗扱いにする検査の問題も修正。設定アプリ26テストとClippyが成功。
+- [ ] ChatGPT・Chrome・Discordで直接入力の物理キーによる受入確認。COM生成成功は実アプリでの入力成功とは区別する。切替前から開いているアプリは旧DLLを保持する可能性があり、アプリ再起動後にWin+SpaceでMeltypeを選択する。
+
+登録前の情報とC#登録を戻すスクリプトはローカルの`C:/opencode-rust/before-rust-direct-ime-20261021/`へ保存。個人データ・登録先をGitには含めない。
+
 ### 2026-10-21: Chromium/Electronの入力欄認識を追加
 
 - [x] 元C#版にあるIAccessible2のEDITABLE照会をRustへ移植。空のcontenteditableがGroupとして公開され、Value/TextPatternを持たない場合にも認識経路を追加。UIAの明示的な読み取り専用・パスワード・無効状態、およびMSAAのREADONLY/PROTECTEDを優先して除外する。入力本文・値はこの照会で読み取らない。
