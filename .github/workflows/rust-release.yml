@@ -33,6 +33,10 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: rust-release-windows
+      - run: ./rust/Test-BuildWindowsArgs.ps1
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo test --workspace --locked
       - run: ./rust/build-windows.ps1 -WithTip
@@ -68,6 +72,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: rust-release-linux
       - run: sudo apt-get update && sudo apt-get install -y libibus-1.0-dev ibus gir1.2-ibus-1.0 python3-gi dbus-x11 xvfb fonts-noto-cjk libxkbcommon-x11-0
       - run: cargo test --workspace --locked
       - run: bash rust/build-linux.sh
@@ -96,6 +103,13 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: rust-release-macos-${{ matrix.arch }}
+      - uses: actions/cache@v5
+        with:
+          path: mac/.build
+          key: release-swift-${{ matrix.arch }}-${{ hashFiles('mac/Package.swift', 'mac/Package.resolved') }}
       - run: cargo test --workspace --locked
       - run: bash rust/build-desktop.sh
       - name: Inspect macOS package
@@ -127,7 +141,10 @@ jobs:
         with:
           path: artifacts
       - name: Collect verified release assets
-        run: python3 tools/collect-rust-release.py artifacts release-assets
+        run: |
+          python3 -m unittest discover -s tools -p test_collect_rust_release.py -v
+          python3 tools/collect-rust-release.py artifacts release-assets
+          cp LICENSE THIRD-PARTY-NOTICES.md rust/RELEASE-NOTES.md release-assets/
       - name: Publish all platforms together
         env:
           GH_TOKEN: ${{ github.token }}
