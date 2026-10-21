@@ -39,6 +39,7 @@ fn ends(text: &str) -> impl Iterator<Item = usize> + '_ {
     text.char_indices().map(|(i, c)| i + c.len_utf8()).rev()
 }
 impl Linguistics {
+    #[cfg(feature = "filesystem")]
     pub(crate) fn profile_misspellings(directory: &std::path::Path) -> Option<Self> {
         let bytes = std::fs::read(directory.join("misspellings.txt")).ok()?;
         let (text, _) = crate::user_dictionary::decode(&bytes).ok()?;

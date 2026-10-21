@@ -2,6 +2,8 @@
 
 > **ファイル解説**: [全ファイルの役割・処理の流れ・整理記録](FILE_GUIDE.md)。最新版の測定結果と、保持が必要な比較用コードについてもまとめています。
 
+> **ChromeOS試験版**: [chrome.input.imeとRust/WASMの構成・作成・導入手順](chromeos/README.md)。実機の導入・入力は未確認です。
+
 <p align="center">
   <img src="docs/images/logo.png" alt="Meltype" width="480"><br>
   <sub>Logo by <a href="https://github.com/Crysta1221">@Crysta1221</a></sub>

@@ -1,5 +1,9 @@
 # サードパーティー通知
 
+## Rust/WASM ChromeOS試験版
+
+ChromeOS配布には同梱辞書とRust依存ライブラリを組み込む。`chromeos/build.py`がCargoの解決グラフから対象ライブラリのライセンス本文を収集し、`RUST-DEPENDENCY-NOTICES.txt`として同梱する。wasm-bindgen / js-sys / web-timeはMIT OR Apache-2.0。同梱辞書の由来・表示条件は本書の各辞書の節を参照する。
+
 Meltype のソースコード (このリポジトリ) には、他者の著作物は含まれていません。
 
 ## 配布用パッケージに同梱しているもの

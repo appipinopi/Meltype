@@ -2,6 +2,8 @@
 
 Fork: https://github.com/appipinopi/Meltype · 元: https://github.com/yksr-melt/Meltype
 
+[ChromeOS試験版](../chromeos/README.md)は`chrome.input.ime`と共通CoreのWebAssemblyを接続する別ホストです。作成・設定と模擬API/WASM試験を用意していますが、ChromeOS実機での導入・入力は未確認です。
+
 **全機能をRustに書き換えた完成版ではありません。** 元の実装を残したまま、OS共通のRustエンジンと4OSから接続する入口を追加しています。元のC#の機能・精度と同等とは保証できません。元のREADMEのダウンロードリンクは上流版です。
 
 ## ビルド・確認
@@ -23,6 +25,7 @@ Rust 1.88以上。WindowsはMSVC C++ビルドツール、LinuxはCリンカー�
 | meltype-settings | Rust製の設定・辞書・定型文・学習削除・バックアップ・入力テスト画面 |
 | meltype-cli | 全デスクトップ共通の変換コマンド、JSON Linesセッション操作 |
 | meltype-ibus | Linux IBusのRust製エンジン実行ファイル。libibus/GLibへ直接接続し、Python/C++の接続コードを使用しない |
+| meltype-browser | ChromeOS拡張向けWASM。共通Session/FST/学習を共有し、設定と学習の永続化をブラウザーホストへ委ねる |
 
 CLIは引数なしでstdinからJSONを1行ずつ受け取ります。`{"op":"key","vk":0,"ch":107}`、`{"op":"key","vk":32,"ch":32}`、`{"op":"commit"}`、`{"op":"select","index":0}`、`{"op":"reset"}`、`{"op":"direct","enabled":true}`。再変換は `{"op":"reconvert_selection","text":"橋","reading":"はし"}`（readingは省略可）、確定Undoは `{"op":"undo_commit","before":"キャレット直前の文字列"}`。結果は `consumed/commits/view` のJSONです。削除時は `expect`、再変換開始時は `selectionExpect` をホスト側で必ず照合してください。vkは既存実装と同じWindows仮想キー、chはUnicodeスカラー、modifiersはShift=1/Ctrl=2/Alt=4/Command=8です。
 

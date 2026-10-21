@@ -1,5 +1,14 @@
 # 全機能移植の作業表
 
+### 2026-10-21: ChromeOS試験版（chrome.input.ime + Rust/WASM）
+
+- [x] `meltype-browser`を追加し、共通Session・判定・FST辞書・学習モデルをWebAssemblyへコンパイル。Coreの`filesystem` featureを標準ONのまま分離し、デスクトップのSQLite・原子的保存・ファイルロックを維持する。ブラウザーの永続化は`chrome.storage.local`のJSONスナップショットで、SQLite対応済みとは扱わない。
+- [x] Manifest V3のIMEアダプター、順序付き非同期キーと一度だけのack、未確定文字列・候補・注釈・UTF-16位置、候補クリック、フォーカス/種別変更・無効化・resetを接続。パスワード等の除外、学習禁止の尊重、設定JSON・設定移行・学習削除・スナップショット書き出しを追加。
+- [x] WASMの実ビルドとClippy、デスクトップworkspace 239件（手動2件ignore）、実WASMと模擬Chrome APIを用いた12件が成功。APIがない場合の設定画面への状態応答、Service Worker初期化前のlistener登録と実WASMへのキー配送も試験。ハッシュ・依存ライセンス本文付きのZIP作成とCIを追加した。
+- [ ] ChromeOS実機での導入・入力・候補・スリープ/Service Worker再起動・US/JIS配列の確認。ChromeOS全域、OS辞書、全画面一致、確定後訂正/Undo、既存文書の削除、カーソル移動、バックアップ復元・辞書編集画面は未対応/未確認。`CursorIntoBrackets=true`は拒否する。CI追加を実機受入成功とは扱わない。
+
+2023年に廃止予定が告知されたAPIは`chrome.input.ime`。その後の延期告知、現在の公式文書とChromiumの残存定義を区別して記録した。製品版・管理端末の可用性は実行時に検査する。[API根拠・作成・導入・制約](../chromeos/README.md)。
+
 ### 2026-10-21: 実IME導入確認・自動更新・ポータブル入力
 
 - 自動更新: 公開安定版のRust Windows ZIPを選び、GitHub SHA-256・サイズ・許可ホスト・展開先・全配布ハッシュを検査してStage/Applyへ接続。設定画面から開始し、適用ログを保存。通常ユーザーの更新完了後にトレイを再起動する。公開リリースが現在ないため、実公開ZIPによる更新成功は未確認。選択・取得境界・SHA-256・危険なZIPパス等は隔離試験で確認。

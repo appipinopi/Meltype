@@ -68,6 +68,7 @@ fn words(text: &str) -> impl Iterator<Item = &str> {
 }
 
 impl Dictionary {
+    #[cfg(feature = "filesystem")]
     pub(crate) fn profile(
         directory: &std::path::Path,
         romaji: Option<std::sync::Arc<romaji::CustomTable>>,

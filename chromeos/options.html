@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<title>Meltype Rust — ChromeOS</title>
+<link rel="stylesheet" href="options.css">
+<main>
+  <h1>Meltype Rust for ChromeOS</h1>
+  <p>chrome.input.ime を使う試験版です。ChromeOSの設定 → 言語と入力 → 入力方法で「Meltype Rust」を追加して選択してください。</p>
+  <p id="status" role="status" aria-live="polite">起動状態を確認中…</p>
+  <p>共通Coreの変換・判定・辞書を使います。OS辞書、確定後の削除・Undo、カーソル移動、全画面の互換性は未対応です。物理JIS配列は実機未確認です。</p>
+  <form id="settings-form">
+    <h2>設定</h2>
+    <label for="settings">Core設定（JSON。元版の設定名と未知の項目を保持します）</label>
+    <textarea id="settings" rows="24" spellcheck="false"></textarea>
+    <button type="submit">設定を保存</button>
+    <button type="button" id="reload">保存済み設定へ戻す</button>
+  </form>
+  <h2>学習とデータ</h2>
+  <p>設定・学習・ユーザー辞書はこの端末の拡張機能ストレージに保存します。未確定文字列は保存しません。Chrome Syncやサーバーへ送信しません。</p>
+  <button id="export" type="button">設定・学習・辞書をJSONで書き出す</button>
+  <button id="clear" type="button">学習を削除</button>
+  <p>ユーザー辞書はスナップショット内に保持します。SQLiteの直接取込み・辞書編集画面・バックアップの復元は今後の対応です。</p>
+</main>
+<script type="module" src="options.mjs"></script>
+</html>
