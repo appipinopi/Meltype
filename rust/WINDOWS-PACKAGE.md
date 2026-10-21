@@ -124,3 +124,9 @@ Applyは既存の管理導入が必要です。通常ユーザーからの適用
 登録なし入力の自動試験は対話デスクトップで `cargo test -p meltype-settings --locked --no-run` を実行し、表示されたテストEXEを `python tools/test-portable-input.py <テストEXE> --unit-host` へ渡します。製品EXEは識別付き試験キーも除外するため、このドライバーの対象にしません。実製品の起動・終了は `rust/Test-TrayStop.ps1 -Binary <製品EXE> -Portable` で別途検査します。
 
 2026-10-21、元版を停止後に管理者権限で実登録試験を実施しました。x64/x86の実登録先、TSF言語プロファイル、登録経由のITfTextInputProcessor COM起動が通過し、登録解除と元版への復元も確認しました。検査コードのIIDをWindows SDKの `aa80e7f7-2021-11d2-93e0-0060b067b86e` へ修正後の結果です。最終結果は registeredComAndProfilePassed=true / originalRestored=true / externalApplicationInputTested=false。外部アプリの実TSF入力の成功を意味しません。
+
+## トレイの入力方式と予測表示（2026-10-21修正）
+
+トレイの「Meltype IME」はRustのMode=Tsfを、「Meltype キーボード」はMode=Keyboardを選びます。前者は登録やOSの入力方式切替を実行しません。公式C#版が登録されている環境では、Win+SpaceのMeltypeはそのC#版のままです。後者はCtrl+Alt+Jでポータブル入力を切り替えます。無効化・IMEモードへの変更でポータブル入力を止めます。
+
+ポータブル候補欄はCoreの予測を表示し、Tabで選択、Enterで確定します。読みの続きに一致する学習文章がRust側のデータに必要で、C#版の個人データを自動では取り込みません。表示位置は取得できるWin32キャレットを優先し、取得できない場合はUIA入力欄の下になります。元版の外観・マウス操作との完全一致、およびChrome/ChatGPT/Discord実入力の確認は未完了です。[現在の検査状況](https://github.com/appipinopi/Meltype/blob/rust/rust/MIGRATION.md)も参照してください。

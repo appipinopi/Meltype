@@ -16,6 +16,8 @@ use tray_icon::{
 #[derive(Clone, Debug)]
 pub enum Action {
     Toggle,
+    Mode(String),
+    Help,
     Page(usize),
     Profile(String),
     Level(String),
@@ -39,6 +41,8 @@ pub struct Tray {
     icon: TrayIcon,
     enabled: CheckMenuItem,
     status: MenuItem,
+    ime_mode: CheckMenuItem,
+    keyboard_mode: CheckMenuItem,
     levels: Vec<(String, CheckMenuItem)>,
     profiles: Submenu,
     profile_items: Vec<(String, CheckMenuItem)>,
@@ -80,6 +84,22 @@ impl Tray {
             .map_err(|e| e.to_string())?;
         menu.append(&enabled).map_err(|e| e.to_string())?;
         let mut actions = vec![(enabled.id().clone(), Action::Toggle)];
+        let ime_mode = CheckMenuItem::new(
+            "Meltype IME (入力欄に直接入力)",
+            true,
+            settings.text("Mode") == "Tsf",
+            None,
+        );
+        let keyboard_mode = CheckMenuItem::new(
+            "Meltype キーボード (変換ボックスで入力)",
+            true,
+            settings.text("Mode") == "Keyboard",
+            None,
+        );
+        menu.append(&ime_mode).map_err(|e| e.to_string())?;
+        menu.append(&keyboard_mode).map_err(|e| e.to_string())?;
+        actions.push((ime_mode.id().clone(), Action::Mode("Tsf".into())));
+        actions.push((keyboard_mode.id().clone(), Action::Mode("Keyboard".into())));
         let level_menu = Submenu::new("自動判定の強さ", true);
         let mut levels = vec![];
         for (name, label) in [
@@ -101,6 +121,7 @@ impl Tray {
         menu.append(&startup_item).map_err(|e| e.to_string())?;
         actions.push((startup_item.id().clone(), Action::Startup));
         for (label, action) in [
+            ("使い方...", Action::Help),
             ("設定...", Action::Page(0)),
             ("ユーザー辞書...", Action::Page(1)),
             ("定型文...", Action::Page(2)),
@@ -177,6 +198,8 @@ impl Tray {
             icon,
             enabled,
             status,
+            ime_mode,
+            keyboard_mode,
             levels,
             profiles,
             profile_items: vec![],
@@ -212,10 +235,15 @@ impl Tray {
         };
         self.last_profile = settings.text("ActiveProfile").into();
         self.enabled.set_checked(enabled);
-        self.status.set_text(if enabled {
-            "Meltype: 有効"
-        } else {
+        self.ime_mode.set_checked(settings.text("Mode") == "Tsf");
+        self.keyboard_mode
+            .set_checked(settings.text("Mode") == "Keyboard");
+        self.status.set_text(if !enabled {
             "Meltype: 一時停止"
+        } else if settings.text("Mode") == "Keyboard" {
+            "Meltype キーボード (Ctrl+Alt+J で入力ON/OFF)"
+        } else {
+            "Meltype IME (Win + Space で登録済みIMEを選んで入力)"
         });
         if enabled != self.last_enabled {
             self.icon
@@ -339,6 +367,12 @@ pub fn write_action(store: &Store, action: &Action) -> Result<(), String> {
                 settings.set("Enabled", serde_json::json!(!settings.boolean("Enabled")))
             }
             Action::Profile(name) => settings.switch_profile(name),
+            Action::Mode(mode) => {
+                if !["Tsf", "Keyboard"].contains(&mode.as_str()) {
+                    return Err("unsupported input mode".into());
+                }
+                settings.set("Mode", serde_json::json!(mode))
+            }
             Action::Level(level) => settings.set("DetectionLevel", serde_json::json!(level)),
             _ => Ok(()),
         })
@@ -426,5 +460,24 @@ mod tests {
     fn both_tray_icon_glyphs_render_on_windows() {
         assert!(text_icon(true).is_ok());
         assert!(text_icon(false).is_ok());
+    }
+    #[test]
+    fn tray_modes_persist_without_losing_an_open_settings_draft() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = Store::new(dir.path());
+        let opened = store.settings().unwrap();
+        let mut edited = opened.clone();
+        edited
+            .set("LiveConversion", serde_json::json!(false))
+            .unwrap();
+        write_action(&store, &Action::Mode("Keyboard".into())).unwrap();
+        let current = store.settings().unwrap();
+        assert_eq!(current.text("Mode"), "Keyboard");
+        let merged = Settings::merge_edits(&opened, &edited, &current);
+        assert_eq!(merged.text("Mode"), "Keyboard");
+        assert!(!merged.boolean("LiveConversion"));
+        write_action(&store, &Action::Mode("Tsf".into())).unwrap();
+        assert_eq!(store.settings().unwrap().text("Mode"), "Tsf");
+        assert!(write_action(&store, &Action::Mode("AutoSwitch".into())).is_err());
     }
 }

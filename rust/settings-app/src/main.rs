@@ -117,6 +117,12 @@ impl App {
         {
             let mut app = Self::with_store(store.clone());
             if std::env::args().any(|a| a == "--portable-keyboard") {
+                if let Err(error) = store.change_settings(|s| s.set("Mode", json!("Keyboard"))) {
+                    app.status = error.to_string();
+                    return app;
+                }
+                app.settings = store.settings().unwrap_or_else(|_| app.settings.clone());
+                app.opened = app.settings.clone();
                 match portable_keyboard::Keyboard::start(store) {
                     Ok(keyboard) => {
                         app.keyboard = Some(keyboard);
@@ -292,6 +298,12 @@ impl App {
                 return;
             }
         };
+        if settings.text("Mode") == "Keyboard" && self.keyboard.is_none() {
+            match portable_keyboard::Keyboard::start(self.store.clone()) {
+                Ok(keyboard) => self.keyboard = Some(keyboard),
+                Err(error) => self.status = error,
+            }
+        }
         if let Some(keyboard) = &mut self.keyboard {
             keyboard.configure(&settings);
         }
@@ -326,6 +338,11 @@ impl App {
                 }
                 tray::Action::About => {
                     self.lifecycle.about = true;
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
+                }
+                tray::Action::Help => {
+                    self.lifecycle.welcome = true;
                     ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
                     ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
                 }
