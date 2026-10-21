@@ -1284,4 +1284,3 @@ Windowsで cargo test --workspace --locked は239件成功、手動試験2件は
 |[docs/images/logo.png](docs/images/logo.png)|説明文から参照する `logo` の画面・カード・ロゴ画像。参照を確認済み。|画像リソース|説明・参照に必要|
 |[docs/meltype.jpg](docs/meltype.jpg)|OSパッケージ・画面で使う `meltype` の画像リソース。|画像リソース|説明・参照に必要|
 |[docs/romaji-azik-sample.txt](docs/romaji-azik-sample.txt)|ローマ字表とかな変換の開発・比較・配布を補助する。|108有効行|説明・参照に必要|
-
