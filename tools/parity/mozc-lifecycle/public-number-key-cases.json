@@ -1,0 +1,386 @@
+[
+  {
+    "name": "hashi-0-0-1-False",
+    "raw": "hashi",
+    "active": 0,
+    "start": 0,
+    "digit": 1,
+    "keypad": false
+  },
+  {
+    "name": "hashi-0-0-1-True",
+    "raw": "hashi",
+    "active": 0,
+    "start": 0,
+    "digit": 1,
+    "keypad": true
+  },
+  {
+    "name": "hashi-0-0-9-False",
+    "raw": "hashi",
+    "active": 0,
+    "start": 0,
+    "digit": 9,
+    "keypad": false
+  },
+  {
+    "name": "hashi-0-0-9-True",
+    "raw": "hashi",
+    "active": 0,
+    "start": 0,
+    "digit": 9,
+    "keypad": true
+  },
+  {
+    "name": "hashi-0-9-1-False",
+    "raw": "hashi",
+    "active": 0,
+    "start": 9,
+    "digit": 1,
+    "keypad": false
+  },
+  {
+    "name": "hashi-0-9-1-True",
+    "raw": "hashi",
+    "active": 0,
+    "start": 9,
+    "digit": 1,
+    "keypad": true
+  },
+  {
+    "name": "hashi-0-9-9-False",
+    "raw": "hashi",
+    "active": 0,
+    "start": 9,
+    "digit": 9,
+    "keypad": false
+  },
+  {
+    "name": "hashi-0-9-9-True",
+    "raw": "hashi",
+    "active": 0,
+    "start": 9,
+    "digit": 9,
+    "keypad": true
+  },
+  {
+    "name": "hashi-0-18-1-False",
+    "raw": "hashi",
+    "active": 0,
+    "start": 18,
+    "digit": 1,
+    "keypad": false
+  },
+  {
+    "name": "hashi-0-18-1-True",
+    "raw": "hashi",
+    "active": 0,
+    "start": 18,
+    "digit": 1,
+    "keypad": true
+  },
+  {
+    "name": "hashi-0-18-9-False",
+    "raw": "hashi",
+    "active": 0,
+    "start": 18,
+    "digit": 9,
+    "keypad": false
+  },
+  {
+    "name": "hashi-0-18-9-True",
+    "raw": "hashi",
+    "active": 0,
+    "start": 18,
+    "digit": 9,
+    "keypad": true
+  },
+  {
+    "name": "hashikami-0-0-1-False",
+    "raw": "hashikami",
+    "active": 0,
+    "start": 0,
+    "digit": 1,
+    "keypad": false
+  },
+  {
+    "name": "hashikami-0-0-1-True",
+    "raw": "hashikami",
+    "active": 0,
+    "start": 0,
+    "digit": 1,
+    "keypad": true
+  },
+  {
+    "name": "hashikami-0-0-9-False",
+    "raw": "hashikami",
+    "active": 0,
+    "start": 0,
+    "digit": 9,
+    "keypad": false
+  },
+  {
+    "name": "hashikami-0-0-9-True",
+    "raw": "hashikami",
+    "active": 0,
+    "start": 0,
+    "digit": 9,
+    "keypad": true
+  },
+  {
+    "name": "hashikami-0-9-1-False",
+    "raw": "hashikami",
+    "active": 0,
+    "start": 9,
+    "digit": 1,
+    "keypad": false
+  },
+  {
+    "name": "hashikami-0-9-1-True",
+    "raw": "hashikami",
+    "active": 0,
+    "start": 9,
+    "digit": 1,
+    "keypad": true
+  },
+  {
+    "name": "hashikami-0-9-9-False",
+    "raw": "hashikami",
+    "active": 0,
+    "start": 9,
+    "digit": 9,
+    "keypad": false
+  },
+  {
+    "name": "hashikami-0-9-9-True",
+    "raw": "hashikami",
+    "active": 0,
+    "start": 9,
+    "digit": 9,
+    "keypad": true
+  },
+  {
+    "name": "hashikami-0-18-1-False",
+    "raw": "hashikami",
+    "active": 0,
+    "start": 18,
+    "digit": 1,
+    "keypad": false
+  },
+  {
+    "name": "hashikami-0-18-1-True",
+    "raw": "hashikami",
+    "active": 0,
+    "start": 18,
+    "digit": 1,
+    "keypad": true
+  },
+  {
+    "name": "hashikami-0-18-9-False",
+    "raw": "hashikami",
+    "active": 0,
+    "start": 18,
+    "digit": 9,
+    "keypad": false
+  },
+  {
+    "name": "hashikami-0-18-9-True",
+    "raw": "hashikami",
+    "active": 0,
+    "start": 18,
+    "digit": 9,
+    "keypad": true
+  },
+  {
+    "name": "hashikami-1-0-1-False",
+    "raw": "hashikami",
+    "active": 1,
+    "start": 0,
+    "digit": 1,
+    "keypad": false
+  },
+  {
+    "name": "hashikami-1-0-1-True",
+    "raw": "hashikami",
+    "active": 1,
+    "start": 0,
+    "digit": 1,
+    "keypad": true
+  },
+  {
+    "name": "hashikami-1-0-9-False",
+    "raw": "hashikami",
+    "active": 1,
+    "start": 0,
+    "digit": 9,
+    "keypad": false
+  },
+  {
+    "name": "hashikami-1-0-9-True",
+    "raw": "hashikami",
+    "active": 1,
+    "start": 0,
+    "digit": 9,
+    "keypad": true
+  },
+  {
+    "name": "hashikami-1-9-1-False",
+    "raw": "hashikami",
+    "active": 1,
+    "start": 9,
+    "digit": 1,
+    "keypad": false
+  },
+  {
+    "name": "hashikami-1-9-1-True",
+    "raw": "hashikami",
+    "active": 1,
+    "start": 9,
+    "digit": 1,
+    "keypad": true
+  },
+  {
+    "name": "hashikami-1-9-9-False",
+    "raw": "hashikami",
+    "active": 1,
+    "start": 9,
+    "digit": 9,
+    "keypad": false
+  },
+  {
+    "name": "hashikami-1-9-9-True",
+    "raw": "hashikami",
+    "active": 1,
+    "start": 9,
+    "digit": 9,
+    "keypad": true
+  },
+  {
+    "name": "hashikami-1-18-1-False",
+    "raw": "hashikami",
+    "active": 1,
+    "start": 18,
+    "digit": 1,
+    "keypad": false
+  },
+  {
+    "name": "hashikami-1-18-1-True",
+    "raw": "hashikami",
+    "active": 1,
+    "start": 18,
+    "digit": 1,
+    "keypad": true
+  },
+  {
+    "name": "hashikami-1-18-9-False",
+    "raw": "hashikami",
+    "active": 1,
+    "start": 18,
+    "digit": 9,
+    "keypad": false
+  },
+  {
+    "name": "hashikami-1-18-9-True",
+    "raw": "hashikami",
+    "active": 1,
+    "start": 18,
+    "digit": 9,
+    "keypad": true
+  },
+  {
+    "name": "hashi-0-27-1-False",
+    "raw": "hashi",
+    "active": 0,
+    "start": 27,
+    "digit": 1,
+    "keypad": false
+  },
+  {
+    "name": "hashi-0-27-1-True",
+    "raw": "hashi",
+    "active": 0,
+    "start": 27,
+    "digit": 1,
+    "keypad": true
+  },
+  {
+    "name": "hashi-0-27-9-False",
+    "raw": "hashi",
+    "active": 0,
+    "start": 27,
+    "digit": 9,
+    "keypad": false
+  },
+  {
+    "name": "hashi-0-27-9-True",
+    "raw": "hashi",
+    "active": 0,
+    "start": 27,
+    "digit": 9,
+    "keypad": true
+  },
+  {
+    "name": "hashikami-0-27-1-False",
+    "raw": "hashikami",
+    "active": 0,
+    "start": 27,
+    "digit": 1,
+    "keypad": false
+  },
+  {
+    "name": "hashikami-0-27-1-True",
+    "raw": "hashikami",
+    "active": 0,
+    "start": 27,
+    "digit": 1,
+    "keypad": true
+  },
+  {
+    "name": "hashikami-0-27-9-False",
+    "raw": "hashikami",
+    "active": 0,
+    "start": 27,
+    "digit": 9,
+    "keypad": false
+  },
+  {
+    "name": "hashikami-0-27-9-True",
+    "raw": "hashikami",
+    "active": 0,
+    "start": 27,
+    "digit": 9,
+    "keypad": true
+  },
+  {
+    "name": "hashikami-1-27-1-False",
+    "raw": "hashikami",
+    "active": 1,
+    "start": 27,
+    "digit": 1,
+    "keypad": false
+  },
+  {
+    "name": "hashikami-1-27-1-True",
+    "raw": "hashikami",
+    "active": 1,
+    "start": 27,
+    "digit": 1,
+    "keypad": true
+  },
+  {
+    "name": "hashikami-1-27-9-False",
+    "raw": "hashikami",
+    "active": 1,
+    "start": 27,
+    "digit": 9,
+    "keypad": false
+  },
+  {
+    "name": "hashikami-1-27-9-True",
+    "raw": "hashikami",
+    "active": 1,
+    "start": 27,
+    "digit": 9,
+    "keypad": true
+  }
+]

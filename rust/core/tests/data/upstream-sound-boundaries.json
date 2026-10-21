@@ -1,0 +1,1127 @@
+{
+  "baseline": "45e14f86558aa6ea34f2c2ecd038ba95ca8c3c46",
+  "builtin_spelling": true,
+  "reference_executable_sha256": "c1deffacd5d0c579ab5f3ed337b3d14acf270dc3a2ea387cd20339386315ca1b",
+  "cases": [
+    {
+      "name": "type:sdakega",
+      "keys": [
+        [
+          83,
+          115,
+          0
+        ],
+        [
+          68,
+          100,
+          0
+        ],
+        [
+          65,
+          97,
+          0
+        ],
+        [
+          75,
+          107,
+          0
+        ],
+        [
+          69,
+          101,
+          0
+        ],
+        [
+          71,
+          103,
+          0
+        ],
+        [
+          65,
+          97,
+          0
+        ],
+        [
+          13,
+          0,
+          0
+        ]
+      ],
+      "expected": [
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "s",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "sd",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "sだ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "sだk",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "sだけ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "sだけg",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "sだけが",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [
+            {
+              "deleteBefore": 0,
+              "text": "sだけが"
+            }
+          ],
+          "text": null,
+          "converting": false
+        }
+      ]
+    },
+    {
+      "name": "type:kyouhaiitenkidesune",
+      "keys": [
+        [
+          75,
+          107,
+          0
+        ],
+        [
+          89,
+          121,
+          0
+        ],
+        [
+          79,
+          111,
+          0
+        ],
+        [
+          85,
+          117,
+          0
+        ],
+        [
+          72,
+          104,
+          0
+        ],
+        [
+          65,
+          97,
+          0
+        ],
+        [
+          73,
+          105,
+          0
+        ],
+        [
+          73,
+          105,
+          0
+        ],
+        [
+          84,
+          116,
+          0
+        ],
+        [
+          69,
+          101,
+          0
+        ],
+        [
+          78,
+          110,
+          0
+        ],
+        [
+          75,
+          107,
+          0
+        ],
+        [
+          73,
+          105,
+          0
+        ],
+        [
+          68,
+          100,
+          0
+        ],
+        [
+          69,
+          101,
+          0
+        ],
+        [
+          83,
+          115,
+          0
+        ],
+        [
+          85,
+          117,
+          0
+        ],
+        [
+          78,
+          110,
+          0
+        ],
+        [
+          69,
+          101,
+          0
+        ],
+        [
+          13,
+          0,
+          0
+        ]
+      ],
+      "expected": [
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "k",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "ky",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "きょ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "きょう",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "きょうh",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "きょうは",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "きょうはい",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "きょうはいい",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "きょうはいいt",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "きょうはいいて",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "きょうはいいてn",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "きょうはいいてんk",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "きょうはいいてんき",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "きょうはいいてんきd",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "きょうはいいてんきで",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "きょうはいいてんきでs",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "きょうはいいてんきです",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "きょうはいいてんきですn",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "きょうはいいてんきですね",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [
+            {
+              "deleteBefore": 0,
+              "text": "きょうはいいてんきですね"
+            }
+          ],
+          "text": null,
+          "converting": false
+        }
+      ]
+    },
+    {
+      "name": "type:repo",
+      "keys": [
+        [
+          82,
+          114,
+          0
+        ],
+        [
+          69,
+          101,
+          0
+        ],
+        [
+          80,
+          112,
+          0
+        ],
+        [
+          79,
+          111,
+          0
+        ],
+        [
+          13,
+          0,
+          0
+        ]
+      ],
+      "expected": [
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "r",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "れ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "れp",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "れぽ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [
+            {
+              "deleteBefore": 0,
+              "text": "れぽ"
+            }
+          ],
+          "text": null,
+          "converting": false
+        }
+      ]
+    },
+    {
+      "name": "type:make",
+      "keys": [
+        [
+          77,
+          109,
+          0
+        ],
+        [
+          65,
+          97,
+          0
+        ],
+        [
+          75,
+          107,
+          0
+        ],
+        [
+          69,
+          101,
+          0
+        ],
+        [
+          13,
+          0,
+          0
+        ]
+      ],
+      "expected": [
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "m",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "ま",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "まk",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "まけ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [
+            {
+              "deleteBefore": 0,
+              "text": "まけ"
+            }
+          ],
+          "text": null,
+          "converting": false
+        }
+      ]
+    },
+    {
+      "name": "type:sushi",
+      "keys": [
+        [
+          83,
+          115,
+          0
+        ],
+        [
+          85,
+          117,
+          0
+        ],
+        [
+          83,
+          115,
+          0
+        ],
+        [
+          72,
+          104,
+          0
+        ],
+        [
+          73,
+          105,
+          0
+        ],
+        [
+          13,
+          0,
+          0
+        ]
+      ],
+      "expected": [
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "s",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "す",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "すs",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "すsh",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "すし",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [
+            {
+              "deleteBefore": 0,
+              "text": "すし"
+            }
+          ],
+          "text": null,
+          "converting": false
+        }
+      ]
+    },
+    {
+      "name": "edit:nihongo:back2:ta",
+      "keys": [
+        [
+          78,
+          110,
+          0
+        ],
+        [
+          73,
+          105,
+          0
+        ],
+        [
+          72,
+          104,
+          0
+        ],
+        [
+          79,
+          111,
+          0
+        ],
+        [
+          78,
+          110,
+          0
+        ],
+        [
+          71,
+          103,
+          0
+        ],
+        [
+          79,
+          111,
+          0
+        ],
+        [
+          8,
+          0,
+          0
+        ],
+        [
+          8,
+          0,
+          0
+        ],
+        [
+          84,
+          116,
+          0
+        ],
+        [
+          65,
+          97,
+          0
+        ],
+        [
+          13,
+          0,
+          0
+        ]
+      ],
+      "expected": [
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "n",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "に",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "にh",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "にほ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "にほn",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "にほんg",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "にほんご",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "にほん",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "にほ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "にほt",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "にほた",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [
+            {
+              "deleteBefore": 0,
+              "text": "にほた"
+            }
+          ],
+          "text": null,
+          "converting": false
+        }
+      ]
+    },
+    {
+      "name": "edit:google:back2:ta",
+      "keys": [
+        [
+          71,
+          103,
+          0
+        ],
+        [
+          79,
+          111,
+          0
+        ],
+        [
+          79,
+          111,
+          0
+        ],
+        [
+          71,
+          103,
+          0
+        ],
+        [
+          76,
+          108,
+          0
+        ],
+        [
+          69,
+          101,
+          0
+        ],
+        [
+          8,
+          0,
+          0
+        ],
+        [
+          8,
+          0,
+          0
+        ],
+        [
+          84,
+          116,
+          0
+        ],
+        [
+          65,
+          97,
+          0
+        ],
+        [
+          13,
+          0,
+          0
+        ]
+      ],
+      "expected": [
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "g",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "ご",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "ごお",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "goog",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "googl",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "google",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "googl",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "goog",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "ごおgt",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "ごおgた",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [
+            {
+              "deleteBefore": 0,
+              "text": "ごごた"
+            }
+          ],
+          "text": null,
+          "converting": false
+        }
+      ]
+    },
+    {
+      "name": "edit:google:back2:kou",
+      "keys": [
+        [
+          71,
+          103,
+          0
+        ],
+        [
+          79,
+          111,
+          0
+        ],
+        [
+          79,
+          111,
+          0
+        ],
+        [
+          71,
+          103,
+          0
+        ],
+        [
+          76,
+          108,
+          0
+        ],
+        [
+          69,
+          101,
+          0
+        ],
+        [
+          8,
+          0,
+          0
+        ],
+        [
+          8,
+          0,
+          0
+        ],
+        [
+          75,
+          107,
+          0
+        ],
+        [
+          79,
+          111,
+          0
+        ],
+        [
+          85,
+          117,
+          0
+        ],
+        [
+          13,
+          0,
+          0
+        ]
+      ],
+      "expected": [
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "g",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "ご",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "ごお",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "goog",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "googl",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "google",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "googl",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "goog",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "ごおgk",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "ごおgこ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "ごおgこう",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [
+            {
+              "deleteBefore": 0,
+              "text": "ごごこう"
+            }
+          ],
+          "text": null,
+          "converting": false
+        }
+      ]
+    },
+    {
+      "name": "edit:githubya:back2:ta",
+      "keys": [
+        [
+          71,
+          103,
+          0
+        ],
+        [
+          73,
+          105,
+          0
+        ],
+        [
+          84,
+          116,
+          0
+        ],
+        [
+          72,
+          104,
+          0
+        ],
+        [
+          85,
+          117,
+          0
+        ],
+        [
+          66,
+          98,
+          0
+        ],
+        [
+          89,
+          121,
+          0
+        ],
+        [
+          65,
+          97,
+          0
+        ],
+        [
+          8,
+          0,
+          0
+        ],
+        [
+          8,
+          0,
+          0
+        ],
+        [
+          84,
+          116,
+          0
+        ],
+        [
+          65,
+          97,
+          0
+        ],
+        [
+          13,
+          0,
+          0
+        ]
+      ],
+      "expected": [
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "g",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "ぎ",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "git",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "gith",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "githu",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "github",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "ぎてゅby",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "githubや",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "github",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "githu",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "ぎてゅt",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "text": "ぎてゅた",
+          "converting": false
+        },
+        {
+          "consumed": true,
+          "commits": [
+            {
+              "deleteBefore": 0,
+              "text": "ぎてゅた"
+            }
+          ],
+          "text": null,
+          "converting": false
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,134 @@
+{
+  "baseline": "45e14f86558aa6ea34f2c2ecd038ba95ca8c3c46",
+  "sha256": {
+    "tools/parity/mozc-lifecycle/DirectTypos.cs": "6e557e27bf2d5791760a1b2cbd260877fda6f1e7d0567c6d6d9ccea914b333ba",
+    "tools/parity/mozc-lifecycle/direct-typo-cases.json": "e62b84a3799b6cff28d7b2578467027105559314b7955ff46a08a7b91dcf9c1f",
+    "src/Meltype.Core/Composition/RomajiTypoCorrector.cs": "27448bb8261e8acaac076da0dcd4987d8842da2b6fe0794b52e647e77e6c5de0"
+  },
+  "cases": [
+    {
+      "raw": "onegaishimsu",
+      "expected": {
+        "Wrong": "onegaishimsu",
+        "Right": "onegaishimasu",
+        "Kana": "おねがいします"
+      }
+    },
+    {
+      "raw": "arigatpu",
+      "expected": {
+        "Wrong": "arigatpu",
+        "Right": "arigatou",
+        "Kana": "ありがとう"
+      }
+    },
+    {
+      "raw": "arigtou",
+      "expected": {
+        "Wrong": "arigtou",
+        "Right": "arigatou",
+        "Kana": "ありがとう"
+      }
+    },
+    {
+      "raw": "sumimasne",
+      "expected": {
+        "Wrong": "sumimasne",
+        "Right": "sumimasen",
+        "Kana": "すみません"
+      }
+    },
+    {
+      "raw": "shitmeasu",
+      "expected": {
+        "Wrong": "shitmeasu",
+        "Right": "shitemasu",
+        "Kana": "してます"
+      }
+    },
+    {
+      "raw": "gozaimsu",
+      "expected": {
+        "Wrong": "gozaimsu",
+        "Right": "gozaimasu",
+        "Kana": "ございます"
+      }
+    },
+    {
+      "raw": "yorosikuy",
+      "expected": {
+        "Wrong": "yorosikuy",
+        "Right": "yorosiku",
+        "Kana": "よろしく"
+      }
+    },
+    {
+      "raw": "kinouhaamegafuttemshita",
+      "expected": {
+        "Wrong": "kinouhaamegafuttemshita",
+        "Right": "kinouhaamegafuttemashita",
+        "Kana": "きのうはあめがふってました"
+      }
+    },
+    {
+      "raw": "google",
+      "expected": {
+        "Wrong": "google",
+        "Right": "gogole",
+        "Kana": "ごごぇ"
+      }
+    },
+    {
+      "raw": "hello",
+      "expected": null
+    },
+    {
+      "raw": "html",
+      "expected": null
+    },
+    {
+      "raw": "https://example.com/onegaishimsu",
+      "expected": null
+    },
+    {
+      "raw": "@onegaishimsu",
+      "expected": null
+    },
+    {
+      "raw": "teh",
+      "expected": null
+    },
+    {
+      "raw": "😀",
+      "expected": null
+    },
+    {
+      "raw": "",
+      "expected": null
+    },
+    {
+      "raw": "sh",
+      "expected": null
+    },
+    {
+      "raw": "imp",
+      "expected": {
+        "Wrong": "imp",
+        "Right": "imo",
+        "Kana": "いも"
+      }
+    },
+    {
+      "raw": "camer",
+      "expected": {
+        "Wrong": "camer",
+        "Right": "came",
+        "Kana": "かめ"
+      }
+    },
+    {
+      "raw": "camera",
+      "expected": null
+    }
+  ]
+}

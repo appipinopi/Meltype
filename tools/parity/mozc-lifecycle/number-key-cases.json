@@ -1,0 +1,392 @@
+[
+  {
+    "name": "3-0-0-1-0-False",
+    "count": 3,
+    "start": 0,
+    "row": 0,
+    "clauses": 1,
+    "active": 0,
+    "keypad": false,
+    "kana": false
+  },
+  {
+    "name": "3-0-0-1-0-True",
+    "count": 3,
+    "start": 0,
+    "row": 0,
+    "clauses": 1,
+    "active": 0,
+    "keypad": true,
+    "kana": false
+  },
+  {
+    "name": "3-0-0-2-0-False",
+    "count": 3,
+    "start": 0,
+    "row": 0,
+    "clauses": 2,
+    "active": 0,
+    "keypad": false,
+    "kana": false
+  },
+  {
+    "name": "3-0-0-2-0-True",
+    "count": 3,
+    "start": 0,
+    "row": 0,
+    "clauses": 2,
+    "active": 0,
+    "keypad": true,
+    "kana": false
+  },
+  {
+    "name": "3-0-0-2-1-False",
+    "count": 3,
+    "start": 0,
+    "row": 0,
+    "clauses": 2,
+    "active": 1,
+    "keypad": false,
+    "kana": false
+  },
+  {
+    "name": "3-0-0-2-1-True",
+    "count": 3,
+    "start": 0,
+    "row": 0,
+    "clauses": 2,
+    "active": 1,
+    "keypad": true,
+    "kana": false
+  },
+  {
+    "name": "9-8-8-1-0-False",
+    "count": 9,
+    "start": 8,
+    "row": 8,
+    "clauses": 1,
+    "active": 0,
+    "keypad": false,
+    "kana": false
+  },
+  {
+    "name": "9-8-8-1-0-True",
+    "count": 9,
+    "start": 8,
+    "row": 8,
+    "clauses": 1,
+    "active": 0,
+    "keypad": true,
+    "kana": false
+  },
+  {
+    "name": "9-8-8-2-0-False",
+    "count": 9,
+    "start": 8,
+    "row": 8,
+    "clauses": 2,
+    "active": 0,
+    "keypad": false,
+    "kana": false
+  },
+  {
+    "name": "9-8-8-2-0-True",
+    "count": 9,
+    "start": 8,
+    "row": 8,
+    "clauses": 2,
+    "active": 0,
+    "keypad": true,
+    "kana": false
+  },
+  {
+    "name": "9-8-8-2-1-False",
+    "count": 9,
+    "start": 8,
+    "row": 8,
+    "clauses": 2,
+    "active": 1,
+    "keypad": false,
+    "kana": false
+  },
+  {
+    "name": "9-8-8-2-1-True",
+    "count": 9,
+    "start": 8,
+    "row": 8,
+    "clauses": 2,
+    "active": 1,
+    "keypad": true,
+    "kana": false
+  },
+  {
+    "name": "12-9-2-1-0-False",
+    "count": 12,
+    "start": 9,
+    "row": 2,
+    "clauses": 1,
+    "active": 0,
+    "keypad": false,
+    "kana": false
+  },
+  {
+    "name": "12-9-2-1-0-True",
+    "count": 12,
+    "start": 9,
+    "row": 2,
+    "clauses": 1,
+    "active": 0,
+    "keypad": true,
+    "kana": false
+  },
+  {
+    "name": "12-9-2-2-0-False",
+    "count": 12,
+    "start": 9,
+    "row": 2,
+    "clauses": 2,
+    "active": 0,
+    "keypad": false,
+    "kana": false
+  },
+  {
+    "name": "12-9-2-2-0-True",
+    "count": 12,
+    "start": 9,
+    "row": 2,
+    "clauses": 2,
+    "active": 0,
+    "keypad": true,
+    "kana": false
+  },
+  {
+    "name": "12-9-2-2-1-False",
+    "count": 12,
+    "start": 9,
+    "row": 2,
+    "clauses": 2,
+    "active": 1,
+    "keypad": false,
+    "kana": false
+  },
+  {
+    "name": "12-9-2-2-1-True",
+    "count": 12,
+    "start": 9,
+    "row": 2,
+    "clauses": 2,
+    "active": 1,
+    "keypad": true,
+    "kana": false
+  },
+  {
+    "name": "20-17-8-1-0-False",
+    "count": 20,
+    "start": 17,
+    "row": 8,
+    "clauses": 1,
+    "active": 0,
+    "keypad": false,
+    "kana": false
+  },
+  {
+    "name": "20-17-8-1-0-True",
+    "count": 20,
+    "start": 17,
+    "row": 8,
+    "clauses": 1,
+    "active": 0,
+    "keypad": true,
+    "kana": false
+  },
+  {
+    "name": "20-17-8-2-0-False",
+    "count": 20,
+    "start": 17,
+    "row": 8,
+    "clauses": 2,
+    "active": 0,
+    "keypad": false,
+    "kana": false
+  },
+  {
+    "name": "20-17-8-2-0-True",
+    "count": 20,
+    "start": 17,
+    "row": 8,
+    "clauses": 2,
+    "active": 0,
+    "keypad": true,
+    "kana": false
+  },
+  {
+    "name": "20-17-8-2-1-False",
+    "count": 20,
+    "start": 17,
+    "row": 8,
+    "clauses": 2,
+    "active": 1,
+    "keypad": false,
+    "kana": false
+  },
+  {
+    "name": "20-17-8-2-1-True",
+    "count": 20,
+    "start": 17,
+    "row": 8,
+    "clauses": 2,
+    "active": 1,
+    "keypad": true,
+    "kana": false
+  },
+  {
+    "name": "20-19-0-1-0-False",
+    "count": 20,
+    "start": 19,
+    "row": 0,
+    "clauses": 1,
+    "active": 0,
+    "keypad": false,
+    "kana": false
+  },
+  {
+    "name": "20-19-0-1-0-True",
+    "count": 20,
+    "start": 19,
+    "row": 0,
+    "clauses": 1,
+    "active": 0,
+    "keypad": true,
+    "kana": false
+  },
+  {
+    "name": "20-19-0-2-0-False",
+    "count": 20,
+    "start": 19,
+    "row": 0,
+    "clauses": 2,
+    "active": 0,
+    "keypad": false,
+    "kana": false
+  },
+  {
+    "name": "20-19-0-2-0-True",
+    "count": 20,
+    "start": 19,
+    "row": 0,
+    "clauses": 2,
+    "active": 0,
+    "keypad": true,
+    "kana": false
+  },
+  {
+    "name": "20-19-0-2-1-False",
+    "count": 20,
+    "start": 19,
+    "row": 0,
+    "clauses": 2,
+    "active": 1,
+    "keypad": false,
+    "kana": false
+  },
+  {
+    "name": "20-19-0-2-1-True",
+    "count": 20,
+    "start": 19,
+    "row": 0,
+    "clauses": 2,
+    "active": 1,
+    "keypad": true,
+    "kana": false
+  },
+  {
+    "name": "3-0-8-1-0-False",
+    "count": 3,
+    "start": 0,
+    "row": 8,
+    "clauses": 1,
+    "active": 0,
+    "keypad": false,
+    "kana": false
+  },
+  {
+    "name": "3-0-8-1-0-True",
+    "count": 3,
+    "start": 0,
+    "row": 8,
+    "clauses": 1,
+    "active": 0,
+    "keypad": true,
+    "kana": false
+  },
+  {
+    "name": "3-0-8-2-0-False",
+    "count": 3,
+    "start": 0,
+    "row": 8,
+    "clauses": 2,
+    "active": 0,
+    "keypad": false,
+    "kana": false
+  },
+  {
+    "name": "3-0-8-2-0-True",
+    "count": 3,
+    "start": 0,
+    "row": 8,
+    "clauses": 2,
+    "active": 0,
+    "keypad": true,
+    "kana": false
+  },
+  {
+    "name": "3-0-8-2-1-False",
+    "count": 3,
+    "start": 0,
+    "row": 8,
+    "clauses": 2,
+    "active": 1,
+    "keypad": false,
+    "kana": false
+  },
+  {
+    "name": "3-0-8-2-1-True",
+    "count": 3,
+    "start": 0,
+    "row": 8,
+    "clauses": 2,
+    "active": 1,
+    "keypad": true,
+    "kana": false
+  },
+  {
+    "name": "kana-keypad-3",
+    "count": 3,
+    "start": 0,
+    "row": 0,
+    "clauses": 1,
+    "active": 0,
+    "keypad": true,
+    "kana": true
+  },
+  {
+    "name": "kana-keypad-12",
+    "count": 12,
+    "start": 9,
+    "row": 2,
+    "clauses": 1,
+    "active": 0,
+    "keypad": true,
+    "kana": true
+  },
+  {
+    "name": "kana-keypad-20",
+    "count": 20,
+    "start": 17,
+    "row": 8,
+    "clauses": 1,
+    "active": 0,
+    "keypad": true,
+    "kana": true
+  }
+]

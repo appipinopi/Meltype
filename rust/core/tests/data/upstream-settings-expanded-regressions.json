@@ -1,0 +1,1247 @@
+{
+  "baseline": "45e14f86558aa6ea34f2c2ecd038ba95ca8c3c46",
+  "source": "Unmodified C# API capture, truncated at the first discovered mismatch; expectations are not Rust output.",
+  "capture": {
+    "csharp_sha256": "7c9e76876661f0191de5d83a019c6a0e7bf112c5044a8e43e1071db1a194d7f8",
+    "capture_sha256": "ca6e60c4269104a68d32a23888dc6c1b99c3dcde24f31bdc6d344198ae9f5cbc"
+  },
+  "cases": [
+    {
+      "name": "cartesian-129-1502087289472329425326347-user-dictionary",
+      "settings": {
+        "Enabled": true,
+        "JapaneseKeyboardOnly": true,
+        "AllowInjectedInput": false,
+        "Mode": "Keyboard",
+        "HankakuTogglesKeyboard": true,
+        "ConvertKeysSwitchKeyboard": true,
+        "AltKeysSwitchKeyboard": false,
+        "AutoCorrectAfterCommit": true,
+        "DirectModeAutoDetect": false,
+        "SigilWordsDirect": false,
+        "SnippetMark": ";",
+        "SpaceAroundEnglish": false,
+        "Punctuation": "FullWidthCommaKuten",
+        "JapanesePunctuationAfterEnglish": true,
+        "LiveConversion": false,
+        "ConversionEngine": "Hybrid",
+        "TranslationCandidates": false,
+        "PredictiveCandidates": true,
+        "TabConversion": true,
+        "ContinueAfterConversion": true,
+        "SeparateKeyRoles": false,
+        "ShowCandidateMeanings": true,
+        "ShowTypedKeys": true,
+        "CorrectTypos": false,
+        "SlashAsMiddleDot": true,
+        "ShowModeIndicator": true,
+        "ShowModeIndicatorOnFocus": true,
+        "ModeIndicatorJapaneseColor": "",
+        "ModeIndicatorDirectColor": "#183A5C",
+        "ModeIndicatorTextColor": "#183A5C",
+        "CompositionPlacement": "BelowCaret",
+        "CompositionSize": "Auto",
+        "CompositionFont": "matrix",
+        "CompositionTheme": "Dark",
+        "CompositionOpacity": "Percent70",
+        "ShowNotifications": false,
+        "AutoUpdate": false,
+        "InputStyle": "Romaji",
+        "DetectionLevel": "Balanced",
+        "ScoredSegmentation": false,
+        "JapaneseThreshold": 99999,
+        "TypoEnabled": true,
+        "MaxPendingKeys": 99999,
+        "IdleFlushMs": 99999,
+        "MaxHoldMs": 2500,
+        "SettingsVersion": 0,
+        "WelcomeShown": true,
+        "TsfIntroduced": false,
+        "TsfOffered": true,
+        "SettingsShowHelp": true,
+        "SettingsWheelChangesValue": true,
+        "Profiles": [
+          {
+            "Name": "標準",
+            "Values": null
+          },
+          {
+            "Name": "仕事",
+            "Values": {
+              "LiveConversion": false,
+              "DetectionLevel": "Manual"
+            }
+          }
+        ],
+        "ActiveProfile": "標準",
+        "SessionIdleMs": 1500,
+        "ContinueEnglishAfterSpace": false,
+        "LearningEnabled": true,
+        "FeedbackWindowMs": 4000,
+        "UseTsf": true,
+        "ImeTimeoutMs": 99999,
+        "PasteApps": "matrix.exe",
+        "NoPasteApps": "",
+        "TextInputApps": "matrix.exe",
+        "ExcludeFullscreen": true,
+        "StopInGames": false,
+        "AppRules": [
+          {
+            "Process": "mstsc.exe",
+            "Enabled": false,
+            "Profile": "General",
+            "Kind": null
+          },
+          {
+            "Process": "msrdc.exe",
+            "Enabled": false,
+            "Profile": "General",
+            "Kind": null
+          },
+          {
+            "Process": "vmconnect.exe",
+            "Enabled": false,
+            "Profile": "General",
+            "Kind": null
+          },
+          {
+            "Process": "VirtualBoxVM.exe",
+            "Enabled": false,
+            "Profile": "General",
+            "Kind": null
+          },
+          {
+            "Process": "vmware-vmx.exe",
+            "Enabled": false,
+            "Profile": "General",
+            "Kind": null
+          },
+          {
+            "Process": "vmware.exe",
+            "Enabled": false,
+            "Profile": "General",
+            "Kind": null
+          },
+          {
+            "Process": "Code.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "Code - Insiders.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "Cursor.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "Windsurf.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "zed.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "devenv.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "idea64.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "pycharm64.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "webstorm64.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "rider64.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "clion64.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "goland64.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "phpstorm64.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "rubymine64.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "datagrip64.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "studio64.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "sublime_text.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "notepad++.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "WindowsTerminal.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "cmd.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "powershell.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "pwsh.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "wezterm-gui.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "alacritty.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "mintty.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "rio.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "maya.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          }
+        ],
+        "AppKinds": [
+          {
+            "Name": "matrix",
+            "Base": "Code",
+            "LiveConversion": false,
+            "DetectionLevel": "Conservative"
+          }
+        ],
+        "FileLog": false,
+        "LogTypedText": true
+      },
+      "before": "",
+      "after": "",
+      "canDelete": true,
+      "keys": [
+        [
+          77,
+          109,
+          0
+        ],
+        [
+          69,
+          101,
+          0
+        ],
+        [
+          82,
+          114,
+          0
+        ],
+        [
+          85,
+          117,
+          0
+        ]
+      ],
+      "files": {
+        "userdict.txt": "めると\tMeltype\nめると\tめるタイプ\n"
+      },
+      "converter": {
+        "clauses": {
+          "はし": [
+            [
+              "はし",
+              "橋"
+            ]
+          ],
+          "えがお": [
+            [
+              "えがお",
+              "笑顔"
+            ]
+          ],
+          "き": [
+            [
+              "き",
+              "木"
+            ]
+          ],
+          "あつい": [
+            [
+              "あつい",
+              "暑い"
+            ]
+          ],
+          "めると": [
+            [
+              "めると",
+              "既存"
+            ]
+          ],
+          "たす": [
+            [
+              "たす",
+              "足す"
+            ]
+          ],
+          "りなっくす": [
+            [
+              "りなっくす",
+              "リナックス"
+            ]
+          ],
+          "あどばいす": [
+            [
+              "あどばいす",
+              "アドバイス"
+            ]
+          ]
+        },
+        "candidates": {
+          "はし": [
+            "橋",
+            "箸",
+            "端",
+            "はし"
+          ],
+          "えがお": [
+            "笑顔",
+            "😀"
+          ],
+          "き": [
+            "木",
+            "気"
+          ],
+          "めると": [
+            "既存",
+            "追加"
+          ]
+        }
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "m",
+            "converting": false,
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": "m"
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "め",
+            "converting": false,
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": "me"
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "めr",
+            "converting": false,
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": "mer"
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "める",
+            "converting": false,
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [
+              "Meltype",
+              "めるタイプ"
+            ],
+            "selectedPrediction": -1,
+            "typed": "meru"
+          }
+        }
+      ]
+    },
+    {
+      "name": "cartesian-129-1502087289472329425326347-jis-kana",
+      "settings": {
+        "Enabled": true,
+        "JapaneseKeyboardOnly": true,
+        "AllowInjectedInput": false,
+        "Mode": "Keyboard",
+        "HankakuTogglesKeyboard": true,
+        "ConvertKeysSwitchKeyboard": true,
+        "AltKeysSwitchKeyboard": false,
+        "AutoCorrectAfterCommit": true,
+        "DirectModeAutoDetect": false,
+        "SigilWordsDirect": false,
+        "SnippetMark": ";",
+        "SpaceAroundEnglish": false,
+        "Punctuation": "FullWidthCommaKuten",
+        "JapanesePunctuationAfterEnglish": true,
+        "LiveConversion": false,
+        "ConversionEngine": "Hybrid",
+        "TranslationCandidates": false,
+        "PredictiveCandidates": true,
+        "TabConversion": true,
+        "ContinueAfterConversion": true,
+        "SeparateKeyRoles": false,
+        "ShowCandidateMeanings": true,
+        "ShowTypedKeys": true,
+        "CorrectTypos": false,
+        "SlashAsMiddleDot": true,
+        "ShowModeIndicator": true,
+        "ShowModeIndicatorOnFocus": true,
+        "ModeIndicatorJapaneseColor": "",
+        "ModeIndicatorDirectColor": "#183A5C",
+        "ModeIndicatorTextColor": "#183A5C",
+        "CompositionPlacement": "BelowCaret",
+        "CompositionSize": "Auto",
+        "CompositionFont": "matrix",
+        "CompositionTheme": "Dark",
+        "CompositionOpacity": "Percent70",
+        "ShowNotifications": false,
+        "AutoUpdate": false,
+        "InputStyle": "Romaji",
+        "DetectionLevel": "Balanced",
+        "ScoredSegmentation": false,
+        "JapaneseThreshold": 99999,
+        "TypoEnabled": true,
+        "MaxPendingKeys": 99999,
+        "IdleFlushMs": 99999,
+        "MaxHoldMs": 2500,
+        "SettingsVersion": 0,
+        "WelcomeShown": true,
+        "TsfIntroduced": false,
+        "TsfOffered": true,
+        "SettingsShowHelp": true,
+        "SettingsWheelChangesValue": true,
+        "Profiles": [
+          {
+            "Name": "標準",
+            "Values": null
+          },
+          {
+            "Name": "仕事",
+            "Values": {
+              "LiveConversion": false,
+              "DetectionLevel": "Manual"
+            }
+          }
+        ],
+        "ActiveProfile": "標準",
+        "SessionIdleMs": 1500,
+        "ContinueEnglishAfterSpace": false,
+        "LearningEnabled": true,
+        "FeedbackWindowMs": 4000,
+        "UseTsf": true,
+        "ImeTimeoutMs": 99999,
+        "PasteApps": "matrix.exe",
+        "NoPasteApps": "",
+        "TextInputApps": "matrix.exe",
+        "ExcludeFullscreen": true,
+        "StopInGames": false,
+        "AppRules": [
+          {
+            "Process": "mstsc.exe",
+            "Enabled": false,
+            "Profile": "General",
+            "Kind": null
+          },
+          {
+            "Process": "msrdc.exe",
+            "Enabled": false,
+            "Profile": "General",
+            "Kind": null
+          },
+          {
+            "Process": "vmconnect.exe",
+            "Enabled": false,
+            "Profile": "General",
+            "Kind": null
+          },
+          {
+            "Process": "VirtualBoxVM.exe",
+            "Enabled": false,
+            "Profile": "General",
+            "Kind": null
+          },
+          {
+            "Process": "vmware-vmx.exe",
+            "Enabled": false,
+            "Profile": "General",
+            "Kind": null
+          },
+          {
+            "Process": "vmware.exe",
+            "Enabled": false,
+            "Profile": "General",
+            "Kind": null
+          },
+          {
+            "Process": "Code.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "Code - Insiders.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "Cursor.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "Windsurf.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "zed.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "devenv.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "idea64.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "pycharm64.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "webstorm64.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "rider64.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "clion64.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "goland64.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "phpstorm64.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "rubymine64.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "datagrip64.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "studio64.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "sublime_text.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "notepad++.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "WindowsTerminal.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "cmd.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "powershell.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "pwsh.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "wezterm-gui.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "alacritty.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "mintty.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "rio.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          },
+          {
+            "Process": "maya.exe",
+            "Enabled": true,
+            "Profile": "Code",
+            "Kind": null
+          }
+        ],
+        "AppKinds": [
+          {
+            "Name": "matrix",
+            "Base": "Code",
+            "LiveConversion": false,
+            "DetectionLevel": "Conservative"
+          }
+        ],
+        "FileLog": false,
+        "LogTypedText": true
+      },
+      "before": "",
+      "after": "",
+      "canDelete": true,
+      "keys": [
+        [
+          84,
+          116,
+          0
+        ],
+        [
+          70,
+          102,
+          0
+        ],
+        [
+          32,
+          32,
+          0
+        ]
+      ],
+      "converter": {
+        "clauses": {
+          "はし": [
+            [
+              "はし",
+              "橋"
+            ]
+          ],
+          "えがお": [
+            [
+              "えがお",
+              "笑顔"
+            ]
+          ],
+          "き": [
+            [
+              "き",
+              "木"
+            ]
+          ],
+          "あつい": [
+            [
+              "あつい",
+              "暑い"
+            ]
+          ],
+          "めると": [
+            [
+              "めると",
+              "既存"
+            ]
+          ],
+          "たす": [
+            [
+              "たす",
+              "足す"
+            ]
+          ],
+          "りなっくす": [
+            [
+              "りなっくす",
+              "リナックス"
+            ]
+          ],
+          "あどばいす": [
+            [
+              "あどばいす",
+              "アドバイス"
+            ]
+          ]
+        },
+        "candidates": {
+          "はし": [
+            "橋",
+            "箸",
+            "端",
+            "はし"
+          ],
+          "えがお": [
+            "笑顔",
+            "😀"
+          ],
+          "き": [
+            "木",
+            "気"
+          ],
+          "めると": [
+            "既存",
+            "追加"
+          ]
+        }
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "t",
+            "converting": false,
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": "t"
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "tf",
+            "converting": false,
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": "tf"
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "tf",
+            "converting": true,
+            "candidates": [
+              "tf",
+              "ｔｆ"
+            ],
+            "clauses": [
+              "tf"
+            ],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [
+              "半角",
+              "全角"
+            ],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": "tf",
+            "selectedClause": 0,
+            "selectedIndex": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "cartesian-133-410519642633134178484023-spelling",
+      "settings": {
+        "Enabled": true,
+        "JapaneseKeyboardOnly": true,
+        "AllowInjectedInput": true,
+        "Mode": "Tsf",
+        "HankakuTogglesKeyboard": false,
+        "ConvertKeysSwitchKeyboard": false,
+        "AltKeysSwitchKeyboard": true,
+        "AutoCorrectAfterCommit": true,
+        "DirectModeAutoDetect": false,
+        "SigilWordsDirect": false,
+        "SnippetMark": "matrix",
+        "SpaceAroundEnglish": false,
+        "Punctuation": "FullWidthCommaPeriod",
+        "JapanesePunctuationAfterEnglish": true,
+        "LiveConversion": true,
+        "ConversionEngine": "Hybrid",
+        "TranslationCandidates": true,
+        "PredictiveCandidates": true,
+        "TabConversion": false,
+        "ContinueAfterConversion": false,
+        "SeparateKeyRoles": true,
+        "ShowCandidateMeanings": false,
+        "ShowTypedKeys": false,
+        "CorrectTypos": true,
+        "SlashAsMiddleDot": false,
+        "ShowModeIndicator": true,
+        "ShowModeIndicatorOnFocus": false,
+        "ModeIndicatorJapaneseColor": "",
+        "ModeIndicatorDirectColor": "",
+        "ModeIndicatorTextColor": "",
+        "CompositionPlacement": "Overlay",
+        "CompositionSize": "Huge",
+        "CompositionFont": "matrix",
+        "CompositionTheme": "Dark",
+        "CompositionOpacity": "Opaque",
+        "ShowNotifications": false,
+        "AutoUpdate": false,
+        "InputStyle": "Kana",
+        "DetectionLevel": "Conservative",
+        "ScoredSegmentation": false,
+        "JapaneseThreshold": 4,
+        "TypoEnabled": true,
+        "MaxPendingKeys": 6,
+        "IdleFlushMs": 700,
+        "MaxHoldMs": 2500,
+        "SettingsVersion": 99999,
+        "WelcomeShown": true,
+        "TsfIntroduced": false,
+        "TsfOffered": true,
+        "SettingsShowHelp": false,
+        "SettingsWheelChangesValue": true,
+        "Profiles": [],
+        "ActiveProfile": "標準",
+        "SessionIdleMs": 0,
+        "ContinueEnglishAfterSpace": true,
+        "LearningEnabled": false,
+        "FeedbackWindowMs": 99999,
+        "UseTsf": false,
+        "ImeTimeoutMs": 0,
+        "PasteApps": "Resolve.exe",
+        "NoPasteApps": "",
+        "TextInputApps": "",
+        "ExcludeFullscreen": true,
+        "StopInGames": true,
+        "AppRules": [
+          {
+            "Process": "matrix.exe",
+            "Enabled": false,
+            "Profile": "Code",
+            "Kind": "matrix"
+          }
+        ],
+        "AppKinds": [
+          {
+            "Name": "matrix",
+            "Base": "Code",
+            "LiveConversion": false,
+            "DetectionLevel": "Conservative"
+          }
+        ],
+        "FileLog": false,
+        "LogTypedText": false
+      },
+      "before": "",
+      "after": "",
+      "canDelete": true,
+      "keys": [
+        [
+          83,
+          115,
+          0
+        ],
+        [
+          72,
+          104,
+          0
+        ],
+        [
+          85,
+          117,
+          0
+        ],
+        [
+          77,
+          109,
+          0
+        ],
+        [
+          73,
+          105,
+          0
+        ],
+        [
+          82,
+          114,
+          0
+        ],
+        [
+          69,
+          101,
+          0
+        ],
+        [
+          0,
+          45,
+          0
+        ]
+      ],
+      "converter": {
+        "clauses": {
+          "はし": [
+            [
+              "はし",
+              "橋"
+            ]
+          ],
+          "えがお": [
+            [
+              "えがお",
+              "笑顔"
+            ]
+          ],
+          "き": [
+            [
+              "き",
+              "木"
+            ]
+          ],
+          "あつい": [
+            [
+              "あつい",
+              "暑い"
+            ]
+          ],
+          "めると": [
+            [
+              "めると",
+              "既存"
+            ]
+          ],
+          "たす": [
+            [
+              "たす",
+              "足す"
+            ]
+          ],
+          "りなっくす": [
+            [
+              "りなっくす",
+              "リナックス"
+            ]
+          ],
+          "あどばいす": [
+            [
+              "あどばいす",
+              "アドバイス"
+            ]
+          ]
+        },
+        "candidates": {
+          "はし": [
+            "橋",
+            "箸",
+            "端",
+            "はし"
+          ],
+          "えがお": [
+            "笑顔",
+            "😀"
+          ],
+          "き": [
+            "木",
+            "気"
+          ],
+          "めると": [
+            "既存",
+            "追加"
+          ]
+        }
+      },
+      "expected": [
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "と",
+            "converting": false,
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "とく",
+            "converting": false,
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "とくな",
+            "converting": false,
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "とくなも",
+            "converting": false,
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "とくなもに",
+            "converting": false,
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "とくなもにす",
+            "converting": false,
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "とくなもにすい",
+            "converting": false,
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "とくなもにすいー",
+            "converting": false,
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        }
+      ]
+    }
+  ]
+}

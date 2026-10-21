@@ -1,0 +1,498 @@
+{
+  "baseline": "45e14f86558aa6ea34f2c2ecd038ba95ca8c3c46",
+  "sha256": {
+    "tools/parity/mozc-lifecycle/History.cs": "20d63bd7c1408ef7572489f9095a8e7b62f6adb9680a7b8ffa34f72a0204edf3",
+    "tools/parity/mozc-lifecycle/Program.cs": "61c9b258b9cd3ae8d4361e09d731108c50c588b02308f235acff940c4573b13c",
+    "src/Meltype.Core/Composition/CompositionController.cs": "0b35121785c14431093c3a9b493030fc0483e2d7716f21e232e9c54686f68a03",
+    "src/Meltype.Core/Composition/ConversionPreferences.cs": "74177bb744fa42bed24e3d30438618d32d16149b2b08f31abe88c60bf71c390f",
+    "src/Meltype.Core/Composition/TranslationDictionary.cs": "042568e00296ab6a5c16a79af4c1233b752bd8b59b0b45cf0abca573c120bf8e"
+  },
+  "cases": [
+    {
+      "case": {
+        "name": "untouched",
+        "reading": "はし",
+        "text": "橋",
+        "raw": null,
+        "english": false,
+        "changed": false,
+        "translations": [],
+        "repeats": 1,
+        "learning": true,
+        "private": false
+      },
+      "expected": {
+        "selected": {},
+        "translations": {}
+      }
+    },
+    {
+      "case": {
+        "name": "selected",
+        "reading": "はし",
+        "text": "橋",
+        "raw": null,
+        "english": false,
+        "changed": true,
+        "translations": [],
+        "repeats": 1,
+        "learning": true,
+        "private": false
+      },
+      "expected": {
+        "selected": {
+          "はし": "橋"
+        },
+        "translations": {}
+      }
+    },
+    {
+      "case": {
+        "name": "hiragana",
+        "reading": "はし",
+        "text": "はし",
+        "raw": null,
+        "english": false,
+        "changed": true,
+        "translations": [],
+        "repeats": 1,
+        "learning": true,
+        "private": false
+      },
+      "expected": {
+        "selected": {},
+        "translations": {}
+      }
+    },
+    {
+      "case": {
+        "name": "katakana",
+        "reading": "はし",
+        "text": "ハシ",
+        "raw": null,
+        "english": false,
+        "changed": true,
+        "translations": [],
+        "repeats": 1,
+        "learning": true,
+        "private": false
+      },
+      "expected": {
+        "selected": {},
+        "translations": {}
+      }
+    },
+    {
+      "case": {
+        "name": "raw",
+        "reading": "はし",
+        "text": "hashi",
+        "raw": "hashi",
+        "english": false,
+        "changed": true,
+        "translations": [],
+        "repeats": 1,
+        "learning": true,
+        "private": false
+      },
+      "expected": {
+        "selected": {},
+        "translations": {}
+      }
+    },
+    {
+      "case": {
+        "name": "one-kana",
+        "reading": "き",
+        "text": "木",
+        "raw": null,
+        "english": false,
+        "changed": true,
+        "translations": [],
+        "repeats": 1,
+        "learning": true,
+        "private": false
+      },
+      "expected": {
+        "selected": {},
+        "translations": {}
+      }
+    },
+    {
+      "case": {
+        "name": "english",
+        "reading": "go",
+        "text": "語",
+        "raw": null,
+        "english": true,
+        "changed": true,
+        "translations": [],
+        "repeats": 1,
+        "learning": true,
+        "private": false
+      },
+      "expected": {
+        "selected": {},
+        "translations": {}
+      }
+    },
+    {
+      "case": {
+        "name": "translation",
+        "reading": "はし",
+        "text": "bridge",
+        "raw": null,
+        "english": false,
+        "changed": true,
+        "translations": [
+          "bridge"
+        ],
+        "repeats": 1,
+        "learning": true,
+        "private": false
+      },
+      "expected": {
+        "selected": {},
+        "translations": {
+          "bridge": 1
+        }
+      }
+    },
+    {
+      "case": {
+        "name": "translation-untouched",
+        "reading": "はし",
+        "text": "bridge",
+        "raw": null,
+        "english": false,
+        "changed": false,
+        "translations": [
+          "bridge"
+        ],
+        "repeats": 1,
+        "learning": true,
+        "private": false
+      },
+      "expected": {
+        "selected": {},
+        "translations": {
+          "bridge": 1
+        }
+      }
+    },
+    {
+      "case": {
+        "name": "translation-count",
+        "reading": "はし",
+        "text": "bridge",
+        "raw": null,
+        "english": false,
+        "changed": true,
+        "translations": [
+          "bridge"
+        ],
+        "repeats": 2,
+        "learning": true,
+        "private": false
+      },
+      "expected": {
+        "selected": {},
+        "translations": {
+          "bridge": 2
+        }
+      }
+    },
+    {
+      "case": {
+        "name": "translation-single-reading",
+        "reading": "き",
+        "text": "tree",
+        "raw": null,
+        "english": false,
+        "changed": true,
+        "translations": [
+          "tree"
+        ],
+        "repeats": 1,
+        "learning": true,
+        "private": false
+      },
+      "expected": {
+        "selected": {},
+        "translations": {
+          "tree": 1
+        }
+      }
+    },
+    {
+      "case": {
+        "name": "translation-kana",
+        "reading": "はし",
+        "text": "はし",
+        "raw": null,
+        "english": false,
+        "changed": true,
+        "translations": [
+          "はし"
+        ],
+        "repeats": 1,
+        "learning": true,
+        "private": false
+      },
+      "expected": {
+        "selected": {},
+        "translations": {
+          "はし": 1
+        }
+      }
+    },
+    {
+      "case": {
+        "name": "translation-raw",
+        "reading": "はし",
+        "text": "hashi",
+        "raw": "hashi",
+        "english": false,
+        "changed": true,
+        "translations": [
+          "hashi"
+        ],
+        "repeats": 1,
+        "learning": true,
+        "private": false
+      },
+      "expected": {
+        "selected": {},
+        "translations": {
+          "hashi": 1
+        }
+      }
+    },
+    {
+      "case": {
+        "name": "translation-english",
+        "reading": "go",
+        "text": "word",
+        "raw": null,
+        "english": true,
+        "changed": true,
+        "translations": [
+          "word"
+        ],
+        "repeats": 1,
+        "learning": true,
+        "private": false
+      },
+      "expected": {
+        "selected": {},
+        "translations": {
+          "word": 1
+        }
+      }
+    },
+    {
+      "case": {
+        "name": "math-symbol",
+        "reading": "かける",
+        "text": "×",
+        "raw": null,
+        "english": false,
+        "changed": true,
+        "translations": [],
+        "repeats": 1,
+        "learning": true,
+        "private": false
+      },
+      "expected": {
+        "selected": {},
+        "translations": {}
+      }
+    },
+    {
+      "case": {
+        "name": "math-word",
+        "reading": "かける",
+        "text": "掛ける",
+        "raw": null,
+        "english": false,
+        "changed": true,
+        "translations": [],
+        "repeats": 1,
+        "learning": true,
+        "private": false
+      },
+      "expected": {
+        "selected": {
+          "かける": "掛ける"
+        },
+        "translations": {}
+      }
+    },
+    {
+      "case": {
+        "name": "math-number",
+        "reading": "2たす3",
+        "text": "2+3",
+        "raw": null,
+        "english": false,
+        "changed": true,
+        "translations": [],
+        "repeats": 1,
+        "learning": true,
+        "private": false
+      },
+      "expected": {
+        "selected": {},
+        "translations": {}
+      }
+    },
+    {
+      "case": {
+        "name": "today",
+        "reading": "きょう",
+        "text": "2026/10/19",
+        "raw": null,
+        "english": false,
+        "changed": true,
+        "translations": [],
+        "repeats": 1,
+        "learning": true,
+        "private": false
+      },
+      "expected": {
+        "selected": {},
+        "translations": {}
+      }
+    },
+    {
+      "case": {
+        "name": "weekday",
+        "reading": "きょう",
+        "text": "月曜日",
+        "raw": null,
+        "english": false,
+        "changed": true,
+        "translations": [],
+        "repeats": 1,
+        "learning": true,
+        "private": false
+      },
+      "expected": {
+        "selected": {},
+        "translations": {}
+      }
+    },
+    {
+      "case": {
+        "name": "date",
+        "reading": "10がつ19にち",
+        "text": "10/19",
+        "raw": null,
+        "english": false,
+        "changed": true,
+        "translations": [],
+        "repeats": 1,
+        "learning": true,
+        "private": false
+      },
+      "expected": {
+        "selected": {},
+        "translations": {}
+      }
+    },
+    {
+      "case": {
+        "name": "time",
+        "reading": "12じ30ふん",
+        "text": "12:30",
+        "raw": null,
+        "english": false,
+        "changed": true,
+        "translations": [],
+        "repeats": 1,
+        "learning": true,
+        "private": false
+      },
+      "expected": {
+        "selected": {},
+        "translations": {}
+      }
+    },
+    {
+      "case": {
+        "name": "date-word",
+        "reading": "きょう",
+        "text": "今日",
+        "raw": null,
+        "english": false,
+        "changed": true,
+        "translations": [],
+        "repeats": 1,
+        "learning": true,
+        "private": false
+      },
+      "expected": {
+        "selected": {
+          "きょう": "今日"
+        },
+        "translations": {}
+      }
+    },
+    {
+      "case": {
+        "name": "disabled",
+        "reading": "はし",
+        "text": "橋",
+        "raw": null,
+        "english": false,
+        "changed": true,
+        "translations": [],
+        "repeats": 1,
+        "learning": false,
+        "private": false
+      },
+      "expected": {
+        "selected": {},
+        "translations": {}
+      }
+    },
+    {
+      "case": {
+        "name": "private",
+        "reading": "はし",
+        "text": "橋",
+        "raw": null,
+        "english": false,
+        "changed": true,
+        "translations": [],
+        "repeats": 1,
+        "learning": true,
+        "private": true
+      },
+      "expected": {
+        "selected": {},
+        "translations": {}
+      }
+    },
+    {
+      "case": {
+        "name": "supplementary-reading",
+        "reading": "😀",
+        "text": "笑顔",
+        "raw": null,
+        "english": false,
+        "changed": true,
+        "translations": [],
+        "repeats": 1,
+        "learning": true,
+        "private": false
+      },
+      "expected": {
+        "selected": {
+          "😀": "笑顔"
+        },
+        "translations": {}
+      }
+    }
+  ]
+}

@@ -1,0 +1,367 @@
+{
+  "description": "Unported detector retained English boundary: C# displays winど at windo; Rust displays うぃんど. Kept outside the passing feature-key cohort, not declared equivalent.",
+  "cases": [
+    {
+      "name": "LaughterAfterKana-False-window",
+      "settings": {
+        "Version": 5,
+        "PredictiveCandidates": false,
+        "LiveConversion": false,
+        "LaughterAfterKana": false
+      },
+      "keys": [
+        [
+          87,
+          119,
+          0
+        ],
+        [
+          73,
+          105,
+          0
+        ],
+        [
+          78,
+          110,
+          0
+        ],
+        [
+          68,
+          100,
+          0
+        ],
+        [
+          79,
+          111,
+          0
+        ],
+        [
+          87,
+          119,
+          0
+        ],
+        [
+          13,
+          0,
+          0
+        ]
+      ],
+      "canDelete": true,
+      "before": "",
+      "after": "",
+      "expected": [
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "w",
+            "committed": "w",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space/Tab 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "うぃ",
+            "committed": "うぃ",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space/Tab 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "win",
+            "committed": "win",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Enter 確定　Space 確定+空白　Shift+Space 日本語で変換　半角/全角 日本語に",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "wind",
+            "committed": "wind",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Enter 確定　Space 確定+空白　Shift+Space 日本語で変換　半角/全角 日本語に",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "winど",
+            "committed": "winど",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space/Tab 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "window",
+            "committed": "window",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Enter 確定　Space 確定+空白　Shift+Space 日本語で変換　半角/全角 日本語に",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [
+            {
+              "deleteBefore": 0,
+              "text": "window"
+            }
+          ],
+          "view": null
+        }
+      ]
+    },
+    {
+      "name": "LaughterAfterKana-True-window",
+      "settings": {
+        "Version": 5,
+        "PredictiveCandidates": false,
+        "LiveConversion": false,
+        "LaughterAfterKana": true
+      },
+      "keys": [
+        [
+          87,
+          119,
+          0
+        ],
+        [
+          73,
+          105,
+          0
+        ],
+        [
+          78,
+          110,
+          0
+        ],
+        [
+          68,
+          100,
+          0
+        ],
+        [
+          79,
+          111,
+          0
+        ],
+        [
+          87,
+          119,
+          0
+        ],
+        [
+          13,
+          0,
+          0
+        ]
+      ],
+      "canDelete": true,
+      "before": "",
+      "after": "",
+      "expected": [
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "w",
+            "committed": "w",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space/Tab 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "うぃ",
+            "committed": "うぃ",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space/Tab 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "win",
+            "committed": "win",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Enter 確定　Space 確定+空白　Shift+Space 日本語で変換　半角/全角 日本語に",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "wind",
+            "committed": "wind",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Enter 確定　Space 確定+空白　Shift+Space 日本語で変換　半角/全角 日本語に",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "winど",
+            "committed": "winど",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Space/Tab 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [],
+          "view": {
+            "text": "window",
+            "committed": "window",
+            "converting": false,
+            "selectedIndex": -1,
+            "selectedClause": -1,
+            "hint": "Enter 確定　Space 確定+空白　Shift+Space 日本語で変換　半角/全角 日本語に",
+            "candidates": [],
+            "clauses": [],
+            "suggestion": null,
+            "meaning": null,
+            "notes": [],
+            "predictions": [],
+            "selectedPrediction": -1,
+            "typed": null
+          }
+        },
+        {
+          "consumed": true,
+          "commits": [
+            {
+              "deleteBefore": 0,
+              "text": "window"
+            }
+          ],
+          "view": null
+        }
+      ]
+    }
+  ]
+}

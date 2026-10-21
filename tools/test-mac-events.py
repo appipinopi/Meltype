@@ -21,6 +21,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('library', type=Path)
     parser.add_argument('--real-converter', action='store_true')
+    parser.add_argument("--rust-core", action="store_true", help="Compile the Rust production bridge")
     args = parser.parse_args()
     library = args.library.resolve(strict=True)
     repo = Path(__file__).resolve().parent.parent
@@ -39,7 +40,7 @@ def main():
             'CFBundleExecutable': executable.name, 'CFBundleIdentifier': 'local.meltype.EventTests',
             'CFBundlePackageType': 'APPL'}))
         filenames = [
-            'NativeCore.swift', 'InputController.swift', 'KeyMapping.swift', 'MacUserDictionary.swift',
+            'NativeCore.swift', 'InputController.swift', 'KeyMapping.swift', 'LegacyKeyMapping.swift', 'NativeKeyPolicy.swift', 'NativeEditorPolicy.swift', 'MacUserDictionary.swift',
             'ModeShortcuts.swift', 'ModeIndicator.swift', 'ModeServices.swift', 'InputSourceRegistration.swift',
         ]
         if args.real_converter:
@@ -60,7 +61,7 @@ let package = Package(name: "EventTests", platforms: [.macOS(.v13)], dependencie
 .product(name: "KanaKanjiConverterModuleWithDefaultDictionary", package: "AzooKeyKanaKanjiConverter")],
 swiftSettings: [.define("REAL_CONVERTER")], linkerSettings: [.linkedFramework("InputMethodKit"), .linkedFramework("Carbon")])], swiftLanguageVersions: [.v5])
 ''' % (json.dumps(dependency[1]), json.dumps(dependency[2])))
-            subprocess.run(['swift', 'build', '--package-path', str(package), '-c', 'release'], check=True)
+            subprocess.run(['swift', 'build', '--package-path', str(package), '-c', 'release', *(['-Xswiftc', '-DMELTYPE_RUST_CORE'] if args.rust_core else [])], check=True)
             binary_directory = Path(subprocess.check_output([
                 'swift', 'build', '--package-path', str(package), '-c', 'release', '--show-bin-path'], text=True).strip())
             shutil.copy2(binary_directory / 'EventTests', executable)
@@ -82,15 +83,20 @@ swiftSettings: [.define("REAL_CONVERTER")], linkerSettings: [.linkedFramework("I
             subprocess.run(['install_name_tool', '-add_rpath', '@executable_path/../Frameworks', str(executable)], check=True)
             subprocess.run(['codesign', '--force', '--deep', '--sign', '-', str(contents.parent)], check=True)
         else:
-            subprocess.run(['xcrun', 'swiftc', '-swift-version', '5',
+            subprocess.run(['xcrun', 'swiftc', '-swift-version', '5', *(['-DMELTYPE_RUST_CORE'] if args.rust_core else []),
                             str(repo / 'tools/test-mac-events.swift'),
                             *[str(sources / name) for name in filenames],
                             '-framework', 'InputMethodKit', '-framework', 'Carbon', '-o', str(executable)], check=True)
         data = root / 'data'
         data.mkdir()
-        (data / 'config.json').write_text(json.dumps({'SpaceAroundEnglish': True, 'LiveConversion': False, 'SigilWordsDirect': False}))
+        settings = {'SpaceAroundEnglish': True, 'LiveConversion': False, 'SigilWordsDirect': False}
+        if args.real_converter:
+            settings['PredictiveCandidates'] = False
+        (data / 'config.json').write_text(json.dumps(settings), encoding='utf-8')
         env = os.environ.copy()
         env['MELTYPE_DATA_DIR'] = str(data)
+        if args.rust_core:
+            env["MELTYPE_RUST_DATA_DIR"] = str(data)
         subprocess.run([str(executable)], env=env, check=True)
 
 

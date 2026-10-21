@@ -1,0 +1,316 @@
+[
+  {
+    "name": "untouched",
+    "reading": "はし",
+    "text": "橋",
+    "raw": null,
+    "english": false,
+    "changed": false,
+    "translations": [],
+    "repeats": 1,
+    "learning": true,
+    "private": false
+  },
+  {
+    "name": "selected",
+    "reading": "はし",
+    "text": "橋",
+    "raw": null,
+    "english": false,
+    "changed": true,
+    "translations": [],
+    "repeats": 1,
+    "learning": true,
+    "private": false
+  },
+  {
+    "name": "hiragana",
+    "reading": "はし",
+    "text": "はし",
+    "raw": null,
+    "english": false,
+    "changed": true,
+    "translations": [],
+    "repeats": 1,
+    "learning": true,
+    "private": false
+  },
+  {
+    "name": "katakana",
+    "reading": "はし",
+    "text": "ハシ",
+    "raw": null,
+    "english": false,
+    "changed": true,
+    "translations": [],
+    "repeats": 1,
+    "learning": true,
+    "private": false
+  },
+  {
+    "name": "raw",
+    "reading": "はし",
+    "text": "hashi",
+    "raw": "hashi",
+    "english": false,
+    "changed": true,
+    "translations": [],
+    "repeats": 1,
+    "learning": true,
+    "private": false
+  },
+  {
+    "name": "one-kana",
+    "reading": "き",
+    "text": "木",
+    "raw": null,
+    "english": false,
+    "changed": true,
+    "translations": [],
+    "repeats": 1,
+    "learning": true,
+    "private": false
+  },
+  {
+    "name": "english",
+    "reading": "go",
+    "text": "語",
+    "raw": null,
+    "english": true,
+    "changed": true,
+    "translations": [],
+    "repeats": 1,
+    "learning": true,
+    "private": false
+  },
+  {
+    "name": "translation",
+    "reading": "はし",
+    "text": "bridge",
+    "raw": null,
+    "english": false,
+    "changed": true,
+    "translations": [
+      "bridge"
+    ],
+    "repeats": 1,
+    "learning": true,
+    "private": false
+  },
+  {
+    "name": "translation-untouched",
+    "reading": "はし",
+    "text": "bridge",
+    "raw": null,
+    "english": false,
+    "changed": false,
+    "translations": [
+      "bridge"
+    ],
+    "repeats": 1,
+    "learning": true,
+    "private": false
+  },
+  {
+    "name": "translation-count",
+    "reading": "はし",
+    "text": "bridge",
+    "raw": null,
+    "english": false,
+    "changed": true,
+    "translations": [
+      "bridge"
+    ],
+    "repeats": 2,
+    "learning": true,
+    "private": false
+  },
+  {
+    "name": "translation-single-reading",
+    "reading": "き",
+    "text": "tree",
+    "raw": null,
+    "english": false,
+    "changed": true,
+    "translations": [
+      "tree"
+    ],
+    "repeats": 1,
+    "learning": true,
+    "private": false
+  },
+  {
+    "name": "translation-kana",
+    "reading": "はし",
+    "text": "はし",
+    "raw": null,
+    "english": false,
+    "changed": true,
+    "translations": [
+      "はし"
+    ],
+    "repeats": 1,
+    "learning": true,
+    "private": false
+  },
+  {
+    "name": "translation-raw",
+    "reading": "はし",
+    "text": "hashi",
+    "raw": "hashi",
+    "english": false,
+    "changed": true,
+    "translations": [
+      "hashi"
+    ],
+    "repeats": 1,
+    "learning": true,
+    "private": false
+  },
+  {
+    "name": "translation-english",
+    "reading": "go",
+    "text": "word",
+    "raw": null,
+    "english": true,
+    "changed": true,
+    "translations": [
+      "word"
+    ],
+    "repeats": 1,
+    "learning": true,
+    "private": false
+  },
+  {
+    "name": "math-symbol",
+    "reading": "かける",
+    "text": "×",
+    "raw": null,
+    "english": false,
+    "changed": true,
+    "translations": [],
+    "repeats": 1,
+    "learning": true,
+    "private": false
+  },
+  {
+    "name": "math-word",
+    "reading": "かける",
+    "text": "掛ける",
+    "raw": null,
+    "english": false,
+    "changed": true,
+    "translations": [],
+    "repeats": 1,
+    "learning": true,
+    "private": false
+  },
+  {
+    "name": "math-number",
+    "reading": "2たす3",
+    "text": "2+3",
+    "raw": null,
+    "english": false,
+    "changed": true,
+    "translations": [],
+    "repeats": 1,
+    "learning": true,
+    "private": false
+  },
+  {
+    "name": "today",
+    "reading": "きょう",
+    "text": "2026/10/19",
+    "raw": null,
+    "english": false,
+    "changed": true,
+    "translations": [],
+    "repeats": 1,
+    "learning": true,
+    "private": false
+  },
+  {
+    "name": "weekday",
+    "reading": "きょう",
+    "text": "月曜日",
+    "raw": null,
+    "english": false,
+    "changed": true,
+    "translations": [],
+    "repeats": 1,
+    "learning": true,
+    "private": false
+  },
+  {
+    "name": "date",
+    "reading": "10がつ19にち",
+    "text": "10/19",
+    "raw": null,
+    "english": false,
+    "changed": true,
+    "translations": [],
+    "repeats": 1,
+    "learning": true,
+    "private": false
+  },
+  {
+    "name": "time",
+    "reading": "12じ30ふん",
+    "text": "12:30",
+    "raw": null,
+    "english": false,
+    "changed": true,
+    "translations": [],
+    "repeats": 1,
+    "learning": true,
+    "private": false
+  },
+  {
+    "name": "date-word",
+    "reading": "きょう",
+    "text": "今日",
+    "raw": null,
+    "english": false,
+    "changed": true,
+    "translations": [],
+    "repeats": 1,
+    "learning": true,
+    "private": false
+  },
+  {
+    "name": "disabled",
+    "reading": "はし",
+    "text": "橋",
+    "raw": null,
+    "english": false,
+    "changed": true,
+    "translations": [],
+    "repeats": 1,
+    "learning": false,
+    "private": false
+  },
+  {
+    "name": "private",
+    "reading": "はし",
+    "text": "橋",
+    "raw": null,
+    "english": false,
+    "changed": true,
+    "translations": [],
+    "repeats": 1,
+    "learning": true,
+    "private": true
+  },
+  {
+    "name": "supplementary-reading",
+    "reading": "😀",
+    "text": "笑顔",
+    "raw": null,
+    "english": false,
+    "changed": true,
+    "translations": [],
+    "repeats": 1,
+    "learning": true,
+    "private": false
+  }
+]

@@ -1,0 +1,966 @@
+{
+  "baseline": "45e14f86558aa6ea34f2c2ecd038ba95ca8c3c46",
+  "sha256": {
+    "tools/parity/mozc-lifecycle/NumberKeys.cs": "1aee377b0a1f559b4b7023d99fb81eede67ee8b8be2aef7def4c68ca94cc5f7f",
+    "tools/parity/mozc-lifecycle/Program.cs": "eb05ed53e11f7ee0d12d47b9e14b433c6bdde002cc287848e5c9768eca669877",
+    "tools/parity/mozc-lifecycle/number-key-cases.json": "d2664e8292dfa03a59dbf690087fd935915217f12c270ac045771fedbb73e4a7",
+    "src/Meltype.Core/Composition/CompositionController.cs": "0b35121785c14431093c3a9b493030fc0483e2d7716f21e232e9c54686f68a03",
+    "src/Meltype.Core/Composition/MeltypeSession.cs": "b0f2c0044a73f5c39b01cc324d79ed160396069a64bb5d1035308eed262f6479"
+  },
+  "cases": [
+    {
+      "case": {
+        "name": "3-0-0-1-0-False",
+        "count": 3,
+        "start": 0,
+        "row": 0,
+        "clauses": 1,
+        "active": 0,
+        "keypad": false,
+        "kana": false
+      },
+      "expected": {
+        "consumed": true,
+        "commits": [
+          {
+            "deleteBefore": 0,
+            "text": "候補0_0",
+            "expect": null
+          }
+        ],
+        "text": null,
+        "converting": false,
+        "selectedClause": 0,
+        "selectedIndex": 0
+      }
+    },
+    {
+      "case": {
+        "name": "3-0-0-1-0-True",
+        "count": 3,
+        "start": 0,
+        "row": 0,
+        "clauses": 1,
+        "active": 0,
+        "keypad": true,
+        "kana": false
+      },
+      "expected": {
+        "consumed": true,
+        "commits": [
+          {
+            "deleteBefore": 0,
+            "text": "候補0_0",
+            "expect": null
+          }
+        ],
+        "text": null,
+        "converting": false,
+        "selectedClause": 0,
+        "selectedIndex": 0
+      }
+    },
+    {
+      "case": {
+        "name": "3-0-0-2-0-False",
+        "count": 3,
+        "start": 0,
+        "row": 0,
+        "clauses": 2,
+        "active": 0,
+        "keypad": false,
+        "kana": false
+      },
+      "expected": {
+        "consumed": true,
+        "commits": [],
+        "text": "候補0_0候補1_0",
+        "converting": true,
+        "selectedClause": 1,
+        "selectedIndex": 0
+      }
+    },
+    {
+      "case": {
+        "name": "3-0-0-2-0-True",
+        "count": 3,
+        "start": 0,
+        "row": 0,
+        "clauses": 2,
+        "active": 0,
+        "keypad": true,
+        "kana": false
+      },
+      "expected": {
+        "consumed": true,
+        "commits": [],
+        "text": "候補0_0候補1_0",
+        "converting": true,
+        "selectedClause": 1,
+        "selectedIndex": 0
+      }
+    },
+    {
+      "case": {
+        "name": "3-0-0-2-1-False",
+        "count": 3,
+        "start": 0,
+        "row": 0,
+        "clauses": 2,
+        "active": 1,
+        "keypad": false,
+        "kana": false
+      },
+      "expected": {
+        "consumed": true,
+        "commits": [
+          {
+            "deleteBefore": 0,
+            "text": "候補0_0候補1_0",
+            "expect": null
+          }
+        ],
+        "text": null,
+        "converting": false,
+        "selectedClause": 0,
+        "selectedIndex": 0
+      }
+    },
+    {
+      "case": {
+        "name": "3-0-0-2-1-True",
+        "count": 3,
+        "start": 0,
+        "row": 0,
+        "clauses": 2,
+        "active": 1,
+        "keypad": true,
+        "kana": false
+      },
+      "expected": {
+        "consumed": true,
+        "commits": [
+          {
+            "deleteBefore": 0,
+            "text": "候補0_0候補1_0",
+            "expect": null
+          }
+        ],
+        "text": null,
+        "converting": false,
+        "selectedClause": 0,
+        "selectedIndex": 0
+      }
+    },
+    {
+      "case": {
+        "name": "9-8-8-1-0-False",
+        "count": 9,
+        "start": 8,
+        "row": 8,
+        "clauses": 1,
+        "active": 0,
+        "keypad": false,
+        "kana": false
+      },
+      "expected": {
+        "consumed": true,
+        "commits": [
+          {
+            "deleteBefore": 0,
+            "text": "候補0_8",
+            "expect": null
+          }
+        ],
+        "text": null,
+        "converting": false,
+        "selectedClause": 0,
+        "selectedIndex": 0
+      }
+    },
+    {
+      "case": {
+        "name": "9-8-8-1-0-True",
+        "count": 9,
+        "start": 8,
+        "row": 8,
+        "clauses": 1,
+        "active": 0,
+        "keypad": true,
+        "kana": false
+      },
+      "expected": {
+        "consumed": true,
+        "commits": [
+          {
+            "deleteBefore": 0,
+            "text": "候補0_8",
+            "expect": null
+          }
+        ],
+        "text": null,
+        "converting": false,
+        "selectedClause": 0,
+        "selectedIndex": 0
+      }
+    },
+    {
+      "case": {
+        "name": "9-8-8-2-0-False",
+        "count": 9,
+        "start": 8,
+        "row": 8,
+        "clauses": 2,
+        "active": 0,
+        "keypad": false,
+        "kana": false
+      },
+      "expected": {
+        "consumed": true,
+        "commits": [],
+        "text": "候補0_8候補1_0",
+        "converting": true,
+        "selectedClause": 1,
+        "selectedIndex": 0
+      }
+    },
+    {
+      "case": {
+        "name": "9-8-8-2-0-True",
+        "count": 9,
+        "start": 8,
+        "row": 8,
+        "clauses": 2,
+        "active": 0,
+        "keypad": true,
+        "kana": false
+      },
+      "expected": {
+        "consumed": true,
+        "commits": [],
+        "text": "候補0_8候補1_0",
+        "converting": true,
+        "selectedClause": 1,
+        "selectedIndex": 0
+      }
+    },
+    {
+      "case": {
+        "name": "9-8-8-2-1-False",
+        "count": 9,
+        "start": 8,
+        "row": 8,
+        "clauses": 2,
+        "active": 1,
+        "keypad": false,
+        "kana": false
+      },
+      "expected": {
+        "consumed": true,
+        "commits": [
+          {
+            "deleteBefore": 0,
+            "text": "候補0_0候補1_8",
+            "expect": null
+          }
+        ],
+        "text": null,
+        "converting": false,
+        "selectedClause": 0,
+        "selectedIndex": 0
+      }
+    },
+    {
+      "case": {
+        "name": "9-8-8-2-1-True",
+        "count": 9,
+        "start": 8,
+        "row": 8,
+        "clauses": 2,
+        "active": 1,
+        "keypad": true,
+        "kana": false
+      },
+      "expected": {
+        "consumed": true,
+        "commits": [
+          {
+            "deleteBefore": 0,
+            "text": "候補0_0候補1_8",
+            "expect": null
+          }
+        ],
+        "text": null,
+        "converting": false,
+        "selectedClause": 0,
+        "selectedIndex": 0
+      }
+    },
+    {
+      "case": {
+        "name": "12-9-2-1-0-False",
+        "count": 12,
+        "start": 9,
+        "row": 2,
+        "clauses": 1,
+        "active": 0,
+        "keypad": false,
+        "kana": false
+      },
+      "expected": {
+        "consumed": true,
+        "commits": [
+          {
+            "deleteBefore": 0,
+            "text": "候補0_11",
+            "expect": null
+          }
+        ],
+        "text": null,
+        "converting": false,
+        "selectedClause": 0,
+        "selectedIndex": 0
+      }
+    },
+    {
+      "case": {
+        "name": "12-9-2-1-0-True",
+        "count": 12,
+        "start": 9,
+        "row": 2,
+        "clauses": 1,
+        "active": 0,
+        "keypad": true,
+        "kana": false
+      },
+      "expected": {
+        "consumed": true,
+        "commits": [
+          {
+            "deleteBefore": 0,
+            "text": "候補0_11",
+            "expect": null
+          }
+        ],
+        "text": null,
+        "converting": false,
+        "selectedClause": 0,
+        "selectedIndex": 0
+      }
+    },
+    {
+      "case": {
+        "name": "12-9-2-2-0-False",
+        "count": 12,
+        "start": 9,
+        "row": 2,
+        "clauses": 2,
+        "active": 0,
+        "keypad": false,
+        "kana": false
+      },
+      "expected": {
+        "consumed": true,
+        "commits": [],
+        "text": "候補0_11候補1_0",
+        "converting": true,
+        "selectedClause": 1,
+        "selectedIndex": 0
+      }
+    },
+    {
+      "case": {
+        "name": "12-9-2-2-0-True",
+        "count": 12,
+        "start": 9,
+        "row": 2,
+        "clauses": 2,
+        "active": 0,
+        "keypad": true,
+        "kana": false
+      },
+      "expected": {
+        "consumed": true,
+        "commits": [],
+        "text": "候補0_11候補1_0",
+        "converting": true,
+        "selectedClause": 1,
+        "selectedIndex": 0
+      }
+    },
+    {
+      "case": {
+        "name": "12-9-2-2-1-False",
+        "count": 12,
+        "start": 9,
+        "row": 2,
+        "clauses": 2,
+        "active": 1,
+        "keypad": false,
+        "kana": false
+      },
+      "expected": {
+        "consumed": true,
+        "commits": [
+          {
+            "deleteBefore": 0,
+            "text": "候補0_0候補1_11",
+            "expect": null
+          }
+        ],
+        "text": null,
+        "converting": false,
+        "selectedClause": 0,
+        "selectedIndex": 0
+      }
+    },
+    {
+      "case": {
+        "name": "12-9-2-2-1-True",
+        "count": 12,
+        "start": 9,
+        "row": 2,
+        "clauses": 2,
+        "active": 1,
+        "keypad": true,
+        "kana": false
+      },
+      "expected": {
+        "consumed": true,
+        "commits": [
+          {
+            "deleteBefore": 0,
+            "text": "候補0_0候補1_11",
+            "expect": null
+          }
+        ],
+        "text": null,
+        "converting": false,
+        "selectedClause": 0,
+        "selectedIndex": 0
+      }
+    },
+    {
+      "case": {
+        "name": "20-17-8-1-0-False",
+        "count": 20,
+        "start": 17,
+        "row": 8,
+        "clauses": 1,
+        "active": 0,
+        "keypad": false,
+        "kana": false
+      },
+      "expected": {
+        "consumed": true,
+        "commits": [
+          {
+            "deleteBefore": 0,
+            "text": "候補0_17",
+            "expect": null
+          }
+        ],
+        "text": null,
+        "converting": false,
+        "selectedClause": 0,
+        "selectedIndex": 0
+      }
+    },
+    {
+      "case": {
+        "name": "20-17-8-1-0-True",
+        "count": 20,
+        "start": 17,
+        "row": 8,
+        "clauses": 1,
+        "active": 0,
+        "keypad": true,
+        "kana": false
+      },
+      "expected": {
+        "consumed": true,
+        "commits": [
+          {
+            "deleteBefore": 0,
+            "text": "候補0_17",
+            "expect": null
+          }
+        ],
+        "text": null,
+        "converting": false,
+        "selectedClause": 0,
+        "selectedIndex": 0
+      }
+    },
+    {
+      "case": {
+        "name": "20-17-8-2-0-False",
+        "count": 20,
+        "start": 17,
+        "row": 8,
+        "clauses": 2,
+        "active": 0,
+        "keypad": false,
+        "kana": false
+      },
+      "expected": {
+        "consumed": true,
+        "commits": [],
+        "text": "候補0_17候補1_0",
+        "converting": true,
+        "selectedClause": 1,
+        "selectedIndex": 0
+      }
+    },
+    {
+      "case": {
+        "name": "20-17-8-2-0-True",
+        "count": 20,
+        "start": 17,
+        "row": 8,
+        "clauses": 2,
+        "active": 0,
+        "keypad": true,
+        "kana": false
+      },
+      "expected": {
+        "consumed": true,
+        "commits": [],
+        "text": "候補0_17候補1_0",
+        "converting": true,
+        "selectedClause": 1,
+        "selectedIndex": 0
+      }
+    },
+    {
+      "case": {
+        "name": "20-17-8-2-1-False",
+        "count": 20,
+        "start": 17,
+        "row": 8,
+        "clauses": 2,
+        "active": 1,
+        "keypad": false,
+        "kana": false
+      },
+      "expected": {
+        "consumed": true,
+        "commits": [
+          {
+            "deleteBefore": 0,
+            "text": "候補0_0候補1_17",
+            "expect": null
+          }
+        ],
+        "text": null,
+        "converting": false,
+        "selectedClause": 0,
+        "selectedIndex": 0
+      }
+    },
+    {
+      "case": {
+        "name": "20-17-8-2-1-True",
+        "count": 20,
+        "start": 17,
+        "row": 8,
+        "clauses": 2,
+        "active": 1,
+        "keypad": true,
+        "kana": false
+      },
+      "expected": {
+        "consumed": true,
+        "commits": [
+          {
+            "deleteBefore": 0,
+            "text": "候補0_0候補1_17",
+            "expect": null
+          }
+        ],
+        "text": null,
+        "converting": false,
+        "selectedClause": 0,
+        "selectedIndex": 0
+      }
+    },
+    {
+      "case": {
+        "name": "20-19-0-1-0-False",
+        "count": 20,
+        "start": 19,
+        "row": 0,
+        "clauses": 1,
+        "active": 0,
+        "keypad": false,
+        "kana": false
+      },
+      "expected": {
+        "consumed": true,
+        "commits": [
+          {
+            "deleteBefore": 0,
+            "text": "候補0_18",
+            "expect": null
+          }
+        ],
+        "text": null,
+        "converting": false,
+        "selectedClause": 0,
+        "selectedIndex": 0
+      }
+    },
+    {
+      "case": {
+        "name": "20-19-0-1-0-True",
+        "count": 20,
+        "start": 19,
+        "row": 0,
+        "clauses": 1,
+        "active": 0,
+        "keypad": true,
+        "kana": false
+      },
+      "expected": {
+        "consumed": true,
+        "commits": [
+          {
+            "deleteBefore": 0,
+            "text": "候補0_18",
+            "expect": null
+          }
+        ],
+        "text": null,
+        "converting": false,
+        "selectedClause": 0,
+        "selectedIndex": 0
+      }
+    },
+    {
+      "case": {
+        "name": "20-19-0-2-0-False",
+        "count": 20,
+        "start": 19,
+        "row": 0,
+        "clauses": 2,
+        "active": 0,
+        "keypad": false,
+        "kana": false
+      },
+      "expected": {
+        "consumed": true,
+        "commits": [],
+        "text": "候補0_18候補1_0",
+        "converting": true,
+        "selectedClause": 1,
+        "selectedIndex": 0
+      }
+    },
+    {
+      "case": {
+        "name": "20-19-0-2-0-True",
+        "count": 20,
+        "start": 19,
+        "row": 0,
+        "clauses": 2,
+        "active": 0,
+        "keypad": true,
+        "kana": false
+      },
+      "expected": {
+        "consumed": true,
+        "commits": [],
+        "text": "候補0_18候補1_0",
+        "converting": true,
+        "selectedClause": 1,
+        "selectedIndex": 0
+      }
+    },
+    {
+      "case": {
+        "name": "20-19-0-2-1-False",
+        "count": 20,
+        "start": 19,
+        "row": 0,
+        "clauses": 2,
+        "active": 1,
+        "keypad": false,
+        "kana": false
+      },
+      "expected": {
+        "consumed": true,
+        "commits": [
+          {
+            "deleteBefore": 0,
+            "text": "候補0_0候補1_18",
+            "expect": null
+          }
+        ],
+        "text": null,
+        "converting": false,
+        "selectedClause": 0,
+        "selectedIndex": 0
+      }
+    },
+    {
+      "case": {
+        "name": "20-19-0-2-1-True",
+        "count": 20,
+        "start": 19,
+        "row": 0,
+        "clauses": 2,
+        "active": 1,
+        "keypad": true,
+        "kana": false
+      },
+      "expected": {
+        "consumed": true,
+        "commits": [
+          {
+            "deleteBefore": 0,
+            "text": "候補0_0候補1_18",
+            "expect": null
+          }
+        ],
+        "text": null,
+        "converting": false,
+        "selectedClause": 0,
+        "selectedIndex": 0
+      }
+    },
+    {
+      "case": {
+        "name": "3-0-8-1-0-False",
+        "count": 3,
+        "start": 0,
+        "row": 8,
+        "clauses": 1,
+        "active": 0,
+        "keypad": false,
+        "kana": false
+      },
+      "expected": {
+        "consumed": true,
+        "commits": [
+          {
+            "deleteBefore": 0,
+            "text": "候補0_0",
+            "expect": null
+          }
+        ],
+        "text": "9",
+        "converting": false,
+        "selectedClause": -1,
+        "selectedIndex": -1
+      }
+    },
+    {
+      "case": {
+        "name": "3-0-8-1-0-True",
+        "count": 3,
+        "start": 0,
+        "row": 8,
+        "clauses": 1,
+        "active": 0,
+        "keypad": true,
+        "kana": false
+      },
+      "expected": {
+        "consumed": true,
+        "commits": [
+          {
+            "deleteBefore": 0,
+            "text": "候補0_0",
+            "expect": null
+          }
+        ],
+        "text": "9",
+        "converting": false,
+        "selectedClause": -1,
+        "selectedIndex": -1
+      }
+    },
+    {
+      "case": {
+        "name": "3-0-8-2-0-False",
+        "count": 3,
+        "start": 0,
+        "row": 8,
+        "clauses": 2,
+        "active": 0,
+        "keypad": false,
+        "kana": false
+      },
+      "expected": {
+        "consumed": true,
+        "commits": [
+          {
+            "deleteBefore": 0,
+            "text": "候補0_0候補1_0",
+            "expect": null
+          }
+        ],
+        "text": "9",
+        "converting": false,
+        "selectedClause": -1,
+        "selectedIndex": -1
+      }
+    },
+    {
+      "case": {
+        "name": "3-0-8-2-0-True",
+        "count": 3,
+        "start": 0,
+        "row": 8,
+        "clauses": 2,
+        "active": 0,
+        "keypad": true,
+        "kana": false
+      },
+      "expected": {
+        "consumed": true,
+        "commits": [
+          {
+            "deleteBefore": 0,
+            "text": "候補0_0候補1_0",
+            "expect": null
+          }
+        ],
+        "text": "9",
+        "converting": false,
+        "selectedClause": -1,
+        "selectedIndex": -1
+      }
+    },
+    {
+      "case": {
+        "name": "3-0-8-2-1-False",
+        "count": 3,
+        "start": 0,
+        "row": 8,
+        "clauses": 2,
+        "active": 1,
+        "keypad": false,
+        "kana": false
+      },
+      "expected": {
+        "consumed": true,
+        "commits": [
+          {
+            "deleteBefore": 0,
+            "text": "候補0_0候補1_0",
+            "expect": null
+          }
+        ],
+        "text": "9",
+        "converting": false,
+        "selectedClause": -1,
+        "selectedIndex": -1
+      }
+    },
+    {
+      "case": {
+        "name": "3-0-8-2-1-True",
+        "count": 3,
+        "start": 0,
+        "row": 8,
+        "clauses": 2,
+        "active": 1,
+        "keypad": true,
+        "kana": false
+      },
+      "expected": {
+        "consumed": true,
+        "commits": [
+          {
+            "deleteBefore": 0,
+            "text": "候補0_0候補1_0",
+            "expect": null
+          }
+        ],
+        "text": "9",
+        "converting": false,
+        "selectedClause": -1,
+        "selectedIndex": -1
+      }
+    },
+    {
+      "case": {
+        "name": "kana-keypad-3",
+        "count": 3,
+        "start": 0,
+        "row": 0,
+        "clauses": 1,
+        "active": 0,
+        "keypad": true,
+        "kana": true
+      },
+      "expected": {
+        "consumed": true,
+        "commits": [
+          {
+            "deleteBefore": 0,
+            "text": "候補0_0",
+            "expect": null
+          }
+        ],
+        "text": null,
+        "converting": false,
+        "selectedClause": 0,
+        "selectedIndex": 0
+      }
+    },
+    {
+      "case": {
+        "name": "kana-keypad-12",
+        "count": 12,
+        "start": 9,
+        "row": 2,
+        "clauses": 1,
+        "active": 0,
+        "keypad": true,
+        "kana": true
+      },
+      "expected": {
+        "consumed": true,
+        "commits": [
+          {
+            "deleteBefore": 0,
+            "text": "候補0_11",
+            "expect": null
+          }
+        ],
+        "text": null,
+        "converting": false,
+        "selectedClause": 0,
+        "selectedIndex": 0
+      }
+    },
+    {
+      "case": {
+        "name": "kana-keypad-20",
+        "count": 20,
+        "start": 17,
+        "row": 8,
+        "clauses": 1,
+        "active": 0,
+        "keypad": true,
+        "kana": true
+      },
+      "expected": {
+        "consumed": true,
+        "commits": [
+          {
+            "deleteBefore": 0,
+            "text": "候補0_17",
+            "expect": null
+          }
+        ],
+        "text": null,
+        "converting": false,
+        "selectedClause": 0,
+        "selectedIndex": 0
+      }
+    }
+  ]
+}

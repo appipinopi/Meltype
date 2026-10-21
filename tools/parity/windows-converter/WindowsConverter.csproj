@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <CoreProject Condition="'$(CoreProject)' == ''">../../../src/Meltype.Core/Meltype.Core.csproj</CoreProject>
+    <ConverterSource Condition="'$(ConverterSource)' == ''">../../../src/Meltype/Composition/KanjiConverter.cs</ConverterSource>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="$(CoreProject)" />
+    <Compile Include="$(ConverterSource)" Link="OriginalKanjiConverter.cs" />
+    <Compile Include="../../../src/Meltype/Composition/WinRtCandidates.cs" Link="OriginalWinRtCandidates.cs" />
+  </ItemGroup>
+</Project>

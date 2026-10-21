@@ -1,0 +1,2244 @@
+{
+  "baseline": "45e14f86558aa6ea34f2c2ecd038ba95ca8c3c46",
+  "cases": [
+    {
+      "case": {
+        "raw": "hashikami",
+        "manual": false
+      },
+      "segments": [
+        {
+          "reading": "はしかみ",
+          "english": false,
+          "spans": [
+            {
+              "start": 0,
+              "length": 1,
+              "raw": "ha"
+            },
+            {
+              "start": 0,
+              "length": 2,
+              "raw": "hashi"
+            },
+            {
+              "start": 0,
+              "length": 3,
+              "raw": "hashika"
+            },
+            {
+              "start": 0,
+              "length": 4,
+              "raw": "hashikami"
+            },
+            {
+              "start": 1,
+              "length": 1,
+              "raw": "shi"
+            },
+            {
+              "start": 1,
+              "length": 2,
+              "raw": "shika"
+            },
+            {
+              "start": 1,
+              "length": 3,
+              "raw": "shikami"
+            },
+            {
+              "start": 2,
+              "length": 1,
+              "raw": "ka"
+            },
+            {
+              "start": 2,
+              "length": 2,
+              "raw": "kami"
+            },
+            {
+              "start": 3,
+              "length": 1,
+              "raw": "mi"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": {
+        "raw": "nihongo",
+        "manual": false
+      },
+      "segments": [
+        {
+          "reading": "にほんご",
+          "english": false,
+          "spans": [
+            {
+              "start": 0,
+              "length": 1,
+              "raw": "ni"
+            },
+            {
+              "start": 0,
+              "length": 2,
+              "raw": "niho"
+            },
+            {
+              "start": 0,
+              "length": 3,
+              "raw": "nihon"
+            },
+            {
+              "start": 0,
+              "length": 4,
+              "raw": "nihongo"
+            },
+            {
+              "start": 1,
+              "length": 1,
+              "raw": "ho"
+            },
+            {
+              "start": 1,
+              "length": 2,
+              "raw": "hon"
+            },
+            {
+              "start": 1,
+              "length": 3,
+              "raw": "hongo"
+            },
+            {
+              "start": 2,
+              "length": 1,
+              "raw": "n"
+            },
+            {
+              "start": 2,
+              "length": 2,
+              "raw": "ngo"
+            },
+            {
+              "start": 3,
+              "length": 1,
+              "raw": "go"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": {
+        "raw": "kya",
+        "manual": false
+      },
+      "segments": [
+        {
+          "reading": "きゃ",
+          "english": false,
+          "spans": [
+            {
+              "start": 0,
+              "length": 1,
+              "raw": null
+            },
+            {
+              "start": 0,
+              "length": 2,
+              "raw": "kya"
+            },
+            {
+              "start": 1,
+              "length": 1,
+              "raw": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": {
+        "raw": "gakkou",
+        "manual": false
+      },
+      "segments": [
+        {
+          "reading": "がっこう",
+          "english": false,
+          "spans": [
+            {
+              "start": 0,
+              "length": 1,
+              "raw": "ga"
+            },
+            {
+              "start": 0,
+              "length": 2,
+              "raw": "gak"
+            },
+            {
+              "start": 0,
+              "length": 3,
+              "raw": "gakko"
+            },
+            {
+              "start": 0,
+              "length": 4,
+              "raw": "gakkou"
+            },
+            {
+              "start": 1,
+              "length": 1,
+              "raw": "k"
+            },
+            {
+              "start": 1,
+              "length": 2,
+              "raw": "kko"
+            },
+            {
+              "start": 1,
+              "length": 3,
+              "raw": "kkou"
+            },
+            {
+              "start": 2,
+              "length": 1,
+              "raw": "ko"
+            },
+            {
+              "start": 2,
+              "length": 2,
+              "raw": "kou"
+            },
+            {
+              "start": 3,
+              "length": 1,
+              "raw": "u"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": {
+        "raw": "kannji",
+        "manual": false
+      },
+      "segments": [
+        {
+          "reading": "かんじ",
+          "english": false,
+          "spans": [
+            {
+              "start": 0,
+              "length": 1,
+              "raw": "ka"
+            },
+            {
+              "start": 0,
+              "length": 2,
+              "raw": "kann"
+            },
+            {
+              "start": 0,
+              "length": 3,
+              "raw": "kannji"
+            },
+            {
+              "start": 1,
+              "length": 1,
+              "raw": "nn"
+            },
+            {
+              "start": 1,
+              "length": 2,
+              "raw": "nnji"
+            },
+            {
+              "start": 2,
+              "length": 1,
+              "raw": "ji"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": {
+        "raw": "GitHubnihongo",
+        "manual": false
+      },
+      "segments": [
+        {
+          "reading": "GitHub",
+          "english": true,
+          "spans": []
+        },
+        {
+          "reading": "にほんご",
+          "english": false,
+          "spans": [
+            {
+              "start": 0,
+              "length": 1,
+              "raw": "ni"
+            },
+            {
+              "start": 0,
+              "length": 2,
+              "raw": "niho"
+            },
+            {
+              "start": 0,
+              "length": 3,
+              "raw": "nihon"
+            },
+            {
+              "start": 0,
+              "length": 4,
+              "raw": "nihongo"
+            },
+            {
+              "start": 1,
+              "length": 1,
+              "raw": "ho"
+            },
+            {
+              "start": 1,
+              "length": 2,
+              "raw": "hon"
+            },
+            {
+              "start": 1,
+              "length": 3,
+              "raw": "hongo"
+            },
+            {
+              "start": 2,
+              "length": 1,
+              "raw": "n"
+            },
+            {
+              "start": 2,
+              "length": 2,
+              "raw": "ngo"
+            },
+            {
+              "start": 3,
+              "length": 1,
+              "raw": "go"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": {
+        "raw": "hashiapi",
+        "manual": false
+      },
+      "segments": [
+        {
+          "reading": "はしあぴ",
+          "english": false,
+          "spans": [
+            {
+              "start": 0,
+              "length": 1,
+              "raw": "ha"
+            },
+            {
+              "start": 0,
+              "length": 2,
+              "raw": "hashi"
+            },
+            {
+              "start": 0,
+              "length": 3,
+              "raw": "hashia"
+            },
+            {
+              "start": 0,
+              "length": 4,
+              "raw": "hashiapi"
+            },
+            {
+              "start": 1,
+              "length": 1,
+              "raw": "shi"
+            },
+            {
+              "start": 1,
+              "length": 2,
+              "raw": "shia"
+            },
+            {
+              "start": 1,
+              "length": 3,
+              "raw": "shiapi"
+            },
+            {
+              "start": 2,
+              "length": 1,
+              "raw": "a"
+            },
+            {
+              "start": 2,
+              "length": 2,
+              "raw": "api"
+            },
+            {
+              "start": 3,
+              "length": 1,
+              "raw": "pi"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": {
+        "raw": "apiwo",
+        "manual": false
+      },
+      "segments": [
+        {
+          "reading": "あぴを",
+          "english": false,
+          "spans": [
+            {
+              "start": 0,
+              "length": 1,
+              "raw": "a"
+            },
+            {
+              "start": 0,
+              "length": 2,
+              "raw": "api"
+            },
+            {
+              "start": 0,
+              "length": 3,
+              "raw": "apiwo"
+            },
+            {
+              "start": 1,
+              "length": 1,
+              "raw": "pi"
+            },
+            {
+              "start": 1,
+              "length": 2,
+              "raw": "piwo"
+            },
+            {
+              "start": 2,
+              "length": 1,
+              "raw": "wo"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": {
+        "raw": "nihongoGitHub",
+        "manual": false
+      },
+      "segments": [
+        {
+          "reading": "nihongoGitHub",
+          "english": true,
+          "spans": []
+        }
+      ]
+    },
+    {
+      "case": {
+        "raw": "hashi,",
+        "manual": false
+      },
+      "segments": [
+        {
+          "reading": "はし、",
+          "english": false,
+          "spans": [
+            {
+              "start": 0,
+              "length": 1,
+              "raw": "ha"
+            },
+            {
+              "start": 0,
+              "length": 2,
+              "raw": "hashi"
+            },
+            {
+              "start": 0,
+              "length": 3,
+              "raw": "hashi,"
+            },
+            {
+              "start": 1,
+              "length": 1,
+              "raw": "shi"
+            },
+            {
+              "start": 1,
+              "length": 2,
+              "raw": "shi,"
+            },
+            {
+              "start": 2,
+              "length": 1,
+              "raw": ","
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": {
+        "raw": "konnnichiha",
+        "manual": false
+      },
+      "segments": [
+        {
+          "reading": "こんにちは",
+          "english": false,
+          "spans": [
+            {
+              "start": 0,
+              "length": 1,
+              "raw": "ko"
+            },
+            {
+              "start": 0,
+              "length": 2,
+              "raw": "konn"
+            },
+            {
+              "start": 0,
+              "length": 3,
+              "raw": "konnni"
+            },
+            {
+              "start": 0,
+              "length": 4,
+              "raw": "konnnichi"
+            },
+            {
+              "start": 0,
+              "length": 5,
+              "raw": "konnnichiha"
+            },
+            {
+              "start": 1,
+              "length": 1,
+              "raw": "nn"
+            },
+            {
+              "start": 1,
+              "length": 2,
+              "raw": "nnni"
+            },
+            {
+              "start": 1,
+              "length": 3,
+              "raw": "nnnichi"
+            },
+            {
+              "start": 1,
+              "length": 4,
+              "raw": "nnnichiha"
+            },
+            {
+              "start": 2,
+              "length": 1,
+              "raw": "ni"
+            },
+            {
+              "start": 2,
+              "length": 2,
+              "raw": "nichi"
+            },
+            {
+              "start": 2,
+              "length": 3,
+              "raw": "nichiha"
+            },
+            {
+              "start": 3,
+              "length": 1,
+              "raw": "chi"
+            },
+            {
+              "start": 3,
+              "length": 2,
+              "raw": "chiha"
+            },
+            {
+              "start": 4,
+              "length": 1,
+              "raw": "ha"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": {
+        "raw": "shinbun",
+        "manual": false
+      },
+      "segments": [
+        {
+          "reading": "しんぶん",
+          "english": false,
+          "spans": [
+            {
+              "start": 0,
+              "length": 1,
+              "raw": "shi"
+            },
+            {
+              "start": 0,
+              "length": 2,
+              "raw": "shin"
+            },
+            {
+              "start": 0,
+              "length": 3,
+              "raw": "shinbu"
+            },
+            {
+              "start": 0,
+              "length": 4,
+              "raw": "shinbun"
+            },
+            {
+              "start": 1,
+              "length": 1,
+              "raw": "n"
+            },
+            {
+              "start": 1,
+              "length": 2,
+              "raw": "nbu"
+            },
+            {
+              "start": 1,
+              "length": 3,
+              "raw": "nbun"
+            },
+            {
+              "start": 2,
+              "length": 1,
+              "raw": "bu"
+            },
+            {
+              "start": 2,
+              "length": 2,
+              "raw": "bun"
+            },
+            {
+              "start": 3,
+              "length": 1,
+              "raw": "n"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": {
+        "raw": "nihongok",
+        "manual": false
+      },
+      "segments": [
+        {
+          "reading": "にほんごk",
+          "english": false,
+          "spans": [
+            {
+              "start": 0,
+              "length": 1,
+              "raw": "ni"
+            },
+            {
+              "start": 0,
+              "length": 2,
+              "raw": "niho"
+            },
+            {
+              "start": 0,
+              "length": 3,
+              "raw": "nihon"
+            },
+            {
+              "start": 0,
+              "length": 4,
+              "raw": "nihongo"
+            },
+            {
+              "start": 0,
+              "length": 5,
+              "raw": "nihongok"
+            },
+            {
+              "start": 1,
+              "length": 1,
+              "raw": "ho"
+            },
+            {
+              "start": 1,
+              "length": 2,
+              "raw": "hon"
+            },
+            {
+              "start": 1,
+              "length": 3,
+              "raw": "hongo"
+            },
+            {
+              "start": 1,
+              "length": 4,
+              "raw": "hongok"
+            },
+            {
+              "start": 2,
+              "length": 1,
+              "raw": "n"
+            },
+            {
+              "start": 2,
+              "length": 2,
+              "raw": "ngo"
+            },
+            {
+              "start": 2,
+              "length": 3,
+              "raw": "ngok"
+            },
+            {
+              "start": 3,
+              "length": 1,
+              "raw": "go"
+            },
+            {
+              "start": 3,
+              "length": 2,
+              "raw": "gok"
+            },
+            {
+              "start": 4,
+              "length": 1,
+              "raw": "k"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": {
+        "raw": "shakai",
+        "manual": false
+      },
+      "segments": [
+        {
+          "reading": "しゃかい",
+          "english": false,
+          "spans": [
+            {
+              "start": 0,
+              "length": 1,
+              "raw": null
+            },
+            {
+              "start": 0,
+              "length": 2,
+              "raw": "sha"
+            },
+            {
+              "start": 0,
+              "length": 3,
+              "raw": "shaka"
+            },
+            {
+              "start": 0,
+              "length": 4,
+              "raw": "shakai"
+            },
+            {
+              "start": 1,
+              "length": 1,
+              "raw": null
+            },
+            {
+              "start": 1,
+              "length": 2,
+              "raw": null
+            },
+            {
+              "start": 1,
+              "length": 3,
+              "raw": null
+            },
+            {
+              "start": 2,
+              "length": 1,
+              "raw": "ka"
+            },
+            {
+              "start": 2,
+              "length": 2,
+              "raw": "kai"
+            },
+            {
+              "start": 3,
+              "length": 1,
+              "raw": "i"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": {
+        "raw": "nyuuryoku",
+        "manual": false
+      },
+      "segments": [
+        {
+          "reading": "にゅうりょく",
+          "english": false,
+          "spans": [
+            {
+              "start": 0,
+              "length": 1,
+              "raw": null
+            },
+            {
+              "start": 0,
+              "length": 2,
+              "raw": "nyu"
+            },
+            {
+              "start": 0,
+              "length": 3,
+              "raw": "nyuu"
+            },
+            {
+              "start": 0,
+              "length": 4,
+              "raw": null
+            },
+            {
+              "start": 0,
+              "length": 5,
+              "raw": "nyuuryo"
+            },
+            {
+              "start": 0,
+              "length": 6,
+              "raw": "nyuuryoku"
+            },
+            {
+              "start": 1,
+              "length": 1,
+              "raw": null
+            },
+            {
+              "start": 1,
+              "length": 2,
+              "raw": null
+            },
+            {
+              "start": 1,
+              "length": 3,
+              "raw": null
+            },
+            {
+              "start": 1,
+              "length": 4,
+              "raw": null
+            },
+            {
+              "start": 1,
+              "length": 5,
+              "raw": null
+            },
+            {
+              "start": 2,
+              "length": 1,
+              "raw": "u"
+            },
+            {
+              "start": 2,
+              "length": 2,
+              "raw": null
+            },
+            {
+              "start": 2,
+              "length": 3,
+              "raw": "uryo"
+            },
+            {
+              "start": 2,
+              "length": 4,
+              "raw": "uryoku"
+            },
+            {
+              "start": 3,
+              "length": 1,
+              "raw": null
+            },
+            {
+              "start": 3,
+              "length": 2,
+              "raw": "ryo"
+            },
+            {
+              "start": 3,
+              "length": 3,
+              "raw": "ryoku"
+            },
+            {
+              "start": 4,
+              "length": 1,
+              "raw": null
+            },
+            {
+              "start": 4,
+              "length": 2,
+              "raw": null
+            },
+            {
+              "start": 5,
+              "length": 1,
+              "raw": "ku"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": {
+        "raw": "HelloWorld",
+        "manual": false
+      },
+      "segments": [
+        {
+          "reading": "HelloWorld",
+          "english": true,
+          "spans": []
+        }
+      ]
+    },
+    {
+      "case": {
+        "raw": "😀nihongo",
+        "manual": false
+      },
+      "segments": [
+        {
+          "reading": "😀にほんご",
+          "english": false,
+          "spans": [
+            {
+              "start": 0,
+              "length": 1,
+              "raw": "�"
+            },
+            {
+              "start": 0,
+              "length": 2,
+              "raw": "😀"
+            },
+            {
+              "start": 0,
+              "length": 3,
+              "raw": "😀ni"
+            },
+            {
+              "start": 0,
+              "length": 4,
+              "raw": "😀niho"
+            },
+            {
+              "start": 0,
+              "length": 5,
+              "raw": "😀nihon"
+            },
+            {
+              "start": 0,
+              "length": 6,
+              "raw": "😀nihongo"
+            },
+            {
+              "start": 1,
+              "length": 1,
+              "raw": "�"
+            },
+            {
+              "start": 1,
+              "length": 2,
+              "raw": "�ni"
+            },
+            {
+              "start": 1,
+              "length": 3,
+              "raw": "�niho"
+            },
+            {
+              "start": 1,
+              "length": 4,
+              "raw": "�nihon"
+            },
+            {
+              "start": 1,
+              "length": 5,
+              "raw": "�nihongo"
+            },
+            {
+              "start": 2,
+              "length": 1,
+              "raw": "ni"
+            },
+            {
+              "start": 2,
+              "length": 2,
+              "raw": "niho"
+            },
+            {
+              "start": 2,
+              "length": 3,
+              "raw": "nihon"
+            },
+            {
+              "start": 2,
+              "length": 4,
+              "raw": "nihongo"
+            },
+            {
+              "start": 3,
+              "length": 1,
+              "raw": "ho"
+            },
+            {
+              "start": 3,
+              "length": 2,
+              "raw": "hon"
+            },
+            {
+              "start": 3,
+              "length": 3,
+              "raw": "hongo"
+            },
+            {
+              "start": 4,
+              "length": 1,
+              "raw": "n"
+            },
+            {
+              "start": 4,
+              "length": 2,
+              "raw": "ngo"
+            },
+            {
+              "start": 5,
+              "length": 1,
+              "raw": "go"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": {
+        "raw": "hashinohashi",
+        "manual": false
+      },
+      "segments": [
+        {
+          "reading": "はしのはし",
+          "english": false,
+          "spans": [
+            {
+              "start": 0,
+              "length": 1,
+              "raw": "ha"
+            },
+            {
+              "start": 0,
+              "length": 2,
+              "raw": "hashi"
+            },
+            {
+              "start": 0,
+              "length": 3,
+              "raw": "hashino"
+            },
+            {
+              "start": 0,
+              "length": 4,
+              "raw": "hashinoha"
+            },
+            {
+              "start": 0,
+              "length": 5,
+              "raw": "hashinohashi"
+            },
+            {
+              "start": 1,
+              "length": 1,
+              "raw": "shi"
+            },
+            {
+              "start": 1,
+              "length": 2,
+              "raw": "shino"
+            },
+            {
+              "start": 1,
+              "length": 3,
+              "raw": "shinoha"
+            },
+            {
+              "start": 1,
+              "length": 4,
+              "raw": "shinohashi"
+            },
+            {
+              "start": 2,
+              "length": 1,
+              "raw": "no"
+            },
+            {
+              "start": 2,
+              "length": 2,
+              "raw": "noha"
+            },
+            {
+              "start": 2,
+              "length": 3,
+              "raw": "nohashi"
+            },
+            {
+              "start": 3,
+              "length": 1,
+              "raw": "ha"
+            },
+            {
+              "start": 3,
+              "length": 2,
+              "raw": "hashi"
+            },
+            {
+              "start": 4,
+              "length": 1,
+              "raw": "shi"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": {
+        "raw": "hashikami",
+        "manual": true
+      },
+      "segments": [
+        {
+          "reading": "はしかみ",
+          "english": false,
+          "spans": [
+            {
+              "start": 0,
+              "length": 1,
+              "raw": "ha"
+            },
+            {
+              "start": 0,
+              "length": 2,
+              "raw": "hashi"
+            },
+            {
+              "start": 0,
+              "length": 3,
+              "raw": "hashika"
+            },
+            {
+              "start": 0,
+              "length": 4,
+              "raw": "hashikami"
+            },
+            {
+              "start": 1,
+              "length": 1,
+              "raw": "shi"
+            },
+            {
+              "start": 1,
+              "length": 2,
+              "raw": "shika"
+            },
+            {
+              "start": 1,
+              "length": 3,
+              "raw": "shikami"
+            },
+            {
+              "start": 2,
+              "length": 1,
+              "raw": "ka"
+            },
+            {
+              "start": 2,
+              "length": 2,
+              "raw": "kami"
+            },
+            {
+              "start": 3,
+              "length": 1,
+              "raw": "mi"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": {
+        "raw": "nihongo",
+        "manual": true
+      },
+      "segments": [
+        {
+          "reading": "にほんご",
+          "english": false,
+          "spans": [
+            {
+              "start": 0,
+              "length": 1,
+              "raw": "ni"
+            },
+            {
+              "start": 0,
+              "length": 2,
+              "raw": "niho"
+            },
+            {
+              "start": 0,
+              "length": 3,
+              "raw": "nihon"
+            },
+            {
+              "start": 0,
+              "length": 4,
+              "raw": "nihongo"
+            },
+            {
+              "start": 1,
+              "length": 1,
+              "raw": "ho"
+            },
+            {
+              "start": 1,
+              "length": 2,
+              "raw": "hon"
+            },
+            {
+              "start": 1,
+              "length": 3,
+              "raw": "hongo"
+            },
+            {
+              "start": 2,
+              "length": 1,
+              "raw": "n"
+            },
+            {
+              "start": 2,
+              "length": 2,
+              "raw": "ngo"
+            },
+            {
+              "start": 3,
+              "length": 1,
+              "raw": "go"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": {
+        "raw": "kya",
+        "manual": true
+      },
+      "segments": [
+        {
+          "reading": "きゃ",
+          "english": false,
+          "spans": [
+            {
+              "start": 0,
+              "length": 1,
+              "raw": null
+            },
+            {
+              "start": 0,
+              "length": 2,
+              "raw": "kya"
+            },
+            {
+              "start": 1,
+              "length": 1,
+              "raw": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": {
+        "raw": "gakkou",
+        "manual": true
+      },
+      "segments": [
+        {
+          "reading": "がっこう",
+          "english": false,
+          "spans": [
+            {
+              "start": 0,
+              "length": 1,
+              "raw": "ga"
+            },
+            {
+              "start": 0,
+              "length": 2,
+              "raw": "gak"
+            },
+            {
+              "start": 0,
+              "length": 3,
+              "raw": "gakko"
+            },
+            {
+              "start": 0,
+              "length": 4,
+              "raw": "gakkou"
+            },
+            {
+              "start": 1,
+              "length": 1,
+              "raw": "k"
+            },
+            {
+              "start": 1,
+              "length": 2,
+              "raw": "kko"
+            },
+            {
+              "start": 1,
+              "length": 3,
+              "raw": "kkou"
+            },
+            {
+              "start": 2,
+              "length": 1,
+              "raw": "ko"
+            },
+            {
+              "start": 2,
+              "length": 2,
+              "raw": "kou"
+            },
+            {
+              "start": 3,
+              "length": 1,
+              "raw": "u"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": {
+        "raw": "kannji",
+        "manual": true
+      },
+      "segments": [
+        {
+          "reading": "かんじ",
+          "english": false,
+          "spans": [
+            {
+              "start": 0,
+              "length": 1,
+              "raw": "ka"
+            },
+            {
+              "start": 0,
+              "length": 2,
+              "raw": "kann"
+            },
+            {
+              "start": 0,
+              "length": 3,
+              "raw": "kannji"
+            },
+            {
+              "start": 1,
+              "length": 1,
+              "raw": "nn"
+            },
+            {
+              "start": 1,
+              "length": 2,
+              "raw": "nnji"
+            },
+            {
+              "start": 2,
+              "length": 1,
+              "raw": "ji"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": {
+        "raw": "GitHubnihongo",
+        "manual": true
+      },
+      "segments": [
+        {
+          "reading": "GitHubnihongo",
+          "english": true,
+          "spans": []
+        }
+      ]
+    },
+    {
+      "case": {
+        "raw": "hashiapi",
+        "manual": true
+      },
+      "segments": [
+        {
+          "reading": "はしあぴ",
+          "english": false,
+          "spans": [
+            {
+              "start": 0,
+              "length": 1,
+              "raw": "ha"
+            },
+            {
+              "start": 0,
+              "length": 2,
+              "raw": "hashi"
+            },
+            {
+              "start": 0,
+              "length": 3,
+              "raw": "hashia"
+            },
+            {
+              "start": 0,
+              "length": 4,
+              "raw": "hashiapi"
+            },
+            {
+              "start": 1,
+              "length": 1,
+              "raw": "shi"
+            },
+            {
+              "start": 1,
+              "length": 2,
+              "raw": "shia"
+            },
+            {
+              "start": 1,
+              "length": 3,
+              "raw": "shiapi"
+            },
+            {
+              "start": 2,
+              "length": 1,
+              "raw": "a"
+            },
+            {
+              "start": 2,
+              "length": 2,
+              "raw": "api"
+            },
+            {
+              "start": 3,
+              "length": 1,
+              "raw": "pi"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": {
+        "raw": "apiwo",
+        "manual": true
+      },
+      "segments": [
+        {
+          "reading": "あぴを",
+          "english": false,
+          "spans": [
+            {
+              "start": 0,
+              "length": 1,
+              "raw": "a"
+            },
+            {
+              "start": 0,
+              "length": 2,
+              "raw": "api"
+            },
+            {
+              "start": 0,
+              "length": 3,
+              "raw": "apiwo"
+            },
+            {
+              "start": 1,
+              "length": 1,
+              "raw": "pi"
+            },
+            {
+              "start": 1,
+              "length": 2,
+              "raw": "piwo"
+            },
+            {
+              "start": 2,
+              "length": 1,
+              "raw": "wo"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": {
+        "raw": "nihongoGitHub",
+        "manual": true
+      },
+      "segments": [
+        {
+          "reading": "nihongoGitHub",
+          "english": true,
+          "spans": []
+        }
+      ]
+    },
+    {
+      "case": {
+        "raw": "hashi,",
+        "manual": true
+      },
+      "segments": [
+        {
+          "reading": "はし、",
+          "english": false,
+          "spans": [
+            {
+              "start": 0,
+              "length": 1,
+              "raw": "ha"
+            },
+            {
+              "start": 0,
+              "length": 2,
+              "raw": "hashi"
+            },
+            {
+              "start": 0,
+              "length": 3,
+              "raw": "hashi,"
+            },
+            {
+              "start": 1,
+              "length": 1,
+              "raw": "shi"
+            },
+            {
+              "start": 1,
+              "length": 2,
+              "raw": "shi,"
+            },
+            {
+              "start": 2,
+              "length": 1,
+              "raw": ","
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": {
+        "raw": "konnnichiha",
+        "manual": true
+      },
+      "segments": [
+        {
+          "reading": "こんにちは",
+          "english": false,
+          "spans": [
+            {
+              "start": 0,
+              "length": 1,
+              "raw": "ko"
+            },
+            {
+              "start": 0,
+              "length": 2,
+              "raw": "konn"
+            },
+            {
+              "start": 0,
+              "length": 3,
+              "raw": "konnni"
+            },
+            {
+              "start": 0,
+              "length": 4,
+              "raw": "konnnichi"
+            },
+            {
+              "start": 0,
+              "length": 5,
+              "raw": "konnnichiha"
+            },
+            {
+              "start": 1,
+              "length": 1,
+              "raw": "nn"
+            },
+            {
+              "start": 1,
+              "length": 2,
+              "raw": "nnni"
+            },
+            {
+              "start": 1,
+              "length": 3,
+              "raw": "nnnichi"
+            },
+            {
+              "start": 1,
+              "length": 4,
+              "raw": "nnnichiha"
+            },
+            {
+              "start": 2,
+              "length": 1,
+              "raw": "ni"
+            },
+            {
+              "start": 2,
+              "length": 2,
+              "raw": "nichi"
+            },
+            {
+              "start": 2,
+              "length": 3,
+              "raw": "nichiha"
+            },
+            {
+              "start": 3,
+              "length": 1,
+              "raw": "chi"
+            },
+            {
+              "start": 3,
+              "length": 2,
+              "raw": "chiha"
+            },
+            {
+              "start": 4,
+              "length": 1,
+              "raw": "ha"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": {
+        "raw": "shinbun",
+        "manual": true
+      },
+      "segments": [
+        {
+          "reading": "しんぶん",
+          "english": false,
+          "spans": [
+            {
+              "start": 0,
+              "length": 1,
+              "raw": "shi"
+            },
+            {
+              "start": 0,
+              "length": 2,
+              "raw": "shin"
+            },
+            {
+              "start": 0,
+              "length": 3,
+              "raw": "shinbu"
+            },
+            {
+              "start": 0,
+              "length": 4,
+              "raw": "shinbun"
+            },
+            {
+              "start": 1,
+              "length": 1,
+              "raw": "n"
+            },
+            {
+              "start": 1,
+              "length": 2,
+              "raw": "nbu"
+            },
+            {
+              "start": 1,
+              "length": 3,
+              "raw": "nbun"
+            },
+            {
+              "start": 2,
+              "length": 1,
+              "raw": "bu"
+            },
+            {
+              "start": 2,
+              "length": 2,
+              "raw": "bun"
+            },
+            {
+              "start": 3,
+              "length": 1,
+              "raw": "n"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": {
+        "raw": "nihongok",
+        "manual": true
+      },
+      "segments": [
+        {
+          "reading": "にほんごk",
+          "english": false,
+          "spans": [
+            {
+              "start": 0,
+              "length": 1,
+              "raw": "ni"
+            },
+            {
+              "start": 0,
+              "length": 2,
+              "raw": "niho"
+            },
+            {
+              "start": 0,
+              "length": 3,
+              "raw": "nihon"
+            },
+            {
+              "start": 0,
+              "length": 4,
+              "raw": "nihongo"
+            },
+            {
+              "start": 0,
+              "length": 5,
+              "raw": "nihongok"
+            },
+            {
+              "start": 1,
+              "length": 1,
+              "raw": "ho"
+            },
+            {
+              "start": 1,
+              "length": 2,
+              "raw": "hon"
+            },
+            {
+              "start": 1,
+              "length": 3,
+              "raw": "hongo"
+            },
+            {
+              "start": 1,
+              "length": 4,
+              "raw": "hongok"
+            },
+            {
+              "start": 2,
+              "length": 1,
+              "raw": "n"
+            },
+            {
+              "start": 2,
+              "length": 2,
+              "raw": "ngo"
+            },
+            {
+              "start": 2,
+              "length": 3,
+              "raw": "ngok"
+            },
+            {
+              "start": 3,
+              "length": 1,
+              "raw": "go"
+            },
+            {
+              "start": 3,
+              "length": 2,
+              "raw": "gok"
+            },
+            {
+              "start": 4,
+              "length": 1,
+              "raw": "k"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": {
+        "raw": "shakai",
+        "manual": true
+      },
+      "segments": [
+        {
+          "reading": "しゃかい",
+          "english": false,
+          "spans": [
+            {
+              "start": 0,
+              "length": 1,
+              "raw": null
+            },
+            {
+              "start": 0,
+              "length": 2,
+              "raw": "sha"
+            },
+            {
+              "start": 0,
+              "length": 3,
+              "raw": "shaka"
+            },
+            {
+              "start": 0,
+              "length": 4,
+              "raw": "shakai"
+            },
+            {
+              "start": 1,
+              "length": 1,
+              "raw": null
+            },
+            {
+              "start": 1,
+              "length": 2,
+              "raw": null
+            },
+            {
+              "start": 1,
+              "length": 3,
+              "raw": null
+            },
+            {
+              "start": 2,
+              "length": 1,
+              "raw": "ka"
+            },
+            {
+              "start": 2,
+              "length": 2,
+              "raw": "kai"
+            },
+            {
+              "start": 3,
+              "length": 1,
+              "raw": "i"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": {
+        "raw": "nyuuryoku",
+        "manual": true
+      },
+      "segments": [
+        {
+          "reading": "にゅうりょく",
+          "english": false,
+          "spans": [
+            {
+              "start": 0,
+              "length": 1,
+              "raw": null
+            },
+            {
+              "start": 0,
+              "length": 2,
+              "raw": "nyu"
+            },
+            {
+              "start": 0,
+              "length": 3,
+              "raw": "nyuu"
+            },
+            {
+              "start": 0,
+              "length": 4,
+              "raw": null
+            },
+            {
+              "start": 0,
+              "length": 5,
+              "raw": "nyuuryo"
+            },
+            {
+              "start": 0,
+              "length": 6,
+              "raw": "nyuuryoku"
+            },
+            {
+              "start": 1,
+              "length": 1,
+              "raw": null
+            },
+            {
+              "start": 1,
+              "length": 2,
+              "raw": null
+            },
+            {
+              "start": 1,
+              "length": 3,
+              "raw": null
+            },
+            {
+              "start": 1,
+              "length": 4,
+              "raw": null
+            },
+            {
+              "start": 1,
+              "length": 5,
+              "raw": null
+            },
+            {
+              "start": 2,
+              "length": 1,
+              "raw": "u"
+            },
+            {
+              "start": 2,
+              "length": 2,
+              "raw": null
+            },
+            {
+              "start": 2,
+              "length": 3,
+              "raw": "uryo"
+            },
+            {
+              "start": 2,
+              "length": 4,
+              "raw": "uryoku"
+            },
+            {
+              "start": 3,
+              "length": 1,
+              "raw": null
+            },
+            {
+              "start": 3,
+              "length": 2,
+              "raw": "ryo"
+            },
+            {
+              "start": 3,
+              "length": 3,
+              "raw": "ryoku"
+            },
+            {
+              "start": 4,
+              "length": 1,
+              "raw": null
+            },
+            {
+              "start": 4,
+              "length": 2,
+              "raw": null
+            },
+            {
+              "start": 5,
+              "length": 1,
+              "raw": "ku"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": {
+        "raw": "HelloWorld",
+        "manual": true
+      },
+      "segments": [
+        {
+          "reading": "HelloWorld",
+          "english": true,
+          "spans": []
+        }
+      ]
+    },
+    {
+      "case": {
+        "raw": "😀nihongo",
+        "manual": true
+      },
+      "segments": [
+        {
+          "reading": "😀にほんご",
+          "english": false,
+          "spans": [
+            {
+              "start": 0,
+              "length": 1,
+              "raw": "�"
+            },
+            {
+              "start": 0,
+              "length": 2,
+              "raw": "😀"
+            },
+            {
+              "start": 0,
+              "length": 3,
+              "raw": "😀ni"
+            },
+            {
+              "start": 0,
+              "length": 4,
+              "raw": "😀niho"
+            },
+            {
+              "start": 0,
+              "length": 5,
+              "raw": "😀nihon"
+            },
+            {
+              "start": 0,
+              "length": 6,
+              "raw": "😀nihongo"
+            },
+            {
+              "start": 1,
+              "length": 1,
+              "raw": "�"
+            },
+            {
+              "start": 1,
+              "length": 2,
+              "raw": "�ni"
+            },
+            {
+              "start": 1,
+              "length": 3,
+              "raw": "�niho"
+            },
+            {
+              "start": 1,
+              "length": 4,
+              "raw": "�nihon"
+            },
+            {
+              "start": 1,
+              "length": 5,
+              "raw": "�nihongo"
+            },
+            {
+              "start": 2,
+              "length": 1,
+              "raw": "ni"
+            },
+            {
+              "start": 2,
+              "length": 2,
+              "raw": "niho"
+            },
+            {
+              "start": 2,
+              "length": 3,
+              "raw": "nihon"
+            },
+            {
+              "start": 2,
+              "length": 4,
+              "raw": "nihongo"
+            },
+            {
+              "start": 3,
+              "length": 1,
+              "raw": "ho"
+            },
+            {
+              "start": 3,
+              "length": 2,
+              "raw": "hon"
+            },
+            {
+              "start": 3,
+              "length": 3,
+              "raw": "hongo"
+            },
+            {
+              "start": 4,
+              "length": 1,
+              "raw": "n"
+            },
+            {
+              "start": 4,
+              "length": 2,
+              "raw": "ngo"
+            },
+            {
+              "start": 5,
+              "length": 1,
+              "raw": "go"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": {
+        "raw": "hashinohashi",
+        "manual": true
+      },
+      "segments": [
+        {
+          "reading": "はしのはし",
+          "english": false,
+          "spans": [
+            {
+              "start": 0,
+              "length": 1,
+              "raw": "ha"
+            },
+            {
+              "start": 0,
+              "length": 2,
+              "raw": "hashi"
+            },
+            {
+              "start": 0,
+              "length": 3,
+              "raw": "hashino"
+            },
+            {
+              "start": 0,
+              "length": 4,
+              "raw": "hashinoha"
+            },
+            {
+              "start": 0,
+              "length": 5,
+              "raw": "hashinohashi"
+            },
+            {
+              "start": 1,
+              "length": 1,
+              "raw": "shi"
+            },
+            {
+              "start": 1,
+              "length": 2,
+              "raw": "shino"
+            },
+            {
+              "start": 1,
+              "length": 3,
+              "raw": "shinoha"
+            },
+            {
+              "start": 1,
+              "length": 4,
+              "raw": "shinohashi"
+            },
+            {
+              "start": 2,
+              "length": 1,
+              "raw": "no"
+            },
+            {
+              "start": 2,
+              "length": 2,
+              "raw": "noha"
+            },
+            {
+              "start": 2,
+              "length": 3,
+              "raw": "nohashi"
+            },
+            {
+              "start": 3,
+              "length": 1,
+              "raw": "ha"
+            },
+            {
+              "start": 3,
+              "length": 2,
+              "raw": "hashi"
+            },
+            {
+              "start": 4,
+              "length": 1,
+              "raw": "shi"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "sha256": {
+    "tools/parity/mozc-lifecycle/Raw.cs": "ba0d45d226a2d36c1be77929cf17edb16e26fc70c71ee839c02617b2cef5f2bc",
+    "tools/parity/mozc-lifecycle/Program.cs": "09045db38c9c563730bb7243ac48fd0105140cbfbd2bd03d3cc7fc7f4fc7104b",
+    "src/Meltype.Core/Composition/CompositionText.cs": "c34d54b9c96ed66561e834d46f841d02b77b9a06423bf40d76f7f96f127a02ff"
+  }
+}

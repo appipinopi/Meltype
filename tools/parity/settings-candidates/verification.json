@@ -1,0 +1,181 @@
+{
+  "date": "2026-10-20",
+  "platform": "Windows",
+  "rust": "1.94.1",
+  "baseline": "45e14f86558aa6ea34f2c2ecd038ba95ca8c3c46",
+  "settings": 68,
+  "value_pairs": 12595,
+  "pairwise_configurations": 42,
+  "exhaustive_switch_configurations": 128,
+  "input_configurations": 32,
+  "candidate_scenarios_per_abi": 677,
+  "application_policy_cases": 384,
+  "previous_core_data_scenarios_per_abi": 371,
+  "native_regression_scripts": 24,
+  "native_regressions": [
+    {
+      "check": "x64-abi_smoke",
+      "returncode": 0
+    },
+    {
+      "check": "x64-custom_romaji_smoke",
+      "returncode": 0
+    },
+    {
+      "check": "x64-scored_smoke",
+      "returncode": 0
+    },
+    {
+      "check": "x64-prediction_keys_smoke",
+      "returncode": 0
+    },
+    {
+      "check": "x64-case_keys_smoke",
+      "returncode": 0
+    },
+    {
+      "check": "x64-shift_space_smoke",
+      "returncode": 0
+    },
+    {
+      "check": "x64-clause_resize_smoke",
+      "returncode": 0
+    },
+    {
+      "check": "x64-reconversion_smoke",
+      "returncode": 0
+    },
+    {
+      "check": "x64-misspelling_marks_smoke",
+      "returncode": 0
+    },
+    {
+      "check": "x64-number_keys_smoke-upstream-public-number-keys",
+      "returncode": 0
+    },
+    {
+      "check": "x64-number_keys_smoke-upstream-conversion-keys",
+      "returncode": 0
+    },
+    {
+      "check": "x64-number_keys_smoke-upstream-misspelling-keys",
+      "returncode": 0
+    },
+    {
+      "check": "x86-abi_smoke",
+      "returncode": 0
+    },
+    {
+      "check": "x86-custom_romaji_smoke",
+      "returncode": 0
+    },
+    {
+      "check": "x86-scored_smoke",
+      "returncode": 0
+    },
+    {
+      "check": "x86-prediction_keys_smoke",
+      "returncode": 0
+    },
+    {
+      "check": "x86-case_keys_smoke",
+      "returncode": 0
+    },
+    {
+      "check": "x86-shift_space_smoke",
+      "returncode": 0
+    },
+    {
+      "check": "x86-clause_resize_smoke",
+      "returncode": 0
+    },
+    {
+      "check": "x86-reconversion_smoke",
+      "returncode": 0
+    },
+    {
+      "check": "x86-misspelling_marks_smoke",
+      "returncode": 0
+    },
+    {
+      "check": "x86-number_keys_smoke-upstream-public-number-keys",
+      "returncode": 0
+    },
+    {
+      "check": "x86-number_keys_smoke-upstream-conversion-keys",
+      "returncode": 0
+    },
+    {
+      "check": "x86-number_keys_smoke-upstream-misspelling-keys",
+      "returncode": 0
+    }
+  ],
+  "performance_remeasured": false,
+  "sha256": {
+    "rust/core/tests/data/upstream-settings-candidates.json": "be18b47ff0d636eeb77f5680f7dd2c171ecc052912709c34f795bccb0701698e",
+    "rust/core/tests/data/upstream-settings-apps.json": "86f51a63da7ee967177b30f36795dc0d7b29b0b9cd05c9b838f2375d606f85d5",
+    "C:/opencode-rust/meltype-target-1.94/release/meltype_native.dll": "b48fbd4c592a4c9be670c2bae6ed3152d8965cd3e5c630be3760ab9850c8a38a",
+    "C:/opencode-rust/meltype-target-1.94/release/meltype-tip-worker.exe": "fd7dbc0ff8a3d65f670fd0bfe28beeefa2e2e5663edfca7db598b3fb3aca1ddc",
+    "C:/opencode-rust/meltype-target-1.94/i686-pc-windows-msvc/release/meltype_native.dll": "2488b464e529dabfc1dce93f2978b4dc3f39fe0e904134238110a86c1e533909",
+    "C:/opencode-rust/meltype-target-1.94/i686-pc-windows-msvc/release/meltype-tip-worker.exe": "339fdf215763847d8743e7dacf6ba05042aabfbb3da43769e1e6de2843a414a1"
+  },
+  "source_sha256": {
+    "rust/core/src/candidate_sources.rs": "a16b89f25241a52dff42a9420508ca093e5f6a4e52a73a593c9abf8b93976cf5",
+    "rust/core/src/commit_correction.rs": "c12a8dbcd87468b9ac382bca9aadcbf0b46bb9474efaea3d6acd987aa2fa496c",
+    "rust/core/src/composition_units.rs": "d6d5e9fcb320921e9d0ba403eb6d330cdfc77ccf7bb2ddf20738f1e7d4b5e465",
+    "rust/core/src/context.rs": "9d2bad79c7201877842dd064b5654ca2acdda8643493fda41fdb24254f6ab914",
+    "rust/core/src/control.rs": "6bfbde9b9fdb9e08adc25d648ee5a2917d62d7e3562385834378ac8fa0946b9d",
+    "rust/core/src/detection.rs": "63a5ff5dded0c0011dd053fb532deedf2a132ce2d531d98621493b8b4b6d9c2d",
+    "rust/core/src/dictionary.rs": "e74e6e75cd749e5aaab6ce379d69483dc9c4b0fc77826914288333ad3c4befbd",
+    "rust/core/src/input_session.rs": "6d1d5c639227e3831b4847cb64f7364527d9ec5ceea2b03ec376eddd429486b1",
+    "rust/core/src/kana.rs": "abb05407f745dc3b2e38f3ae1e642f53f7ea2bd71da5fe0e7418a0e7ab0df338",
+    "rust/core/src/language_memory.rs": "a8cd8852d14704eb3db35702d3f235f05051e00d14ba047a5a4246c9c72f3e72",
+    "rust/core/src/lib.rs": "49cf88fca8970728073b083ba55df0990e2270408a5cf1d1ad4066357d0057ac",
+    "rust/core/src/linguistics.rs": "9fb12bd074807e051a2607e3dc06e00766e9e3529c15d4882ffdfb768cd236bf",
+    "rust/core/src/math_candidates.rs": "b88e637166e5e5da00ddb494a07e711d04148149ff6d36c83aaf8379304978ae",
+    "rust/core/src/mozc.rs": "650c4383ea740c03ad68e915043cff13cf6ae58c581dd5e7a35872d6e618be95",
+    "rust/core/src/phrase_spacing.rs": "a099af5f7612bd053b4064300c389240f5a564730a352cbc400e519852561f4b",
+    "rust/core/src/prefix_learning.rs": "12f482f9d7e570c52c5837649f9db88e3a0b00bfb4806b163d92c34b822dfeb3",
+    "rust/core/src/protection.rs": "913c30a4f23aebb33e3f0804feadb20b8b33ff681d384a7784553ed5d44bf750",
+    "rust/core/src/romaji.rs": "0248858402171c7720bcdd9c124ec48c21068e98465caec239f9b3e5fcf82914",
+    "rust/core/src/session.rs": "ca96e822fe56dc2f71ffd0a32e6f0211e9ab970cac1cf1e71bb0c4841dc458b5",
+    "rust/core/src/settings.rs": "32959588924b9d0f02b0683f6abb48c5b280501a48a3755414c3e9db5d007a24",
+    "rust/core/src/sigil.rs": "c7704057a48f07941749f6631d5183ff6491be1c3b3584a052fd1d803fa246cb",
+    "rust/core/src/spelling.rs": "7e87b9fdbd92455cd86de3d0afa1c5bcfb73e5e98121f07a0ddf669eb5994637",
+    "rust/core/src/storage.rs": "65ed8aeeda55bffebb27810deb8d97d727e4e18bb07184be3d70ab2bccf2f4f7",
+    "rust/core/src/time_candidates.rs": "0a056684f58630849947da6589ffa5fc27df032bf8f17c45d2ab0205549e5223",
+    "rust/core/src/typo.rs": "e2266618d8ec43f16b3263e4b5d360fc3a95596a31631fc118126ddb5df51545",
+    "rust/core/src/user_dictionary.rs": "11c3068b48afb1cd07815e9d9f9875c4d97343400aa0ed4f11ffa897ebf16513",
+    "rust/core/src/dictionary/composition.rs": "e99ac8dd7b2f9ee2a9bdee8da085799ce0e65d165d71a090ecbd0095d8f058af",
+    "rust/core/src/dictionary/scored.rs": "3a9e85f23e7676b78cfc252ae958b8d158bb981b4f562ef76b352fd3f727da00",
+    "rust/core/src/linguistics/normalization_marks.rs": "34c421e9cb25e05072bfc4f469fdcbf5f86b8e173015be2704097de446053a93",
+    "rust/core/src/romaji/custom.rs": "edd325169fed45ea4af23060595f93cbe44dedd7de26c46b476aea0f2875ecce",
+    "rust/core/src/romaji/probes.rs": "256f578fa1939a17dd3e4952ca775d34362c21c9b644f626b179f28c4f0c628f",
+    "rust/core/src/session/clause_metadata.rs": "31694d898469578be944802dffe1eae673904851eebf7d2a9dfb85bca4f2d8b0",
+    "rust/core/src/session/direct.rs": "d66d0311feeadb564f74d4a527b9300e071e79df85733c12f7ff97cffb2c8f05",
+    "rust/core/src/session/engine_learning.rs": "0a50e8988c4647d00e40d4d80dc5265c28b58f49f048081dbdc4c63e3a8e0c47",
+    "rust/core/src/session/misspelling.rs": "e874493f54ba2701d29d615a3abe5e12125bc270b7c091a53b84a46cfbcbf66e",
+    "rust/core/src/session/reconversion.rs": "c343384f42a142899c66a1becee442c79b07fcd4334cbef4a159da47c9500cc9",
+    "rust/core/src/storage/upstream.rs": "8b1a6a2e501fc0e5d0ae06b26ffd6adebbc88238c25df0aa33adcf58821ac958",
+    "rust/native/src/lib.rs": "041b7797b98663e2048e946501f01627c55c53cdc33908cf8d4197b9f82b6da1"
+  },
+  "workspace_tests_passed": 203,
+  "workspace_clippy": "passed",
+  "tsf_server_clippy": "passed",
+  "rustfmt": "passed",
+  "workers": [
+    "prediction",
+    "System / controlled Mozc / Hybrid"
+  ],
+  "quality_gate": {
+    "guarded": {
+      "passed": 216,
+      "total": 216
+    },
+    "non_deleting": {
+      "passed": 215,
+      "total": 216
+    },
+    "gate": "passed"
+  }
+}

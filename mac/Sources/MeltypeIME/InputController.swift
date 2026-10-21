@@ -98,12 +98,7 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
             return false
         }
         let character: Int32 = scalars.count == 1 ? Int32(scalars[0].value) : 0
-        let flags = event.modifierFlags
-        var modifiers: Int32 = 0
-        if flags.contains(.shift) { modifiers |= 1 }
-        if flags.contains(.control) { modifiers |= 2 }
-        if flags.contains(.option) { modifiers |= 4 }
-        if flags.contains(.command) { modifiers |= 8 }
+        let modifiers = KeyMapping.modifiers(for: event.modifierFlags)
 
         let (before, after) = hasMarkedText ? (nil, nil) : surroundingText(of: client)
         guard let result = NativeCore.shared.handleKey(session, vk: vk, character: character, modifiers: modifiers, before: before, after: after) else {
@@ -122,10 +117,9 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
     override func deactivateServer(_ sender: Any!) {
         ModeServices.shared.deactivate(self)
         commitComposition(sender)
-        candidatesWindow?.hide()
-        suggestionPanel?.orderOut(nil)
-        displayedSuggestion = nil
-        meaningKey = nil
+        hideCandidatesWindow()
+        hideSuggestion()
+        clearMeaning()
         candidateList = []
         super.deactivateServer(sender)
     }
@@ -164,6 +158,9 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
     // ---- メニュー (メニューバーの入力メニュー) ----
 
     override func menu() -> NSMenu! {
+#if MELTYPE_RUST_CORE
+        return NativeCore.shared.editorPolicy?.inputMenu(target:self,direct:directInput,code:codeInput,indicator:ModeIndicatorSettings.shared.isEnabled) as? NSMenu
+#else
         let menu = NSMenu()
         for (title, action, selected) in [
             ("日本語・英語の自動判定", #selector(selectAutomatic(_:)), !codeInput && !directInput),
@@ -183,6 +180,7 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
         menu.addItem(withTitle: "Meltype のデータフォルダを開く (設定・ユーザー辞書)", action: #selector(openDataFolder(_:)), keyEquivalent: "")
         menu.addItem(withTitle: "不具合の報告・提案… (Mac 版はプレビュー版です)", action: #selector(openReport(_:)), keyEquivalent: "")
         return menu
+#endif
     }
 
     private func selectMode(direct: Bool, code: Bool, showIndicator: Bool = false) {
@@ -233,6 +231,9 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
 
     @objc private func importUserDictionary(_ sender: Any?) {
         commitComposition(client())
+#if MELTYPE_RUST_CORE
+        NativeCore.shared.editorPolicy?.showDictionaryImport { NativeCore.shared.dataDirectory }
+#else
         let panel = NSOpenPanel()
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
@@ -249,6 +250,7 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
             alert.informativeText = error.localizedDescription
         }
         alert.runModal()
+#endif
     }
 
     @objc private func openReport(_ sender: Any?) {
@@ -263,18 +265,30 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
 
     // ---- 結果を入力欄に反映する ----
 
-    private func apply(_ result: SessionResult?, to client: IMKTextInput) {
+    func apply(_ result: SessionResult?, to client: IMKTextInput) {
         guard let result else { return }
+#if MELTYPE_RUST_CORE
+        NativeCore.shared.editorPolicy?.apply(result,
+            marked: { client.markedRange() }, selected: { client.selectedRange() },
+            substring: { client.attributedSubstring(from: $0)?.string },
+            insert: { text, range in
+                client.insertText(NSAttributedString(string: text), replacementRange: range)
+                self.hasMarkedText = false
+            }, render: {
+                if let view = result.view { self.showComposition(view, client: client) }
+                else { self.hideComposition(client: client) }
+            })
+#else
         for edit in result.commits {
             var range = NSRange(location: NSNotFound, length: 0)
             if edit.deleteBefore > 0 {
                 // 確定し直し: キャレット (変換中の文字があればその先頭) の前の文字を置き換える。
                 let marked = client.markedRange()
                 let caret = marked.location != NSNotFound && marked.length > 0 ? marked.location : client.selectedRange().location
-                if caret != NSNotFound {
-                    let length = min(edit.deleteBefore, caret)
-                    range = NSRange(location: caret - length, length: length)
-                }
+                guard caret != NSNotFound, caret >= edit.deleteBefore,
+                      let expected = edit.expect, (expected as NSString).length == edit.deleteBefore else { return }
+                range = NSRange(location: caret - edit.deleteBefore, length: edit.deleteBefore)
+                guard client.attributedSubstring(from: range)?.string == expected else { return }
             }
             client.insertText(NSAttributedString(string: edit.text), replacementRange: range)
             hasMarkedText = false
@@ -284,11 +298,21 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
         } else {
             hideComposition(client: client)
         }
+#endif
     }
 
     /// 変換中の文字を入力欄に下線付きで出す (変換中は文節ごと、選んでいる文節は太い下線)。
     private func showComposition(_ view: CompositionView, client: IMKTextInput) {
         let text = NSMutableAttributedString(string: view.text)
+#if MELTYPE_RUST_CORE
+        guard NativeCore.shared.editorPolicy?.composition(view, mark: { style, range in
+            let carbonStyle = [kTSMHiliteRawText, kTSMHiliteConvertedText, kTSMHiliteSelectedConvertedText][style]
+            self.addMark(carbonStyle, to: text, range: range)
+        }, publish: { length in
+            client.setMarkedText(NSAttributedString(attributedString: text), selectionRange: NSRange(location: length, length: 0), replacementRange: NSRange(location: NSNotFound, length: 0))
+            self.hasMarkedText = length > 0
+        }) == true else { return }
+#else
         let length = (view.text as NSString).length
         if view.converting && !view.clauses.isEmpty {
             var location = 0
@@ -303,6 +327,7 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
         }
         client.setMarkedText(NSAttributedString(attributedString: text), selectionRange: NSRange(location: length, length: 0), replacementRange: NSRange(location: NSNotFound, length: 0))
         hasMarkedText = length > 0
+#endif
         updateCandidates(view)
         showSuggestion(view.suggestion, client: client)
     }
@@ -314,14 +339,28 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
             hasMarkedText = false
         }
         candidateList = []
-        candidatesWindow?.hide()
-        suggestionPanel?.orderOut(nil)
-        displayedSuggestion = nil
-        meaningKey = nil
+        hideCandidatesWindow()
+        hideSuggestion()
+        clearMeaning()
     }
 
+    private func hideSuggestion() {
+#if MELTYPE_RUST_CORE
+        if let panel=NativeCore.shared.editorPolicy?.suggestion(panel:suggestionPanel,text:nil,caret:.zero,selected:false) as? NSPanel { suggestionPanel=panel }
+#else
+        suggestionPanel?.orderOut(nil)
+#endif
+        displayedSuggestion=nil
+    }
     private func showSuggestion(_ suggestion: String?, client: IMKTextInput) {
         let selection = client.selectedRange()
+#if MELTYPE_RUST_CORE
+        var caret=NSRect.zero
+        if suggestion != nil && selection.location != NSNotFound {
+            _=client.attributes(forCharacterIndex:selection.location,lineHeightRectangle:&caret)
+        }
+        if let panel=NativeCore.shared.editorPolicy?.suggestion(panel:suggestionPanel,text:suggestion,caret:caret,selected:selection.location != NSNotFound) as? NSPanel { suggestionPanel=panel }
+#else
         guard let suggestion, selection.location != NSNotFound else {
             suggestionPanel?.orderOut(nil)
             displayedSuggestion = nil
@@ -357,6 +396,7 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
         }
         suggestionPanel = panel
         panel.orderFrontRegardless()
+#endif
     }
 
     private func addMark(_ style: Int, to text: NSMutableAttributedString, range: NSRange) {
@@ -374,9 +414,36 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
     }
 
     /// 候補で少し (1.5 秒) 止まったら、その候補の意味を候補ウィンドウの注釈に出す (Windows 版と同じ)。
+#if !MELTYPE_RUST_CORE
     private var meaningKey: String?
+#endif
+    private func hideCandidatesWindow() {
+#if MELTYPE_RUST_CORE
+        if let window = candidatesWindow { _ = NativeCore.shared.editorPolicy?.candidateWindow(window, operation: 4) }
+#else
+        candidatesWindow?.hide()
+#endif
+    }
+    private func clearMeaning() {
+#if MELTYPE_RUST_CORE
+        _ = NativeCore.shared.editorPolicy?.reserveMeaning(session, index: 0, text: nil)
+#else
+        meaningKey = nil
+#endif
+    }
 
     private func scheduleMeaning(_ view: CompositionView) {
+#if MELTYPE_RUST_CORE
+        let token = session
+        let index = view.selectedIndex
+        guard let policy = NativeCore.shared.editorPolicy,
+              policy.reserveMeaning(token, index: index, text: view.meaning), let meaning = view.meaning else { return }
+        policy.scheduleMeaning { [weak self] in
+            guard self != nil, policy.matchesMeaning(token, index: index, text: meaning),
+                  let window = candidatesWindow else { return }
+            _ = policy.candidateWindow(window, operation: 5, text: meaning)
+        }
+#else
         let key = view.meaning.map { "\(view.selectedIndex):\($0)" }
         guard key != meaningKey else { return }
         meaningKey = key
@@ -385,10 +452,36 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
             guard let self, self.meaningKey == key, let window = candidatesWindow, window.isVisible() else { return }
             window.showAnnotation(NSAttributedString(string: meaning))
         }
+#endif
     }
 
     private func updateCandidates(_ view: CompositionView) {
         guard let window = candidatesWindow else { return }
+#if MELTYPE_RUST_CORE
+        var beganSuppression = false
+        defer { if beganSuppression { selectingFromCore = false } }
+        guard let policy = NativeCore.shared.editorPolicy else { return }
+        policy.candidates(view, previous: candidateList, visible: policy.candidateWindow(window, operation: 0) == 1, windowIndex: windowIndex) { operation, argument in
+            switch operation {
+            case 0: beganSuppression = true; self.selectingFromCore = true
+            case 1:
+                self.candidateList = view.candidates
+                guard policy.candidateWindow(window, operation: 1, argument: Int(kIMKLocateCandidatesBelowHint)) != 0 else { return 0 }
+                self.windowIndex = 0
+            case 2:
+                return policy.candidateWindow(window, operation: 2, argument: argument)
+            case 3:
+                return policy.candidateWindow(window, operation: 3, argument: argument)
+            case 4: self.windowIndex = argument
+            case 5: self.scheduleMeaning(view)
+            case 6:
+                self.clearMeaning(); self.candidateList = []
+                return policy.candidateWindow(window, operation: 4)
+            default: return -1
+            }
+            return 1
+        }
+#else
         if view.candidates.count > 1 {
             // 作り直し・選択で候補ウィンドウから candidateSelectionChanged が来ても、本体に返さない。
             selectingFromCore = true
@@ -405,10 +498,11 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
             }
             scheduleMeaning(view)
         } else {
-            meaningKey = nil
+            clearMeaning()
             candidateList = []
             window.hide()
         }
+#endif
     }
 
     /// 候補ウィンドウで今選ばれている候補の番号 (一覧を作り直すと先頭に戻る)。
@@ -417,6 +511,7 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
     /// 候補ウィンドウの選択を index 番目の候補に合わせる。
     /// selectCandidate(withIdentifier:) では選択が動かず、selectedCandidate() も今の選択とずれることがある (macOS 26)。
     /// なので、選択の位置はこちらで覚えておき、矢印キーと同じ moveDown / moveUp でその差だけ動かす。
+#if !MELTYPE_RUST_CORE
     private func selectInWindow(_ window: IMKCandidates, index: Int) {
         let step = index > windowIndex ? #selector(NSResponder.moveDown(_:)) : #selector(NSResponder.moveUp(_:))
         guard window.responds(to: step) else { return }
@@ -426,13 +521,20 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
         windowIndex = index
     }
 
+#endif
     /// 入力欄のキャレットの前後の文字列 (それぞれ 20 文字まで)。取れなければ nil。
     private func surroundingText(of client: IMKTextInput) -> (String?, String?) {
         let selection = client.selectedRange()
+#if MELTYPE_RUST_CORE
+        guard let ranges = NativeCore.shared.editorPolicy?.contextRanges(selection: selection, code: codeInput) else { return (nil, nil) }
+        let before = client.attributedSubstring(from: ranges.0)?.string
+        let after = client.attributedSubstring(from: ranges.1)?.string
+#else
         guard selection.location != NSNotFound else { return (nil, nil) }
         let start = max(0, selection.location - (codeInput ? 4000 : 20))
         let before = client.attributedSubstring(from: NSRange(location: start, length: selection.location - start))?.string
         let after = client.attributedSubstring(from: NSRange(location: selection.location + selection.length, length: 20))?.string
+#endif
         return (before, after)
     }
 }

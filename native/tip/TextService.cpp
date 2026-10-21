@@ -8,6 +8,7 @@
 
 #include <cstdlib>
 #include <cwctype>
+#include <new>
 
 #include "DisplayAttributes.h"
 #include "LangBar.h"
@@ -15,6 +16,7 @@
 namespace meltype {
 namespace {
 
+#ifndef MELTYPE_RUST_CORE
 class EditSession final : public ITfEditSession {
 public:
     explicit EditSession(std::function<HRESULT(TfEditCookie)> action) : action_(std::move(action)) {}
@@ -41,7 +43,9 @@ private:
     LONG refs_ = 1;
     std::function<HRESULT(TfEditCookie)> action_;
 };
+#endif
 
+#ifndef MELTYPE_RUST_CORE
 // 入力欄の種類 (InputScope) のプロパティ。{1713DD5A-68E7-4A5B-9AF6-592A595C778D}
 constexpr GUID kPropInputScope = {0x1713dd5a, 0x68e7, 0x4a5b, {0x9a, 0xf6, 0x59, 0x2a, 0x59, 0x5c, 0x77, 0x8d}};
 
@@ -54,12 +58,16 @@ bool IsSecretScope(InputScope scope) {
             return false;
     }
 }
+#endif
 
 // 送り直したキーに付ける印 (SendInput の dwExtraInfo)。'MLTP' (Meltype.exe のキーボードフックが送る印 'MELT' とは別にする)
 constexpr ULONG_PTR kReinjectMarker = 0x4D4C5450;
 
 // 修飾キーだけのキー (それ自体では入力にならない)
 bool IsModifier(UINT vk) {
+#ifdef MELTYPE_RUST_CORE
+    return (RustKeyFlags(vk,0,false)&1)!=0;
+#else
     switch (vk) {
         case VK_SHIFT: case VK_LSHIFT: case VK_RSHIFT:
         case VK_CONTROL: case VK_LCONTROL: case VK_RCONTROL:
@@ -69,15 +77,31 @@ bool IsModifier(UINT vk) {
         default:
             return false;
     }
+#endif
 }
 
 // 半角/全角 キー (日本語キーボード)
-bool IsHankakuZenkaku(UINT vk) { return vk == VK_KANJI || vk == 0xF3 || vk == 0xF4; }
+bool IsHankakuZenkaku(UINT vk) {
+#ifdef MELTYPE_RUST_CORE
+    return (RustKeyFlags(vk,0,false)&2)!=0;
+#else
+    return vk == VK_KANJI || vk == 0xF3 || vk == 0xF4;
+#endif
+}
 
-bool KeyDown(int vk) { return (GetKeyState(vk) & 0x8000) != 0; }
+bool KeyDown(int vk) {
+#ifdef MELTYPE_RUST_CORE
+    return RustKeyDown(vk);
+#else
+    return (GetKeyState(vk) & 0x8000) != 0;
+#endif
+}
 
 // US 配列の Alt + ` (半角/全角キー相当)。Alt はキーイベントの lParam も確認する。
 bool IsAltGraveToggle(UINT vk, LPARAM lParam) {
+#ifdef MELTYPE_RUST_CORE
+    return (RustKeyFlags(vk,lParam,true)&4)!=0;
+#else
     const ULONG_PTR message = static_cast<ULONG_PTR>(lParam);
     const UINT scan = static_cast<UINT>((message >> 16) & 0xFF);
     const bool graveKey = vk == VK_OEM_3 || (scan == 0x29 && (message & (static_cast<ULONG_PTR>(1) << 24)) == 0);
@@ -85,16 +109,24 @@ bool IsAltGraveToggle(UINT vk, LPARAM lParam) {
                          KeyDown(VK_MENU);
     return graveKey && altDown && !KeyDown(VK_CONTROL) && !KeyDown(VK_SHIFT) &&
            !KeyDown(VK_LWIN) && !KeyDown(VK_RWIN);
+#endif
 }
 
 // 変換中に Meltype.exe が受け持つ Ctrl+英字 (CompositionController.ControlShortcut と合わせる)。Alt・Windows キーと一緒なら違う
 bool IsCompositionShortcut(UINT vk) {
+#ifdef MELTYPE_RUST_CORE
+    return (RustKeyFlags(vk,0,true)&8)!=0;
+#else
     if (!KeyDown(VK_CONTROL) || KeyDown(VK_MENU) || KeyDown(VK_LWIN) || KeyDown(VK_RWIN)) return false;
     return vk == 'H' || vk == 'U' || vk == 'I' || vk == 'O' || vk == 'P';
+#endif
 }
 
 // そのキーで入力される文字 (無ければ 0)
 wchar_t CharOf(UINT vk, LPARAM lParam) {
+#ifdef MELTYPE_RUST_CORE
+    return RustKeyChar(vk,lParam);
+#else
     BYTE state[256] = {};
     if (!GetKeyboardState(state)) return 0;
     // Ctrl を押していても、文字としては Ctrl なしの文字を見る
@@ -105,13 +137,17 @@ wchar_t CharOf(UINT vk, LPARAM lParam) {
     // 4 = キーボードの状態 (デッドキー) を変えない (Windows 10 1607 以降)
     int n = ToUnicode(vk, scan, state, buffer, 8, 4);
     return n == 1 ? buffer[0] : 0;
+#endif
 }
 
+#ifndef MELTYPE_RUST_CORE
 std::string RandomId() {
     char buffer[40];
     sprintf_s(buffer, "%lu-%lu-%llu", GetCurrentProcessId(), GetCurrentThreadId(), GetTickCount64());
     return buffer;
 }
+
+#endif
 
 // 同じ COM のオブジェクトか (インターフェースのポインターは、取り出し方で違うことがあるので IUnknown で比べる)
 bool SameObject(IUnknown* a, IUnknown* b) {
@@ -124,6 +160,9 @@ bool SameObject(IUnknown* a, IUnknown* b) {
 
 // 変換中の文字の下線を消す (その変換中の文字がある入力欄で)
 void ClearAttributeOf(TfEditCookie ec, ITfComposition* composition) {
+#ifdef MELTYPE_RUST_CORE
+    RustClearCompositionAttribute(ec,composition);
+#else
     if (composition == nullptr) return;
     Microsoft::WRL::ComPtr<ITfRange> range;
     Microsoft::WRL::ComPtr<ITfContext> context;
@@ -132,8 +171,10 @@ void ClearAttributeOf(TfEditCookie ec, ITfComposition* composition) {
         SUCCEEDED(context->GetProperty(GUID_PROP_ATTRIBUTE, &property))) {
         property->Clear(ec, range.Get());
     }
+#endif
 }
 
+#ifndef MELTYPE_RUST_CORE
 bool IsOwnProcess() {
     wchar_t path[MAX_PATH] = {};
     GetModuleFileNameW(nullptr, path, MAX_PATH);
@@ -142,17 +183,24 @@ bool IsOwnProcess() {
     return _wcsicmp(name, L"Meltype.exe") == 0;
 }
 
+#endif
+
 std::wstring ProcessName() {
+#ifdef MELTYPE_RUST_CORE
+    return RustProcessName();
+#else
     wchar_t path[MAX_PATH] = {};
     GetModuleFileNameW(nullptr, path, MAX_PATH);
     const wchar_t* name = wcsrchr(path, L'\\');
     std::wstring result = name ? name + 1 : path;
     if (result.size() > 4 && _wcsicmp(result.c_str() + result.size() - 4, L".exe") == 0) result.resize(result.size() - 4);
     return result;
+#endif
 }
 
 }  // namespace
 
+#ifndef MELTYPE_RUST_CORE
 HRESULT RunEditSession(ITfContext* context, TfClientId clientId, DWORD flags, std::function<HRESULT(TfEditCookie)> action) {
     if (context == nullptr) return E_INVALIDARG;
     auto* session = new EditSession(std::move(action));
@@ -161,12 +209,35 @@ HRESULT RunEditSession(ITfContext* context, TfClientId clientId, DWORD flags, st
     session->Release();
     return FAILED(hr) ? hr : result;
 }
+#endif
 
-TextService::TextService() { DllAddRef(); }
+TextService::TextService() {
+#ifndef MELTYPE_RUST_CORE
+    DllAddRef();
+#endif
+#ifdef MELTYPE_RUST_CORE
+    comEntry_=RustCreateServiceCom(this,
+        [](void* owner,const RustServiceCall* call)->HRESULT {
+            auto* s=static_cast<TextService*>(owner);
+            return RustRouteService(s->state_.value,static_cast<IUnknown*>(s->comEntry_),call);
+        },[](void* owner) {delete static_cast<TextService*>(owner);});
+    if (!comEntry_) throw std::bad_alloc();
+    keyState_=RustKeyStateCreate();
+#endif
+}
 
-TextService::~TextService() { DllRelease(); }
+TextService::~TextService() {
+#ifndef MELTYPE_RUST_CORE
+    deactivated_=true;
+    ClearResume();
+    DllRelease();
+#endif
+}
 
 STDMETHODIMP TextService::QueryInterface(REFIID riid, void** ppv) {
+#ifdef MELTYPE_RUST_CORE
+    return static_cast<IUnknown*>(comEntry_)->QueryInterface(riid,ppv);
+#else
     if (ppv == nullptr) return E_INVALIDARG;
     *ppv = nullptr;
     if (IsEqualIID(riid, IID_IUnknown) || IsEqualIID(riid, IID_ITfTextInputProcessor) || IsEqualIID(riid, IID_ITfTextInputProcessorEx)) {
@@ -187,14 +258,25 @@ STDMETHODIMP TextService::QueryInterface(REFIID riid, void** ppv) {
     if (*ppv == nullptr) return E_NOINTERFACE;
     AddRef();
     return S_OK;
+#endif
 }
 
-STDMETHODIMP_(ULONG) TextService::AddRef() { return InterlockedIncrement(&refs_); }
+STDMETHODIMP_(ULONG) TextService::AddRef() {
+#ifdef MELTYPE_RUST_CORE
+    return static_cast<IUnknown*>(comEntry_)->AddRef();
+#else
+    return InterlockedIncrement(&refs_);
+#endif
+}
 
 STDMETHODIMP_(ULONG) TextService::Release() {
+#ifdef MELTYPE_RUST_CORE
+    return static_cast<IUnknown*>(comEntry_)->Release();
+#else
     ULONG count = InterlockedDecrement(&refs_);
     if (count == 0) delete this;
     return count;
+#endif
 }
 
 // ---- 起動・終了 ----
@@ -202,6 +284,10 @@ STDMETHODIMP_(ULONG) TextService::Release() {
 STDMETHODIMP TextService::Activate(ITfThreadMgr* threadMgr, TfClientId clientId) { return ActivateEx(threadMgr, clientId, 0); }
 
 STDMETHODIMP TextService::ActivateEx(ITfThreadMgr* threadMgr, TfClientId clientId, DWORD flags) {
+#ifdef MELTYPE_RUST_CORE
+    void* sinks[]={ServiceInterface<ITfThreadMgrEventSink>(),ServiceInterface<ITfKeyEventSink>(),ServiceInterface<ITfCompartmentEventSink>(),ServiceInterface<ITfTextEditSink>(),ServiceInterface<ITfCompositionSink>()};
+    return RustServiceActivateNative(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),threadMgr,clientId,flags,sinks);
+#else
     threadMgr_ = threadMgr;
     threadMgr_->AddRef();
     clientId_ = clientId;
@@ -216,22 +302,37 @@ STDMETHODIMP TextService::ActivateEx(ITfThreadMgr* threadMgr, TfClientId clientI
     ownEdit_ = false;
     secretChecked_ = false;
     ForgetSecretField();
+#ifdef MELTYPE_RUST_CORE
+    if (!keyState_) keyState_=RustKeyStateCreate();
+    RustKeyStateReset(keyState_);
+#else
     markerSeen_ = false;
-    resumeRange_.Reset();
-    resumeContext_.Reset();
-    resumeText_.clear();
+#endif
+    ClearResume();
     lastConverting_ = false;
+#ifndef MELTYPE_RUST_CORE
     reinjectGuardVk_ = 0;
     reinjectGuardCount_ = 0;
+#endif
+#ifdef MELTYPE_RUST_CORE
+    if (!abandoned_) abandoned_ = RustAbandonedCreate();
+    RustAbandonedReset(abandoned_);
+#else
     abandoned_.clear();
-    staleCommitTries_ = 0;
-    staleVk_ = 0;
+#endif
+    ResetStaleCommit();
+#ifndef MELTYPE_RUST_CORE
     for (Reinjected& pending : reinjected_) pending = {};
+#endif
+#ifndef MELTYPE_RUST_CORE
     passVk_ = 0;
+#endif
     passReason_ = nullptr;
     keyFailed_ = false;
     consumed_ = true;
+#ifndef MELTYPE_RUST_CORE
     for (bool& eaten : eatenDown_) eaten = false;
+#endif
     // サインインや UAC の画面では何もしない。
     // Meltype.exe より高い権限で動いているアプリ (管理者として動くアプリなど) は、つなぐときに断る (Pipe.cpp の IsTrustedServer)
     // (Meltype.exe 自身の画面でも使う。そのときは Meltype.exe が画面のスレッドを通さずに処理する: TipServer の Serve)
@@ -241,16 +342,21 @@ STDMETHODIMP TextService::ActivateEx(ITfThreadMgr* threadMgr, TfClientId clientI
     sid_ = RandomId();
     TipLog(L"Activate (%s)%s%s", ProcessName().c_str(), disabled_ ? L" 無効: " : L"", disabled_ ? reason : L"");
 
+#ifdef MELTYPE_RUST_CORE
+    threadSubscription_ = RustSubscribe(0,threadMgr_,clientId_,ServiceInterface<ITfThreadMgrEventSink>());
+    keySubscription_ = RustSubscribe(1,threadMgr_,clientId_,ServiceInterface<ITfKeyEventSink>());
+#else
     ITfSource* source = nullptr;
     if (SUCCEEDED(threadMgr_->QueryInterface(IID_ITfSource, reinterpret_cast<void**>(&source)))) {
-        source->AdviseSink(IID_ITfThreadMgrEventSink, static_cast<ITfThreadMgrEventSink*>(this), &threadMgrCookie_);
+        source->AdviseSink(IID_ITfThreadMgrEventSink, ServiceInterface<ITfThreadMgrEventSink>(), &threadMgrCookie_);
         source->Release();
     }
     ITfKeystrokeMgr* keystroke = nullptr;
     if (SUCCEEDED(threadMgr_->QueryInterface(IID_ITfKeystrokeMgr, reinterpret_cast<void**>(&keystroke)))) {
-        keystroke->AdviseKeyEventSink(clientId_, static_cast<ITfKeyEventSink*>(this), TRUE);
+        keystroke->AdviseKeyEventSink(clientId_, ServiceInterface<ITfKeyEventSink>(), TRUE);
         keystroke->Release();
     }
+#endif
 
     // 下線の種類を GUID → 番号 (atom) にしておく
     ITfCategoryMgr* category = nullptr;
@@ -263,6 +369,9 @@ STDMETHODIMP TextService::ActivateEx(ITfThreadMgr* threadMgr, TfClientId clientI
 
     // 日本語 / 英数 (IME の ON/OFF)。Meltype は日本語から始める (半角/全角 を押さなくてよいのが Meltype なので)
     // 何もしないプロセス (Meltype.exe 自身・サインインの画面) では、入力モードを変えず、タスクバーの「あ」も出さない (キーはそのまま通るので)
+#ifdef MELTYPE_RUST_CORE
+    if (!disabled_) modeSubscription_ = RustSubscribe(2,threadMgr_,clientId_,ServiceInterface<ITfCompartmentEventSink>());
+#else
     ITfCompartmentMgr* compartments = nullptr;
     if (!disabled_ && SUCCEEDED(threadMgr_->QueryInterface(IID_ITfCompartmentMgr, reinterpret_cast<void**>(&compartments)))) {
         ITfCompartment* openClose = nullptr;
@@ -274,13 +383,14 @@ STDMETHODIMP TextService::ActivateEx(ITfThreadMgr* threadMgr, TfClientId clientI
             openClose->SetValue(clientId_, &value);
             ITfSource* compartmentSource = nullptr;
             if (SUCCEEDED(openClose->QueryInterface(IID_ITfSource, reinterpret_cast<void**>(&compartmentSource)))) {
-                compartmentSource->AdviseSink(IID_ITfCompartmentEventSink, static_cast<ITfCompartmentEventSink*>(this), &compartmentCookie_);
+                compartmentSource->AdviseSink(IID_ITfCompartmentEventSink, ServiceInterface<ITfCompartmentEventSink>(), &compartmentCookie_);
                 compartmentSource->Release();
             }
             openClose->Release();
         }
         compartments->Release();
     }
+#endif
     open_ = !disabled_;
 
     candidates_ = std::make_unique<CandidateWindow>([this](int index, bool prediction) { SelectCandidate(index, prediction); });
@@ -289,7 +399,7 @@ STDMETHODIMP TextService::ActivateEx(ITfThreadMgr* threadMgr, TfClientId clientI
         langBar_ = new LangBarButton(this);
         ITfLangBarItemMgr* items = nullptr;
         if (SUCCEEDED(threadMgr_->QueryInterface(IID_ITfLangBarItemMgr, reinterpret_cast<void**>(&items)))) {
-            items->AddItem(langBar_);
+            if (langBar_->Item()) items->AddItem(langBar_->Item());
             items->Release();
         }
     }
@@ -301,9 +411,13 @@ STDMETHODIMP TextService::ActivateEx(ITfThreadMgr* threadMgr, TfClientId clientI
     }
     if (!disabled_) Hello();
     return S_OK;
+#endif
 }
 
 STDMETHODIMP TextService::Deactivate() {
+#ifdef MELTYPE_RUST_CORE
+    return RustServiceShutdown(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),ServiceInterface<ITfCompositionSink>());
+#else
     TipLog(L"Deactivate");
     if (composition_ != nullptr && compositionContext_ != nullptr) {
         // 確定してから終わる
@@ -319,17 +433,18 @@ STDMETHODIMP TextService::Deactivate() {
     }
     if (!disabled_) {
         JsonValue reply;
-        Request("{\"op\":\"close\",\"sid\":\"" + sid_ + "\"}", reply);
+        Request("{\"op\":\"close\",\"sid\":\"" + SessionId() + "\"}", reply);
     }
     // ここから後 (アプリが変換中の文字を確定した通知・あとから動く非同期の編集セッション) は、Meltype.exe につなぎ直さない
     deactivated_ = true;
-    resumeRange_.Reset();
-    resumeContext_.Reset();
+    ClearResume();
     ForgetSecretField();
     // 手放した変換中の文字は、終われるならここで終える (下線を残さない)。終えられなかったものは、手放したときに頼んだ
     // 非同期の編集セッションに任せて、ここでは持たない (入力欄を持ち続けて、この IME が解放されなくなるのを防ぐ)
     EndAbandonedNow();
+#ifndef MELTYPE_RUST_CORE
     abandoned_.clear();
+#endif
     pipe_.Close();
     candidates_.reset();
     UnadviseTextEditSink();
@@ -337,7 +452,7 @@ STDMETHODIMP TextService::Deactivate() {
     if (langBar_ != nullptr) {
         ITfLangBarItemMgr* items = nullptr;
         if (SUCCEEDED(threadMgr_->QueryInterface(IID_ITfLangBarItemMgr, reinterpret_cast<void**>(&items)))) {
-            items->RemoveItem(langBar_);
+            if (langBar_->Item()) items->RemoveItem(langBar_->Item());
             items->Release();
         }
         langBar_->Detach();
@@ -345,6 +460,11 @@ STDMETHODIMP TextService::Deactivate() {
         langBar_ = nullptr;
     }
 
+#ifdef MELTYPE_RUST_CORE
+    void* mode = modeSubscription_; modeSubscription_ = nullptr; RustUnsubscribe(mode);
+    void* keys = keySubscription_; keySubscription_ = nullptr; RustUnsubscribe(keys);
+    void* thread = threadSubscription_; threadSubscription_ = nullptr; RustUnsubscribe(thread);
+#else
     ITfCompartmentMgr* compartments = nullptr;
     if (compartmentCookie_ != TF_INVALID_COOKIE && SUCCEEDED(threadMgr_->QueryInterface(IID_ITfCompartmentMgr, reinterpret_cast<void**>(&compartments)))) {
         ITfCompartment* openClose = nullptr;
@@ -371,6 +491,7 @@ STDMETHODIMP TextService::Deactivate() {
         source->Release();
     }
     threadMgrCookie_ = TF_INVALID_COOKIE;
+#endif
 
     if (composition_ != nullptr) {
         composition_->Release();
@@ -384,11 +505,15 @@ STDMETHODIMP TextService::Deactivate() {
     threadMgr_ = nullptr;
     clientId_ = TF_CLIENTID_NULL;
     return S_OK;
+#endif
 }
 
 // ---- フォーカス ----
 
 STDMETHODIMP TextService::OnSetFocus(ITfDocumentMgr* focus, ITfDocumentMgr*) {
+#ifdef MELTYPE_RUST_CORE
+    return ServiceFocus(focus,-1);
+#else
     // 別の入力欄に移ったら、変換中の内容は確定する (前の入力欄のキャレットは動かさない)。
     // できればその場で確定する (あとで確定すると、それまでに新しい入力欄で打ったキーが、前の入力欄の変換中の文字に入る)
     if (composition_ != nullptr && !CommitNow(true)) CommitAsync(true);
@@ -397,30 +522,48 @@ STDMETHODIMP TextService::OnSetFocus(ITfDocumentMgr* focus, ITfDocumentMgr*) {
     directEnglishWord_ = false;
     caretMoved_ = true;
     ForgetSecretField();
-    if (candidates_) candidates_->Hide();
+    HideCandidates();
     AdviseTextEditSink(focus);
     if (!disabled_) Hello();
     return S_OK;
+#endif
 }
 
 STDMETHODIMP TextService::OnSetFocus(BOOL foreground) {
-    if (!foreground && candidates_) candidates_->Hide();
+#ifdef MELTYPE_RUST_CORE
+    return ServiceFocus(nullptr,foreground?1:0);
+#else
+    if (!foreground) HideCandidates();
     // キーを受け取らなくなった (スレッドが前面でなくなった・ほかの IME に移った): 受け取ったキーを離したことは届かないかもしれないので忘れる
     // (このスレッドで次に押したキーの、離したことまで受け取らないように)
     if (!foreground) {
+#ifdef MELTYPE_RUST_CORE
+        RustKeyForeground(keyState_,false);
+#else
         for (bool& eaten : eatenDown_) eaten = false;
+#endif
     }
     return S_OK;
+#endif
 }
 
+#ifdef MELTYPE_RUST_CORE
+HRESULT TextService::ServiceFocus(ITfDocumentMgr* document,int event) {
+    return RustServiceFocusNative(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),ServiceInterface<ITfCompositionSink>(),ServiceInterface<ITfTextEditSink>(),document,event);
+}
+#endif
+
 void TextService::AdviseTextEditSink(ITfDocumentMgr* documentMgr) {
+#ifdef MELTYPE_RUST_CORE
+    RustServiceEditSink(state_.value,documentMgr,ServiceInterface<ITfTextInputProcessorEx>(),ServiceInterface<ITfTextEditSink>());
+#else
     UnadviseTextEditSink();
     if (documentMgr == nullptr) return;
     ITfContext* context = nullptr;
     if (FAILED(documentMgr->GetTop(&context)) || context == nullptr) return;
     ITfSource* source = nullptr;
     if (SUCCEEDED(context->QueryInterface(IID_ITfSource, reinterpret_cast<void**>(&source)))) {
-        if (SUCCEEDED(source->AdviseSink(IID_ITfTextEditSink, static_cast<ITfTextEditSink*>(this), &editSinkCookie_))) {
+        if (SUCCEEDED(source->AdviseSink(IID_ITfTextEditSink, ServiceInterface<ITfTextEditSink>(), &editSinkCookie_))) {
             editSinkContext_ = context;
             editSinkContext_->AddRef();
         }
@@ -428,9 +571,13 @@ void TextService::AdviseTextEditSink(ITfDocumentMgr* documentMgr) {
     }
     ownEdit_ = false;
     context->Release();
+#endif
 }
 
 bool TextService::IsSecretField(TfEditCookie ec, ITfContext* context) {
+#ifdef MELTYPE_RUST_CORE
+    return RustServiceInputScope(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),ec,context);
+#else
     // 入力欄の種類 (InputScope) がパスワード・暗証番号か。
     // (入力欄が開いたときに非同期の編集セッションで読むと、それが終わるまでキーが届かなくなるアプリがあるので、キーの編集セッションの中で読む)
     // 種類は 2 か所にある: Windows が持つもの (SetInputScope などで決めたもの) と、アプリが自分で知らせるもの (自前で TSF に対応したアプリ。
@@ -489,8 +636,10 @@ bool TextService::IsSecretField(TfEditCookie ec, ITfContext* context) {
     selection.range->Release();
     if (failed != nullptr) return unreadable(failed);
     return secret;
+#endif
 }
 
+#ifndef MELTYPE_RUST_CORE
 int TextService::ReadSecretField(ITfContext* context) {
     // キーごとに読み直す (同じ入力欄のまま、アプリが入力欄の種類をパスワードに変えることがあるので)。
     // キーを受け取る前に分かれば、パスワード欄のキーは受け取らずにアプリへそのまま渡せる (送り直さずに済む)
@@ -502,12 +651,24 @@ int TextService::ReadSecretField(ITfContext* context) {
     return FAILED(hr) ? -1 : secret ? 1 : 0;
 }
 
+#endif
+std::string TextService::SessionId() const {
+#ifdef MELTYPE_RUST_CORE
+    return RustServiceSid(state_.value);
+#else
+    return sid_;
+#endif
+}
+
 std::string TextService::CommitRequest(bool moved) const {
     // moved: キャレットが動いた (クリック・別の入力欄・アプリが確定した) ので、前に確定した語を確定し直さない
-    return "{\"op\":\"commit\",\"sid\":\"" + sid_ + "\"" + (moved ? ",\"moved\":true" : "") + "}";
+    return "{\"op\":\"commit\",\"sid\":\"" + SessionId() + "\"" + (moved ? ",\"moved\":true" : "") + "}";
 }
 
 void TextService::UnadviseTextEditSink() {
+#ifdef MELTYPE_RUST_CORE
+    RustServiceEditSink(state_.value,nullptr,ServiceInterface<ITfTextInputProcessorEx>(),nullptr);
+#else
     if (editSinkContext_ == nullptr) return;
     ITfSource* source = nullptr;
     if (SUCCEEDED(editSinkContext_->QueryInterface(IID_ITfSource, reinterpret_cast<void**>(&source)))) {
@@ -517,9 +678,14 @@ void TextService::UnadviseTextEditSink() {
     editSinkContext_->Release();
     editSinkContext_ = nullptr;
     editSinkCookie_ = TF_INVALID_COOKIE;
+#endif
 }
 
 STDMETHODIMP TextService::OnEndEdit(ITfContext* context, TfEditCookie ec, ITfEditRecord* record) {
+#ifdef MELTYPE_RUST_CORE
+    RustServiceEditedNative(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),ServiceInterface<ITfCompositionSink>(),context,record,ec);
+    return S_OK;
+#else
     if (record == nullptr) return S_OK;
     // 自分の編集 (確定・変換中の文字) が終わった通知は、キャレットが動いたことにしない
     if (ownEdit_) {
@@ -560,11 +726,15 @@ STDMETHODIMP TextService::OnEndEdit(ITfContext* context, TfEditCookie ec, ITfEdi
         CommitAsync(true);
     }
     return S_OK;
+#endif
 }
 
 // ---- 日本語 / 英数 ----
 
 STDMETHODIMP TextService::OnChange(REFGUID guid) {
+#ifdef MELTYPE_RUST_CORE
+    return RustServiceOpenedNative(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),ServiceInterface<ITfCompositionSink>(),guid);
+#else
     if (!IsEqualGUID(guid, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE) || threadMgr_ == nullptr) return S_OK;
     ITfCompartmentMgr* compartments = nullptr;
     if (FAILED(threadMgr_->QueryInterface(IID_ITfCompartmentMgr, reinterpret_cast<void**>(&compartments)))) return S_OK;
@@ -584,9 +754,13 @@ STDMETHODIMP TextService::OnChange(REFGUID guid) {
     if (!open_ && composition_ != nullptr) CommitAsync(false);
     UpdateLangBar();
     return S_OK;
+#endif
 }
 
 void TextService::SetOpen(bool open) {
+#ifdef MELTYPE_RUST_CORE
+    RustServiceWriteOpen(state_.value,open);
+#else
     if (threadMgr_ == nullptr) return;
     ITfCompartmentMgr* compartments = nullptr;
     if (FAILED(threadMgr_->QueryInterface(IID_ITfCompartmentMgr, reinterpret_cast<void**>(&compartments)))) return;
@@ -600,15 +774,23 @@ void TextService::SetOpen(bool open) {
         openClose->Release();
     }
     compartments->Release();
+#endif
 }
 
 void TextService::UpdateLangBar() {
+#ifdef MELTYPE_RUST_CORE
+    RustServiceUpdateBar(state_.value);
+#else
     if (langBar_ != nullptr) langBar_->Update();
+#endif
 }
 
 // ---- キー ----
 
 bool TextService::ContextDisabled(ITfContext* context) {
+#ifdef MELTYPE_RUST_CORE
+    return RustContextDisabled(context);
+#else
     // IME を使わない入力欄 (パスワード欄は ReadSecretField で見る)
     if (context == nullptr) return true;
     ITfCompartmentMgr* compartments = nullptr;
@@ -626,15 +808,23 @@ bool TextService::ContextDisabled(ITfContext* context) {
     }
     compartments->Release();
     return disabled;
+#endif
 }
 
 bool TextService::ServerReady() {
+#ifdef MELTYPE_RUST_CORE
+    return RustServiceCore(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),false);
+#else
     if (disabled_) return false;
     if (!serverActive_ && GetTickCount64() - lastHello_ > 2000) Hello();
     return serverActive_;
+#endif
 }
 
 void TextService::Hello() {
+#ifdef MELTYPE_RUST_CORE
+    RustServiceCore(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),true);
+#else
     lastHello_ = GetTickCount64();
     JsonValue reply;
     serverActive_ = Request("{\"op\":\"hello\",\"process\":" + JsonString(ProcessName()) + "}", reply) && reply[L"active"].Bool();
@@ -643,13 +833,20 @@ void TextService::Hello() {
     // コードエディター・ターミナルのアプリなら、キャレットが動くたびに入力モードの表示を合わせる (QueryMode)
     codeApp_ = serverActive_ && reply[L"code"].Bool();
     TipLog(L"Meltype.exe: %s", serverActive_ ? L"つながりました" : L"使えません (動いていない・モードが Meltype IME でない)");
+#endif
 }
+
 
 void TextService::ForgetSecretField() {
+#ifdef MELTYPE_RUST_CORE
+    RustKeyCacheClear(keyState_);
+#else
     secretVk_ = 0;
     secretContext_.Reset();
+#endif
 }
 
+#ifndef MELTYPE_RUST_CORE
 bool TextService::WouldEat(ITfContext* context, UINT vk, LPARAM lParam, wchar_t& ch, bool test) {
     ch = 0;
     secretChecked_ = false;
@@ -754,8 +951,12 @@ bool TextService::WouldEat(ITfContext* context, UINT vk, LPARAM lParam, wchar_t&
     passReason_ = nullptr;
     return true;
 }
+#endif
 
 bool TextService::IsReinjected(UINT vk) {
+#ifdef MELTYPE_RUST_CORE
+    return RustIsReinjected(keyState_,vk);
+#else
     // 送り直したキーは 1 回だけ素通しする。送り直すときに付けた印 (dwExtraInfo) で見分ける。
     // 印は前のメッセージのものが残っていることがあるので、送り直してまだ届いていないキーと同じキーのときだけ見る。
     // 印が届かないアプリのために、時刻でも見分ける (少し経っても届かなければ忘れる。押しっぱなしの次のキーを素通ししないように)
@@ -776,9 +977,13 @@ bool TextService::IsReinjected(UINT vk) {
         return ours;
     }
     return false;
+#endif
 }
 
 STDMETHODIMP TextService::OnTestKeyDown(ITfContext* context, WPARAM wParam, LPARAM lParam, BOOL* eaten) {
+#ifdef MELTYPE_RUST_CORE
+    return DispatchKey(0,context,static_cast<UINT>(wParam),lParam,eaten);
+#else
     UINT vk = static_cast<UINT>(wParam);
     if (IsReinjected(vk)) {
         passVk_ = vk;  // アプリによっては、このあと OnKeyDown も呼ぶ
@@ -797,9 +1002,13 @@ STDMETHODIMP TextService::OnTestKeyDown(ITfContext* context, WPARAM wParam, LPAR
         RememberPassed(vk);
     }
     return S_OK;
+#endif
 }
 
 STDMETHODIMP TextService::OnKeyDown(ITfContext* context, WPARAM wParam, LPARAM lParam, BOOL* eaten) {
+#ifdef MELTYPE_RUST_CORE
+    return DispatchKey(1,context,static_cast<UINT>(wParam),lParam,eaten);
+#else
     UINT vk = static_cast<UINT>(wParam);
     if ((vk == passVk_ && GetTickCount64() - passTime_ < 500) || IsReinjected(vk)) {
         passVk_ = 0;
@@ -829,19 +1038,44 @@ STDMETHODIMP TextService::OnKeyDown(ITfContext* context, WPARAM wParam, LPARAM l
     ch = CharOf(vk, lParam);
     HandleKey(context, vk, ch);
     return S_OK;
+#endif
 }
 
 STDMETHODIMP TextService::OnTestKeyUp(ITfContext*, WPARAM wParam, LPARAM, BOOL* eaten) {
+#ifdef MELTYPE_RUST_CORE
+    return DispatchKey(2,nullptr,wParam<256?static_cast<UINT>(wParam):256,0,eaten);
+#else
     *eaten = wParam < 256 && eatenDown_[wParam] ? TRUE : FALSE;
     return S_OK;
+#endif
 }
 
 STDMETHODIMP TextService::OnKeyUp(ITfContext*, WPARAM wParam, LPARAM, BOOL* eaten) {
+#ifdef MELTYPE_RUST_CORE
+    return DispatchKey(3,nullptr,wParam<256?static_cast<UINT>(wParam):256,0,eaten);
+#else
     *eaten = wParam < 256 && eatenDown_[wParam] ? TRUE : FALSE;
     if (wParam < 256) eatenDown_[wParam] = false;
     return S_OK;
+#endif
 }
 
+#ifdef MELTYPE_RUST_CORE
+HRESULT TextService::DispatchKey(unsigned int kind,ITfContext* context,UINT key,LPARAM message,BOOL* eaten) {
+    *eaten=RustServiceDispatchKey(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),ServiceInterface<ITfCompositionSink>(),kind,context,key,message)?TRUE:FALSE;
+    return S_OK;
+}
+#endif
+
+void TextService::ResetStaleCommit() {
+#ifdef MELTYPE_RUST_CORE
+    RustKeyStaleClear(keyState_);
+#else
+    staleCommitTries_=0;staleVk_=0;
+#endif
+}
+
+#ifndef MELTYPE_RUST_CORE
 void TextService::HandleKey(ITfContext* context, UINT vk, wchar_t ch) {
     // 8 = Windows キー (Meltype.exe は Mac の Command と同じく、確定してアプリに渡す)
     int mods = (KeyDown(VK_SHIFT) ? 1 : 0) | (KeyDown(VK_CONTROL) ? 2 : 0) | (KeyDown(VK_MENU) ? 4 : 0) | (KeyDown(VK_LWIN) || KeyDown(VK_RWIN) ? 8 : 0);
@@ -860,9 +1094,19 @@ void TextService::HandleKey(ITfContext* context, UINT vk, wchar_t ch) {
             return S_OK;
         }
         ownEdit_ = true;
-        std::string request = "{\"op\":\"key\",\"sid\":\"" + sid_ + "\",\"vk\":" + std::to_string(vk) + ",\"ch\":" + std::to_string(ch) +
+        std::string request = "{\"op\":\"key\",\"sid\":\"" + SessionId() + "\",\"vk\":" + std::to_string(vk) + ",\"ch\":" + std::to_string(ch) +
                               ",\"mods\":" + std::to_string(mods) + ",\"process\":" + JsonString(ProcessName()) + ",\"code\":true" +
                               std::string(",\"direct\":") + (!open_ ? "true" : "false");
+#ifdef MELTYPE_RUST_CORE
+        TF_SELECTION deletionSelection = {};
+        ULONG deletionFetched = 0;
+        BOOL selectionEmpty = FALSE;
+        if (SUCCEEDED(context->GetSelection(ec, TF_DEFAULT_SELECTION, 1, &deletionSelection, &deletionFetched)) && deletionFetched > 0) {
+            if (FAILED(deletionSelection.range->IsEmpty(ec, &selectionEmpty))) selectionEmpty = FALSE;
+            deletionSelection.range->Release();
+        }
+        request += std::string(",\"canDelete\":") + (selectionEmpty ? "true" : "false");
+#endif
         // 前に確定してからキャレットが動いた: Meltype.exe に、前の語を確定し直さないように伝える
         if (caretMoved_) request += ",\"moved\":true";
         // 入力を覚えないように求める入力欄: Meltype.exe に学習しないように伝える
@@ -884,7 +1128,7 @@ void TextService::HandleKey(ITfContext* context, UINT vk, wchar_t ch) {
             // (送り直すと、その間に打った次のキーより後に届いて順番が入れ替わる)
             keyFailed_ = true;
             serverActive_ = false;
-            if (candidates_) candidates_->Hide();
+            HideCandidates();
             EndComposition(ec);
             // Ctrl・Alt・Windows キーとの組み合わせは、文字を入れずにアプリに送り直す
             if (ch >= 0x20 && (mods & (2 | 4 | 8)) == 0) {
@@ -921,7 +1165,7 @@ void TextService::HandleKey(ITfContext* context, UINT vk, wchar_t ch) {
     });
     // 同期の編集セッションの終わりの通知 (OnEndEdit) はもう来ている。何も変えなかったときに印が残らないように戻す
     ownEdit_ = false;
-    if (SUCCEEDED(hr) && switchToJapanese && !open_) SetOpen(true);
+    if (SUCCEEDED(hr) && switchToJapanese && !keyFailed_ && !open_) SetOpen(true);
     if (FAILED(hr)) {
         TipLog(L"編集セッションを始められません: 0x%08X", hr);
         keyFailed_ = true;
@@ -933,7 +1177,12 @@ void TextService::HandleKey(ITfContext* context, UINT vk, wchar_t ch) {
     if ((keyFailed_ && !insertedOnFailure) || (!consumed_ && !insertedDirect)) Reinject(vk);
 }
 
+#endif
+
 void TextService::ToggleInputMode(ITfContext* context) {
+#ifdef MELTYPE_RUST_CORE
+    RustServiceModeAction(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),context,0,0,0);
+#else
     Microsoft::WRL::ComPtr<ITfContext> focused;
     if (context == nullptr && threadMgr_ != nullptr) {
         Microsoft::WRL::ComPtr<ITfDocumentMgr> documentMgr;
@@ -949,11 +1198,16 @@ void TextService::ToggleInputMode(ITfContext* context) {
     // 英数 → 日本語。コードの行なら、その行だけ日本語にする (改行・別の行に移ると英数に戻る)
     if (!open_) SetOpen(true);
     if (codeApp_ && codeEnglish_) SetCodeLine(context, true);
+#endif
 }
 
+
 bool TextService::SetCodeLine(ITfContext* context, bool japanese) {
+#ifdef MELTYPE_RUST_CORE
+    return RustServiceModeAction(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),context,0,1,japanese?1:0);
+#else
     if (context == nullptr || ContextDisabled(context) || !ServerReady()) return false;
-    std::string request = "{\"op\":\"toggle\",\"sid\":\"" + sid_ + "\",\"process\":" + JsonString(ProcessName()) +
+    std::string request = "{\"op\":\"toggle\",\"sid\":\"" + SessionId() + "\",\"process\":" + JsonString(ProcessName()) +
                           ",\"japanese\":" + (japanese ? "true" : "false") + PendingPassed();
     bool secret = false;
     std::wstring before, after;
@@ -973,9 +1227,13 @@ bool TextService::SetCodeLine(ITfContext* context, bool japanese) {
     bool done = reply[L"active"].Bool() && reply[L"consumed"].Bool();
     if (done) TipLog(L"コードの行: %s", japanese ? L"日本語にしました" : L"英数に戻しました");
     return done;
+#endif
 }
 
 void TextService::QueryMode(TfEditCookie ec, ITfContext* context, bool selectionChanged) {
+#ifdef MELTYPE_RUST_CORE
+    RustServiceModeAction(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),context,ec,2,selectionChanged?1:0);
+#else
     if (!codeApp_ || !serverActive_ || ContextDisabled(context) || IsSecretField(ec, context)) return;
     std::wstring before, after;
     SurroundingText(ec, context, before, after);
@@ -986,31 +1244,45 @@ void TextService::QueryMode(TfEditCookie ec, ITfContext* context, bool selection
     bool recent = !clicked && GetTickCount64() - passedTime_ < 500;
     int passed = recent ? static_cast<int>(passedVk_) : selectionChanged ? 0 : -1;
     passedPending_ = false;
-    std::string request = "{\"op\":\"mode\",\"sid\":\"" + sid_ + "\",\"process\":" + JsonString(ProcessName()) +
-                          ",\"passed\":" + std::to_string(passed) + (recent && passedControl_ ? ",\"ctrl\":true" : "") +
+    bool control=recent && passedControl_;
+    std::string request = "{\"op\":\"mode\",\"sid\":\"" + SessionId() + "\",\"process\":" + JsonString(ProcessName()) +
+                          ",\"passed\":" + std::to_string(passed) + (control ? ",\"ctrl\":true" : "") +
                           ",\"before\":" + JsonString(before) + "}";
     JsonValue reply;
     // キャレットを動かすたびに呼ぶので、応答が遅ければ待たない (表示が次のキーまで古いだけ)
     if (Request(request, reply, 100, true)) {
         ApplyMode(reply);
     }
+#endif
 }
 
+#ifndef MELTYPE_RUST_CORE
 void TextService::RememberPassed(UINT vk) {
     passedVk_ = vk;
     passedControl_ = KeyDown(VK_CONTROL);
     passedTime_ = GetTickCount64();
     passedPending_ = true;
 }
+#endif
 
 std::string TextService::PendingPassed() {
+#ifdef MELTYPE_RUST_CORE
+    RustKeyPassed info={};if (!RustKeyPassedRead(keyState_,false,false,info)) return "";
+    return ",\"passed\":"+std::to_string(info.key)+(info.control?",\"ctrl\":true":"");
+#else
     // アプリに通したキーを、まだ Meltype.exe に伝えていなければ伝える (編集の通知が来ないアプリでも、矢印などで移ったと分かるように)
     if (!passedPending_) return "";
     passedPending_ = false;
     return ",\"passed\":" + std::to_string(passedVk_) + (passedControl_ ? ",\"ctrl\":true" : "");
+#endif
 }
 
 void TextService::ApplyMode(const JsonValue& reply) {
+#ifdef MELTYPE_RUST_CORE
+    RustServiceApplyMode(state_.value,(reply[L"active"].Bool()?1u:0u)|(reply[L"code"].Bool()?2u:0u)|(reply[L"english"].Bool()?4u:0u),
+        ServiceInterface<ITfTextInputProcessorEx>(),nullptr,
+        [](void*,int english) {TipLog(L"入力モードの表示: %s",english?L"英数 (コードの行)":L"日本語");});
+#else
     bool active = reply[L"active"].Bool();
     codeApp_ = active && reply[L"code"].Bool();
     bool english = codeApp_ && reply[L"english"].Bool();
@@ -1018,9 +1290,17 @@ void TextService::ApplyMode(const JsonValue& reply) {
     codeEnglish_ = english;
     TipLog(L"入力モードの表示: %s", english ? L"英数 (コードの行)" : L"日本語");
     UpdateLangBar();
+#endif
 }
 
 void TextService::Reinject(UINT vk) {
+#ifdef MELTYPE_RUST_CORE
+    if (vk>=256) return;
+    DWORD error=0;
+    int result=RustReinject(keyState_,vk,ServiceInterface<ITfTextInputProcessorEx>(),error);
+    if (result==2) TipLog(L"同じキーの送り直しが続くので、やめます");
+    else if (result!=1) TipLog(L"キーをアプリに送り直せません: %lu",error);
+#else
     // 受け取ったキーを使わなかった: アプリに送り直す (Ctrl などは押されたままなので、組み合わせもそのまま届く)
     eatenDown_[vk] = false;
     // 前に送り直した同じキーがまだ届いていない (見分けられずに受け取ってしまった) のに、また送り直そうとしている:
@@ -1069,9 +1349,17 @@ void TextService::Reinject(UINT vk) {
         slot->vk = 0;
         TipLog(L"キーをアプリに送り直せません: %lu", GetLastError());
     }
+#endif
 }
 
 bool TextService::Request(const std::string& json, JsonValue& reply, DWORD timeoutMs, bool optional) {
+#ifdef MELTYPE_RUST_CORE
+    return RustServiceExchange(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),json,timeoutMs,optional,&reply,
+        [](void* p,const unsigned char* data,unsigned int length)->int {try {
+            return ParseJson(length?std::string(reinterpret_cast<const char*>(data),length):std::string{},*static_cast<JsonValue*>(p))?1:0;
+        }catch (...) {return 0;}},
+        [](void*) {try {TipLog(L"応答を読めません");}catch (...) {}});
+#else
     if (deactivated_) return false;
     std::string response;
     // Meltype.exe 自身の中: どのスレッドからの要求かを付ける (画面のスレッドからなら、Meltype.exe はそのスレッドを待たずに処理する。
@@ -1087,9 +1375,13 @@ bool TextService::Request(const std::string& json, JsonValue& reply, DWORD timeo
         return false;
     }
     return true;
+#endif
 }
 
 void TextService::SurroundingText(TfEditCookie ec, ITfContext* context, std::wstring& before, std::wstring& after) {
+#ifdef MELTYPE_RUST_CORE
+    RustSurroundingText(ec, context, before, after);
+#else
     TF_SELECTION selection = {};
     ULONG fetched = 0;
     if (FAILED(context->GetSelection(ec, TF_DEFAULT_SELECTION, 1, &selection, &fetched)) || fetched == 0) return;
@@ -1115,10 +1407,12 @@ void TextService::SurroundingText(TfEditCookie ec, ITfContext* context, std::wst
         range->Release();
     }
     selection.range->Release();
+#endif
 }
 
 // ---- 入力欄への反映 ----
 
+#ifndef MELTYPE_RUST_CORE
 void TextService::Apply(TfEditCookie ec, ITfContext* context, const JsonValue& reply) {
     // 1 つの応答の中の確定は、前の確定の後ろに続けて入れる (クリックで確定したときは、キャレットがもうクリックした所にあるので、
     // キャレットの位置に入れると、クリックした所に入ったり、選んでいた文字を上書きしたりする)
@@ -1138,11 +1432,17 @@ void TextService::Apply(TfEditCookie ec, ITfContext* context, const JsonValue& r
             ULONG fetched = 0;
             if (SUCCEEDED(context->GetSelection(ec, TF_DEFAULT_SELECTION, 1, &selection, &fetched)) && fetched > 0) range.Attach(selection.range);
         }
-        if (!range) continue;
+        if (!range) {
+            continue;
+        }
         // 確定し直し: 前に確定した文字を消して入れ直す。前の文字が確定したときのままでなければ (アプリが書き換えた・前の文字を読めない)、
         // 関係ない文字を消したり、古い文字に重ねて入れたりしないように、確定し直さない (変換中の文字は、次の確定でそのまま確定する)
-        if (deleteBefore > 0 && !ExtendOverPrevious(ec, range.Get(), deleteBefore, edit[L"expect"])) continue;
-        if (!WriteCommit(ec, context, range.Get(), text)) continue;
+        if (deleteBefore > 0 && !ExtendOverPrevious(ec, range.Get(), deleteBefore, edit[L"expect"])) {
+            continue;
+        }
+        if (!WriteCommit(ec, context, range.Get(), text)) {
+            continue;
+        }
         next.Reset();
         if (SUCCEEDED(range->Clone(&next))) next->Collapse(ec, TF_ANCHOR_END);
     }
@@ -1163,10 +1463,13 @@ void TextService::Apply(TfEditCookie ec, ITfContext* context, const JsonValue& r
             }
             EndComposition(ec);
         }
-        if (candidates_) candidates_->Hide();
+        HideCandidates();
     }
 }
 
+#endif
+
+#ifndef MELTYPE_RUST_CORE
 bool TextService::ExtendOverPrevious(TfEditCookie ec, ITfRange* range, LONG count, const JsonValue& expect) {
     Microsoft::WRL::ComPtr<ITfRange> previous;
     if (FAILED(range->Clone(&previous))) return false;
@@ -1188,18 +1491,31 @@ bool TextService::ExtendOverPrevious(TfEditCookie ec, ITfRange* range, LONG coun
     }
     return SUCCEEDED(range->ShiftStart(ec, -count, &moved, nullptr));
 }
+#endif
 
 bool TextService::WriteCommit(TfEditCookie ec, ITfContext* context, ITfRange* range, const std::wstring& text) {
+#ifdef MELTYPE_RUST_CORE
+    const int result=RustServiceWriteCommit(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),ServiceInterface<ITfCompositionSink>(),ec,context,range,text);
+    return result>=0 && (result&1)!=0;
+#else
     if (composition_ == nullptr) {
+#ifdef MELTYPE_RUST_CORE
+        composition_ = RustStartComposition(ec, context, ServiceInterface<ITfCompositionSink>(), range);
+        if (composition_) { compositionContext_ = context; compositionContext_->AddRef(); }
+#else
         ITfContextComposition* contextComposition = nullptr;
         if (SUCCEEDED(context->QueryInterface(IID_ITfContextComposition, reinterpret_cast<void**>(&contextComposition)))) {
-            if (SUCCEEDED(contextComposition->StartComposition(ec, range, static_cast<ITfCompositionSink*>(this), &composition_)) && composition_ != nullptr) {
+            if (SUCCEEDED(contextComposition->StartComposition(ec, range, ServiceInterface<ITfCompositionSink>(), &composition_)) && composition_ != nullptr) {
                 compositionContext_ = context;
                 compositionContext_->AddRef();
             }
             contextComposition->Release();
         }
+#endif
     }
+#ifdef MELTYPE_RUST_CORE
+    bool written = RustWriteRange(ec, context, range, text, keepAppCaret_);
+#else
     ITfProperty* attribute = nullptr;
     if (SUCCEEDED(context->GetProperty(GUID_PROP_ATTRIBUTE, &attribute))) {
         attribute->Clear(ec, range);
@@ -1218,11 +1534,17 @@ bool TextService::WriteCommit(TfEditCookie ec, ITfContext* context, ITfRange* ra
             context->SetSelection(ec, 1, &caret);
         }
     }
+#endif
     EndComposition(ec);
     return written;
+#endif
 }
 
+
 void TextService::ApplyComposition(TfEditCookie ec, ITfContext* context, const JsonValue& view) {
+#ifdef MELTYPE_RUST_CORE
+    if (RustServiceApplyComposition(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),ServiceInterface<ITfCompositionSink>(),ec,context,view)==0) TipLog(L"変換中の文字を置けません");
+#else
     const std::wstring& text = view[L"text"].Str();
     if (composition_ == nullptr) {
         TF_SELECTION selection = {};
@@ -1230,7 +1552,7 @@ void TextService::ApplyComposition(TfEditCookie ec, ITfContext* context, const J
         if (FAILED(context->GetSelection(ec, TF_DEFAULT_SELECTION, 1, &selection, &fetched)) || fetched == 0) return;
         ITfContextComposition* contextComposition = nullptr;
         if (SUCCEEDED(context->QueryInterface(IID_ITfContextComposition, reinterpret_cast<void**>(&contextComposition)))) {
-            if (SUCCEEDED(contextComposition->StartComposition(ec, selection.range, static_cast<ITfCompositionSink*>(this), &composition_)) &&
+            if (SUCCEEDED(contextComposition->StartComposition(ec, selection.range, ServiceInterface<ITfCompositionSink>(), &composition_)) &&
                 composition_ != nullptr) {
                 compositionContext_ = context;
                 compositionContext_->AddRef();
@@ -1282,9 +1604,13 @@ void TextService::ApplyComposition(TfEditCookie ec, ITfContext* context, const J
         caretRange->Release();
     }
     range->Release();
+#endif
 }
 
 void TextService::SetAttribute(TfEditCookie ec, ITfContext* context, ITfRange* range, TfGuidAtom atom) {
+#ifdef MELTYPE_RUST_CORE
+    RustSetAttribute(ec, context, range, atom);
+#else
     if (atom == TF_INVALID_GUIDATOM) return;
     ITfProperty* property = nullptr;
     if (FAILED(context->GetProperty(GUID_PROP_ATTRIBUTE, &property))) return;
@@ -1294,9 +1620,13 @@ void TextService::SetAttribute(TfEditCookie ec, ITfContext* context, ITfRange* r
     value.lVal = static_cast<LONG>(atom);
     property->SetValue(ec, range, &value);
     property->Release();
+#endif
 }
 
 void TextService::EndComposition(TfEditCookie ec) {
+#ifdef MELTYPE_RUST_CORE
+    RustServiceEndComposition(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),ec);
+#else
     if (composition_ == nullptr) return;
     ITfRange* range = nullptr;
     if (compositionContext_ != nullptr && SUCCEEDED(composition_->GetRange(&range))) {
@@ -1310,15 +1640,19 @@ void TextService::EndComposition(TfEditCookie ec) {
     composition_->EndComposition(ec);
     composition_->Release();
     composition_ = nullptr;
-    staleCommitTries_ = 0;
-    staleVk_ = 0;
+    ResetStaleCommit();
     if (compositionContext_ != nullptr) {
         compositionContext_->Release();
         compositionContext_ = nullptr;
     }
+#endif
 }
 
 STDMETHODIMP TextService::OnCompositionTerminated(TfEditCookie ec, ITfComposition* composition) {
+#ifdef MELTYPE_RUST_CORE
+    TipLog(L"アプリが変換中の文字を確定しました");
+    return RustServiceTerminated(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),ec,composition);
+#else
     // アプリの側で変換中の文字を確定した (入力欄の外をクリックしたなど)。文字は入力欄に残っているので、
     // Meltype.exe の側も確定したことにする (返ってきた確定の文字は入れない)
     TipLog(L"アプリが変換中の文字を確定しました");
@@ -1332,10 +1666,11 @@ STDMETHODIMP TextService::OnCompositionTerminated(TfEditCookie ec, ITfCompositio
     // 打っている途中 (変換していない) なら、Meltype.exe の側はまだ確定しない。空のノートに最初の文字を入れたときなどに、
     // アプリが入力欄を作り直して確定してしまうことがある (そのまま確定すると、ka が「kあ」になる)。
     // キャレットがその文字の後ろのままなら、次のキーで変換中に戻して続ける (ResumeOrCommit)
-    resumeRange_.Reset();
-    resumeContext_.Reset();
-    resumeText_.clear();
+    ClearResume();
     if (!disabled_ && !deactivated_ && !lastConverting_ && compositionContext_ != nullptr) {
+#ifdef MELTYPE_RUST_CORE
+        resume_ = RustCaptureResume(ec,compositionContext_,composition);
+#else
         Microsoft::WRL::ComPtr<ITfRange> range;
         if (SUCCEEDED(composition->GetRange(&range))) {
             wchar_t buffer[65];
@@ -1346,6 +1681,7 @@ STDMETHODIMP TextService::OnCompositionTerminated(TfEditCookie ec, ITfCompositio
                 resumeText_.assign(buffer, length);
             }
         }
+#endif
     }
     if (composition_ != nullptr) {
         composition_->Release();
@@ -1355,11 +1691,10 @@ STDMETHODIMP TextService::OnCompositionTerminated(TfEditCookie ec, ITfCompositio
         compositionContext_->Release();
         compositionContext_ = nullptr;
     }
-    if (candidates_) candidates_->Hide();
-    staleCommitTries_ = 0;
-    staleVk_ = 0;
+    HideCandidates();
+    ResetStaleCommit();
     lastConverting_ = false;
-    if (resumeRange_) return S_OK;
+    if (HasResume()) return S_OK;
     // 入力欄の文字は、アプリが書き換えたかもしれない: 前に確定した語を、次のキーで確定し直さない (関係ない文字を消さないように)
     directEnglishWord_ = false;
     caretMoved_ = true;
@@ -1368,9 +1703,27 @@ STDMETHODIMP TextService::OnCompositionTerminated(TfEditCookie ec, ITfCompositio
         Request(CommitRequest(true), reply);
     }
     return S_OK;
+#endif
 }
 
+void TextService::ClearResume() {
+#ifdef MELTYPE_RUST_CORE
+    RustServiceClearResume(state_.value);
+#else
+    resumeRange_.Reset(); resumeContext_.Reset(); resumeText_.clear();
+#endif
+}
+bool TextService::HasResume() const {
+#ifdef MELTYPE_RUST_CORE
+    return resume_ != nullptr;
+#else
+    return resumeRange_ != nullptr;
+#endif
+}
 void TextService::ResumeOrCommit(ITfContext* context) {
+#ifdef MELTYPE_RUST_CORE
+    if (RustServiceResume(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),ServiceInterface<ITfCompositionSink>(),context)==1) TipLog(L"アプリが確定した打ちかけの文字を、変換中に戻しました");
+#else
     if (!resumeRange_) return;
     Microsoft::WRL::ComPtr<ITfRange> range = resumeRange_;
     Microsoft::WRL::ComPtr<ITfContext> resumeContext = resumeContext_;
@@ -1396,7 +1749,7 @@ void TextService::ResumeOrCommit(ITfContext* context) {
             ITfContextComposition* contextComposition = nullptr;
             if (FAILED(context->QueryInterface(IID_ITfContextComposition, reinterpret_cast<void**>(&contextComposition)))) return S_OK;
             if (context == editSinkContext_) ownEdit_ = true;
-            if (SUCCEEDED(contextComposition->StartComposition(ec, range.Get(), static_cast<ITfCompositionSink*>(this), &composition_)) && composition_ != nullptr) {
+            if (SUCCEEDED(contextComposition->StartComposition(ec, range.Get(), ServiceInterface<ITfCompositionSink>(), &composition_)) && composition_ != nullptr) {
                 compositionContext_ = context;
                 compositionContext_->AddRef();
                 SetAttribute(ec, context, range.Get(), atomInput_);
@@ -1407,6 +1760,7 @@ void TextService::ResumeOrCommit(ITfContext* context) {
         });
         ownEdit_ = false;
     }
+
     if (resumed) {
         TipLog(L"アプリが確定した打ちかけの文字を、変換中に戻しました");
         return;
@@ -1416,9 +1770,13 @@ void TextService::ResumeOrCommit(ITfContext* context) {
     caretMoved_ = true;
     JsonValue reply;
     Request(CommitRequest(true), reply);
+#endif
 }
 
 void TextService::CommitAsync(bool keepAppCaret) {
+#ifdef MELTYPE_RUST_CORE
+    ServiceCommit(1,nullptr,0,keepAppCaret);
+#else
     if (composition_ == nullptr || compositionContext_ == nullptr) return;
     // 非同期の編集セッションは、実行されずに捨てられることもある。参照は ComPtr に持たせ、セッションと一緒に解放する
     // 動くまでに変換中の文字が変わっていたら (確定し終えた・別の入力欄で新しく始めた) 何もしない
@@ -1429,9 +1787,13 @@ void TextService::CommitAsync(bool keepAppCaret) {
         if (self->composition_ == target.Get()) self->CommitInSession(ec, context.Get(), keepAppCaret);
         return S_OK;
     });
+#endif
 }
 
 void TextService::AbandonComposition() {
+#ifdef MELTYPE_RUST_CORE
+    RustServiceAbandon(state_.value,ServiceInterface<ITfTextInputProcessorEx>());
+#else
     // 前の入力欄の変換中の文字を、入力欄には触らずに手放す (文字はそのまま残る)。Meltype.exe の側も確定したことにする
     TipLog(L"前の入力欄の変換中の文字を確定できないので、手放します");
     Microsoft::WRL::ComPtr<ITfComposition> old;
@@ -1442,6 +1804,10 @@ void TextService::AbandonComposition() {
     compositionContext_ = nullptr;
     // 前の入力欄が編集を受け付けるようになったら、下線を消して終える (それまでにアプリの側が終えたら OnCompositionTerminated で消す)
     if (oldContext && old) {
+#ifdef MELTYPE_RUST_CORE
+        if (!abandoned_) abandoned_ = RustAbandonedCreate();
+        RustAbandonedAdd(abandoned_,oldContext.Get(),old.Get(),ServiceInterface<ITfTextInputProcessorEx>(),clientId_);
+#else
         // いくつも溜まらないように (古いものは、アプリが終えたときに下線だけ消える)
         if (abandoned_.size() >= 8) abandoned_.erase(abandoned_.begin());
         abandoned_.push_back({old, oldContext});
@@ -1454,17 +1820,21 @@ void TextService::AbandonComposition() {
             }
             return S_OK;
         });
+#endif
     }
-    staleCommitTries_ = 0;
-    staleVk_ = 0;
-    if (candidates_) candidates_->Hide();
+    ResetStaleCommit();
+    HideCandidates();
     directEnglishWord_ = false;
     caretMoved_ = true;
     JsonValue reply;
     Request(CommitRequest(true), reply);
+#endif
 }
 
 bool TextService::ForgetAbandoned(ITfComposition* composition) {
+#ifdef MELTYPE_RUST_CORE
+    return RustAbandonedForget(abandoned_,composition);
+#else
     for (auto it = abandoned_.begin(); it != abandoned_.end(); ++it) {
         if (SameObject(composition, it->composition.Get())) {
             abandoned_.erase(it);
@@ -1472,9 +1842,15 @@ bool TextService::ForgetAbandoned(ITfComposition* composition) {
         }
     }
     return false;
+#endif
 }
 
 void TextService::EndAbandonedNow() {
+#ifdef MELTYPE_RUST_CORE
+    if (!abandoned_) return;
+    HRESULT hr = RustAbandonedEnd(abandoned_,ServiceInterface<ITfTextInputProcessorEx>(),clientId_);
+    if (FAILED(hr)) TipLog(L"手放した変換中の文字を終えられませんでした: 0x%08X", hr);
+#else
     std::vector<Abandoned> pending;
     pending.swap(abandoned_);
     for (Abandoned& item : pending) {
@@ -1486,9 +1862,13 @@ void TextService::EndAbandonedNow() {
         });
         if (FAILED(hr)) TipLog(L"手放した変換中の文字を終えられませんでした: 0x%08X", hr);
     }
+#endif
 }
 
 bool TextService::CommitNow(bool keepAppCaret) {
+#ifdef MELTYPE_RUST_CORE
+    return SUCCEEDED(ServiceCommit(0,nullptr,0,keepAppCaret));
+#else
     // 同期で確定する (キーをアプリに通す前・別の入力欄に移ったときに、変換中の文字を確定しておくため)
     if (composition_ == nullptr || compositionContext_ == nullptr) return true;
     Microsoft::WRL::ComPtr<ITfContext> context = compositionContext_;
@@ -1498,9 +1878,23 @@ bool TextService::CommitNow(bool keepAppCaret) {
     });
     ownEdit_ = false;
     return SUCCEEDED(hr);
+#endif
 }
 
+#ifdef MELTYPE_RUST_CORE
+int __cdecl TextService::ApplyServiceReply(void* p,unsigned int cookie,void* context,const unsigned char* bytes,unsigned int length) {
+    auto* s=static_cast<TextService*>(p);
+    return RustServiceApplyReplyBytes(s->state_.value,s->ServiceInterface<ITfTextInputProcessorEx>(),s->ServiceInterface<ITfCompositionSink>(),cookie,static_cast<ITfContext*>(context),bytes,length)>=0?1:0;
+}
+HRESULT TextService::ServiceCommit(unsigned int mode,ITfContext* context,TfEditCookie cookie,bool keep) {
+    return RustServiceCommit(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),mode,context,cookie,keep,this,ApplyServiceReply);
+}
+#endif
+
 void TextService::CommitInSession(TfEditCookie ec, ITfContext* context, bool keepAppCaret) {
+#ifdef MELTYPE_RUST_CORE
+    ServiceCommit(2,context,ec,keepAppCaret);
+#else
     // 編集できるのは、この編集セッションの入力欄にある変換中の文字だけ
     if (composition_ != nullptr && context == compositionContext_) {
         // 終わりの通知 (OnEndEdit) が来るのは、今見ている入力欄だけ (フォーカスが移った後の前の入力欄では印を付けない。残ると次のクリックを見逃す)
@@ -1512,10 +1906,14 @@ void TextService::CommitInSession(TfEditCookie ec, ITfContext* context, bool kee
         keepAppCaret_ = false;
         EndComposition(ec);
     }
-    if (candidates_) candidates_->Hide();
+    HideCandidates();
+#endif
 }
 
 void TextService::SelectCandidate(int index, bool prediction) {
+#ifdef MELTYPE_RUST_CORE
+    RustServiceSelectCandidate(state_.value,ServiceInterface<ITfTextInputProcessorEx>(),index,prediction,this,ApplyServiceReply);
+#else
     if (compositionContext_ == nullptr) return;
     Microsoft::WRL::ComPtr<ITfContext> context = compositionContext_;
     Microsoft::WRL::ComPtr<ITfComposition> target = composition_;
@@ -1525,18 +1923,29 @@ void TextService::SelectCandidate(int index, bool prediction) {
         if (self->composition_ != target.Get() || self->compositionContext_ != context.Get()) return S_OK;
         self->ownEdit_ = true;
         JsonValue reply;
-        if (self->Request("{\"op\":\"select\",\"sid\":\"" + self->sid_ + "\",\"index\":" + std::to_string(index) +
+        if (self->Request("{\"op\":\"select\",\"sid\":\"" + self->SessionId() + "\",\"index\":" + std::to_string(index) +
                               (prediction ? ",\"prediction\":true" : "") + "}",
                           reply)) {
             self->Apply(ec, context.Get(), reply);
         }
         return S_OK;
     });
+#endif
 }
 
 // ---- 候補 ----
 
+void TextService::HideCandidates() {
+#ifdef MELTYPE_RUST_CORE
+    RustServiceHideCandidates(state_.value);
+#else
+    if (candidates_) candidates_->Hide();
+#endif
+}
 void TextService::ShowCandidates(TfEditCookie ec, ITfContext* context, const JsonValue& view) {
+#ifdef MELTYPE_RUST_CORE
+    RustServiceShowCandidates(state_.value,ec,context,composition_,view);
+#else
     if (!candidates_) return;
     CandidateView data;
     for (const JsonValue& item : view[L"candidates"].array) data.candidates.push_back(item.Str());
@@ -1607,10 +2016,12 @@ void TextService::ShowCandidates(TfEditCookie ec, ITfContext* context, const Jso
         }
     }
     candidates_->Show(data, anchor);
+#endif
 }
 
 // ---- 下線の種類 ----
 
+#ifndef MELTYPE_RUST_CORE
 STDMETHODIMP TextService::EnumDisplayAttributeInfo(IEnumTfDisplayAttributeInfo** ppEnum) {
     if (ppEnum == nullptr) return E_INVALIDARG;
     *ppEnum = CreateDisplayAttributeEnum();
@@ -1622,5 +2033,7 @@ STDMETHODIMP TextService::GetDisplayAttributeInfo(REFGUID guid, ITfDisplayAttrib
     *ppInfo = CreateDisplayAttributeInfo(guid);
     return *ppInfo ? S_OK : E_INVALIDARG;
 }
+
+#endif
 
 }  // namespace meltype

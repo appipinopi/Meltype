@@ -1,0 +1,118 @@
+[
+  {
+    "context": "",
+    "clauses": []
+  },
+  {
+    "context": "川の近く",
+    "clauses": [
+      {
+        "reading": "はし",
+        "text": "橋"
+      }
+    ]
+  },
+  {
+    "context": "前\t後\r\n",
+    "clauses": [
+      {
+        "reading": "かみ\t",
+        "text": "紙\r\n"
+      },
+      {
+        "reading": "です",
+        "text": "です"
+      }
+    ]
+  },
+  {
+    "context": "",
+    "clauses": [
+      {
+        "reading": "はし",
+        "text": "NG"
+      }
+    ]
+  },
+  {
+    "context": null,
+    "clauses": [
+      {
+        "reading": "は\u001fし",
+        "text": "橋\u001f梁"
+      }
+    ]
+  },
+  {
+    "context": "日本語",
+    "clauses": [
+      {
+        "reading": "にほんご",
+        "text": "日本語0"
+      }
+    ]
+  },
+  {
+    "context": "日本語",
+    "clauses": [
+      {
+        "reading": "にほんご",
+        "text": "日本語1"
+      }
+    ]
+  },
+  {
+    "context": "日本語",
+    "clauses": [
+      {
+        "reading": "にほんご",
+        "text": "日本語2"
+      }
+    ]
+  },
+  {
+    "context": "日本語",
+    "clauses": [
+      {
+        "reading": "にほんご",
+        "text": "日本語3"
+      }
+    ]
+  },
+  {
+    "context": "日本語",
+    "clauses": [
+      {
+        "reading": "にほんご",
+        "text": "日本語4"
+      }
+    ]
+  },
+  {
+    "context": "日本語",
+    "clauses": [
+      {
+        "reading": "にほんご",
+        "text": "日本語5"
+      }
+    ]
+  },
+  {
+    "context": "日本語",
+    "clauses": [
+      {
+        "reading": "にほんご",
+        "text": "日本語6"
+      }
+    ]
+  },
+  {
+    "context": "日本語",
+    "clauses": [
+      {
+        "reading": "にほんご",
+        "text": "日本語7"
+      }
+    ]
+  }
+]

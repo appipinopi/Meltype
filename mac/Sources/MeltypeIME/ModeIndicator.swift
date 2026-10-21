@@ -6,15 +6,24 @@ import Cocoa
 /// 選択中の入力モードを一覧の中で強調する。入力先のフォーカスは奪わない。
 final class ModeIndicator {
     static let shared = ModeIndicator()
+#if MELTYPE_RUST_CORE
+    private lazy var nativeOwner: AnyObject? = NativeCore.shared.editorPolicy?.createIndicator(enabled:{ModeIndicatorSettings.shared.isEnabled ? 1 : 0})
+#else
     private var panel: NSPanel?
     private var timer: Timer?
     private var generation = 0
+#endif
 
     static func validCaret(_ rect: NSRect) -> Bool {
-        rect.minX.isFinite && rect.minY.isFinite && rect.width.isFinite && rect.height.isFinite &&
+#if MELTYPE_RUST_CORE
+        return NativeCore.shared.editorPolicy?.indicatorFrame(operation:0,caret:rect,visible:.zero) != nil
+#else
+        return rect.minX.isFinite && rect.minY.isFinite && rect.width.isFinite && rect.height.isFinite &&
         rect.width >= 0 && rect.height > 0
+#endif
     }
 
+#if !MELTYPE_RUST_CORE
     private static let fontSize: CGFloat = 12
     private static let padding: CGFloat = 2
     private static let spacing: CGFloat = fontSize / 2
@@ -54,7 +63,12 @@ final class ModeIndicator {
         }
     }
 
+#endif
+
     static func frame(caret: NSRect?, visible: NSRect) -> NSRect {
+#if MELTYPE_RUST_CORE
+        return NativeCore.shared.editorPolicy?.indicatorFrame(operation:caret == nil ? 2 : 1,caret:caret,visible:visible) ?? .zero
+#else
         let size = Layout(compact: caret != nil).size
         let origin: NSPoint
         if let caret {
@@ -64,9 +78,14 @@ final class ModeIndicator {
             origin = NSPoint(x: visible.midX - size.width / 2, y: visible.midY - size.height / 2)
         }
         return NSRect(origin: origin, size: size)
+#endif
     }
 
     static func content(mode: MacInputMode, compact: Bool) -> NSView {
+#if MELTYPE_RUST_CORE
+        let index: UInt32 = mode == .automatic ? 0 : mode == .direct ? 1 : 2
+        return NativeCore.shared.editorPolicy?.indicatorContent(mode:index,compact:compact) as? NSView ?? NSView()
+#else
         let layout = Layout(compact: compact)
         let background = NSVisualEffectView(frame: NSRect(origin: .zero, size: layout.size))
         background.material = .hudWindow
@@ -103,9 +122,15 @@ final class ModeIndicator {
             background.addSubview(caption)
         }
         return background
+#endif
     }
 
     func show(_ mode: MacInputMode, caret: NSRect? = nil) {
+#if MELTYPE_RUST_CORE
+        guard let owner=nativeOwner else {return}
+        let index:UInt32=mode == .automatic ? 0 : mode == .direct ? 1 : 2
+        NativeCore.shared.editorPolicy?.updateIndicator(owner,operation:0,mode:index,caret:caret)
+#else
         timer?.invalidate()
         generation += 1
         let currentGeneration = generation
@@ -114,8 +139,10 @@ final class ModeIndicator {
             guard let self, self.generation == currentGeneration else { return }
             self.present(mode, caret: caret)
         }
+#endif
     }
 
+#if !MELTYPE_RUST_CORE
     private func present(_ mode: MacInputMode, caret: NSRect?) {
         guard ModeIndicatorSettings.shared.isEnabled else { hide(); return }
         let screen: NSScreen?
@@ -142,12 +169,23 @@ final class ModeIndicator {
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { [weak self] _ in self?.hide() }
     }
 
+#endif
     func hide() {
+#if MELTYPE_RUST_CORE
+        if let owner=nativeOwner {NativeCore.shared.editorPolicy?.updateIndicator(owner,operation:1)}
+#else
         generation += 1
         timer?.invalidate()
         timer = nil
         panel?.orderOut(nil)
+#endif
     }
 
-    deinit { timer?.invalidate() }
+    deinit {
+#if MELTYPE_RUST_CORE
+        if let owner=nativeOwner {NativeCore.shared.editorPolicy?.updateIndicator(owner,operation:1)}
+#else
+        timer?.invalidate()
+#endif
+    }
 }

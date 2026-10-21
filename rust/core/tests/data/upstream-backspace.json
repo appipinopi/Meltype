@@ -1,0 +1,637 @@
+{
+  "baseline": "45e14f86558aa6ea34f2c2ecd038ba95ca8c3c46",
+  "cases": [
+    {
+      "typed": "ka",
+      "backspaces": [
+        {
+          "consumed": true,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        }
+      ]
+    },
+    {
+      "typed": "kya",
+      "backspaces": [
+        {
+          "consumed": true,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        }
+      ]
+    },
+    {
+      "typed": "konnichiwa",
+      "backspaces": [
+        {
+          "consumed": true,
+          "text": "こんいち"
+        },
+        {
+          "consumed": true,
+          "text": "こんい"
+        },
+        {
+          "consumed": true,
+          "text": "こん"
+        },
+        {
+          "consumed": true,
+          "text": "こ"
+        },
+        {
+          "consumed": true,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        }
+      ]
+    },
+    {
+      "typed": "gakkou",
+      "backspaces": [
+        {
+          "consumed": true,
+          "text": "がっこ"
+        },
+        {
+          "consumed": true,
+          "text": "がっ"
+        },
+        {
+          "consumed": true,
+          "text": "が"
+        },
+        {
+          "consumed": true,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        }
+      ]
+    },
+    {
+      "typed": "n",
+      "backspaces": [
+        {
+          "consumed": true,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        }
+      ]
+    },
+    {
+      "typed": "nn",
+      "backspaces": [
+        {
+          "consumed": true,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        }
+      ]
+    },
+    {
+      "typed": "nna",
+      "backspaces": [
+        {
+          "consumed": true,
+          "text": "ん"
+        },
+        {
+          "consumed": true,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        }
+      ]
+    },
+    {
+      "typed": "konnya",
+      "backspaces": [
+        {
+          "consumed": true,
+          "text": "こん"
+        },
+        {
+          "consumed": true,
+          "text": "こ"
+        },
+        {
+          "consumed": true,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        }
+      ]
+    },
+    {
+      "typed": "hello",
+      "backspaces": [
+        {
+          "consumed": true,
+          "text": "hell"
+        },
+        {
+          "consumed": true,
+          "text": "へっ"
+        },
+        {
+          "consumed": true,
+          "text": "へ"
+        },
+        {
+          "consumed": true,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        }
+      ]
+    },
+    {
+      "typed": "google",
+      "backspaces": [
+        {
+          "consumed": true,
+          "text": "googl"
+        },
+        {
+          "consumed": true,
+          "text": "goog"
+        },
+        {
+          "consumed": true,
+          "text": "ごお"
+        },
+        {
+          "consumed": true,
+          "text": "ご"
+        },
+        {
+          "consumed": true,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        }
+      ]
+    },
+    {
+      "typed": "test",
+      "backspaces": [
+        {
+          "consumed": true,
+          "text": "てs"
+        },
+        {
+          "consumed": true,
+          "text": "て"
+        },
+        {
+          "consumed": true,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        }
+      ]
+    },
+    {
+      "typed": "hotel",
+      "backspaces": [
+        {
+          "consumed": true,
+          "text": "ほて"
+        },
+        {
+          "consumed": true,
+          "text": "ほ"
+        },
+        {
+          "consumed": true,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        }
+      ]
+    },
+    {
+      "typed": "pythonno",
+      "backspaces": [
+        {
+          "consumed": true,
+          "text": "python"
+        },
+        {
+          "consumed": true,
+          "text": "pytho"
+        },
+        {
+          "consumed": true,
+          "text": "pyth"
+        },
+        {
+          "consumed": true,
+          "text": "pyt"
+        },
+        {
+          "consumed": true,
+          "text": "py"
+        },
+        {
+          "consumed": true,
+          "text": "p"
+        },
+        {
+          "consumed": true,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        }
+      ]
+    },
+    {
+      "typed": "githubya",
+      "backspaces": [
+        {
+          "consumed": true,
+          "text": "github"
+        },
+        {
+          "consumed": true,
+          "text": "githu"
+        },
+        {
+          "consumed": true,
+          "text": "gith"
+        },
+        {
+          "consumed": true,
+          "text": "git"
+        },
+        {
+          "consumed": true,
+          "text": "ぎ"
+        },
+        {
+          "consumed": true,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        }
+      ]
+    },
+    {
+      "typed": "@kurakura",
+      "backspaces": [
+        {
+          "consumed": false,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        }
+      ]
+    },
+    {
+      "typed": "https://example.com/",
+      "backspaces": [
+        {
+          "consumed": true,
+          "text": "https://example.com"
+        },
+        {
+          "consumed": true,
+          "text": "https://example.co"
+        },
+        {
+          "consumed": true,
+          "text": "https://example.c"
+        },
+        {
+          "consumed": true,
+          "text": "https://example."
+        },
+        {
+          "consumed": true,
+          "text": "https://example"
+        },
+        {
+          "consumed": true,
+          "text": "https://exampl"
+        },
+        {
+          "consumed": true,
+          "text": "https://examp"
+        },
+        {
+          "consumed": true,
+          "text": "https://exam"
+        },
+        {
+          "consumed": true,
+          "text": "https://exa"
+        },
+        {
+          "consumed": true,
+          "text": "https://ex"
+        },
+        {
+          "consumed": true,
+          "text": "https://e"
+        },
+        {
+          "consumed": true,
+          "text": "https://"
+        },
+        {
+          "consumed": true,
+          "text": "https:/"
+        },
+        {
+          "consumed": true,
+          "text": "https:"
+        },
+        {
+          "consumed": true,
+          "text": "https"
+        },
+        {
+          "consumed": true,
+          "text": "http"
+        },
+        {
+          "consumed": true,
+          "text": "hっt"
+        },
+        {
+          "consumed": true,
+          "text": "hっ"
+        },
+        {
+          "consumed": true,
+          "text": "h"
+        },
+        {
+          "consumed": true,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        }
+      ]
+    },
+    {
+      "typed": "c:\\test",
+      "backspaces": [
+        {
+          "consumed": true,
+          "text": "c:\\tes"
+        },
+        {
+          "consumed": true,
+          "text": "c:\\te"
+        },
+        {
+          "consumed": true,
+          "text": "c:\\t"
+        },
+        {
+          "consumed": true,
+          "text": "c:￥"
+        },
+        {
+          "consumed": true,
+          "text": "c:"
+        },
+        {
+          "consumed": true,
+          "text": "c"
+        },
+        {
+          "consumed": true,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        }
+      ]
+    },
+    {
+      "typed": "kk",
+      "backspaces": [
+        {
+          "consumed": true,
+          "text": "っ"
+        },
+        {
+          "consumed": true,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        }
+      ]
+    },
+    {
+      "typed": "kky",
+      "backspaces": [
+        {
+          "consumed": true,
+          "text": "っk"
+        },
+        {
+          "consumed": true,
+          "text": "っ"
+        },
+        {
+          "consumed": true,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        }
+      ]
+    },
+    {
+      "typed": "nya",
+      "backspaces": [
+        {
+          "consumed": true,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        },
+        {
+          "consumed": false,
+          "text": null
+        }
+      ]
+    }
+  ]
+}

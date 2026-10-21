@@ -2,12 +2,13 @@
 <img src="../../docs/images/headings/performance/title.svg" alt="性能の計測" height="80">
 
 
-Meltype の性能を測る仕組みは 2 つあります。
+Meltype の性能を測る仕組みは 3 つあります。
 
 - **変換エンジンの計測 (`--perf`)**: Mozc を使って例文を打ち、遅延・段階ごとの時間・候補の数・控えの使い回し・メモリ・正解率を測ります。変換の精度を上げる機能を足す前と後の比較に使います (#279)
 - **打鍵の処理の計測 (`benchmark-composition.py`)**: 変換エンジンを外して (候補を返さない偽物にして)、1 キーごとの処理だけを NativeAOT で測ります。下の [打鍵の処理の計測](#打鍵の処理の計測-benchmark-compositionpy)
+- **Windows・共通コアの C# / Rust 比較 (`benchmark-windows.py`)**: 元の C# NativeAOT と Rust Release に同じキー列を渡し、確定文字と途中表示を照合してから処理時間を比較します。[実行方法と計測範囲](windows/README.md)
 
-どちらもアプリ本体には組み込みません。ふだんの入力では何も測らず、何もログに残しません。
+いずれもアプリ本体には組み込みません。ふだんの入力では何も測らず、何もログに残しません。
 
 <br>
 

@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="windows/**/*.cs" />
     <ProjectReference Include="../../src/Meltype.Core/Meltype.Core.csproj" />
   </ItemGroup>
 </Project>

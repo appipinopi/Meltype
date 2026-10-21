@@ -6,9 +6,10 @@ import InputMethodKit
 import Carbon.HIToolbox
 final class EventClient: NSObject, IMKTextInput {
  var document=""; var marked=""
+ var lastMarkedValue:NSAttributedString?; var lastMarkedSelection:NSRange?
  func text(_ value:Any?)->String { (value as? NSAttributedString)?.string ?? (value as? String ?? "") }
  func insertText(_ string: Any!, replacementRange: NSRange) { let value=text(string); if replacementRange.location != NSNotFound { document=(document as NSString).replacingCharacters(in:replacementRange,with:value) } else {document+=value}; marked="" }
- func setMarkedText(_ string: Any!, selectionRange: NSRange, replacementRange: NSRange) {marked=text(string)}
+ func setMarkedText(_ string: Any!, selectionRange: NSRange, replacementRange: NSRange) {marked=text(string);lastMarkedValue=string as? NSAttributedString;lastMarkedSelection=selectionRange}
  func selectedRange()->NSRange {NSRange(location:(document as NSString).length,length:0)}
  func markedRange()->NSRange {marked.isEmpty ? NSRange(location:NSNotFound,length:0):NSRange(location:(document as NSString).length,length:(marked as NSString).length)}
  func attributedSubstring(from range:NSRange)->NSAttributedString! { let text=document as NSString; guard range.location != NSNotFound && range.location<=text.length else{return nil}; return NSAttributedString(string:text.substring(with:NSRange(location:range.location,length:min(range.length,text.length-range.location)))) }
@@ -37,8 +38,15 @@ var candidatesWindow: IMKCandidates? = nil
 @main
 struct EventTests {
  static func main() {
+  if let directory=ProcessInfo.processInfo.environment["MELTYPE_RUST_DATA_DIR"] {
+   precondition(NativeCore.shared.dataDirectory==directory,"Rust core ignored private data directory")
+  }
   let app=NSApplication.shared
   app.setActivationPolicy(.prohibited)
+  #if REAL_CONVERTER
+  // Exercise the real product callbacks through Rust, not just direct converter calls.
+  NativeCore.shared.initialize()
+  #endif
   guard let server=IMKServer(name:"LocalMeltypeBoundaryTests",bundleIdentifier:Bundle.main.bundleIdentifier) else {fatalError("IMKServer creation failed")}
   var passed=0
   func check(_ name:String,_ body:(MeltypeInputController,EventClient)->Void) {
@@ -117,8 +125,48 @@ struct EventTests {
   check("Command shortcut commits once") { controller,client in
    type(controller,client,"@kuraido");precondition(!key(controller,client,"a",flags:.command));equal(client.document,"@kuraido");equal(client.marked,"")
   }
+  #if MELTYPE_RUST_CORE
+  check("Rust UTF16 marked composition and clear through actual IMK bridge") { controller,client in
+   let view=CompositionView(text:"前😀後",converting:true,selectedIndex:0,selectedClause:1,hint:"",candidates:[],clauses:["前","😀","後"],meaning:nil,suggestion:nil)
+   controller.apply(SessionResult(consumed:true,commits:[],view:view),to:client)
+   equal(client.marked,"前😀後")
+   precondition(client.lastMarkedValue?.length==4 && client.lastMarkedSelection==NSRange(location:4,length:0),"UTF16 marked payload/selection mismatch")
+   controller.apply(SessionResult(consumed:true,commits:[],view:nil),to:client)
+   equal(client.marked,"")
+   precondition(client.lastMarkedValue?.length==0 && client.lastMarkedSelection==NSRange(location:0,length:0),"marked clear must retain attributed payload type")
+  }
+  check("Rust response loop dependent replacement") { controller,client in
+   client.document="前😀"
+   controller.apply(SessionResult(consumed:true,commits:[TextEdit(deleteBefore:3,text:"仮名",expect:"前😀"),TextEdit(deleteBefore:2,text:"終",expect:"仮名")],view:nil),to:client)
+   equal(client.document,"終");equal(client.marked,"")
+  }
+  check("Rust response loop mismatch stops later edits and view") { controller,client in
+   client.document="原文"
+   let view=CompositionView(text:"表示禁止",converting:false,selectedIndex:0,selectedClause:0,hint:"",candidates:[],clauses:[],meaning:nil,suggestion:nil)
+   controller.apply(SessionResult(consumed:true,commits:[TextEdit(deleteBefore:1,text:"変更禁止",expect:"違"),TextEdit(deleteBefore:0,text:"後続禁止",expect:nil)],view:view),to:client)
+   equal(client.document,"原文");equal(client.marked,"")
+  }
+  #endif
   #if REAL_CONVERTER
   let converter=MeltypeConverter.shared
+  let expectedConversion=converter.clauses(for:"きょう",context:nil).map(\.text).joined()
+  precondition(!expectedConversion.isEmpty && expectedConversion != "きょう", "real converter did not produce kanji")
+  check("actual converter through Rust/IMK Space and commit") { controller,client in
+   type(controller,client,"kyou")
+   _=key(controller,client," ",code:UInt16(kVK_Space))
+   _=key(controller,client,"\r",code:UInt16(kVK_Return))
+   equal(client.document,expectedConversion)
+   equal(client.marked,"")
+  }
+  let expectedTabConversion=converter.clauses(for:"てんき",context:nil).map(\.text).joined()
+  precondition(!expectedTabConversion.isEmpty && expectedTabConversion != "てんき", "Tab fixture requires a real kanji result")
+  check("actual converter through Rust/IMK Tab with predictions disabled") { controller,client in
+   type(controller,client,"tenki")
+   _=key(controller,client,"\t",code:UInt16(kVK_Tab))
+   _=key(controller,client,"\r",code:UInt16(kVK_Return))
+   equal(client.document,expectedTabConversion)
+   equal(client.marked,"")
+  }
   let candidates=converter.candidates(for:"きょう")
   precondition(candidates.contains("今日"),"real dictionary conversion missing: \(candidates)")
   let clauses=converter.clauses(for:"きょうはいいてんき",context:nil)
@@ -128,6 +176,9 @@ struct EventTests {
   precondition(FileManager.default.fileExists(atPath:directory+"/azooKey"),"converter ignored isolated data directory")
   passed+=3
   print("PASS: actual azooKey candidates, clause reading coverage, isolated data directory")
+  precondition(NativeCore.shared.spellCheckCount > 0,"Rust did not invoke the registered NSSpellChecker callback")
+  passed+=1
+  print("PASS: registered NSSpellChecker through Rust (\(NativeCore.shared.spellCheckCount) actual checks)")
   #endif
   print("\(passed) Mac event/integration cases passed (synthetic client; OS IME registration and app GUI NOT_RUN)")
  }

@@ -1,0 +1,2214 @@
+[
+  {
+    "name": "hashi-False-back",
+    "raw": "hashi",
+    "tab": false,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        40,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashi-False-back-twice",
+    "raw": "hashi",
+    "tab": false,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashi-False-ctrl-h",
+    "raw": "hashi",
+    "tab": false,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        72,
+        0,
+        2
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashi-False-escape",
+    "raw": "hashi",
+    "tab": false,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        40,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashi-False-convert-cycle",
+    "raw": "hashi",
+    "tab": false,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        28,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashi-False-shift-down",
+    "raw": "hashi",
+    "tab": false,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        40,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashi-False-shift-up",
+    "raw": "hashi",
+    "tab": false,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        38,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashi-False-shift-convert",
+    "raw": "hashi",
+    "tab": false,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        28,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashi-False-tab-after-space",
+    "raw": "hashi",
+    "tab": false,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": false
+  },
+  {
+    "name": "hashi-False-shift-tab-after-space",
+    "raw": "hashi",
+    "tab": false,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashi-False-tab-start-cycle",
+    "raw": "hashi",
+    "tab": false,
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": false
+  },
+  {
+    "name": "hashi-False-shift-tab-start",
+    "raw": "hashi",
+    "tab": false,
+    "keys": [
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": false
+  },
+  {
+    "name": "hashi-False-tab-cancel-back",
+    "raw": "hashi",
+    "tab": false,
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": false
+  },
+  {
+    "name": "hashi-False-tab-cancel-escape",
+    "raw": "hashi",
+    "tab": false,
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": false
+  },
+  {
+    "name": "hashi-False-tab-after-f7",
+    "raw": "hashi",
+    "tab": false,
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        118,
+        0,
+        0
+      ],
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": false
+  },
+  {
+    "name": "hashi-True-back",
+    "raw": "hashi",
+    "tab": true,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        40,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashi-True-back-twice",
+    "raw": "hashi",
+    "tab": true,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashi-True-ctrl-h",
+    "raw": "hashi",
+    "tab": true,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        72,
+        0,
+        2
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashi-True-escape",
+    "raw": "hashi",
+    "tab": true,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        40,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashi-True-convert-cycle",
+    "raw": "hashi",
+    "tab": true,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        28,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashi-True-shift-down",
+    "raw": "hashi",
+    "tab": true,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        40,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashi-True-shift-up",
+    "raw": "hashi",
+    "tab": true,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        38,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashi-True-shift-convert",
+    "raw": "hashi",
+    "tab": true,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        28,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashi-True-tab-after-space",
+    "raw": "hashi",
+    "tab": true,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashi-True-shift-tab-after-space",
+    "raw": "hashi",
+    "tab": true,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashi-True-tab-start-cycle",
+    "raw": "hashi",
+    "tab": true,
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashi-True-shift-tab-start",
+    "raw": "hashi",
+    "tab": true,
+    "keys": [
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": false
+  },
+  {
+    "name": "hashi-True-tab-cancel-back",
+    "raw": "hashi",
+    "tab": true,
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashi-True-tab-cancel-escape",
+    "raw": "hashi",
+    "tab": true,
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashi-True-tab-after-f7",
+    "raw": "hashi",
+    "tab": true,
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        118,
+        0,
+        0
+      ],
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashikami-False-back",
+    "raw": "hashikami",
+    "tab": false,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        40,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashikami-False-back-twice",
+    "raw": "hashikami",
+    "tab": false,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashikami-False-ctrl-h",
+    "raw": "hashikami",
+    "tab": false,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        72,
+        0,
+        2
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashikami-False-escape",
+    "raw": "hashikami",
+    "tab": false,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        40,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashikami-False-convert-cycle",
+    "raw": "hashikami",
+    "tab": false,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        28,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashikami-False-shift-down",
+    "raw": "hashikami",
+    "tab": false,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        40,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashikami-False-shift-up",
+    "raw": "hashikami",
+    "tab": false,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        38,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashikami-False-shift-convert",
+    "raw": "hashikami",
+    "tab": false,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        28,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashikami-False-tab-after-space",
+    "raw": "hashikami",
+    "tab": false,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": false
+  },
+  {
+    "name": "hashikami-False-shift-tab-after-space",
+    "raw": "hashikami",
+    "tab": false,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashikami-False-tab-start-cycle",
+    "raw": "hashikami",
+    "tab": false,
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": false
+  },
+  {
+    "name": "hashikami-False-shift-tab-start",
+    "raw": "hashikami",
+    "tab": false,
+    "keys": [
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": false
+  },
+  {
+    "name": "hashikami-False-tab-cancel-back",
+    "raw": "hashikami",
+    "tab": false,
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": false
+  },
+  {
+    "name": "hashikami-False-tab-cancel-escape",
+    "raw": "hashikami",
+    "tab": false,
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": false
+  },
+  {
+    "name": "hashikami-False-tab-after-f7",
+    "raw": "hashikami",
+    "tab": false,
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        118,
+        0,
+        0
+      ],
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": false
+  },
+  {
+    "name": "hashikami-True-back",
+    "raw": "hashikami",
+    "tab": true,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        40,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashikami-True-back-twice",
+    "raw": "hashikami",
+    "tab": true,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashikami-True-ctrl-h",
+    "raw": "hashikami",
+    "tab": true,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        72,
+        0,
+        2
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashikami-True-escape",
+    "raw": "hashikami",
+    "tab": true,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        40,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashikami-True-convert-cycle",
+    "raw": "hashikami",
+    "tab": true,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        28,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashikami-True-shift-down",
+    "raw": "hashikami",
+    "tab": true,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        40,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashikami-True-shift-up",
+    "raw": "hashikami",
+    "tab": true,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        38,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashikami-True-shift-convert",
+    "raw": "hashikami",
+    "tab": true,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        28,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashikami-True-tab-after-space",
+    "raw": "hashikami",
+    "tab": true,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashikami-True-shift-tab-after-space",
+    "raw": "hashikami",
+    "tab": true,
+    "keys": [
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashikami-True-tab-start-cycle",
+    "raw": "hashikami",
+    "tab": true,
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashikami-True-shift-tab-start",
+    "raw": "hashikami",
+    "tab": true,
+    "keys": [
+      [
+        9,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": false
+  },
+  {
+    "name": "hashikami-True-tab-cancel-back",
+    "raw": "hashikami",
+    "tab": true,
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashikami-True-tab-cancel-escape",
+    "raw": "hashikami",
+    "tab": true,
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashikami-True-tab-after-f7",
+    "raw": "hashikami",
+    "tab": true,
+    "keys": [
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        118,
+        0,
+        0
+      ],
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        9,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashi-False-convert-start",
+    "raw": "hashi",
+    "tab": false,
+    "keys": [
+      [
+        28,
+        0,
+        0
+      ],
+      [
+        28,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashi-True-convert-start",
+    "raw": "hashi",
+    "tab": true,
+    "keys": [
+      [
+        28,
+        0,
+        0
+      ],
+      [
+        28,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashikami-False-convert-start",
+    "raw": "hashikami",
+    "tab": false,
+    "keys": [
+      [
+        28,
+        0,
+        0
+      ],
+      [
+        28,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashikami-True-convert-start",
+    "raw": "hashikami",
+    "tab": true,
+    "keys": [
+      [
+        28,
+        0,
+        0
+      ],
+      [
+        28,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashi-f6-cancel-8",
+    "raw": "hashi",
+    "tab": false,
+    "keys": [
+      [
+        117,
+        0,
+        0
+      ],
+      [
+        28,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashi-f6-cancel-27",
+    "raw": "hashi",
+    "tab": false,
+    "keys": [
+      [
+        117,
+        0,
+        0
+      ],
+      [
+        28,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashi-f7-cancel-8",
+    "raw": "hashi",
+    "tab": false,
+    "keys": [
+      [
+        118,
+        0,
+        0
+      ],
+      [
+        28,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashi-f7-cancel-27",
+    "raw": "hashi",
+    "tab": false,
+    "keys": [
+      [
+        118,
+        0,
+        0
+      ],
+      [
+        28,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashi-f8-cancel-8",
+    "raw": "hashi",
+    "tab": false,
+    "keys": [
+      [
+        119,
+        0,
+        0
+      ],
+      [
+        28,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashi-f8-cancel-27",
+    "raw": "hashi",
+    "tab": false,
+    "keys": [
+      [
+        119,
+        0,
+        0
+      ],
+      [
+        28,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashi-f9-cancel-8",
+    "raw": "hashi",
+    "tab": false,
+    "keys": [
+      [
+        120,
+        0,
+        0
+      ],
+      [
+        28,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashi-f9-cancel-27",
+    "raw": "hashi",
+    "tab": false,
+    "keys": [
+      [
+        120,
+        0,
+        0
+      ],
+      [
+        28,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashi-f10-cancel-8",
+    "raw": "hashi",
+    "tab": false,
+    "keys": [
+      [
+        121,
+        0,
+        0
+      ],
+      [
+        28,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashi-f10-cancel-27",
+    "raw": "hashi",
+    "tab": false,
+    "keys": [
+      [
+        121,
+        0,
+        0
+      ],
+      [
+        28,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashikami-f6-cancel-8",
+    "raw": "hashikami",
+    "tab": false,
+    "keys": [
+      [
+        117,
+        0,
+        0
+      ],
+      [
+        28,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashikami-f6-cancel-27",
+    "raw": "hashikami",
+    "tab": false,
+    "keys": [
+      [
+        117,
+        0,
+        0
+      ],
+      [
+        28,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashikami-f7-cancel-8",
+    "raw": "hashikami",
+    "tab": false,
+    "keys": [
+      [
+        118,
+        0,
+        0
+      ],
+      [
+        28,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashikami-f7-cancel-27",
+    "raw": "hashikami",
+    "tab": false,
+    "keys": [
+      [
+        118,
+        0,
+        0
+      ],
+      [
+        28,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashikami-f8-cancel-8",
+    "raw": "hashikami",
+    "tab": false,
+    "keys": [
+      [
+        119,
+        0,
+        0
+      ],
+      [
+        28,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashikami-f8-cancel-27",
+    "raw": "hashikami",
+    "tab": false,
+    "keys": [
+      [
+        119,
+        0,
+        0
+      ],
+      [
+        28,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashikami-f9-cancel-8",
+    "raw": "hashikami",
+    "tab": false,
+    "keys": [
+      [
+        120,
+        0,
+        0
+      ],
+      [
+        28,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashikami-f9-cancel-27",
+    "raw": "hashikami",
+    "tab": false,
+    "keys": [
+      [
+        120,
+        0,
+        0
+      ],
+      [
+        28,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashikami-f10-cancel-8",
+    "raw": "hashikami",
+    "tab": false,
+    "keys": [
+      [
+        121,
+        0,
+        0
+      ],
+      [
+        28,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  },
+  {
+    "name": "hashikami-f10-cancel-27",
+    "raw": "hashikami",
+    "tab": false,
+    "keys": [
+      [
+        121,
+        0,
+        0
+      ],
+      [
+        28,
+        0,
+        0
+      ],
+      [
+        27,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0
+      ]
+    ],
+    "converts": true
+  }
+]

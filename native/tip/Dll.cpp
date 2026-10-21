@@ -74,6 +74,7 @@ void TipLog(const wchar_t* format, ...) {
 
 namespace {
 
+#ifndef MELTYPE_RUST_CORE
 class ClassFactory final : public IClassFactory {
 public:
     STDMETHODIMP QueryInterface(REFIID riid, void** ppv) override {
@@ -115,7 +116,9 @@ public:
 };
 
 ClassFactory g_factory;
+#endif
 
+#ifndef MELTYPE_RUST_CORE
 std::wstring ClsidString() {
     wchar_t text[64] = {};
     StringFromGUID2(CLSID_TextService, text, ARRAYSIZE(text));
@@ -198,6 +201,7 @@ HRESULT RegisterCategories(bool add) {
     category->Release();
     return hr;
 }
+#endif
 
 }  // namespace
 }  // namespace meltype
@@ -209,30 +213,46 @@ BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID) {
         case DLL_PROCESS_ATTACH:
             g_module = instance;
             DisableThreadLibraryCalls(instance);
+
+#ifndef MELTYPE_RUST_CORE
             CandidateWindow::RegisterClasses();
+#endif
             break;
         case DLL_PROCESS_DETACH:
+
+#ifndef MELTYPE_RUST_CORE
             CandidateWindow::UnregisterClasses();
+#endif
             break;
     }
     return TRUE;
 }
 
 STDAPI DllGetClassObject(REFCLSID clsid, REFIID riid, void** ppv) {
+#ifdef MELTYPE_RUST_CORE
+    return RustGetClassObject(clsid, riid, ppv);
+#else
     if (ppv == nullptr) return E_INVALIDARG;
     *ppv = nullptr;
     if (!IsEqualCLSID(clsid, CLSID_TextService)) return CLASS_E_CLASSNOTAVAILABLE;
     return g_factory.QueryInterface(riid, ppv);
+#endif
 }
 
 STDAPI DllCanUnloadNow() {
     if (g_locks > 0) return S_FALSE;
     // このあと DLL が外れると静的変数ごと消えるので、ファクトリーはここで解放する
+
+#ifndef MELTYPE_RUST_CORE
     CandidateWindow::ReleaseFactories();
+#endif
     return S_OK;
 }
 
 STDAPI DllRegisterServer() {
+#ifdef MELTYPE_RUST_CORE
+    return RustRegisterServer();
+#else
     HRESULT hr = RegisterComServer();
     if (SUCCEEDED(hr)) hr = RegisterProfile();
     if (SUCCEEDED(hr)) hr = RegisterCategories(true);
@@ -242,11 +262,16 @@ STDAPI DllRegisterServer() {
         UnregisterComServer();
     }
     return hr;
+#endif
 }
 
 STDAPI DllUnregisterServer() {
+#ifdef MELTYPE_RUST_CORE
+    return RustUnregisterServer();
+#else
     RegisterCategories(false);
     UnregisterProfile();
     UnregisterComServer();
     return S_OK;
+#endif
 }

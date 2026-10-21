@@ -1,0 +1,178 @@
+[
+  {
+    "name": "raw-not-selected",
+    "reading": "ご",
+    "text": "go",
+    "raw": "go",
+    "english": false,
+    "changed": false,
+    "repeats": 1,
+    "learning": true,
+    "private": false
+  },
+  {
+    "name": "raw-first-choice",
+    "reading": "ご",
+    "text": "go",
+    "raw": "go",
+    "english": false,
+    "changed": true,
+    "repeats": 1,
+    "learning": true,
+    "private": false
+  },
+  {
+    "name": "raw-second-choice",
+    "reading": "ご",
+    "text": "go",
+    "raw": "go",
+    "english": false,
+    "changed": true,
+    "repeats": 2,
+    "learning": true,
+    "private": false
+  },
+  {
+    "name": "common-first",
+    "reading": "すし",
+    "text": "sushi",
+    "raw": "sushi",
+    "english": false,
+    "changed": true,
+    "repeats": 1,
+    "learning": true,
+    "private": false
+  },
+  {
+    "name": "common-second",
+    "reading": "すし",
+    "text": "sushi",
+    "raw": "sushi",
+    "english": false,
+    "changed": true,
+    "repeats": 2,
+    "learning": true,
+    "private": false
+  },
+  {
+    "name": "ascii-case",
+    "reading": "はし",
+    "text": "HASHI",
+    "raw": "HASHI",
+    "english": false,
+    "changed": true,
+    "repeats": 1,
+    "learning": true,
+    "private": false
+  },
+  {
+    "name": "missing-provenance",
+    "reading": "ご",
+    "text": "go",
+    "raw": null,
+    "english": false,
+    "changed": true,
+    "repeats": 1,
+    "learning": true,
+    "private": false
+  },
+  {
+    "name": "different-raw",
+    "reading": "ご",
+    "text": "GO",
+    "raw": "go",
+    "english": false,
+    "changed": true,
+    "repeats": 1,
+    "learning": true,
+    "private": false
+  },
+  {
+    "name": "english-to-japanese",
+    "reading": "go",
+    "text": "語",
+    "raw": null,
+    "english": true,
+    "changed": false,
+    "repeats": 1,
+    "learning": true,
+    "private": false
+  },
+  {
+    "name": "english-to-kana",
+    "reading": "api",
+    "text": "あぴ",
+    "raw": null,
+    "english": true,
+    "changed": true,
+    "repeats": 1,
+    "learning": true,
+    "private": false
+  },
+  {
+    "name": "english-unchanged",
+    "reading": "go",
+    "text": "go",
+    "raw": null,
+    "english": true,
+    "changed": true,
+    "repeats": 1,
+    "learning": true,
+    "private": false
+  },
+  {
+    "name": "english-nonalphabetic",
+    "reading": "go2",
+    "text": "語",
+    "raw": null,
+    "english": true,
+    "changed": true,
+    "repeats": 1,
+    "learning": true,
+    "private": false
+  },
+  {
+    "name": "one-letter",
+    "reading": "い",
+    "text": "i",
+    "raw": "i",
+    "english": false,
+    "changed": true,
+    "repeats": 1,
+    "learning": true,
+    "private": false
+  },
+  {
+    "name": "disabled",
+    "reading": "ご",
+    "text": "go",
+    "raw": "go",
+    "english": false,
+    "changed": true,
+    "repeats": 1,
+    "learning": false,
+    "private": false
+  },
+  {
+    "name": "private",
+    "reading": "ご",
+    "text": "go",
+    "raw": "go",
+    "english": false,
+    "changed": true,
+    "repeats": 1,
+    "learning": true,
+    "private": true
+  },
+  {
+    "name": "english-cjk-extension",
+    "reading": "go",
+    "text": "㐀",
+    "raw": null,
+    "english": true,
+    "changed": false,
+    "repeats": 1,
+    "learning": true,
+    "private": false
+  }
+]

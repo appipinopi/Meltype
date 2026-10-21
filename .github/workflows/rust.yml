@@ -1,0 +1,497 @@
+name: Rust preview
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ['rust/**', 'android/**', 'Cargo.*', 'dictionaries/**', 'native/tip/**', 'linux/fcitx5/**', 'tools/parity/*.py', 'tools/check-rust-windows-package.py', 'tools/test_rust_windows_package.py', 'tools/parity/settings-candidates/**', 'tools/parity/settings-apps/**', 'tools/parity/windows-converter/**', 'tools/parity/mozc-lifecycle/**', '.github/workflows/rust.yml']
+permissions:
+  contents: read
+jobs:
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    concurrency:
+      group: rust-preview-${{ github.head_ref || github.ref_name }}-${{ matrix.os }}
+      # Finish each active platform without blocking other platforms.
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Linux IBus development and isolated-test runtime
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libibus-1.0-dev ibus gir1.2-ibus-1.0 python3-gi dbus-x11 xvfb fonts-noto-cjk libxkbcommon-x11-0
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - run: cargo clippy -p meltype-native --all-targets --features tsf-server --locked -- -D warnings
+        if: runner.os == 'Windows'
+      - run: cargo test --workspace --locked
+      - run: cargo run -p meltype-core --example quality -- quality-report.json --check
+      - name: Build fcitx5 adapter
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake libfcitx5core-dev libfcitx5utils-dev libfcitx5config-dev
+          cmake -S linux/fcitx5 -B linux/build/fcitx5-rust -DMELTYPE_RUST_CORE=ON -DMELTYPE_RUST_ABI_TESTS=ON
+          cmake --build linux/build/fcitx5-rust --parallel 2
+          cmake -S linux/fcitx5 -B linux/build/fcitx5-legacy -DMELTYPE_RUST_CORE=OFF
+          cmake --build linux/build/fcitx5-legacy --parallel 2
+      - run: cargo build --workspace --release --locked
+      - name: Windows converter batch ABI bounds and cleanup
+        if: runner.os == 'Windows'
+        run: python rust/native/tests/windows_converter_batch_smoke.py target/release/meltype_native.dll
+      - name: fcitx5 Rust JSON ABI and reference/core projection parity
+        if: runner.os == 'Linux'
+        run: |
+          python3 linux/fcitx5/test/json_bridge.py target/release/libmeltype_native.so
+          linux/build/fcitx5-rust/testkeymapping "${{ github.workspace }}/target/release/libmeltype_native.so"
+          python3 linux/fcitx5/test/state_abi.py target/release/libmeltype_native.so
+          python3 linux/fcitx5/test/event_abi.py target/release/libmeltype_native.so
+      - name: Rust IBus engine through a private daemon and input context
+        if: runner.os == 'Linux'
+        run: |
+          xvfb-run -a dbus-run-session -- /usr/bin/python3 rust/ibus/tests/integration.py target/release/meltype-ibus
+          MELTYPE_IBUS_TEST_INSTALLED=1 xvfb-run -a dbus-run-session -- /usr/bin/python3 rust/ibus/tests/integration.py target/release/meltype-ibus
+          /usr/bin/python3 rust/ibus/tests/installation.py target/release/meltype-ibus
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Batch evidence and resume integrity
+        run: python -m unittest discover -s tools/parity -p test_batch_compare.py -v
+      - name: Windows preview file and PE dependency integrity
+        run: python -m unittest discover -s tools -p test_rust_windows_package.py -v
+      - name: Windows package lifecycle over isolated files
+        if: runner.os == 'Windows'
+        run: |
+          ./rust/Test-Manage-Windows.ps1
+          ./rust/Test-WindowsLifecycle.ps1
+          ./rust/Test-UpdateWindows.ps1
+          ./rust/Test-StartupCli.ps1 -Binary target/release/meltype-settings.exe
+          ./rust/Test-TrayStop.ps1 -Binary target/release/meltype-settings.exe
+      - name: Build isolated settings render probe
+        run: cargo build -p meltype-settings --features visual-test --locked
+      - name: Capture six settings pages on Windows and macOS
+        if: runner.os != 'Linux'
+        run: python tools/parity/ui/capture_settings.py target/debug/meltype-settings${{ runner.os == 'Windows' && '.exe' || '' }} dist/settings-render
+      - name: Capture six settings pages on Linux
+        if: runner.os == 'Linux'
+        run: xvfb-run -a python tools/parity/ui/capture_settings.py target/debug/meltype-settings dist/settings-render
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: settings-render-${{ runner.os }}
+          path: |
+            dist/settings-render/*.png
+            dist/settings-render/*.json
+            dist/settings-render/*.log
+          if-no-files-found: ignore
+      - name: Native ABI callbacks and live conversion
+        run: python rust/native/tests/abi_smoke.py
+      - name: Unicode mark misspelling suggestions through native ABI
+        run: python rust/native/tests/misspelling_marks_smoke.py
+      - name: Shift Space conversion and candidate navigation through native ABI
+        run: python rust/native/tests/shift_space_smoke.py
+      - name: F9 F10 case cycles through native ABI
+        run: python rust/native/tests/case_keys_smoke.py
+      - name: Prediction display and phrase learning through native ABI
+        run: python rust/native/tests/prediction_keys_smoke.py
+      - name: Numeric candidate selection through native ABI
+        run: python rust/native/tests/number_keys_smoke.py
+      - name: Conversion cancellation and Tab key roles through native ABI
+        run: python rust/native/tests/number_keys_smoke.py target/release/${{ runner.os == 'Windows' && 'meltype_native.dll' || runner.os == 'macOS' && 'libmeltype_native.dylib' || 'libmeltype_native.so' }} rust/core/tests/data/upstream-conversion-keys.json
+      - name: Misspelling suggestions and repairs through native ABI
+        run: python rust/native/tests/number_keys_smoke.py target/release/${{ runner.os == 'Windows' && 'meltype_native.dll' || runner.os == 'macOS' && 'libmeltype_native.dylib' || 'libmeltype_native.so' }} rust/core/tests/data/upstream-misspelling-keys.json
+      - name: Custom romaji original key traces through native ABI
+        run: python rust/native/tests/custom_romaji_smoke.py
+      - name: All-setting pairwise and candidate-provider parity against frozen C# replies
+        run: python tools/parity/settings-candidates/replay.py target/release/${{ runner.os == 'Windows' && 'meltype_native.dll' || runner.os == 'macOS' && 'libmeltype_native.dylib' || 'libmeltype_native.so' }}
+      - name: Additional resumable setting combinations
+        run: python tools/parity/settings-candidates/replay.py target/release/${{ runner.os == 'Windows' && 'meltype_native.dll' || runner.os == 'macOS' && 'libmeltype_native.dylib' || 'libmeltype_native.so' }} --fixture rust/core/tests/data/upstream-settings-exhaustive-batch.json
+      - name: Expanded setting regression prefixes from original C#
+        run: python tools/parity/settings-candidates/replay.py target/release/${{ runner.os == 'Windows' && 'meltype_native.dll' || runner.os == 'macOS' && 'libmeltype_native.dylib' || 'libmeltype_native.so' }} --fixture rust/core/tests/data/upstream-settings-expanded-regressions.json
+      - name: Core levels learning context and custom data through native ABI
+        run: python rust/native/tests/core_data_smoke.py
+      - name: Scored segmentation original key traces through native ABI
+        run: python rust/native/tests/scored_smoke.py
+      - name: Long and boundary original key traces through native ABI
+        run: python rust/native/tests/scored_smoke.py --golden rust/core/tests/data/upstream-long-keys.json
+      - name: Resized clauses and converter candidates match original traces
+        run: python rust/native/tests/clause_resize_smoke.py
+      - name: Selected-text reconversion matches original controller workflows
+        run: python rust/native/tests/reconversion_smoke.py
+      - uses: actions/setup-dotnet@v4
+        if: runner.os == 'Windows'
+        with:
+          dotnet-version: '10.0.x'
+      - name: Original Windows converter and actual framed worker
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+          PYTHONUTF8: '1'
+        run: |
+          dotnet run --project tools/parity/windows-converter/WindowsConverter.csproj -- tools/parity/windows-converter/cases.json > windows-converter-reference.jsonl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/windows_converter_smoke.py target/release/meltype_native.dll windows-converter-reference.jsonl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          New-Item -ItemType Directory -Force dist/windows-converter-fixture | Out-Null
+          rustc --edition=2021 -O rust/native/tests/fixtures/windows_mozc.rs -o dist/windows-converter-fixture/helper.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/windows_worker_converter_smoke.py target/release/meltype-tip-worker.exe dist/windows-converter-fixture/helper.exe windows-converter-reference.jsonl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/prediction_worker_smoke.py target/release/meltype-tip-worker.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet build tools/parity/mozc-lifecycle/MozcLifecycle.csproj --nologo
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --no-build --project tools/parity/mozc-lifecycle/MozcLifecycle.csproj -- --filter tools/parity/mozc-lifecycle/filter-cases.json > mozc-learning-filter-reference.jsonl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --no-build --project tools/parity/mozc-lifecycle/MozcLifecycle.csproj -- --raw tools/parity/mozc-lifecycle/raw-cases.json > clause-raw-reference.jsonl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --no-build --project tools/parity/mozc-lifecycle/MozcLifecycle.csproj -- --language tools/parity/mozc-lifecycle/language-cases.json > clause-language-reference.jsonl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --no-build --project tools/parity/mozc-lifecycle/MozcLifecycle.csproj -- --history tools/parity/mozc-lifecycle/history-cases.json > clause-history-reference.jsonl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --no-build --project tools/parity/mozc-lifecycle/MozcLifecycle.csproj -- --choice tools/parity/mozc-lifecycle/choice-cases.json > single-choice-reference.jsonl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --no-build --project tools/parity/mozc-lifecycle/MozcLifecycle.csproj -- --engine-keys tools/parity/mozc-lifecycle/engine-key-cases.json > engine-keys-reference.jsonl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --no-build --project tools/parity/mozc-lifecycle/MozcLifecycle.csproj -- --case-keys tools/parity/mozc-lifecycle/case-key-cases.json > case-keys-reference.jsonl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --no-build --project tools/parity/mozc-lifecycle/MozcLifecycle.csproj -- --number-keys tools/parity/mozc-lifecycle/number-key-cases.json > number-keys-reference.jsonl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --no-build --project tools/parity/mozc-lifecycle/MozcLifecycle.csproj -- --public-number-keys tools/parity/mozc-lifecycle/public-number-key-cases.json > public-number-keys-reference.jsonl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --no-build --project tools/parity/mozc-lifecycle/MozcLifecycle.csproj -- --conversion-keys tools/parity/mozc-lifecycle/conversion-key-cases.json > conversion-keys-reference.jsonl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --no-build --project tools/parity/mozc-lifecycle/MozcLifecycle.csproj -- --prediction-keys tools/parity/mozc-lifecycle/prediction-key-cases.json > prediction-keys-reference.jsonl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --no-build --project tools/parity/mozc-lifecycle/MozcLifecycle.csproj -- --direct-typos tools/parity/mozc-lifecycle/direct-typo-cases.json > direct-typos-reference.jsonl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --no-build --project tools/parity/mozc-lifecycle/MozcLifecycle.csproj -- --misspelling-keys tools/parity/mozc-lifecycle/misspelling-key-cases.json > misspelling-keys-reference.jsonl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/mozc_learning_reference.py mozc-learning-filter-reference.jsonl clause-raw-reference.jsonl clause-language-reference.jsonl clause-history-reference.jsonl single-choice-reference.jsonl engine-keys-reference.jsonl case-keys-reference.jsonl number-keys-reference.jsonl public-number-keys-reference.jsonl conversion-keys-reference.jsonl prediction-keys-reference.jsonl direct-typos-reference.jsonl misspelling-keys-reference.jsonl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo build -p meltype-core --example mozc_lifecycle --locked
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/mozc_lifecycle_smoke.py dist/windows-converter-fixture/helper.exe tools/parity/mozc-lifecycle/bin/Debug/net10.0/MozcLifecycle.dll target/debug/examples/mozc_lifecycle.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Direct-input timeout through native ABI
+        run: python rust/native/tests/direct_time_smoke.py
+      - name: Original misspelling dictionary results
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          dotnet run --project tools/parity/misspellings/Misspellings.csproj -- tools/parity/misspellings/cases.json > misspelling-reference.jsonl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/misspelling_reference.py misspelling-reference.jsonl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --no-build --project tools/parity/misspellings/Misspellings.csproj -- --categories > unicode-mark-reference.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --no-build --project tools/parity/misspellings/Misspellings.csproj -- --shapes tools/parity/misspellings/shape-cases.json > unicode-shape-reference.jsonl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/parity/misspellings/generate-marks.py --categories unicode-mark-reference.json --shapes unicode-shape-reference.jsonl --check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Legacy input state, replay and prefix learning through native ABI
+        run: python rust/native/tests/hook_smoke.py
+      - name: Settings UI labels match upstream
+        run: python tools/extract-rust-settings-ui.py --check
+      - name: Package standalone Rust IBus engine
+        if: runner.os == 'Linux'
+        run: bash rust/build-linux.sh
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'Linux'
+        with:
+          name: rust-IBus-Linux
+          path: linux/build/Meltype-Rust-linux.tar.gz
+      - if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./rust/build-windows.ps1 -WithTip -NativeOnly
+      - name: Rust TSF COM objects and native provider delegation
+        if: runner.os == 'Windows'
+        run: python rust/native/tests/tsf_com_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll native/tip/bin/rust-x64/MeltypeTip.dll
+      - name: Rust TSF edit-session scheduling and captured shell actions
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python rust/native/tests/tsf_edit_session_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_range_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_composition_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_commit_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_recovery_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_abandoned_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_fields_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_subscriptions_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_edit_events_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_key_state_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_key_entry_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_mode_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_mode_query_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_key_edit_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_commit_request_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_selection_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_apply_reply_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_composition_owner_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_termination_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_recovery_control_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_abandon_control_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_focus_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_shutdown_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_startup_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_open_change_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_core_link_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_service_com_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./rust/native/tests/build-transport-fixture.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_service_state_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll dist/tip-transport-fixture/fixture-x64.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tip_transport_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll target/x86_64-pc-windows-msvc/release/meltype-tip-worker.exe dist/tip-transport-fixture/fixture-x64.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./rust/native/tests/build-edit-session-host.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $systemReference = Get-Content windows-converter-reference.jsonl | Where-Object { $_.StartsWith('{') } | ForEach-Object { $_ | ConvertFrom-Json } | Where-Object name -eq 'plain:にほんご'
+          $env:MELTYPE_TEST_SYSTEM_NIHONGO = if ($systemReference.converted) { $systemReference.converted } else { 'にほんご' }
+          ./dist/edit-session-host/x64/native_key_owner_host.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Remove-Item Env:MELTYPE_TEST_SYSTEM_NIHONGO
+          python rust/native/tests/tsf_server_smoke.py native/tip/bin/rust-x64/MeltypeTip.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Original key helper comparison DLLs
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./rust/native/tests/build-reference-keys.ps1
+      - name: Rust key acceptance and original helper parity
+        if: runner.os == 'Windows'
+        run: python rust/native/tests/tsf_keys_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll dist/key-reference/reference-x64.dll
+      - name: Build test-only upstream candidate renderer
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./rust/native/tests/build-reference-candidates.ps1
+      - name: Rust candidate HWND behavior and upstream rendering parity
+        if: runner.os == 'Windows'
+        env:
+          MELTYPE_CANDIDATE_PREVIEW: dist/candidate-preview-x64
+        run: |
+          python rust/native/tests/tsf_candidate_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll dist/candidate-reference/reference-x64.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_candidate_view_smoke.py target/x86_64-pc-windows-msvc/release/meltype_native.dll dist/candidate-reference/reference-x64.dll
+      - uses: actions/setup-python@v5
+        if: runner.os == 'Windows'
+        with:
+          python-version: '3.12'
+          architecture: 'x86'
+      - name: Setting and candidate-source parity in a 32-bit process
+        if: runner.os == 'Windows'
+        run: python tools/parity/settings-candidates/replay.py target/i686-pc-windows-msvc/release/meltype_native.dll
+      - name: Unicode mark suggestions in a 32-bit process
+        if: runner.os == 'Windows'
+        run: python rust/native/tests/misspelling_marks_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
+      - name: Shift Space conversion in a 32-bit process
+        if: runner.os == 'Windows'
+        run: python rust/native/tests/shift_space_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
+      - name: F9 F10 case cycles in a 32-bit process
+        if: runner.os == 'Windows'
+        run: python rust/native/tests/case_keys_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
+      - name: Prediction display and phrase learning in a 32-bit process
+        if: runner.os == 'Windows'
+        run: python rust/native/tests/prediction_keys_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
+      - name: Numeric candidate selection through x86 native ABI
+        if: runner.os == 'Windows'
+        run: python rust/native/tests/number_keys_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
+      - name: Conversion cancellation and Tab key roles in a 32-bit process
+        if: runner.os == 'Windows'
+        run: python rust/native/tests/number_keys_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll rust/core/tests/data/upstream-conversion-keys.json
+      - name: Misspelling suggestions and repairs in a 32-bit process
+        if: runner.os == 'Windows'
+        run: python rust/native/tests/number_keys_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll rust/core/tests/data/upstream-misspelling-keys.json
+      - name: Rust TSF COM calling conventions in a 32-bit process
+        if: runner.os == 'Windows'
+        run: python rust/native/tests/tsf_com_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll native/tip/bin/rust-x86/MeltypeTip.dll
+      - name: Rust TSF edit-session scheduling in a 32-bit process
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python rust/native/tests/tsf_edit_session_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_range_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_composition_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_commit_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_recovery_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_abandoned_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_fields_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_subscriptions_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_edit_events_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_key_state_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_key_entry_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_mode_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_mode_query_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_key_edit_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_commit_request_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_selection_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_apply_reply_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_composition_owner_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_termination_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_recovery_control_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_abandon_control_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_focus_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_shutdown_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_startup_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_open_change_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_core_link_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_service_com_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_service_state_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll dist/tip-transport-fixture/fixture-x86.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_server_smoke.py native/tip/bin/rust-x86/MeltypeTip.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tip_transport_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll target/i686-pc-windows-msvc/release/meltype-tip-worker.exe dist/tip-transport-fixture/fixture-x86.exe
+      - name: Rust key acceptance and helper parity in a 32-bit process
+        if: runner.os == 'Windows'
+        run: python rust/native/tests/tsf_keys_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll dist/key-reference/reference-x86.dll
+      - name: Rust candidate HWND behavior and rendering in a 32-bit process
+        if: runner.os == 'Windows'
+        env:
+          MELTYPE_CANDIDATE_PREVIEW: dist/candidate-preview-x86
+        run: |
+          python rust/native/tests/tsf_candidate_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll dist/candidate-reference/reference-x86.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python rust/native/tests/tsf_candidate_view_smoke.py target/i686-pc-windows-msvc/release/meltype_native.dll dist/candidate-reference/reference-x86.dll
+      - uses: actions/upload-artifact@v4
+        if: always() && runner.os == 'Windows'
+        with:
+          name: rust-TSF-candidate-previews
+          path: dist/candidate-preview-*/
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rust-${{ runner.os }}
+          path: |
+            target/release/meltype-rs*
+            target/release/meltype-settings*
+            target/release/meltype-tip-worker*
+            target/release/*meltype_native.*
+            native/tip/bin/rust-*/
+            LICENSE
+            THIRD-PARTY-NOTICES.md
+            rust/README.md
+            quality-report.json
+  android:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: rust-preview-${{ github.head_ref || github.ref_name }}-android
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,x86_64-linux-android
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Rust Android editor through a checked JVM JNI host
+        run: |
+          cargo clippy -p meltype-native --all-targets --features android-jni-test --locked -- -D warnings
+          cargo test -p meltype-native --lib --features android-jni-test --locked
+          cargo build -p meltype-native --features android-jni-test --locked
+          python3 rust/native/tests/android_editor_smoke.py target/debug
+      - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018'
+      - run: cargo install cargo-ndk --version 4.1.2 --locked
+      - name: Build JNI libraries
+        env:
+          CARGO_NDK_PLATFORM: '26'
+        run: |
+          export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/27.2.12479018"
+          export ANDROID_NDK_ROOT="$ANDROID_NDK_HOME"
+          export ANDROID_NDK="$ANDROID_NDK_HOME"
+          cargo ndk -t arm64-v8a -t x86_64 -o android/app/src/main/jniLibs build -p meltype-native --release --locked
+      - run: gradle -p android assembleDebug assembleDebugAndroidTest lintDebug --no-daemon
+      - name: Instrumentation result gate checks
+        run: python3 android/tests/test_instrument_report.py
+      - name: Install private emulator runtime
+        run: |
+          sdkmanager 'emulator' 'system-images;android-35;google_apis;x86_64'
+          test -e /dev/kvm
+          sudo chmod a+rw /dev/kvm
+      - name: Real Android widgets and controlled InputConnection
+        timeout-minutes: 12
+        run: bash android/tests/run-emulator.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: meltype-android-runtime-evidence
+          path: dist/android-emulator/
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: meltype-rust-android-debug
+          path: |
+            android/app/build/outputs/apk/debug/*.apk
+            android/app/build/outputs/apk/androidTest/debug/*.apk
+            android/app/build/reports/lint-results-debug.html
+            LICENSE
+            THIRD-PARTY-NOTICES.md

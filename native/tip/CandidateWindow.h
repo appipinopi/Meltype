@@ -13,6 +13,7 @@
 
 namespace meltype {
 
+#ifndef MELTYPE_RUST_CORE
 struct CandidateView {
     std::vector<std::wstring> candidates;
     std::vector<std::wstring> notes;  // 候補ごとの注釈 (英訳など)。無ければ空
@@ -48,5 +49,7 @@ public:
 private:
     Impl* impl_;
 };
+
+#endif
 
 }  // namespace meltype

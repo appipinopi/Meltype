@@ -19,6 +19,7 @@ from pathlib import Path
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("library", type=Path)
+    parser.add_argument("--rust-core", action="store_true", help="Compile the Rust production bridge")
     args = parser.parse_args()
     library = args.library.resolve(strict=True)
     repo = Path(__file__).resolve().parent.parent
@@ -32,10 +33,10 @@ def main():
         shutil.copy2(library, frameworks / "libMeltypeNative.dylib")
         (contents / "Info.plist").write_bytes(plistlib.dumps({"CFBundleExecutable": executable.name,
                                                             "CFBundlePackageType": "APPL"}))
-        subprocess.run(["xcrun", "swiftc", "-swift-version", "5",
+        subprocess.run(["xcrun", "swiftc", "-swift-version", "5", *(["-DMELTYPE_RUST_CORE"] if args.rust_core else []),
                         str(repo / "tools/test-mac-boundaries.swift"),
                         *[str(repo / "mac/Sources/MeltypeIME" / name)
-                          for name in ("NativeCore.swift", "InputController.swift", "KeyMapping.swift",
+                          for name in ("NativeCore.swift", "InputController.swift", "KeyMapping.swift", "LegacyKeyMapping.swift", "NativeKeyPolicy.swift", "NativeEditorPolicy.swift",
                                        "MacUserDictionary.swift", "ModeShortcuts.swift", "ModeIndicator.swift",
                                        "ModeServices.swift", "InputSourceRegistration.swift")],
                         "-framework", "InputMethodKit", "-framework", "Carbon", "-o", str(executable)], check=True)
@@ -44,6 +45,8 @@ def main():
         (data / "config.json").write_text(json.dumps({"SpaceAroundEnglish": True, "SigilWordsDirect": False}), encoding="utf-8")
         env = os.environ.copy()
         env["MELTYPE_DATA_DIR"] = str(data)
+        if args.rust_core:
+            env["MELTYPE_RUST_DATA_DIR"] = str(data)
         subprocess.run([str(executable)], env=env, check=True)
 
 
