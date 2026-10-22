@@ -25,8 +25,8 @@ def publish(tag, directory):
     assets = sorted(Path(directory).iterdir())
     expected = {'Meltype-flash-Windows.zip', 'Meltype-flash-Windows-portable.zip',
                 'Meltype-flash-0.1.0-pre.2-setup.exe', 'Meltype-flash-Linux-x64.zip',
-                'Meltype-flash-Linux-arm64.zip', 'meltype-flash_0.1.0~pre.2_amd64.deb',
-                'meltype-flash_0.1.0~pre.2_arm64.deb', 'Meltype-flash-iOS-Simulator-arm64.zip',
+                'Meltype-flash-Linux-arm64.zip', 'meltype-flash_0.1.0-pre.2_amd64.deb',
+                'meltype-flash_0.1.0-pre.2_arm64.deb', 'Meltype-flash-iOS-Simulator-arm64.zip',
                 'Meltype-flash-iOS-source.zip', 'Meltype-flash-iOS-unsigned.ipa', 'README-iOS.md'}
     if {p.name for p in assets} != expected or any(not p.is_file() or not p.stat().st_size for p in assets):
         raise ValueError('Missing, extra, or empty distribution assets')
@@ -43,6 +43,13 @@ def publish(tag, directory):
         extra = ''.join(f'{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.name}\n' for p in assets)
         checksums.write_text(old.rstrip() + '\n' + extra, encoding='utf-8')
         subprocess.run(['gh', 'release', 'upload', tag, '--repo', REPO, *map(str, assets)], check=True)
+        # GitHub normalizes some characters (including '~') in asset names.
+        # Check the actual uploaded names and digests before publishing sums.
+        uploaded = json.loads(subprocess.check_output(['gh', 'api', f'repos/{REPO}/releases/tags/{tag}']))
+        uploaded = {asset['name']: asset for asset in uploaded['assets']}
+        for path in assets:
+            if uploaded.get(path.name, {}).get('digest') != 'sha256:' + hashlib.sha256(path.read_bytes()).hexdigest():
+                raise ValueError('Uploaded asset name or digest mismatch: ' + path.name)
         subprocess.run(['gh', 'release', 'upload', tag, '--repo', REPO, str(checksums), '--clobber'], check=True)
         sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
         notes = release['body'] + '\n\n## 追加の配布形式\n\n'
