@@ -739,13 +739,59 @@ impl Drop for Keyboard {
         self.shared.active.store(false, Ordering::Release);
         self.shared.exit.store(true, Ordering::Release);
         if let Some(worker) = self.worker.take() {
-            let _ = worker.join();
+            // UI Automation providers can be waiting on this very UI thread.
+            // Never join an in-flight foreign call from the application's Drop.
+            // The worker owns its data and the disabled hook reads only Arc state;
+            // process teardown releases remaining native resources.
+            if worker.is_finished() {
+                let _ = worker.join();
+            }
         }
     }
 }
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn shutdown_disables_capture_without_waiting_for_a_blocked_provider() {
+        let (queue, _events) = mpsc::sync_channel(1);
+        let shared = Arc::new(Shared {
+            active: AtomicBool::new(true),
+            permitted: AtomicBool::new(true),
+            composing: AtomicBool::new(false),
+            ready: AtomicBool::new(true),
+            exit: AtomicBool::new(false),
+            generation: AtomicU64::new(0),
+            queue,
+            test_pid: 0,
+        });
+        let (release, blocked) = mpsc::channel();
+        let (dropped, finished) = mpsc::channel();
+        let worker_state = shared.clone();
+        let worker = std::thread::spawn(move || {
+            blocked.recv().unwrap();
+            assert!(worker_state.exit.load(Ordering::Acquire));
+            assert!(!worker_state.active.load(Ordering::Acquire));
+            dropped.send(()).unwrap();
+        });
+        let keyboard = Keyboard {
+            shared: shared.clone(),
+            worker: Some(worker),
+            last_settings: None,
+        };
+        let (shutdown, complete) = mpsc::channel();
+        let dropper = std::thread::spawn(move || {
+            drop(keyboard);
+            shutdown.send(()).unwrap();
+        });
+        let result = complete.recv_timeout(Duration::from_secs(1));
+        // Unblock and join even if the regression returns, so tests leave no thread.
+        release.send(()).unwrap();
+        dropper.join().unwrap();
+        finished.recv_timeout(Duration::from_secs(1)).unwrap();
+        assert!(result.is_ok(), "shutdown waited for the provider");
+        assert!(!shared.active.load(Ordering::Acquire));
+    }
     #[test]
     fn text_pattern_read_only_requires_an_explicit_boolean() {
         use windows::core::VARIANT;
