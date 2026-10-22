@@ -37,6 +37,7 @@ Name: "japanese"; MessagesFile: "compiler:Languages\Japanese.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "Invoke-FlashSetup.ps1"; DestDir: "{app}"; Flags: ignoreversion
 [Icons]
 Name: "{commonprograms}\Meltype-flash 設定"; Filename: "{app}\meltype-flash.exe"
 [Code]
@@ -45,8 +46,8 @@ function Manage(Action: String): Boolean;
 var Code: Integer;
 begin
   Result := ExecAndLogOutput(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
-    '-NoProfile -ExecutionPolicy Bypass -File "' + ExpandConstant('{app}\Manage-Windows.ps1') +
-    '" -Action ' + Action + ' -Package "' + ExpandConstant('{app}') + '"',
+    '-NoProfile -ExecutionPolicy Bypass -File "' + ExpandConstant('{app}\Invoke-FlashSetup.ps1') +
+    '" -Action ' + Action,
     ExpandConstant('{app}'), SW_HIDE, ewWaitUntilTerminated, Code, nil);
   Log('Meltype-flash ' + Action + ' result: ' + IntToStr(Code));
   Result := Result and (Code = 0);
