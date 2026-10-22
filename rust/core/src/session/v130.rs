@@ -88,6 +88,7 @@ impl Session {
             if self.key_intervals.len() > 128 {
                 self.key_intervals.pop_front();
             }
+            #[cfg(feature = "filesystem")]
             if self.settings.boolean("FileLog") {
                 if let Some(store) = &self.store {
                     use std::io::Write;
@@ -153,6 +154,7 @@ impl Session {
                 .get(self.selected_prediction as usize)
                 .cloned()
             {
+                #[cfg(feature = "filesystem")]
                 if let Some(store) = &self.store {
                     match store.update(|state| {
                         state.phrases.retain(|p| p.text != word);
@@ -164,6 +166,8 @@ impl Session {
                 } else {
                     self.state.phrases.retain(|p| p.text != word);
                 }
+                #[cfg(not(feature = "filesystem"))]
+                self.state.phrases.retain(|p| p.text != word);
                 self.selected_prediction = -1;
                 return Some(self.result(true));
             }

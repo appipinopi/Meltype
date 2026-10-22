@@ -116,7 +116,7 @@ class StartupTests(unittest.TestCase):
         self.assertEqual(self.host.log,['initialize',('atom',0),('atom',1),('atom',2),('action',0),('action',1),('action',2),'addbar','focus',('action',3),('action',4)])
         self.assertTrue(all(token.value for token in self.tokens));self.assertEqual([a.value for a in self.atoms],[700,701,702])
         self.assertEqual(self.initialized[0][:3],(17,0,0));self.assertRegex(self.initialized[0][3],r'^\d+-\d+-\d+$')
-        expected=['c8107d36-2806-4d8f-a183-fd0aeb8ed862','e17aa399-c5eb-42e6-be45-c44f0651f2e2','cef94813-c47f-48c1-b4ef-d4582d5d4054']
+        expected=['51987acc-d57a-5c81-ad25-5c1e8d83f258','52a75cec-c221-5443-bb39-eb8d777c688f','711d8fcb-cfbd-56d2-9a8e-672ee6ed74c1']
         self.assertEqual(self.host.registered,[bytes(Guid.parse(guid)) for guid in expected])
     def test_startup_secure_mode_skips_mode_bar_and_hello(self):
         self.startup(2);self.assertEqual(self.initialized[0][1],1)

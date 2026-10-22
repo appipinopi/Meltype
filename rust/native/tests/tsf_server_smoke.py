@@ -13,7 +13,7 @@ from tsf_com_smoke import Guid,HR,P,U32,invoke,release,UNKNOWN
 from tsf_com_smoke import RUST_MODULES,PROVIDER
 from tsf_edit_session_smoke import ACTION,DESTROY,REQUEST,ASYNC
 from tsf_startup_smoke import StartupHost
-CLSID=Guid.parse('417d801b-a9bd-4c26-bd16-356a825a6998')
+CLSID=Guid.parse('c540baf6-88b1-5b30-b524-2c8702b034fc')
 FACTORY=Guid.parse('00000001-0000-0000-c000-000000000046')
 PROCESSOR=Guid.parse('6e4e2102-f9cd-433d-b496-303ce03a6507')
 class ServerTests(unittest.TestCase):
@@ -29,7 +29,7 @@ class ServerTests(unittest.TestCase):
         cls.directory=tempfile.TemporaryDirectory(prefix='meltype-rust-server-')
         cls.previous={key:os.environ.get(key) for key in ['LOCALAPPDATA','MELTYPE_TIP_LOG']}
         os.environ['LOCALAPPDATA']=cls.directory.name;os.environ['MELTYPE_TIP_LOG']='1'
-        (Path(cls.directory.name)/'Meltype').mkdir()
+        (Path(cls.directory.name)/'Meltype-flash').mkdir()
     @classmethod
     def tearDownClass(cls):
         for key,value in cls.previous.items():
@@ -60,7 +60,7 @@ class ServerTests(unittest.TestCase):
         user=c.WinDLL('user32');user.GetClassInfoExW.argtypes=[P,c.c_wchar_p,P]
         def registered():
             buffer=c.create_string_buffer(80 if c.sizeof(P)==8 else 48);c.cast(buffer,c.POINTER(U32))[0]=len(buffer)
-            return bool(user.GetClassInfoExW(self.dll._handle,'MeltypeRustCandidateWindow',buffer))
+            return bool(user.GetClassInfoExW(self.dll._handle,'Meltype-flashCandidateWindow',buffer))
         for _ in range(2):
             token=self.native.meltype_tsf_candidate_create(None,None);self.assertTrue(token)
             try:self.assertTrue(registered());self.assertEqual(self.dll.DllCanUnloadNow(),1)
@@ -120,7 +120,7 @@ class ServerTests(unittest.TestCase):
         try:
             self.assertEqual(invoke(root,5,HR,[P,U32,U32],c.byref(host.context),17,2),0)
             self.assertEqual(invoke(root,4,HR,[]),0);host.clear_bars();host.verify(self)
-            path=Path(self.directory.name)/'Meltype/tip.log';text=path.read_text(encoding='utf-8')
+            path=Path(self.directory.name)/'Meltype-flash/tip.log';text=path.read_text(encoding='utf-8')
             self.assertIn('Activate (',text);self.assertIn('無効: セキュリティ保護された画面',text)
             self.assertRegex(text,r'\d{2}:\d{2}:\d{2}\.\d{3} \[')
         finally:release(root)

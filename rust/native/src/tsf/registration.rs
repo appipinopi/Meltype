@@ -2,6 +2,8 @@
 // Copyright (C) 2026 lnkiai, appipinopi
 //! Explicit regsvr32 operations. Tests inject all mutations; loading the DLL
 //! never registers a COM server, input profile or category.
+use super::identity::CLSID;
+use super::identity::PROFILE;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use windows::{
     core::{w, Result, GUID, HRESULT, PCWSTR},
@@ -11,9 +13,7 @@ use windows::{
         UI::{Input::KeyboardAndMouse::HKL, TextServices::*},
     },
 };
-const CLSID: GUID = GUID::from_u128(0x417d801b_a9bd_4c26_bd16_356a825a6998);
-const PROFILE: GUID = GUID::from_u128(0x21f643f4_72d5_4946_bf70_0a126ab52d05);
-const KEY: PCWSTR = w!("Software\\Classes\\CLSID\\{417D801B-A9BD-4C26-BD16-356A825A6998}");
+const KEY: PCWSTR = w!("Software\\Classes\\CLSID\\{C540BAF6-88B1-5B30-B524-2C8702B034FC}");
 const CATEGORIES: [GUID; 5] = [
     GUID_TFCAT_TIP_KEYBOARD,
     GUID_TFCAT_DISPLAYATTRIBUTEPROVIDER,
@@ -95,7 +95,7 @@ impl Backend for Windows {
             let class = Key::create(HKEY_LOCAL_MACHINE, KEY)?;
             class.string(
                 PCWSTR::null(),
-                &"Meltype".encode_utf16().collect::<Vec<_>>(),
+                &"Meltype-flash".encode_utf16().collect::<Vec<_>>(),
             )?;
             let server = Key::create(class.0, w!("InprocServer32"))?;
             server.string(PCWSTR::null(), path)?;
@@ -113,7 +113,7 @@ impl Backend for Windows {
                 &CLSID,
                 0x0411,
                 &PROFILE,
-                &"Meltype".encode_utf16().collect::<Vec<_>>(),
+                &"Meltype-flash".encode_utf16().collect::<Vec<_>>(),
                 path,
                 0,
                 HKL::default(),

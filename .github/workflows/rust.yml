@@ -71,16 +71,19 @@ jobs:
           ./rust/Test-Manage-Windows.ps1
           ./rust/Test-WindowsLifecycle.ps1
           ./rust/Test-UpdateWindows.ps1
-          ./rust/Test-StartupCli.ps1 -Binary target/release/meltype-settings.exe
-          ./rust/Test-TrayStop.ps1 -Binary target/release/meltype-settings.exe
+          ./rust/Test-StartupCli.ps1 -Binary target/release/meltype-flash.exe
+          ./rust/Test-TrayStop.ps1 -Binary target/release/meltype-flash.exe
       - name: Build isolated settings render probe
         run: cargo build -p meltype-settings --features visual-test --locked
       - name: Capture six settings pages on Windows and macOS
         if: runner.os != 'Linux'
-        run: python tools/parity/ui/capture_settings.py target/debug/meltype-settings${{ runner.os == 'Windows' && '.exe' || '' }} dist/settings-render
+        run: python tools/parity/ui/capture_settings.py target/debug/meltype-flash${{ runner.os == 'Windows' && '.exe' || '' }} dist/settings-render
+      - name: Verify independent native Flash dialogs
+        if: runner.os == 'Windows'
+        run: python tools/parity/ui/check_dialog_windows.py target/debug/meltype-flash.exe dist/settings-render/native-dialogs.json
       - name: Capture six settings pages on Linux
         if: runner.os == 'Linux'
-        run: xvfb-run -a python tools/parity/ui/capture_settings.py target/debug/meltype-settings dist/settings-render
+        run: xvfb-run -a python tools/parity/ui/capture_settings.py target/debug/meltype-flash dist/settings-render
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -199,7 +202,9 @@ jobs:
       - name: Legacy input state, replay and prefix learning through native ABI
         run: python rust/native/tests/hook_smoke.py
       - name: Settings UI labels match upstream
-        run: python tools/extract-rust-settings-ui.py --check
+        run: |
+          git fetch --no-tags --depth=1 origin 6310c44b728d5ad88284853f9ef37ea224993b18
+          python tools/extract-rust-settings-ui.py --check
       - name: Package standalone Rust IBus engine
         if: runner.os == 'Linux'
         run: bash rust/build-linux.sh
@@ -207,7 +212,7 @@ jobs:
         if: runner.os == 'Linux'
         with:
           name: rust-IBus-Linux
-          path: linux/build/Meltype-Rust-linux.tar.gz
+          path: linux/build/Meltype-flash-linux.tar.gz
       - if: runner.os == 'Windows'
         shell: pwsh
         run: ./rust/build-windows.ps1 -WithTip -NativeOnly
@@ -423,7 +428,7 @@ jobs:
           name: rust-${{ runner.os }}
           path: |
             target/release/meltype-rs*
-            target/release/meltype-settings*
+            target/release/meltype-flash*
             target/release/meltype-tip-worker*
             target/release/*meltype_native.*
             native/tip/bin/rust-*/

@@ -14,8 +14,7 @@ INSTALL=1
 # アプリ内の登録処理で、有効な入力ソースを追加し、Meltype の重複だけを整理する。
 enable_input_source() {
     "$TARGET/Meltype.app/Contents/MacOS/Meltype" --register-input-source
-    killall TextInputMenuAgent 2>/dev/null || true
-    echo "入力ソースに Meltype を追加しました"
+    echo "Meltype の入力ソースの登録処理を実行しました"
 }
 
 # 入力ソースの登録をやり直す (#134)。Meltype.app を入れ替えるとき、バンドルが無い一瞬に入力ソースの
@@ -111,7 +110,11 @@ done < <(otool -L "$APP/Contents/MacOS/Meltype" | awk '/@rpath\//{print $1}')
 cp "$BUILD/native/MeltypeNative.dylib" "$APP/Contents/Frameworks/libMeltypeNative.dylib"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" "$APP/Contents/Info.plist"
-cp Resources/icon.tiff "$APP/Contents/Resources/icon.tiff"
+if [[ "${MELTYPE_RUST_CORE:-}" == 1 ]]; then
+    cp ../assets/branding/meltype-flash.tiff "$APP/Contents/Resources/icon.tiff"
+else
+    cp Resources/icon.tiff "$APP/Contents/Resources/icon.tiff"
+fi
 # システム設定の入力ソースの一覧に出す名前
 cp -R Resources/ja.lproj Resources/en.lproj "$APP/Contents/Resources/"
 # azooKey の辞書などのリソース (Swift Package のリソースバンドル)

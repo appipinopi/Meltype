@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "Meltype Rust for ChromeOS (Preview)",
+  "description": "Rust Coreを使うChromeOS向け日本語入力の試験版。chrome.input.imeが利用できる環境向け。",
+  "version": "0.1.1",
+  "minimum_chrome_version": "119",
+  "permissions": ["input", "storage"],
+  "background": {"service_worker": "background.mjs", "type": "module"},
+  "content_security_policy": {"extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"},
+  "input_components": [{"name": "Meltype Rust", "id": "meltype-rust", "language": ["ja"], "layouts": ["us::eng"], "options_page": "options.html"}],
+  "options_ui": {"page": "options.html", "open_in_tab": true},
+  "action": {"default_title": "Meltypeの設定と動作状況"}
+}

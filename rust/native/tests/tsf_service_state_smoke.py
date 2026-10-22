@@ -406,7 +406,7 @@ class StateTests(unittest.TestCase):
     def show_candidates(self,state,context=None,composition=None,view=None):
         view=view or {'predictions':['日本','😀'],'selectedPrediction':1}
         return self.api.meltype_tsf_service_show_candidates(c.addressof(state),context,composition,7,json.dumps(view,ensure_ascii=False).encode())
-    def candidate_windows(self):return windows('MeltypeRustCandidateWindow')
+    def candidate_windows(self):return windows('Meltype-flashCandidateWindow')
     def click_candidate(self,window):
         scale=user.GetDpiForWindow(window)/96
         user.SendMessageW(window,0x202,0,(int(52*scale)<<16)|10)

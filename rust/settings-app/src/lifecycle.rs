@@ -8,6 +8,7 @@ pub const REPORT: &str = "https://github.com/appipinopi/Meltype/issues/new";
 pub struct Lifecycle {
     pub welcome: bool,
     pub about: bool,
+    pub updates: bool,
     update: Option<std::sync::mpsc::Receiver<String>>,
     update_status: String,
     auto_check_pending: bool,
@@ -24,7 +25,7 @@ fn rust_release(body: &serde_json::Value) -> Option<String> {
         let rust_windows = release["assets"].as_array()?.iter().any(|asset| {
             let name = asset["name"].as_str().unwrap_or("").to_ascii_lowercase();
             let digest = asset["digest"].as_str().unwrap_or("");
-            name.starts_with("meltype-rust-windows")
+            name.starts_with("meltype-flash-windows")
                 && name.ends_with(".zip")
                 && digest
                     .strip_prefix("sha256:")
@@ -44,7 +45,7 @@ impl Lifecycle {
             ..Default::default()
         }
     }
-    fn check_updates(&mut self) {
+    pub fn check_updates(&mut self) {
         if self.update.is_some() {
             return;
         }
@@ -116,11 +117,11 @@ impl Lifecycle {
         let mut acknowledge = false;
         if self.welcome {
             ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
-            egui::Window::new("Meltype Rust へようこそ").collapsible(false).resizable(false).show(ctx, |ui| {
+            egui::Window::new("Meltype-flash へようこそ").collapsible(false).resizable(false).show(ctx, |ui| {
                 ui.label("Windows・共通Coreの移植プレビューです。");
                 ui.label("1. 設定と入力テストで、入力方式や候補を確認してください。");
                 ui.label("2. IMEの導入は配布フォルダーの Manage-Windows.ps1 で行います。");
-                ui.label("3. Windowsの言語設定からMeltype IMEを選択してください。");
+                ui.label("3. Windowsの言語設定からMeltype-flash IMEを選択してください。");
                 ui.label("ZIPを展開・起動しただけではIMEは登録されません。");
                 ui.label("登録なしで使う場合は Start-Portable.ps1 を実行し、Ctrl+Alt+J で入力を切り替えます。");
                 ui.label(format!("データ保存先: {}", store.directory.display()));
@@ -130,21 +131,68 @@ impl Lifecycle {
             });
         }
         if self.about {
-            egui::Window::new("Meltype Rust / 報告・更新").open(&mut self.about).show(ctx, |ui| {
-                ui.label("Rust移植プレビュー（機能の参照元: Meltype 1.3.0）");
-                ui.label(format!("ビルド: {}", env!("CARGO_PKG_VERSION")));
-                ui.hyperlink_to("不具合・要望を報告する", REPORT);
-                ui.label("報告ページはブラウザーで開きます。入力内容や学習データは自動添付しません。");
-                if ui.add_enabled(self.update.is_none(), egui::Button::new("更新を確認する")).clicked() { check_updates = true; }
-                ui.label(&self.update_status);
-                ui.hyperlink_to("Rust版の配布一覧を開く", RELEASES);
-                #[cfg(windows)]
-                if ui.add_enabled(self.update.is_none(), egui::Button::new("ダウンロード・更新（管理者確認あり）")).clicked() { apply_update = true; }
-                ui.label("Rust版の配布物を選び、SHA256SUMS.jsonを確認してから更新してください。");
-                ui.label("更新: Manage-Windows.ps1 -Action Update -Package <新しい配布フォルダー>");
-                ui.label("削除: Manage-Windows.ps1 -Action Uninstall（利用者データは保持）");
-                ui.label("AutoUpdateがONなら起動時に公開版を確認し、検査済みZIPを自動取得します。インストールには管理者確認が必要です。");
-            });
+            self.about = crate::dialogs::window(
+                ctx,
+                "flash-about",
+                "Meltype-flash について",
+                [480., 280.],
+                |ui| {
+                    ui.heading("Meltype-flash");
+                    ui.label(format!("バージョン {} (Rust版)", env!("CARGO_PKG_VERSION")));
+                    ui.label("雪解けのように、半角/全角の壁を溶かす日本語入力。");
+                    ui.add_space(12.);
+                    ui.label("参照元: Meltype 1.3.0 / Yukishiro・lnkiai ほか");
+                    ui.label("Rust移植: appipinopi / GPL-3.0-or-later");
+                    ui.hyperlink_to(
+                        "ソースコードとライセンス",
+                        "https://github.com/appipinopi/Meltype",
+                    );
+                    ui.add_space(12.);
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        ui.button("OK").clicked()
+                    })
+                    .inner
+                },
+            );
+        }
+        if self.updates {
+            self.updates = crate::dialogs::window(
+                ctx,
+                "flash-updates",
+                "Meltype-flash 更新",
+                [560., 340.],
+                |ui| {
+                    ui.label(format!("現在のバージョン: {}", env!("CARGO_PKG_VERSION")));
+                    ui.label("Meltype-flash のWindows配布を確認します。");
+                    ui.add_space(12.);
+                    if ui
+                        .add_enabled(self.update.is_none(), egui::Button::new("今すぐ更新を確認"))
+                        .clicked()
+                    {
+                        check_updates = true;
+                    }
+                    if !self.update_status.is_empty() {
+                        ui.label(&self.update_status);
+                    }
+                    ui.hyperlink_to("配布一覧を開く", RELEASES);
+                    #[cfg(windows)]
+                    if ui
+                        .add_enabled(
+                            self.update.is_none(),
+                            egui::Button::new("ダウンロード・更新"),
+                        )
+                        .clicked()
+                    {
+                        apply_update = true;
+                    }
+                    ui.weak("インストールを実行するとWindowsの管理者確認が表示されます。");
+                    ui.add_space(12.);
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        ui.button("閉じる").clicked()
+                    })
+                    .inner
+                },
+            );
         }
         if check_updates {
             self.check_updates();
@@ -234,9 +282,10 @@ mod tests {
     fn updater_selects_only_rust_windows_packages_and_skips_drafts() {
         let mut releases = json!([
             {"tag_name":"v1.3.1","assets":[{"name":"Meltype-Windows.zip"}]},
-            {"tag_name":"rust-draft","draft":true,"assets":[{"name":"Meltype-Rust-Windows.zip"}]},
-            {"tag_name":"rust-linux","assets":[{"name":"Meltype-Rust-Linux.zip"}]},
-            {"tag_name":"rust-preview","assets":[{"name":"Meltype-Rust-Windows-x64.zip"}]}
+            {"tag_name":"legacy-rust","assets":[{"name":"Meltype-Rust-Windows-x64.zip"}]},
+            {"tag_name":"rust-draft","draft":true,"assets":[{"name":"Meltype-flash-Windows.zip"}]},
+            {"tag_name":"rust-linux","assets":[{"name":"Meltype-flash-Linux.zip"}]},
+            {"tag_name":"rust-preview","assets":[{"name":"Meltype-flash-Windows-x64.zip"}]}
         ]);
         for release in releases.as_array_mut().unwrap() {
             for asset in release["assets"].as_array_mut().unwrap() {

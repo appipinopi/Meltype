@@ -23,6 +23,7 @@ permissions:
 
 jobs:
   winget:
+    if: github.repository == 'yksr-melt/Meltype'
     runs-on: windows-latest
     timeout-minutes: 20
     steps:

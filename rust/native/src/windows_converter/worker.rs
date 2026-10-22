@@ -38,6 +38,7 @@ struct Backend {
     profile: PathBuf,
     mozc: Option<Mozc>,
     learning: Option<std::thread::JoinHandle<(Mozc, std::io::Result<()>)>>,
+    pending_learning: Vec<meltype_core::session::EngineLearning>,
     starting: Option<Receiver<std::io::Result<Mozc>>>,
     failures: u32,
     conversions: HashMap<(String, String), Option<Vec<Segment>>>,
@@ -48,6 +49,8 @@ impl Backend {
         self.failures < 3 && self.helper.as_ref().is_some_and(|p| p.is_file())
     }
     fn warm_up(&mut self) {
+        self.extras.begin_request();
+        self.finish_learning();
         let completed = self.starting.as_ref().and_then(|r| match r.try_recv() {
             Ok(result) => Some(result),
             Err(mpsc::TryRecvError::Disconnected) => {
@@ -122,8 +125,8 @@ impl Backend {
         }
     }
     fn finish_learning(&mut self) {
-        if let Some(task) = self.learning.take() {
-            match task.join() {
+        if let Some(result) = take_finished(&mut self.learning) {
+            match result {
                 Ok((engine, Ok(()))) => {
                     self.mozc = Some(engine);
                     self.failures = 0;
@@ -137,13 +140,18 @@ impl Backend {
         }
     }
     fn learn(&mut self, batches: Vec<meltype_core::session::EngineLearning>) {
-        if batches.is_empty() || self.mode == Mode::System || !self.available() {
+        if self.mode == Mode::System || !self.available() {
             return;
         }
+        self.pending_learning.extend(batches);
         self.finish_learning();
+        if self.pending_learning.is_empty() {
+            return;
+        }
         let Some(mut engine) = self.mozc.take() else {
             return;
         };
+        let batches = std::mem::take(&mut self.pending_learning);
         self.conversions.clear();
         self.candidates.clear();
         // Only helper IPC runs here; System and WinRT remain on their STA.
@@ -239,7 +247,20 @@ impl Backend {
 }
 impl Drop for Backend {
     fn drop(&mut self) {
-        self.finish_learning();
+        // Shutdown may wait for the bounded helper operation. Key processing
+        // must only poll completion: the TSF deadline is shorter than Mozc IPC.
+        if let Some(task) = self.learning.take() {
+            let _ = task.join();
+        }
+    }
+}
+fn take_finished<T>(
+    task: &mut Option<std::thread::JoinHandle<T>>,
+) -> Option<std::thread::Result<T>> {
+    if task.as_ref().is_some_and(|task| task.is_finished()) {
+        task.take().map(|task| task.join())
+    } else {
+        None
     }
 }
 pub(crate) fn has_worker() -> bool {
@@ -323,6 +344,7 @@ pub fn install() -> Option<WorkerConverters> {
             profile: meltype_core::storage::Store::default_directory().join("mozc"),
             mozc: None,
             learning: None,
+            pending_learning: Vec::new(),
             starting: None,
             failures: 0,
             conversions: HashMap::new(),
@@ -358,4 +380,31 @@ pub(crate) fn scope(mode: &str, enabled: bool) -> Scope {
     } else {
         None
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn slow_learning_is_polled_without_blocking_the_input_thread() {
+        let (release, waiting) = mpsc::channel();
+        let mut task = Some(std::thread::spawn(move || {
+            waiting
+                .recv_timeout(std::time::Duration::from_secs(5))
+                .unwrap();
+            42
+        }));
+        // Completion is impossible until the input thread releases the worker.
+        // A blocking join here would time out and panic inside the worker.
+        assert!(take_finished(&mut task).is_none());
+        assert!(task.is_some());
+        release.send(()).unwrap();
+        task.as_ref().unwrap().thread().unpark();
+        while !task.as_ref().unwrap().is_finished() {
+            std::thread::yield_now();
+        }
+        assert_eq!(take_finished(&mut task).unwrap().unwrap(), 42);
+        assert!(task.is_none());
+    }
 }

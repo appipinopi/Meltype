@@ -31,6 +31,12 @@ WindowsのTSF → 登録された`MeltypeTip.dll`（`rust/native/src/tsf`）→ 
 
 macOS、IBus/fcitx5、AndroidにはOS SDKとの薄い接続と比較用の旧実装が残ります。Windowsと共通Coreを優先しています。`src/`のC#、元版のC++/Swift等は、既存CI・パッケージ・独立した互換比較で参照されるため、拡張子だけを理由に削除していません。SDKの型幅、所有権、OS登録の確認に使うホストも必要です。
 
+### ChromeOSの経路（2026-10-21追加）
+
+ChromeOSの`chrome.input.ime` → MV3 Service Worker → WASMの`BrowserSession` → 共通Session/FST/判定/学習 → ChromeOSの未確定文字列・候補・確定APIです。OSのfilesystemとSQLiteはWASMでは使わず、共有した学習型を拡張機能のlocal storageへ保存します。デスクトップでは従来のfilesystem featureが標準ONです。
+
+実WASM・模擬Chrome APIの12試験、Windows workspaceの239試験（手動2件ignore）、WASM/デスクトップのClippyが成功しました。**ChromeOS実機で導入・入力に成功したという意味ではありません。** OS辞書・全画面一致・確定後の削除/Undo・括弧内移動等は未対応/未確認です。[作成・導入・APIの根拠](chromeos/README.md)。
+
 ## 3. ビルド・検査・配布
 
 ```powershell
@@ -130,7 +136,7 @@ Windowsで cargo test --workspace --locked は239件成功、手動試験2件は
 
 一覧の「主要要素」はそのファイルに存在する宣言・見出し・データの要点です。私用データや生成キャッシュはこの一覧へ含めません。C#とSDKホストは比較/互換経路のため保持しており、Rust以外のファイルがあるだけで不要とは判断しません。
 
-対象ファイル数: **1,088**。ファイル名はクリックすると実体を開きます。
+対象ファイル数: **1,115**。ファイル名はクリックすると実体を開きます。
 
 ### ルート（15件）
 
@@ -261,7 +267,7 @@ Windowsで cargo test --workspace --locked は239件成功、手動試験2件は
 |[rust/core/src/shortcuts.rs](rust/core/src/shortcuts.rs)|`shortcuts` にまとめた処理をOS共通Core内で処理する。|Shortcut、key_name、parse、parse_list|実装・ビルドに必要|
 |[rust/core/src/sigil.rs](rust/core/src/sigil.rs)|`sigil` にまとめた処理をOS共通Core内で処理する。|Sigil、default、name、context|実装・ビルドに必要|
 |[rust/core/src/spelling.rs](rust/core/src/spelling.rs)|スペル検査・修正候補をOS共通Core内で処理する。|Evidence、Scope、disabled、new|実装・ビルドに必要|
-|[rust/core/src/storage.rs](rust/core/src/storage.rs)|設定、ユーザー辞書、学習、バックアップの入出力と排他・互換移行を管理する。|now、atomic_write、Store、Lock|実装・ビルドに必要|
+|[rust/core/src/storage.rs](rust/core/src/storage.rs)|OSファイルロック・原子的保存・SQLite辞書・元版データの取込み・バックアップを実装し、state.rsの学習型を再公開する。filesystem featureの標準実装。|Store, atomic_write, settings, load, update, record, backup, restore|デスクトップの保存とデータ互換に必要|
 |[rust/core/src/storage/sqlite_dictionary.rs](rust/core/src/storage/sqlite_dictionary.rs)|辞書の検索・更新をOS共通Core内で処理する。|error、version、read、Write|実装・ビルドに必要|
 |[rust/core/src/storage/upstream.rs](rust/core/src/storage/upstream.rs)|`upstream` にまとめた処理をOS共通Core内で処理する。|timestamp、upstream_files、upstream_json|実装・ビルドに必要|
 |[rust/core/src/system_data.rs](rust/core/src/system_data.rs)|`system_data` にまとめた処理をOS共通Core内で処理する。|archive、value、text、archive_preserves_every_txt_byte_and_line_|実装・ビルドに必要|
@@ -1284,3 +1290,40 @@ Windowsで cargo test --workspace --locked は239件成功、手動試験2件は
 |[docs/images/logo.png](docs/images/logo.png)|説明文から参照する `logo` の画面・カード・ロゴ画像。参照を確認済み。|画像リソース|説明・参照に必要|
 |[docs/meltype.jpg](docs/meltype.jpg)|OSパッケージ・画面で使う `meltype` の画像リソース。|画像リソース|説明・参照に必要|
 |[docs/romaji-azik-sample.txt](docs/romaji-azik-sample.txt)|ローマ字表とかな変換の開発・比較・配布を補助する。|108有効行|説明・参照に必要|
+
+### ChromeOS試験版の追加（2026-10-21）
+
+|ファイル|役割|主要要素|保持理由|
+|---|---|---|---|
+|[.github/workflows/chromeos.yml](.github/workflows/chromeos.yml)|Linux runnerでWASM Clippy・固定版生成ツールのハッシュ検査・全ChromeOS試験・拡張ZIPのartifact保存を行う。実ChromeOSを起動するジョブではない。|宣言・設定・文書|ChromeOSホスト・共有Core・回帰/配布に必要|
+|[chromeos/.gitignore](chromeos/.gitignore)|再生成するwasm-bindgenのpkg/を追跡から除外する。|宣言・設定・文書|ChromeOSホスト・共有Core・回帰/配布に必要|
+|[chromeos/README.md](chromeos/README.md)|2023年の廃止予定と現在のAPI定義、必要ツール、拡張の導入、接続済み機能と実機未確認の制約を説明する。|宣言・設定・文書|ChromeOSホスト・共有Core・回帰/配布に必要|
+|[chromeos/background.mjs](chromeos/background.mjs)|MV3 Service Workerの入口。IME listenerを同期登録し、WASMとlocal storageの初期化、設定画面の許可された要求、周辺文を接続する。|宣言・設定・文書|ChromeOSホスト・共有Core・回帰/配布に必要|
+|[chromeos/build.py](chromeos/build.py)|Rust/WASMビルド、版を固定したバインディング生成、全Node試験、依存ライセンス本文・SHA256・ZIP作成を行う。|run, main|ChromeOSホスト・共有Core・回帰/配布に必要|
+|[chromeos/controller.mjs](chromeos/controller.mjs)|IMEの非同期キーを直列化し、フォーカス世代を検査してCore結果をcommit/composition/候補APIへ配送。一度だけのackと学習保存を管理する。|ImeController|ChromeOSホスト・共有Core・回帰/配布に必要|
+|[chromeos/keys.mjs](chromeos/keys.mjs)|DOMの物理codeとUnicode keyを既存Coreの仮想キー・修飾ビットへ変換する。OEM/JIS対応付けを含むがJIS実機確認は別。|translateKey|ChromeOSホスト・共有Core・回帰/配布に必要|
+|[chromeos/manifest.json](chromeos/manifest.json)|ChromeOSのinputとstorage権限、単一レイアウトのIME、MV3 worker、WASM専用CSPと設定画面を宣言する。|宣言・設定・文書|ChromeOSホスト・共有Core・回帰/配布に必要|
+|[chromeos/options.css](chromeos/options.css)|設定・診断画面の余白、文字、ボタン、キーボードフォーカスと狭い画面での配置を定義する。|宣言・設定・文書|ChromeOSホスト・共有Core・回帰/配布に必要|
+|[chromeos/options.html](chromeos/options.html)|状態表示、全Core設定のJSON編集・保存と取消、学習削除、データ書き出し、未対応項目を表示する。|宣言・設定・文書|ChromeOSホスト・共有Core・回帰/配布に必要|
+|[chromeos/options.mjs](chromeos/options.mjs)|設定画面から許可された要求をworkerへ送り、JSON構文の検査・ローカル書き出し・学習削除の確認とエラー表示を行う。|request, show, reload|ChromeOSホスト・共有Core・回帰/配布に必要|
+|[chromeos/package.json](chromeos/package.json)|ES modulesとNode標準テストの実行コマンドを宣言。npmの外部依存はない。|宣言・設定・文書|ChromeOSホスト・共有Core・回帰/配布に必要|
+|[chromeos/tests/background.test.mjs](chromeos/tests/background.test.mjs)|本物のService Workerモジュールを模擬Chromeで読み、API不在の状態応答、要求元拒否、同期listener登録と実WASMへのキー配送を検査する。|event, baseChrome|ChromeOSホスト・共有Core・回帰/配布に必要|
+|[chromeos/tests/controller.test.mjs](chromeos/tests/controller.test.mjs)|キー対応、UTF-16候補位置、非同期ack、初期化中のフォーカス移動、パスワード拒否、API失敗と学習保存禁止を検査する。|fixture|ChromeOSホスト・共有Core・回帰/配布に必要|
+|[chromeos/tests/wasm.test.mjs](chromeos/tests/wasm.test.mjs)|実WASMのFST候補、選択学習・復元・削除、学習禁止、設定移行・未知項目、F6/F7とEnterを検査する。|宣言・設定・文書|ChromeOSホスト・共有Core・回帰/配布に必要|
+|[rust/browser/Cargo.toml](rust/browser/Cargo.toml)|filesystemを無効にした共通Coreと固定wasm-bindgenを依存に持つcdylib/rlib crateを定義する。|宣言・設定・文書|ChromeOSホスト・共有Core・回帰/配布に必要|
+|[rust/browser/src/lib.rs](rust/browser/src/lib.rs)|BrowserSessionとして共通Sessionを公開し、キー・候補選択・周辺文・フォーカス・設定・スナップショットを橋渡しする。OS削除と括弧内移動を制限する。|new, key, select, select_prediction, view, reset, focus, context, configure, snapshot, clear_learning, validate|ChromeOSホスト・共有Core・回帰/配布に必要|
+|[rust/core/src/storage/state.rs](rust/core/src/storage/state.rs)|デスクトップ/ブラウザーで同じState・学習変更・保持数制限・学習削除処理を共有する。旧storage.rsから動作を変えず抽出した。|active, rebuild_language_preferences, remember_language, apply, remove_learned, forget_since, clear_learning|ChromeOSホスト・共有Core・回帰/配布に必要|
+|[rust/core/src/storage_memory.rs](rust/core/src/storage_memory.rs)|filesystemなしで同じ学習型を公開する入口。StoreやSQLiteの代用品を偽装せず、永続化をホストに委ねる。|now|ChromeOSホスト・共有Core・回帰/配布に必要|
+
+### ChromeOS導入画面・個人情報の黒塗り（2026-10-21）
+
+|ファイル|役割|保持理由|
+|---|---|---|
+|[chromeos/docs/INSTALLATION.md](chromeos/docs/INSTALLATION.md)|実機の設定経路、入力方法の追加と選択、画像の黒塗り範囲と実機検証の限界。|導入案内|
+|[chromeos/docs/screenshots/add-input-method.png](chromeos/docs/screenshots/add-input-method.png)|入力方法追加の未選択画面。SSID・アカウント表示を黒塗り済み、メタデータなし。|公開許可のある導入参考画像|
+|[chromeos/docs/screenshots/add-input-selected.png](chromeos/docs/screenshots/add-input-selected.png)|Meltype Rustを選び追加する画面。SSID・アカウント表示を黒塗り済み、メタデータなし。|公開許可のある導入参考画像|
+|[chromeos/docs/screenshots/input-methods.png](chromeos/docs/screenshots/input-methods.png)|追加前の入力方法一覧。SSID・アカウント表示を黒塗り済み、メタデータなし。|公開許可のある導入参考画像|
+|[chromeos/docs/screenshots/device-settings.png](chromeos/docs/screenshots/device-settings.png)|デバイス設定の入口。SSID・アカウント表示を黒塗り済み、メタデータなし。|公開許可のある導入参考画像|
+|[chromeos/docs/screenshots/keyboard-settings.png](chromeos/docs/screenshots/keyboard-settings.png)|キーボードと入力の設定。SSID・アカウント表示を黒塗り済み、メタデータなし。|公開許可のある導入参考画像|
+|[chromeos/docs/screenshots/keyboard-input-options.png](chromeos/docs/screenshots/keyboard-input-options.png)|入力設定への入口。SSID・アカウント表示を黒塗り済み、メタデータなし。|公開許可のある導入参考画像|
+|[chromeos/docs/screenshots/network-settings.png](chromeos/docs/screenshots/network-settings.png)|ネットワーク設定。SSIDは中央も除去。SSID・アカウント表示を黒塗り済み、メタデータなし。|公開許可のある導入参考画像|

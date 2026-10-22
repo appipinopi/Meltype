@@ -5,6 +5,18 @@ use std::ffi::c_void;
 #[cfg(any(target_os = "macos", test))]
 const IDENTIFIER: &str = "io.github.yksr-melt.inputmethod.Meltype";
 #[cfg(any(target_os = "macos", test))]
+fn normalization_slot(
+    bundle: Option<&str>,
+    mode: Option<&str>,
+    kind: Option<&str>,
+) -> Option<usize> {
+    match kind {
+        Some("Input Mode") if mode == Some(format!("{IDENTIFIER}.Japanese").as_str()) => Some(0),
+        Some("Keyboard Input Method") if bundle == Some(IDENTIFIER) => Some(1),
+        _ => None,
+    }
+}
+#[cfg(any(target_os = "macos", test))]
 fn owned_identifier(id: &str) -> bool {
     id == IDENTIFIER || id == format!("{IDENTIFIER}.Japanese")
 }
@@ -101,7 +113,7 @@ mod native {
         runtime::{AnyClass, AnyObject},
         MainThreadMarker,
     };
-    use objc2_foundation::{NSArray, NSRange, NSString};
+    use objc2_foundation::{NSArray, NSString};
     unsafe fn class(name: &std::ffi::CStr) -> &'static AnyClass {
         AnyClass::get(name).expect("Foundation class unavailable")
     }
@@ -134,29 +146,28 @@ mod native {
         let value = value.filter(|v| is(v, c"NSString"))?;
         Some(Retained::cast_unchecked::<NSString>(value).to_string())
     }
-    unsafe fn has_identifier_prefix(id: &str) -> bool {
-        if !id.starts_with(IDENTIFIER) {
-            return false;
-        }
-        // Swift String.hasPrefix compares whole grapheme clusters. A combining
-        // mark/ZWJ/variation selector after the final ASCII e is not a prefix
-        // boundary. Use this SDK's composed-character boundary for that e.
-        let value = NSString::from_str(id);
-        let range: NSRange =
-            msg_send![&value,rangeOfComposedCharacterSequenceAtIndex:IDENTIFIER.len()-1];
-        range.location + range.length == IDENTIFIER.len()
-    }
     unsafe fn normalize(rows: &NSArray<AnyObject>) -> Retained<AnyObject> {
         let result: Retained<AnyObject> = msg_send![class(c"NSMutableArray"), new];
+        let mut seen = [false; 2];
         for row in rows.iter() {
-            if field(&row, "Bundle ID").as_deref() == Some(IDENTIFIER)
-                || field(&row, "Input Mode").is_some_and(|id| has_identifier_prefix(&id))
-            {
-                continue;
+            let slot = normalization_slot(
+                field(&row, "Bundle ID").as_deref(),
+                field(&row, "Input Mode").as_deref(),
+                field(&row, "InputSourceKind").as_deref(),
+            );
+            if let Some(slot) = slot {
+                if seen[slot] {
+                    continue;
+                }
+                seen[slot] = true;
             }
+            // 最初の登録の位置・付随情報と、未知の入力方法はそのまま保持する。
             let _: () = msg_send![&result,addObject:&*row];
         }
-        for mode in [false, true] {
+        for mode in [true, false] {
+            if seen[usize::from(!mode)] {
+                continue;
+            }
             let row: Retained<AnyObject> = msg_send![class(c"NSMutableDictionary"), new];
             let mut fields = vec![
                 ("Bundle ID", IDENTIFIER.to_owned()),
@@ -281,6 +292,33 @@ mod native {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn normalization_deduplicates_only_exact_known_modes_and_preserves_other_entries() {
+        let japanese = format!("{IDENTIFIER}.Japanese");
+        assert_eq!(
+            normalization_slot(Some(IDENTIFIER), None, Some("Keyboard Input Method")),
+            Some(1)
+        );
+        assert_eq!(
+            normalization_slot(None, Some(&japanese), Some("Input Mode")),
+            Some(0)
+        );
+        for suffix in [".Other", ".Japanese.extra", ".Japanese\u{301}", "-suffix"] {
+            let mode = format!("{IDENTIFIER}{suffix}");
+            assert_eq!(
+                normalization_slot(None, Some(&mode), Some("Input Mode")),
+                None
+            );
+        }
+        assert_eq!(
+            normalization_slot(Some(IDENTIFIER), Some(&japanese), None),
+            None
+        );
+        assert_eq!(
+            normalization_slot(Some(IDENTIFIER), None, Some("Keyboard Layout")),
+            None
+        );
+    }
     use std::{cell::RefCell, rc::Rc};
     type Trace = Rc<RefCell<Vec<String>>>;
     struct List {

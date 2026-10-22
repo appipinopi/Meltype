@@ -139,7 +139,7 @@ unsafe extern "system" fn info(_this: *mut c_void, out: *mut TF_LANGBARITEMINFO)
         return E_INVALIDARG;
     }
     let mut value = TF_LANGBARITEMINFO {
-        clsidService: GUID::from_u128(0x417d801b_a9bd_4c26_bd16_356a825a6998),
+        clsidService: super::identity::CLSID,
         guidItem: GUID_LBI_INPUTMODE,
         dwStyle: TF_LBI_STYLE_BTN_BUTTON | TF_LBI_STYLE_SHOWNINTRAY,
         ..Default::default()
@@ -147,7 +147,7 @@ unsafe extern "system" fn info(_this: *mut c_void, out: *mut TF_LANGBARITEMINFO)
     for (to, from) in value
         .szDescription
         .iter_mut()
-        .zip("Meltype の入力モード".encode_utf16())
+        .zip("Meltype-flash の入力モード".encode_utf16())
     {
         *to = from;
     }
@@ -168,9 +168,9 @@ unsafe extern "system" fn tooltip(this: *mut c_void, out: *mut MaybeUninit<BSTR>
     string(
         out,
         if is_open(this) {
-            "Meltype: 日本語 (クリックで英数)"
+            "Meltype-flash: 日本語 (クリックで英数)"
         } else {
-            "Meltype: 英数 (クリックで日本語)"
+            "Meltype-flash: 英数 (クリックで日本語)"
         },
     )
 }

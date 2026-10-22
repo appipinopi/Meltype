@@ -24,7 +24,7 @@ struct Factory {
     create: Create,
     lock: Lock,
 }
-const CLSID: GUID = GUID::from_u128(0x417d801b_a9bd_4c26_bd16_356a825a6998);
+use super::identity::CLSID;
 unsafe fn factory<'a>(this: *mut c_void) -> &'a Factory {
     &*this.cast::<Factory>()
 }

@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Download only a published Rust Windows package from this fork. No arbitrary URLs.
 [CmdletBinding(SupportsShouldProcess=$true)]
 param([ValidateSet('Check','Stage','Apply')][string]$Action = 'Check')
@@ -9,7 +9,7 @@ function Installed-Root {
     $machine = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::LocalMachine, [Microsoft.Win32.RegistryView]::Registry64)
     try {
         $key = $machine.OpenSubKey('SOFTWARE\Microsoft\Windows\CurrentVersion')
-        try { return (Join-Path ([string]$key.GetValue('ProgramFilesDir')) 'MeltypeRust') } finally { $key.Dispose() }
+        try { return (Join-Path ([string]$key.GetValue('ProgramFilesDir')) 'Meltype-flash') } finally { $key.Dispose() }
     } finally { $machine.Dispose() }
 }
 if ($Action -eq 'Apply' -and -not $WhatIfPreference) {
@@ -21,7 +21,7 @@ if ($Action -eq 'Apply' -and -not $WhatIfPreference) {
         $process = Start-Process -FilePath $shell -Verb RunAs -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-File',('"'+$PSCommandPath+'"'),'-Action','Apply') -WindowStyle Hidden -Wait -PassThru
         try { if ($process.ExitCode -ne 0) { throw "Elevated updater failed: $($process.ExitCode)" } } finally { $process.Dispose() }
         $installed = Get-Content -LiteralPath (Join-Path $installedRoot 'installed.json') -Raw | ConvertFrom-Json
-        $newExe = [IO.Path]::GetFullPath((Join-Path ([string]$installed.package) 'meltype-settings.exe'))
+        $newExe = [IO.Path]::GetFullPath((Join-Path ([string]$installed.package) 'meltype-flash.exe'))
         if (-not $newExe.StartsWith($installedRoot+'\versions\',[StringComparison]::OrdinalIgnoreCase) -or -not (Test-Path -LiteralPath $newExe -PathType Leaf)) { throw 'Invalid updated tray path' }
         Start-Process -FilePath $newExe -ArgumentList '--tray' -WindowStyle Hidden | Out-Null
         Write-Host "Updated tray started. Installation logs: $installedRoot\update-logs"
@@ -35,13 +35,13 @@ if ($Action -eq 'Apply' -and -not $WhatIfPreference) {
     Start-Transcript -LiteralPath (Join-Path $logRoot (([Guid]::NewGuid().ToString('N'))+'.log')) | Out-Null
 }
 function Get-Releases {
-    Invoke-RestMethod -Uri "https://api.github.com/repos/$repository/releases?per_page=20" -Headers @{ 'User-Agent' = 'Meltype-Rust-Updater'; Accept = 'application/vnd.github+json' } -TimeoutSec 20
+    Invoke-RestMethod -Uri "https://api.github.com/repos/$repository/releases?per_page=20" -Headers @{ 'User-Agent' = 'Meltype-flash-Updater'; Accept = 'application/vnd.github+json' } -TimeoutSec 20
 }
 function Select-Release($Releases) {
     foreach ($release in $Releases) {
         if ($release.draft -or $release.prerelease) { continue }
         foreach ($asset in $release.assets) {
-            if ($asset.name -notmatch '(?i)^Meltype[-_.]Rust[-_.]Windows[-_.a-z0-9]*\.zip$') { continue }
+            if ($asset.name -notmatch '(?i)^Meltype[-_.]flash[-_.]Windows[-_.a-z0-9]*\.zip$') { continue }
             if ($asset.size -le 0 -or $asset.size -gt $limit) { continue }
             if ($asset.digest -notmatch '^sha256:[a-fA-F0-9]{64}$') { continue }
             $expected = "https://github.com/$repository/releases/download/$([Uri]::EscapeDataString([string]$release.tag_name))/$([Uri]::EscapeDataString([string]$asset.name))"
@@ -57,7 +57,7 @@ function Download-Asset([string]$Uri, [string]$Destination, [long]$ExpectedSize)
     $handler.AllowAutoRedirect = $false
     $client = New-Object Net.Http.HttpClient($handler)
     $client.Timeout = [TimeSpan]::FromSeconds(120)
-    $client.DefaultRequestHeaders.UserAgent.ParseAdd('Meltype-Rust-Updater')
+    $client.DefaultRequestHeaders.UserAgent.ParseAdd('Meltype-flash-Updater')
     $response = $null; $input = $null; $output = $null
     $cancellation = New-Object Threading.CancellationTokenSource
     $cancellation.CancelAfter(120000)
@@ -128,7 +128,7 @@ if ($receipt.releaseId -eq $chosen.release.id -and $receipt.sha256 -eq $chosen.s
 Write-Host "Rust Windows update: $($chosen.release.tag_name) / $($chosen.asset.name) ($($chosen.asset.size) bytes)"
 if ($Action -eq 'Check') { return }
 if (-not $PSCmdlet.ShouldProcess($chosen.uri, "$Action verified Rust Windows update")) { return }
-$stage = Join-Path ([IO.Path]::GetTempPath()) ('Meltype-Rust-update-' + [Guid]::NewGuid().ToString('N'))
+$stage = Join-Path ([IO.Path]::GetTempPath()) ('Meltype-flash-update-' + [Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $stage | Out-Null
 $archive = Join-Path $stage 'update.zip'
 Download-Asset $chosen.uri $archive $chosen.asset.size
@@ -148,7 +148,7 @@ try {
     $key = $machine.OpenSubKey('SOFTWARE\Microsoft\Windows\CurrentVersion')
     try { $programFiles = [string]$key.GetValue('ProgramFilesDir') } finally { $key.Dispose() }
 } finally { $machine.Dispose() }
-$installRoot = Join-Path $programFiles 'MeltypeRust'
+$installRoot = Join-Path $programFiles 'Meltype-flash'
 $state = Get-Content -LiteralPath (Join-Path $installRoot 'installed.json') -Raw | ConvertFrom-Json
 $expected = Join-Path (Join-Path $installRoot 'versions') ((Get-FileHash -LiteralPath (Join-Path $package 'SHA256SUMS.json')).Hash.Substring(0,16))
 if ([IO.Path]::GetFullPath([string]$state.package) -ne [IO.Path]::GetFullPath($expected)) { throw 'Updated installation receipt does not match downloaded package' }

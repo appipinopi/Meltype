@@ -1,0 +1,62 @@
+{
+  "passed": true,
+  "binary_sha256": "97e17b531f267080df0a7fcad470a649420b435ac8a43581ed22a741884eae05",
+  "dialogs": [
+    {
+      "dialog": "log",
+      "title": "Meltype-flash ログ / 判定理由",
+      "nativeWindow": true,
+      "client": [
+        900,
+        480
+      ],
+      "independentClose": true,
+      "settingsUnchanged": true
+    },
+    {
+      "dialog": "report",
+      "title": "Meltype-flash 不具合の報告・提案",
+      "nativeWindow": true,
+      "client": [
+        700,
+        580
+      ],
+      "independentClose": true,
+      "settingsUnchanged": true
+    },
+    {
+      "dialog": "corrections",
+      "title": "Meltype-flash 直した誤判定を報告",
+      "nativeWindow": true,
+      "client": [
+        640,
+        480
+      ],
+      "independentClose": true,
+      "settingsUnchanged": true
+    },
+    {
+      "dialog": "about",
+      "title": "Meltype-flash について",
+      "nativeWindow": true,
+      "client": [
+        480,
+        280
+      ],
+      "independentClose": true,
+      "settingsUnchanged": true
+    },
+    {
+      "dialog": "updates",
+      "title": "Meltype-flash 更新",
+      "nativeWindow": true,
+      "client": [
+        560,
+        340
+      ],
+      "independentClose": true,
+      "settingsUnchanged": true
+    }
+  ],
+  "registeredIme": false
+}

@@ -183,6 +183,66 @@ pub fn notify(hwnd: HWND, guid: u128, title: &str, text: &str) -> Result<(), Str
     }
     Ok(())
 }
+/// winit requests redraws with RedrawWindow, which Windows does not deliver to
+/// hidden windows. Keep the resident app's menu and maintenance polling alive
+/// without showing or activating its settings window.
+pub struct HiddenRepaint {
+    stop: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    worker: Option<std::thread::JoinHandle<()>>,
+}
+impl HiddenRepaint {
+    pub fn start(context: &eframe::CreationContext<'_>) -> Result<Self, String> {
+        use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+        use std::sync::{
+            atomic::{AtomicBool, Ordering},
+            Arc,
+        };
+        use windows_sys::Win32::{
+            System::Threading::GetCurrentProcessId,
+            UI::WindowsAndMessaging::{
+                GetWindowThreadProcessId, IsWindowVisible, PostMessageW, WM_PAINT,
+            },
+        };
+        let RawWindowHandle::Win32(handle) =
+            context.window_handle().map_err(|e| e.to_string())?.as_raw()
+        else {
+            return Err("Windows settings window handle unavailable".into());
+        };
+        let hwnd = handle.hwnd.get() as usize;
+        let pid = unsafe { GetCurrentProcessId() };
+        let stop = Arc::new(AtomicBool::new(false));
+        let signal = stop.clone();
+        let worker = std::thread::spawn(move || {
+            while !signal.load(Ordering::Acquire) {
+                unsafe {
+                    let mut owner = 0;
+                    GetWindowThreadProcessId(hwnd as _, &mut owner);
+                    if owner != pid {
+                        break;
+                    }
+                    if IsWindowVisible(hwnd as _) == 0 {
+                        PostMessageW(hwnd as _, WM_PAINT, 0, 0);
+                    }
+                }
+                std::thread::park_timeout(std::time::Duration::from_millis(500));
+            }
+        });
+        Ok(Self {
+            stop,
+            worker: Some(worker),
+        })
+    }
+}
+impl Drop for HiddenRepaint {
+    fn drop(&mut self) {
+        self.stop.store(true, std::sync::atomic::Ordering::Release);
+        if let Some(worker) = self.worker.take() {
+            worker.thread().unpark();
+            let _ = worker.join();
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -223,7 +283,7 @@ mod tests {
     }
     #[test]
     fn notifications_use_the_owned_icon_guid_and_do_not_split_utf16_pairs() {
-        let data = balloon(std::ptr::null_mut(), TRAY_GUID, "Meltype", "有効");
+        let data = balloon(std::ptr::null_mut(), TRAY_GUID, "Meltype-flash", "有効");
         assert_eq!(data.uFlags, NIF_GUID | NIF_INFO | NIF_REALTIME);
         assert_eq!(data.guidItem.data1, GUID::from_u128(TRAY_GUID).data1);
         assert_eq!(utf16::<4>("a😀z"), [97, 0xd83d, 0xde00, 0]);

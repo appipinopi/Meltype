@@ -2,10 +2,10 @@
 //! Ordered auxiliary candidates and context rules, owned by a profile.
 use std::{
     collections::BTreeMap,
-    io,
-    path::Path,
     sync::{Arc, OnceLock},
 };
+#[cfg(feature = "filesystem")]
+use std::{io, path::Path};
 #[derive(Clone, Default)]
 pub(crate) struct Sources {
     words: BTreeMap<String, Vec<String>>,
@@ -83,6 +83,7 @@ impl Sources {
             })
             .clone()
     }
+    #[cfg(feature = "filesystem")]
     pub fn load(directory: &Path) -> io::Result<Arc<Self>> {
         let files = ["candidates.txt", "emoji.txt", "contexts.txt"];
         let mut plists: Vec<_> = std::fs::read_dir(directory)

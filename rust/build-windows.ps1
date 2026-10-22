@@ -10,7 +10,7 @@ try {
         if ($LASTEXITCODE -ne 0) { throw "rustup failed: $target" }
         # The TSF bridge needs both DLL architectures; the settings UI runs as x64.
         # CI already builds the host workspace before packaging the bridge.
-        $packages = if ($NativeOnly -or $target -eq 'i686-pc-windows-msvc') { @('-p', 'meltype-native', '-p', 'meltype-tip-worker') } else { @('--workspace') }
+        [string[]]$packages = if ($NativeOnly -or $target -eq 'i686-pc-windows-msvc') { @('-p', 'meltype-native', '-p', 'meltype-tip-worker') } else { @('--workspace') }
         cargo build --locked --release @packages --target $target --target-dir "$root/target"
         if ($LASTEXITCODE -ne 0) { throw "cargo failed: $target" }
     }

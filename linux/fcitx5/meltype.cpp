@@ -72,6 +72,7 @@ struct Native {
     char *(*selectCandidate)(void *, int) = nullptr;
     void (*setDirect)(void *, int) = nullptr;
     void (*setCanDelete)(void *, int) = nullptr; // 古い本体には無い
+    void (*setCodeInput)(void *, int) = nullptr; // 古い本体には無い (コード入力: ターミナルの入力欄で既定にする、#715)
     char *(*roleKey)(void *, int) = nullptr;     // 古い本体には無い (入力中のキーの役割: #199)
     void (*free)(void *) = nullptr;
 
@@ -93,6 +94,7 @@ struct Native {
         selectCandidate = reinterpret_cast<decltype(selectCandidate)>(sym("meltype_select_candidate"));
         setDirect = reinterpret_cast<decltype(setDirect)>(sym("meltype_set_direct"));
         setCanDelete = reinterpret_cast<decltype(setCanDelete)>(sym("meltype_set_can_delete"));
+        setCodeInput = reinterpret_cast<decltype(setCodeInput)>(sym("meltype_set_code_input"));
         roleKey = reinterpret_cast<decltype(roleKey)>(sym("meltype_role_key"));
         free = reinterpret_cast<decltype(free)>(sym("meltype_free"));
 #ifdef MELTYPE_RUST_CORE
@@ -322,12 +324,29 @@ private:
     }
 
 #ifndef MELTYPE_RUST_CORE
+    // キャレットの前が expected と一致すると確認できたら、消す文字数 (コードポイント) を返す。確認できないときは 0。
+    // 本体の deleteBefore は UTF-16 の単位なので使わず、確認できた文字列から数える (絵文字など、2 単位の文字でもそろえる)。
+    static size_t expectedBeforeCaret(fcitx::InputContext *ic, const std::string &expected) {
+        if (expected.empty() || !ic->capabilityFlags().test(fcitx::CapabilityFlag::SurroundingText) ||
+            !ic->surroundingText().isValid())
+            return 0;
+        const auto &text = ic->surroundingText().text();
+        const size_t cursor = ic->surroundingText().cursor();
+        const size_t length = meltype_fcitx::charLength(expected);
+        if (cursor < length) return 0;
+        const size_t from = meltype_fcitx::byteOffset(text, cursor - length);
+        if (text.compare(from, meltype_fcitx::byteOffset(text, cursor) - from, expected) != 0) return 0;
+        return length;
+    }
+
     // 確定し直し (DeleteBefore) は、入力欄が周りの文字の削除に対応しているときだけ本体が行う。
     // 本体を呼ぶ前に毎回伝える (入力欄を移った最初のキーで、前の入力欄の値のまま確定し直さないように)。
     void syncCanDelete(fcitx::InputContext *ic, void *session) {
         if (!native_.setCanDelete || !session) return;
         bool canDelete = ic->capabilityFlags().test(fcitx::CapabilityFlag::SurroundingText) && ic->surroundingText().isValid();
         native_.setCanDelete(session, canDelete ? 1 : 0);
+        // 入力欄がターミナル (capability flag の Terminal) なら、コード入力を既定にする (j k やコマンド名がアプリに届くように)
+        if (native_.setCodeInput) native_.setCodeInput(session, ic->capabilityFlags().test(fcitx::CapabilityFlag::Terminal) ? 1 : 0);
     }
 
     void apply(fcitx::InputContext *ic, const std::string &text) {
@@ -340,22 +359,15 @@ private:
         if (auto *commits = result.get("commits"); commits && commits->kind == Json::Kind::Array) {
             for (const auto &edit : commits->items) {
                 int remove = edit.integer("deleteBefore");
-                if (remove > 0) {
-                    const auto expected = edit.str("expect");
-                    std::string before, after;
-                    const bool matched=!expected.empty() && meltype_fcitx::utf16Length(expected)==static_cast<size_t>(remove)
-                        && readSurrounding(ic,before,after,meltype_fcitx::charLength(expected))
-                        && before.size()>=expected.size() && before.compare(before.size()-expected.size(),expected.size(),expected)==0;
-                    const auto count=static_cast<unsigned int>(meltype_fcitx::charLength(expected));
-                    if(!matched) {
-                        auto *session = ic->propertyFor(&factory_)->session();
-                        if (native_.resetSession) native_.take(native_.resetSession(session));
-                        hidePreedit(ic);
-                        return;
-                    }
+                // 確定し直し: 消す文字が今もキャレットの前にあると確認できたときだけ消し、今打った文字を入れる。
+                // 確認できない (入力欄が周りの文字に対応していない・確定したときと変わった) ときは、前の文字は
+                // 消さずに今打った文字だけを入れる (本体は text が入った前提で状態を進めるので、text を捨てない)。
+                const size_t length = remove > 0 ? expectedBeforeCaret(ic, edit.str("expect")) : 0;
+                if (length > 0) {
                     hidePreedit(ic);
-                    ic->deleteSurroundingText(-static_cast<int>(count), count);
+                    ic->deleteSurroundingText(-static_cast<int>(length), static_cast<unsigned int>(length));
                 } else {
+                    if (remove > 0) FCITX_WARN() << "Meltype: 確定し直す文字を確認できないため、前の文字を消しません";
                     ic->inputPanel().reset();
                     ic->propertyFor(&factory_)->setPreeditVisible(false);
                 }

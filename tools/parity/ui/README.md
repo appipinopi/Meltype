@@ -13,3 +13,11 @@ Windows候補は `tsf_candidate_smoke.py` が元のC++描画器との寸法・�
 設定・辞書・定型文・学習・バックアップ・入力テストの6ページを隔離データで採取し、設定ページと長いAppRules説明を目視した。採取時にconfigやSQLiteを保存・移行していない。既存の設定操作12テストとClippyも成功。説明を指定する試験はvisual-testビルドで `capture_settings.py <実行ファイル> <出力先> --pages settings --help-key AppRules`。通常ビルドはこの試験用環境変数を処理しない。
 
 既存の60項目のメタデータ基準は45e14f8を維持する。最新版で増えた設定・動作、全画面の寸法一致、ファイル選択や全OSの実操作は [版別の未対応一覧](../../../rust/UPSTREAM-1.3.1-pre1-GAPS.md)を参照。
+
+## Meltype-flash の独立ウィンドウ（v0.1.1向け）
+
+`check_dialog_windows.py <visual-test付きmeltype-flash.exe> <結果.json>` はWindowsで私用の設定フォルダーを使い、ログ・報告・誤判定の報告・About・更新の5ウィンドウを検査する。
+タイトルとクライアント寸法を取得し、各子ウィンドウだけにWM_CLOSEを送っても設定ウィンドウが残ること、設定と辞書を変更しないことを確認する。通常のユーザーアプリには操作しない。
+描画本文の検査は `capture_settings.py ... --pages settings --lifecycle report`（`corrections` / `log` / `about` / `updates` も可）。撮影時は本文をルートに埋め込むため、OSのタイトルバーの画素一致の証拠にはしない。
+`corrections` の撮影では「hashi → 橋 → 箸」の合成データを使用する。
+最終結果は [evidence/flash-dialogs-v011](evidence/flash-dialogs-v011)。

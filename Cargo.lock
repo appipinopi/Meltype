@@ -625,8 +625,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1aa79e62e7697b8e29b513a68abacf485adcd1fe8284a4316c5ae868e6633327"
 dependencies = [
  "iana-time-zone",
+ "js-sys",
  "num-traits",
  "serde",
+ "wasm-bindgen",
  "windows-link",
 ]
 
@@ -1855,6 +1857,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "meltype-browser"
+version = "0.1.0"
+dependencies = [
+ "meltype-core",
+ "serde",
+ "serde_json",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "meltype-cli"
 version = "0.1.0"
 dependencies = [
@@ -1878,6 +1890,7 @@ dependencies = [
  "serde_json",
  "tempfile",
  "unicode-normalization",
+ "web-time",
 ]
 
 [[package]]
@@ -1919,9 +1932,11 @@ name = "meltype-settings"
 version = "0.1.0"
 dependencies = [
  "ab_glyph",
+ "chrono",
  "eframe",
  "fs2",
  "meltype-core",
+ "raw-window-handle",
  "rfd",
  "roxmltree",
  "serde_json",

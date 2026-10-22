@@ -21,7 +21,7 @@ impl Drop for Handle {
 }
 fn name(directory: &Path) -> Vec<u16> {
     format!(
-        "Local\\MeltypeRust-Maintenance-{:032x}",
+        "Local\\Meltype-flash-Maintenance-{:032x}",
         crate::windows_services::tray_guid(directory)
     )
     .encode_utf16()

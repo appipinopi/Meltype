@@ -11,9 +11,9 @@ use std::{
     ptr,
 };
 
-const KEY: &CStr = c"meltype-rust-state";
-const ENGINE: &CStr = c"meltype-rust";
-const BUS: &CStr = c"org.freedesktop.IBus.MeltypeRust";
+const KEY: &CStr = c"meltype-flash-state";
+const ENGINE: &CStr = c"meltype-flash";
+const BUS: &CStr = c"org.freedesktop.IBus.MeltypeFlash";
 
 struct State {
     session: Obj,
@@ -488,7 +488,7 @@ unsafe extern "C" fn property(_engine: Obj, name: *const c_char, _state: u32, _d
         }
         if CStr::from_ptr(name) == c"settings" {
             if let Ok(exe) = std::env::current_exe() {
-                let _ = std::process::Command::new(exe.with_file_name("meltype-settings")).spawn();
+                let _ = std::process::Command::new(exe.with_file_name("meltype-flash")).spawn();
             }
         } else if CStr::from_ptr(name) == c"report" {
             let _ = std::process::Command::new("xdg-open")
@@ -522,7 +522,7 @@ pub fn run() -> Result<(), String> {
         g_type_query(ibus_engine_get_type(), &mut query);
         let type_ = g_type_register_static_simple(
             ibus_engine_get_type(),
-            c"MeltypeRustEngine".as_ptr(),
+            c"MeltypeFlashEngine".as_ptr(),
             query.class_size,
             None,
             query.instance_size,
@@ -552,7 +552,7 @@ pub fn run() -> Result<(), String> {
         } else {
             let component = ibus_component_new(
                 BUS.as_ptr(),
-                c"Meltype Rust".as_ptr(),
+                c"Meltype-flash".as_ptr(),
                 c"0.1.0".as_ptr(),
                 c"GPL-3.0-or-later".as_ptr(),
                 c"Yukishiro, appipinopi".as_ptr(),
@@ -565,8 +565,8 @@ pub fn run() -> Result<(), String> {
                 component,
                 ibus_engine_desc_new(
                     ENGINE.as_ptr(),
-                    c"Meltype Rust".as_ptr(),
-                    c"Meltype Rust".as_ptr(),
+                    c"Meltype-flash".as_ptr(),
+                    c"Meltype-flash".as_ptr(),
                     c"ja".as_ptr(),
                     c"GPL-3.0-or-later".as_ptr(),
                     c"Yukishiro, appipinopi".as_ptr(),

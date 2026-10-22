@@ -5,6 +5,7 @@ mod candidate_sources;
 mod commit_correction;
 mod composition_units;
 pub mod context;
+#[cfg(feature = "filesystem")]
 pub mod control;
 pub mod detection;
 pub mod dictionary;
@@ -25,6 +26,10 @@ pub mod settings;
 pub mod shortcuts;
 mod sigil;
 pub mod spelling;
+#[cfg(feature = "filesystem")]
+pub mod storage;
+#[cfg(not(feature = "filesystem"))]
+#[path = "storage_memory.rs"]
 pub mod storage;
 mod system_data;
 pub mod time_candidates;

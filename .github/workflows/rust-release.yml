@@ -1,0 +1,151 @@
+name: Meltype-flash release
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: New Meltype-flash preview tag
+        required: true
+        default: flash-v0.1.1-preview.1
+permissions:
+  contents: read
+concurrency:
+  group: rust-release
+  cancel-in-progress: false
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          TAG: ${{ inputs.tag || 'flash-v0.1.1-preview.1' }}
+        run: |
+          [[ "$TAG" =~ ^flash-v[0-9]+\.[0-9]+\.[0-9]+-preview\.[0-9]+$ ]]
+          test "$GITHUB_REPOSITORY" = appipinopi/Meltype
+          test "$GITHUB_REF" = refs/heads/rust
+  windows:
+    needs: validate
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: rust-release-windows
+      - run: ./rust/Test-BuildWindowsArgs.ps1
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - run: cargo test --workspace --locked
+      - run: ./rust/build-windows.ps1 -WithTip
+      - name: Inspect native server and package lifecycle
+        shell: pwsh
+        run: |
+          python rust/native/tests/tsf_server_smoke.py native/tip/bin/rust-x64/MeltypeTip.dll
+          if ($LASTEXITCODE -ne 0) { throw 'TSF server test failed' }
+          ./rust/Test-Manage-Windows.ps1
+          ./rust/Test-WindowsLifecycle.ps1
+          ./rust/Test-UpdateWindows.ps1
+          ./rust/Test-StartupCli.ps1 -Binary target/x86_64-pc-windows-msvc/release/meltype-flash.exe
+          python -m unittest discover -s tools -p test_rust_windows_package.py -v
+          if ($LASTEXITCODE -ne 0) { throw 'Package tests failed' }
+      - name: Assemble audited Windows ZIP
+        shell: pwsh
+        run: |
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+          $vs = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          $redist = Get-ChildItem -LiteralPath (Join-Path $vs 'VC/Redist/MSVC') -Directory | Where-Object Name -Match '^\d+\.' | Sort-Object Name -Descending | Select-Object -First 1
+          if (-not $redist) { throw 'Redistributable CRT directory missing' }
+          python rust/package-windows.py --settings target/x86_64-pc-windows-msvc/release/meltype-flash.exe --cli target/x86_64-pc-windows-msvc/release/meltype-rs.exe --worker-x64 target/x86_64-pc-windows-msvc/release/meltype-tip-worker.exe --worker-x86 target/i686-pc-windows-msvc/release/meltype-tip-worker.exe --redist-root $redist.FullName --output dist/Meltype-flash-Windows-x64
+          if ($LASTEXITCODE -ne 0) { throw 'Package audit failed' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-windows
+          path: dist/Meltype-flash-Windows-x64.zip
+          if-no-files-found: error
+  linux:
+    needs: validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: rust-release-linux
+      - run: sudo apt-get update && sudo apt-get install -y libibus-1.0-dev ibus gir1.2-ibus-1.0 python3-gi dbus-x11 xvfb fonts-noto-cjk libxkbcommon-x11-0
+      - run: cargo test --workspace --locked
+      - run: bash rust/build-linux.sh
+      - name: Validate packaged IBus engine
+        run: |
+          python3 rust/ibus/tests/installation.py target/release/meltype-ibus
+          MELTYPE_IBUS_TEST_INSTALLED=1 xvfb-run -a dbus-run-session -- /usr/bin/python3 rust/ibus/tests/integration.py target/release/meltype-ibus
+          cp linux/build/Meltype-flash-linux.tar.gz Meltype-flash-Linux-x64.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-linux
+          path: Meltype-flash-Linux-x64.tar.gz
+          if-no-files-found: error
+  macos:
+    needs: validate
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            arch: arm64
+          - os: macos-15-intel
+            arch: x64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: rust-release-macos-${{ matrix.arch }}
+      - uses: actions/cache@v5
+        with:
+          path: mac/.build
+          key: release-swift-${{ matrix.arch }}-${{ hashFiles('mac/Package.swift', 'mac/Package.resolved') }}
+      - run: cargo test --workspace --locked
+      - run: bash rust/build-desktop.sh
+      - name: Inspect macOS package
+        run: |
+          codesign --verify --deep --strict mac/build/Meltype.app
+          MELTYPE_RUST_DATA_DIR="$RUNNER_TEMP/meltype-release-test" mac/build/Meltype.app/Contents/MacOS/Meltype --self-test
+          bash mac/test/register-helper/run.sh "$PWD/mac/build/Meltype.app/Contents/MacOS/MeltypeRegisterInputSource"
+          python3 rust/native/tests/macos_product_smoke.py target/release/libmeltype_native.dylib
+          bash mac/package.sh Meltype-flash-macOS-${{ matrix.arch }}.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-macos-${{ matrix.arch }}
+          path: dist/Meltype-flash-macOS-*.zip
+          if-no-files-found: error
+  android:
+    needs: validate
+    uses: ./.github/workflows/rust-android.yml
+  chromeos:
+    needs: validate
+    uses: ./.github/workflows/chromeos.yml
+  publish:
+    needs: [windows, linux, macos, android, chromeos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Collect verified release assets
+        run: |
+          python3 -m unittest discover -s tools -p test_collect_rust_release.py -v
+          python3 tools/collect-rust-release.py artifacts release-assets
+          cp LICENSE THIRD-PARTY-NOTICES.md rust/RELEASE-NOTES.md release-assets/
+      - name: Publish all platforms together
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag || 'flash-v0.1.1-preview.1' }}
+        run: |
+          gh release create "$TAG" release-assets/* --target "$GITHUB_SHA" --title "Meltype-flash $TAG" --notes-file rust/RELEASE-NOTES.md --prerelease --draft
+          gh release edit "$TAG" --draft=false

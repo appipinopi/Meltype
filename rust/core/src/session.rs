@@ -6,12 +6,14 @@ mod engine_learning;
 mod misspelling;
 mod reconversion;
 mod v130;
+#[cfg(feature = "filesystem")]
+use crate::storage::Store;
 use crate::{
     dictionary::Dictionary,
     linguistics::Linguistics,
     romaji,
     settings::Settings,
-    storage::{Change, State, Store},
+    storage::{Change, State},
 };
 pub use engine_learning::Batch as EngineLearning;
 pub use reconversion::ReconversionPart;
@@ -166,6 +168,7 @@ pub struct Session {
     pub preferences: Preferences,
     pub settings: Settings,
     pub state: State,
+    #[cfg(feature = "filesystem")]
     store: Option<Store>,
     pub storage_error: Option<String>,
     before: String,
@@ -190,12 +193,13 @@ pub struct Session {
     sigil: crate::sigil::Sigil,
     edited_units: Option<crate::composition_units::Units>,
     custom_romaji: Option<std::sync::Arc<romaji::CustomTable>>,
-    clock: std::time::Instant,
+    clock: web_time::Instant,
     key_time_ms: u64,
     interval_last_ms: Option<u64>,
     key_intervals: std::collections::VecDeque<serde_json::Value>,
     direct_pending: String,
     direct_last_key_ms: Option<u64>,
+    #[cfg(feature = "filesystem")]
     hook_session: crate::input_session::InputSession,
 }
 
@@ -227,6 +231,7 @@ impl Default for Session {
             preferences: Preferences::default(),
             settings: Settings::default(),
             state: State::default(),
+            #[cfg(feature = "filesystem")]
             store: None,
             storage_error: None,
             before: String::new(),
@@ -251,12 +256,13 @@ impl Default for Session {
             sigil: Default::default(),
             edited_units: None,
             custom_romaji: None,
-            clock: std::time::Instant::now(),
+            clock: web_time::Instant::now(),
             key_time_ms: 0,
             interval_last_ms: None,
             key_intervals: Default::default(),
             direct_pending: String::new(),
             direct_last_key_ms: None,
+            #[cfg(feature = "filesystem")]
             hook_session: Default::default(),
         }
     }
@@ -268,6 +274,7 @@ impl Session {
             .as_ref()
             .unwrap_or_else(|| Dictionary::bundled())
     }
+    #[cfg(feature = "filesystem")]
     pub fn open(store: Store) -> std::io::Result<Self> {
         let candidate_sources =
             crate::candidate_sources::Sources::load(&store.directory.join("dictionaries"))?;
@@ -326,6 +333,7 @@ impl Session {
             self.after = after.chars().take(4000).collect();
         }
     }
+    #[cfg(feature = "filesystem")]
     pub fn reload(&mut self) -> std::io::Result<()> {
         if let Some(store) = &self.store {
             self.settings = store.settings()?.for_app(&self.process);
@@ -349,6 +357,7 @@ impl Session {
         }
         Ok(())
     }
+    #[cfg(feature = "filesystem")]
     pub fn control(&mut self, request: &serde_json::Value) -> std::io::Result<serde_json::Value> {
         if request["op"] == "prefix_learn" && (self.private || self.no_learning) {
             return Ok(serde_json::json!({"saved":false}));
@@ -377,11 +386,14 @@ impl Session {
             self.last_commit = None;
         }
         self.process = process.into();
+        #[cfg(feature = "filesystem")]
         let settings = self
             .store
             .as_ref()
             .and_then(|s| s.settings().ok())
             .unwrap_or_else(|| self.settings.clone());
+        #[cfg(not(feature = "filesystem"))]
+        let settings = self.settings.clone();
         self.settings = settings.for_app(process);
         self.code_input = self.settings.text("AppProfile") == "Code";
     }
@@ -410,6 +422,7 @@ impl Session {
             })
             .collect::<Vec<_>>();
         self.state.preferences = self.preferences.clone();
+        #[cfg(feature = "filesystem")]
         if let Some(store) = &self.store {
             match store.record(changes) {
                 Ok(state) => {
@@ -418,12 +431,12 @@ impl Session {
                 }
                 Err(e) => self.storage_error = Some(e.to_string()),
             }
-        } else {
-            for change in changes {
-                self.state.apply(change);
-            }
-            self.preferences = self.state.preferences.clone();
+            return;
         }
+        for change in changes {
+            self.state.apply(change);
+        }
+        self.preferences = self.state.preferences.clone();
     }
     pub fn predictions(&self) -> Vec<String> {
         let _romaji = romaji::Scope::new(self.custom_romaji.clone());

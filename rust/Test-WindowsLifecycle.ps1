@@ -12,11 +12,15 @@ function Assert-That([bool]$Value, [string]$Message) { if (-not $Value) { throw 
 function Package([string]$PackageLabel) {
     $folder = Join-Path $root $PackageLabel
     $manifest = @{}
-    foreach ($name in @('meltype-settings.exe','meltype-rs.exe','tip/x64/MeltypeTip.dll','tip/x86/MeltypeTip.dll',
+    foreach ($name in @('meltype-flash.exe','meltype-rs.exe','tip/x64/MeltypeTip.dll','tip/x86/MeltypeTip.dll',
         'tip/x64/meltype-tip-worker.exe','tip/x86/meltype-tip-worker.exe','Manage-Windows.ps1','Start-Portable.ps1')) {
         $path = Join-Path $folder $name
         New-Item -ItemType Directory -Path (Split-Path -Parent $path) -Force | Out-Null
         [IO.File]::WriteAllText($path, $PackageLabel + ':' + $name)
+        if ($name.EndsWith('MeltypeTip.dll')) {
+            $identityBytes = [IO.File]::ReadAllBytes($path) + ([Guid]'C540BAF6-88B1-5B30-B524-2C8702B034FC').ToByteArray() + ([Guid]'6D01DE9C-8AB3-5CFC-A5C6-10893CDF8762').ToByteArray()
+            [IO.File]::WriteAllBytes($path, [byte[]]$identityBytes)
+        }
         $manifest[$name] = (Get-FileHash -LiteralPath $path).Hash
     }
     $manifest | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $folder 'SHA256SUMS.json') -Encoding UTF8
@@ -86,7 +90,7 @@ $state.enabled = $true
 & $driver -Action Update -Package $two
 $second = Get-Content -LiteralPath $receipt -Raw | ConvertFrom-Json
 Assert-That ($first.package -ne $second.package) 'New package reused an old version folder'
-Assert-That ($state.startupExe -eq (Join-Path $second.package 'meltype-settings.exe')) 'Startup still points to old version'
+Assert-That ($state.startupExe -eq (Join-Path $second.package 'meltype-flash.exe')) 'Startup still points to old version'
 Assert-That (Test-Path -LiteralPath $first.x64) 'Update removed old live DLL'
 $locked = [IO.File]::Open($second.x64, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
 try { & $driver -Action Update -Package $two } finally { $locked.Dispose() }

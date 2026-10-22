@@ -90,6 +90,7 @@ with tempfile.TemporaryDirectory(prefix='meltype-windows-converter-') as directo
         assert cancelled['view']['text']=='ハシ' and not cancelled['view']['converting'],cancelled
         assert call('commit')['commits'][0]['text']=='ハシ'
         configure('Mozc',learning=True)
+        call('hello')  # Complete settings schema migration before the privacy snapshot.
         before={p.relative_to(profile):p.read_bytes() for p in profile.rglob('*') if p.is_file() and 'mozc' not in p.relative_to(profile).parts}
         for ch in 'kanji':assert call('key',vk=ord(ch.upper()),ch=ord(ch),private=True)['consumed']
         private=call('key',vk=32,ch=32,private=True)
@@ -97,7 +98,7 @@ with tempfile.TemporaryDirectory(prefix='meltype-windows-converter-') as directo
         committed=call('commit')
         assert committed['commits'][0]['text']=='MOZC:かんじ',committed
         after={p.relative_to(profile):p.read_bytes() for p in profile.rglob('*') if p.is_file() and 'mozc' not in p.relative_to(profile).parts}
-        assert before==after,'private conversion must not persist learning'
+        assert before==after,('private conversion must not persist learning', [str(p) for p in before.keys()|after.keys() if before.get(p)!=after.get(p)])
         assert not any(line.startswith('L\t') for line in calls.read_text(encoding='utf-8').splitlines()),'private conversion must not notify Mozc'
         for ch in 'kanji':assert call('key',vk=ord(ch.upper()),ch=ord(ch))['consumed']
         assert call('key',vk=32,ch=32)['view']['text']=='MOZC:かんじ'
@@ -117,7 +118,15 @@ with tempfile.TemporaryDirectory(prefix='meltype-windows-converter-') as directo
         configure('System')
         assert reconvert('nihongo')==expected,'System stays usable while Mozc learns'
         call('reset');configure('Mozc',learning=True)
-        assert reconvert('hashi')=='ALT:はし','learned candidate must replace cached first choice'
+        deadline=time.monotonic()+5
+        while True:
+            started=time.monotonic()
+            value=reconvert('hashi')
+            assert time.monotonic()-started<.5,'new input must not join pending helper learning'
+            if value=='ALT:はし':break
+            call('reset')
+            assert time.monotonic()<deadline,'completed learning must replace cached first choice'
+            time.sleep(.025)
         call('reset')
         (profile/'mozc/fixture-slow-learning').unlink()
         trace=calls.read_text(encoding='utf-8').splitlines()

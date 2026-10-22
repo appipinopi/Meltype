@@ -22,6 +22,9 @@ def main():
     args = parser.parse_args()
     user = c.WinDLL("user32", use_last_error=True)
     kernel = c.WinDLL("kernel32", use_last_error=True)
+    imm = c.WinDLL("imm32", use_last_error=True)
+    imm.ImmDisableIME.argtypes = [w.DWORD]
+    imm.ImmDisableIME.restype = w.BOOL
     ptr = c.c_void_p
     proc_type = c.WINFUNCTYPE(c.c_ssize_t, ptr, w.UINT, c.c_size_t, c.c_ssize_t)
     signatures = {
@@ -36,6 +39,9 @@ def main():
         "GetWindowTextW": (c.c_int, [ptr, w.LPWSTR, c.c_int]),
         "SetWindowTextW": (w.BOOL, [ptr, w.LPCWSTR]),
         "DestroyWindow": (w.BOOL, [ptr]),
+        "EnumWindows": (w.BOOL, [ptr, c.c_ssize_t]),
+        "IsWindowVisible": (w.BOOL, [ptr]),
+        "GetClassNameW": (c.c_int, [ptr, w.LPWSTR, c.c_int]),
         "GetMessageW": (w.BOOL, [ptr, ptr, w.UINT, w.UINT]),
         "TranslateMessage": (w.BOOL, [ptr]), "DispatchMessageW": (c.c_ssize_t, [ptr]),
         "PostQuitMessage": (None, [c.c_int]),
@@ -81,6 +87,7 @@ def main():
         return user.DefWindowProcW(hwnd, message, wp, lp)
 
     def ui():
+        assert imm.ImmDisableIME(kernel.GetCurrentThreadId()), "Could not isolate the owned test UI from the registered IME"
         user.LoadKeyboardLayoutW("00000409", 1)  # Only this test UI thread.
         instance = kernel.GetModuleHandleW(None)
         wc = WindowClass(0, wndproc, 0, 0, instance, None, None, None, None, "MeltypePortableTest")
@@ -144,7 +151,10 @@ def main():
 
     with tempfile.TemporaryDirectory(prefix="meltype-portable-test-") as directory:
         data = Path(directory)
-        (data / "config.json").write_text(json.dumps({"WelcomeShown": True, "TsfIntroduced": True, "AutoUpdate": False}), encoding="utf-8")
+        (data / "config.json").write_text(json.dumps({"Mode": "Keyboard", "WelcomeShown": True, "TsfIntroduced": True, "AutoUpdate": False}), encoding="utf-8")
+        ticks = int(time.time() * 10_000_000) + 621355968000000000
+        predictions = {"橋の近くで待っています": "はしのちかくでまっています", "箸をお願いします": "はしをおねがいします"}
+        (data / "phrases.txt").write_text("".join(f"{reading}\t{word}\t2\t{ticks}\n" for word, reading in sorted(predictions.items())), encoding="utf-8")
         import os
         env = dict(os.environ, MELTYPE_RUST_DATA_DIR=directory, MELTYPE_PORTABLE_TEST_PID=str(os.getpid()))
         process = subprocess.Popen([str(args.binary.resolve()), *( ["--ignored", "--exact", "portable_keyboard::tests::external_input_host", "--nocapture"] if args.unit_host else ["--portable-keyboard"] )], env=env)
@@ -159,6 +169,10 @@ def main():
             expect("edit", "abc")
             user.SetWindowTextW(handles["edit"], "")
             toggle()
+            deadline = time.monotonic() + 10
+            while not (data / "ready-host").exists() and time.monotonic() < deadline:
+                time.sleep(.05)
+            assert (data / "ready-host").exists(), "Input host did not finish UI Automation initialization"
             type_text("nihongo")
             expect("edit", "")
             press(13)
@@ -190,6 +204,35 @@ def main():
             press(13)
             expect("edit", "か")
             print("PASS: read-only input is excluded and editing resumes without stale composition")
+            user.SetWindowTextW(handles["edit"], "")
+            type_text("hashi")
+            popup_text = []
+            enum_proc = c.WINFUNCTYPE(w.BOOL, ptr, c.c_ssize_t)
+            @enum_proc
+            def inspect_popup(hwnd, _):
+                pid = w.DWORD()
+                user.GetWindowThreadProcessId(hwnd, c.byref(pid))
+                if pid.value == process.pid and user.IsWindowVisible(hwnd):
+                    classname = c.create_unicode_buffer(128)
+                    user.GetClassNameW(hwnd, classname, len(classname))
+                    if classname.value == "Static":
+                        value = c.create_unicode_buffer(4096)
+                        user.GetWindowTextW(hwnd, value, len(value))
+                        popup_text.append(value.value)
+                return True
+            deadline = time.monotonic() + 4
+            while time.monotonic() < deadline:
+                popup_text.clear()
+                user.EnumWindows(inspect_popup, 0)
+                if all(any(word in label for label in popup_text) for word in predictions): break
+                time.sleep(.1)
+            assert all(any(word in label for label in popup_text) for word in predictions), f"Predictive phrases were not rendered in the real popup: {popup_text!r}"
+            press(9)
+            press(13)
+            deadline = time.monotonic() + 4
+            while text("edit") not in predictions and time.monotonic() < deadline: time.sleep(.05)
+            assert text("edit") in predictions, "Tab/Enter did not commit a displayed predictive phrase"
+            print("PASS: real popup shows learned predictive phrases; Tab/Enter commits the selected phrase")
             if args.unit_host:
                 (data / "stop-host").touch()
             else:

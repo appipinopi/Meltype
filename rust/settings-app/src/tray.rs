@@ -5,7 +5,6 @@ use crate::{
     startup::Startup,
     windows_services::{self, Hotkey},
 };
-use ab_glyph::{Font, FontArc, PxScale, ScaleFont};
 use eframe::egui;
 use meltype_core::{settings::Settings, storage::Store};
 use std::sync::mpsc::{self, Receiver};
@@ -16,11 +15,20 @@ use tray_icon::{
 #[derive(Clone, Debug)]
 pub enum Action {
     Toggle,
+    Mode(String),
+    Help,
     Page(usize),
     Profile(String),
     Level(String),
     Folder,
     About,
+    Report,
+    Corrections,
+    Backup(bool),
+    Forget(&'static str),
+    Uninstall,
+    AutoUpdate,
+    CheckUpdates,
     Quit,
     MaintenanceQuit,
     Startup,
@@ -39,7 +47,11 @@ pub struct Tray {
     icon: TrayIcon,
     enabled: CheckMenuItem,
     status: MenuItem,
+    ime_mode: CheckMenuItem,
+    keyboard_mode: CheckMenuItem,
     levels: Vec<(String, CheckMenuItem)>,
+    level_menu: Submenu,
+    auto_update: CheckMenuItem,
     profiles: Submenu,
     profile_items: Vec<(String, CheckMenuItem)>,
     actions: Vec<(MenuId, Action)>,
@@ -68,9 +80,9 @@ impl Tray {
         fs2::FileExt::try_lock_exclusive(&lock)
             .map_err(|_| "トレイは既に起動しています。設定画面を開きました。".to_owned())?;
         let menu = Menu::new();
-        let status = MenuItem::new("Meltype", false, None);
+        let status = MenuItem::new("Meltype-flash", false, None);
         let enabled = CheckMenuItem::new(
-            "Meltype を有効にする",
+            "Meltype-flash を有効にする",
             true,
             settings.boolean("Enabled"),
             None,
@@ -80,6 +92,22 @@ impl Tray {
             .map_err(|e| e.to_string())?;
         menu.append(&enabled).map_err(|e| e.to_string())?;
         let mut actions = vec![(enabled.id().clone(), Action::Toggle)];
+        let ime_mode = CheckMenuItem::new(
+            "Meltype-flash IME (入力欄に直接入力)",
+            true,
+            settings.text("Mode") == "Tsf",
+            None,
+        );
+        let keyboard_mode = CheckMenuItem::new(
+            "Meltype-flash キーボード (変換ボックスで入力)",
+            true,
+            settings.text("Mode") == "Keyboard",
+            None,
+        );
+        menu.append(&ime_mode).map_err(|e| e.to_string())?;
+        menu.append(&keyboard_mode).map_err(|e| e.to_string())?;
+        actions.push((ime_mode.id().clone(), Action::Mode("Tsf".into())));
+        actions.push((keyboard_mode.id().clone(), Action::Mode("Keyboard".into())));
         let level_menu = Submenu::new("自動判定の強さ", true);
         let mut levels = vec![];
         for (name, label) in [
@@ -101,19 +129,64 @@ impl Tray {
         menu.append(&startup_item).map_err(|e| e.to_string())?;
         actions.push((startup_item.id().clone(), Action::Startup));
         for (label, action) in [
+            ("使い方...", Action::Help),
             ("設定...", Action::Page(0)),
             ("ユーザー辞書...", Action::Page(1)),
             ("定型文...", Action::Page(2)),
-            ("学習した語...", Action::Page(3)),
-            ("バックアップ...", Action::Page(4)),
-            ("判定テスト...", Action::Page(5)),
-            ("データフォルダを開く", Action::Folder),
-            ("報告・更新...", Action::About),
+            ("ログ / 判定理由...", Action::Page(6)),
         ] {
             let item = MenuItem::new(label, true, None);
             menu.append(&item).map_err(|e| e.to_string())?;
             actions.push((item.id().clone(), action));
         }
+        menu.append(&PredefinedMenuItem::separator())
+            .map_err(|e| e.to_string())?;
+        let folder = MenuItem::new("データフォルダを開く", true, None);
+        menu.append(&folder).map_err(|e| e.to_string())?;
+        actions.push((folder.id().clone(), Action::Folder));
+        let backup = Submenu::new("バックアップ", true);
+        for (label, restore) in [
+            ("バックアップを書き出す...", false),
+            ("バックアップから戻す...", true),
+        ] {
+            let item = MenuItem::new(label, true, None);
+            backup.append(&item).map_err(|e| e.to_string())?;
+            actions.push((item.id().clone(), Action::Backup(restore)));
+        }
+        menu.append(&backup).map_err(|e| e.to_string())?;
+        for (label, action) in [
+            ("不具合の報告・提案...", Action::Report),
+            ("直した誤判定を報告...", Action::Corrections),
+            ("Meltype-flash について...", Action::About),
+            ("学習した語...", Action::Page(3)),
+        ] {
+            let item = MenuItem::new(label, true, None);
+            menu.append(&item).map_err(|e| e.to_string())?;
+            actions.push((item.id().clone(), action));
+        }
+        let forget = Submenu::new("学習データを消す", true);
+        for (label, scope) in [
+            ("この 1 時間に覚えたもの...", "hour"),
+            ("今日覚えたもの...", "today"),
+            ("すべて (リセット)...", "all"),
+        ] {
+            let item = MenuItem::new(label, true, None);
+            forget.append(&item).map_err(|e| e.to_string())?;
+            actions.push((item.id().clone(), Action::Forget(scope)));
+        }
+        menu.append(&forget).map_err(|e| e.to_string())?;
+        let uninstall = MenuItem::new("アンインストール...", true, None);
+        menu.append(&uninstall).map_err(|e| e.to_string())?;
+        actions.push((uninstall.id().clone(), Action::Uninstall));
+        let updates = Submenu::new("更新", true);
+        let auto_update =
+            CheckMenuItem::new("自動で更新する", true, settings.boolean("AutoUpdate"), None);
+        updates.append(&auto_update).map_err(|e| e.to_string())?;
+        actions.push((auto_update.id().clone(), Action::AutoUpdate));
+        let check = MenuItem::new("今すぐ更新を確認", true, None);
+        updates.append(&check).map_err(|e| e.to_string())?;
+        actions.push((check.id().clone(), Action::CheckUpdates));
+        menu.append(&updates).map_err(|e| e.to_string())?;
         menu.append(&PredefinedMenuItem::separator())
             .map_err(|e| e.to_string())?;
         let quit = MenuItem::new("終了", true, None);
@@ -123,7 +196,7 @@ impl Tray {
         let icon = TrayIconBuilder::new()
             .with_menu(Box::new(menu))
             .with_guid(guid)
-            .with_tooltip("Meltype")
+            .with_tooltip("Meltype-flash")
             .with_icon(text_icon(settings.boolean("Enabled"))?)
             .build()
             .map_err(|e| e.to_string())?;
@@ -137,7 +210,7 @@ impl Tray {
         ) {
             Ok(hotkey) => {
                 if let Some(name) = hotkey.name.as_deref() {
-                    enabled.set_text(format!("Meltype を有効にする ({name})"));
+                    enabled.set_text(format!("Meltype-flash を有効にする ({name})"));
                 } else {
                     warnings.push("一時停止/再開のホットキーは、候補がすべて使用中のため登録できませんでした。".into());
                 }
@@ -177,7 +250,11 @@ impl Tray {
             icon,
             enabled,
             status,
+            ime_mode,
+            keyboard_mode,
             levels,
+            level_menu,
+            auto_update,
             profiles,
             profile_items: vec![],
             actions,
@@ -194,13 +271,22 @@ impl Tray {
         tray.sync(settings)?;
         Ok(tray)
     }
+    pub fn input_status(&self, settings: &Settings, active: bool) {
+        if settings.boolean("Enabled") && settings.text("Mode") == "Keyboard" {
+            self.status.set_text(if active {
+                "Meltype-flash キーボード: 入力ON (Ctrl+Alt+J でOFF)"
+            } else {
+                "Meltype-flash キーボード: 入力OFF (Ctrl+Alt+J でON)"
+            });
+        }
+    }
     pub fn sync(&mut self, settings: &Settings) -> Result<(), String> {
         let enabled = settings.boolean("Enabled");
         let message = if enabled != self.last_enabled {
             Some(if enabled {
-                "Meltype を有効にしました".to_owned()
+                "Meltype-flash を有効にしました".to_owned()
             } else {
-                "Meltype を一時停止しました".to_owned()
+                "Meltype-flash を一時停止しました".to_owned()
             })
         } else if settings.text("ActiveProfile") != self.last_profile {
             Some(format!(
@@ -212,10 +298,15 @@ impl Tray {
         };
         self.last_profile = settings.text("ActiveProfile").into();
         self.enabled.set_checked(enabled);
-        self.status.set_text(if enabled {
-            "Meltype: 有効"
+        self.ime_mode.set_checked(settings.text("Mode") == "Tsf");
+        self.keyboard_mode
+            .set_checked(settings.text("Mode") == "Keyboard");
+        self.status.set_text(if !enabled {
+            "Meltype-flash: 一時停止"
+        } else if settings.text("Mode") == "Keyboard" {
+            "Meltype-flash キーボード (Ctrl+Alt+J で入力ON/OFF)"
         } else {
-            "Meltype: 一時停止"
+            "Meltype-flash IME (Win + Space で Meltype-flash を選んで入力)"
         });
         if enabled != self.last_enabled {
             self.icon
@@ -223,6 +314,13 @@ impl Tray {
                 .map_err(|e| e.to_string())?;
             self.last_enabled = enabled;
         }
+        self.auto_update.set_checked(settings.boolean("AutoUpdate"));
+        self.level_menu.set_text(format!(
+            "自動判定の強さ: {}",
+            crate::metadata::choice("DetectionLevel", settings.text("DetectionLevel"))
+        ));
+        self.profiles
+            .set_text(format!("プロファイル: {}", settings.text("ActiveProfile")));
         for (name, item) in &self.levels {
             item.set_checked(name == settings.text("DetectionLevel"));
         }
@@ -262,7 +360,7 @@ impl Tray {
                 windows_services::notify(
                     self.icon.window_handle(),
                     self.guid,
-                    "Meltype",
+                    "Meltype-flash",
                     &message,
                 )?;
             }
@@ -303,9 +401,9 @@ impl Tray {
                 match result {
                     Ok(enabled) if self.startup_user_request => actions.push(Action::Status(
                         if enabled {
-                            "Windows の起動時に Meltype を起動します。"
+                            "Windows の起動時に Meltype-flash を起動します。"
                         } else {
-                            "Windows の起動時に Meltype を起動しません。"
+                            "Windows の起動時に Meltype-flash を起動しません。"
                         }
                         .into(),
                     )),
@@ -335,73 +433,60 @@ impl Tray {
 pub fn write_action(store: &Store, action: &Action) -> Result<(), String> {
     store
         .change_settings(|settings| match action {
+            Action::AutoUpdate => settings.set(
+                "AutoUpdate",
+                serde_json::json!(!settings.boolean("AutoUpdate")),
+            ),
             Action::Toggle => {
                 settings.set("Enabled", serde_json::json!(!settings.boolean("Enabled")))
             }
             Action::Profile(name) => settings.switch_profile(name),
+            Action::Mode(mode) => {
+                if !["Tsf", "Keyboard"].contains(&mode.as_str()) {
+                    return Err("unsupported input mode".into());
+                }
+                settings.set("Mode", serde_json::json!(mode))
+            }
             Action::Level(level) => settings.set("DetectionLevel", serde_json::json!(level)),
             _ => Ok(()),
         })
         .map_err(|e| e.to_string())
 }
 fn text_icon(enabled: bool) -> Result<Icon, String> {
-    let font = [
-        "C:/Windows/Fonts/YuGothB.ttc",
-        "C:/Windows/Fonts/YuGothM.ttc",
-        "C:/Windows/Fonts/meiryo.ttc",
-        "C:/Windows/Fonts/segoeui.ttf",
-    ]
-    .iter()
-    .find_map(|path| {
-        std::fs::read(path)
-            .ok()
-            .and_then(|bytes| FontArc::try_from_vec(bytes).ok())
-    })
-    .ok_or("tray icon font unavailable")?;
-    let character = if !enabled {
-        'A'
-    } else if font.glyph_id('あ').0 != 0 {
-        'あ'
+    let image = eframe::icon_data::from_png_bytes(include_bytes!(
+        "../../../assets/branding/meltype-flash-32.png"
+    ))
+    .map_err(|e| e.to_string())?;
+    let mut rgba = image.rgba;
+    // A white plate keeps the supplied black mark visible on dark taskbars.
+    // The small status dot preserves the existing enabled/disabled indication.
+    for pixel in rgba.as_chunks_mut::<4>().0 {
+        let alpha = u16::from(pixel[3]);
+        for channel in &mut pixel[..3] {
+            *channel = ((u16::from(*channel) * alpha + 255 * (255 - alpha)) / 255) as u8;
+            if !enabled {
+                *channel = (*channel / 2) + 127;
+            }
+        }
+        pixel[3] = 255;
+    }
+    let color = if enabled {
+        [0, 120, 212]
     } else {
-        'M'
+        [120, 120, 120]
     };
-    let glyph = font.as_scaled(PxScale::from(15.)).scaled_glyph(character);
-    let outline = font
-        .outline_glyph(glyph)
-        .ok_or("tray icon glyph unavailable")?;
-    let bounds = outline.px_bounds();
-    let mut rgba = vec![0_u8; 32 * 32 * 4];
-    // Upstream CreateIcon uses a 30px accent/gray circle with white text.
-    let background = if enabled {
-        [0_u8, 120, 212]
-    } else {
-        [120_u8, 120, 120]
-    };
-    for y in 0..32 {
-        for x in 0..32 {
-            let distance = ((x as f32 + 0.5 - 16.).powi(2) + (y as f32 + 0.5 - 16.).powi(2)).sqrt();
-            let alpha = ((15.5 - distance).clamp(0., 1.) * 255.) as u8;
-            let i = (y * 32 + x) * 4;
-            rgba[i..i + 3].copy_from_slice(&background);
-            rgba[i + 3] = alpha;
+    for y in 23_i32..32 {
+        for x in 23_i32..32 {
+            let distance = (x - 27).pow(2) + (y - 27).pow(2);
+            if distance <= 16 {
+                let at = (y as usize * 32 + x as usize) * 4;
+                rgba[at..at + 3].copy_from_slice(if distance <= 9 { &color } else { &[255; 3] });
+            }
         }
     }
-    let left = (32. - bounds.width()) / 2.;
-    let top = (32. - bounds.height()) / 2. + 1.;
-    outline.draw(|x, y, coverage| {
-        let x = x as usize + left.max(0.) as usize;
-        let y = y as usize + top.max(0.) as usize;
-        if x < 32 && y < 32 {
-            let i = (y * 32 + x) * 4;
-            for channel in 0..3 {
-                rgba[i + channel] =
-                    (background[channel] as f32 * (1. - coverage) + 255. * coverage) as u8;
-            }
-            rgba[i + 3] = 255;
-        }
-    });
-    Icon::from_rgba(rgba, 32, 32).map_err(|e| e.to_string())
+    Icon::from_rgba(rgba, image.width, image.height).map_err(|e| e.to_string())
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -423,8 +508,27 @@ mod tests {
         assert_eq!(merged.text("DetectionLevel"), "Conservative");
     }
     #[test]
-    fn both_tray_icon_glyphs_render_on_windows() {
+    fn both_tray_states_render_the_supplied_mark_on_windows() {
         assert!(text_icon(true).is_ok());
         assert!(text_icon(false).is_ok());
+    }
+    #[test]
+    fn tray_modes_persist_without_losing_an_open_settings_draft() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = Store::new(dir.path());
+        let opened = store.settings().unwrap();
+        let mut edited = opened.clone();
+        edited
+            .set("LiveConversion", serde_json::json!(false))
+            .unwrap();
+        write_action(&store, &Action::Mode("Keyboard".into())).unwrap();
+        let current = store.settings().unwrap();
+        assert_eq!(current.text("Mode"), "Keyboard");
+        let merged = Settings::merge_edits(&opened, &edited, &current);
+        assert_eq!(merged.text("Mode"), "Keyboard");
+        assert!(!merged.boolean("LiveConversion"));
+        write_action(&store, &Action::Mode("Tsf".into())).unwrap();
+        assert_eq!(store.settings().unwrap().text("Mode"), "Tsf");
+        assert!(write_action(&store, &Action::Mode("AutoSwitch".into())).is_err());
     }
 }
