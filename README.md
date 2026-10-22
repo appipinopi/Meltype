@@ -137,3 +137,5 @@ Windowsの起動先は **meltype-flash.exe** です。各OSのビルドは、各
 [GPL-3.0-or-later](LICENSE)。著作権表示・第三者ライセンスは [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) を参照してください。
 元のMeltypeと、その開発・辞書・検証に協力された方々に感謝します。[本家のREADME](https://github.com/yksr-melt/Meltype#readme) で本家の協力者と活動を確認できます。
 FlashのM＋稲妻ロゴとREADME画像は [画像資産の説明](assets/branding/README.md) にまとめています。
+
+CIの役割と手動実行は [CIの構成](docs/CI.md) を参照してください。

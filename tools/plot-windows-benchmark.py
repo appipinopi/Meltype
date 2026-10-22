@@ -88,6 +88,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("report", type=Path)
     parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--github-summary", type=Path, help="Append tables to a GitHub Actions step summary")
     parser.add_argument("--hardware", type=Path, help="Optional Windows processor metadata JSON")
     args = parser.parse_args()
     report = json.loads(args.report.read_text(encoding="utf-8"))
@@ -99,6 +100,30 @@ def main():
     output.mkdir(parents=True, exist_ok=True)
     if any((output / name).exists() for name in IMAGES):
         raise ValueError("Choose a new output directory; existing charts are preserved")
+    global VERSIONS, LABELS
+    rust_versions = report.get("comparison_kind") == "rust-versions"
+    if rust_versions:
+        VERSIONS = ("old", "new")
+        LABELS = ("Rust previous", "Rust current")
+        baseline_label = report["old_ref"]
+        current_label = report["new_ref"][:12]
+        comparison_label = f"Rust {baseline_label} vs {current_label}"
+        report["rust_commit"] = report["new_ref"]
+        report["samples_per_round"] = report["samples"]
+        report["warmups_per_case"] = report["warmups"]
+        report["comparisons"] = [dict(case=row["case"], keys=row["keys"],
+            median_total_ms=row["medians_ms"], current_over_baseline=row["new_over_old"],
+            trace_matches=row["matching_projection"], eligible_for_speed_claim=row["eligible_for_speed_claim"])
+            for row in report["results"]]
+    else:
+        VERSIONS = ("csharp", "rust")
+        runtime = report["csharp_runtime"]
+        LABELS = (f"C# {runtime}", "Rust Release")
+        baseline_label = "v1.3.0" if report["baseline"] == "6310c44b728d5ad88284853f9ef37ea224993b18" else report["baseline"][:12]
+        comparison_label = f"C# {baseline_label} {runtime} vs Rust {report['rust_commit'][:12]}"
+        for row in report["comparisons"]:
+            row["current_over_baseline"] = row["rust_over_csharp"]
+    previous, current = VERSIONS
     plt.rcParams.update({"font.family": "DejaVu Sans", "font.size": 9, "axes.titleweight": "bold"})
     compact = {k: v for k, v in report.items() if k not in ("rows", "evidence")}
     compact["rows"] = [{k: row[k] for k in ("case", "sample", "round", "version", "total_ms")}
@@ -120,7 +145,7 @@ def main():
             writer.writeheader()
             writer.writerows(rows)
     stats = {"speed": {}, "resources": {}, "resource_units": {}}
-    stamp = f"{report['measured_at'][:10]} | Rust {report['rust_commit'][:7]} | C# v1.3.0 | n={report['samples_per_round'] * (len(report['order'])//2)} sequences / version / case"
+    stamp = f"{report['measured_at'][:10]} | {comparison_label} | n={report['samples_per_round'] * (len(report['order'])//2)} sequences / version / case"
     partitions = [
         (IMAGES[0], [r for r in report["comparisons"] if r["case"].endswith(("_32", "_64"))], "32 / 64 character inputs"),
         (IMAGES[1], [r for r in report["comparisons"] if r["case"].endswith(("_128", "_256"))], "128 / 256 character inputs"),
@@ -168,30 +193,42 @@ def main():
                "RAM polled at ~50 ms; short peaks may be missed. This is the test host, not a resident IME.\n" + stamp.split(" | n=")[0] + f" | n={len(report['process_resources'])//2} processes / version")
     (output / "boxplot-statistics.json").write_text(json.dumps(stats, indent=2) + "\n", encoding="utf-8")
     matching = [r for r in report["comparisons"] if r["eligible_for_speed_claim"]]
-    faster = sum(r["rust_over_csharp"] < 1 for r in matching)
-    rows = ["# Windows共通Coreの再測定（2026-10-21）", "",
-            f"C# v1.3.0 NativeAOT と Rust `{report['rust_commit'][:7]}` Release。比較可能な入力は {len(matching)}/{len(report['comparisons'])}、Rustの中央値が短い入力は {faster}/{len(matching)}。",
+    faster = sum(r["current_over_baseline"] < 1 for r in matching)
+    rows = [f"# Windows共通Coreの測定（{report['measured_at'][:10]} UTC）", "",
+            f"{comparison_label}。比較可能な入力は {len(matching)}/{len(report['comparisons'])}、現在版の中央値が短い入力は {faster}/{len(matching)}。",
             "", "## 条件と箱ひげ図の読み方", "",
-            f"各入力・各版 {report['samples_per_round']} 試行 × {len(report['order'])//2} 巡、各巡 {report['warmups_per_case']} 回ウォームアップ。C#→Rust、Rust→C#を交互に実行。CPU・RAMは各版 {len(report["process_resources"])//2} プロセスを独立した観測値とする。",
-            f"測定環境: {report['machine']} / {report.get('hardware', {}).get('Name',report['cpu'])} / {report['process_resources'][0]['logical_processors']}論理CPU / OS可視RAM {report['process_resources'][0]['system_memory_before']['total_bytes']/(1024**3):.2f} GiB。{report['rustc'].splitlines()[0]} / .NET {report['dotnet']}。", "",
+            f"各入力・各版 {report['samples_per_round']} 試行 × {len(report['order'])//2} 巡、各巡 {report['warmups_per_case']} 回ウォームアップ。{LABELS[0]}→{LABELS[1]}、逆順を交互に実行。CPU・RAMは各版 {len(report["process_resources"])//2} プロセスを独立した観測値とする。",
+            f"測定環境: {report['machine']} / {report.get('hardware', {}).get('Name',report['cpu'])} / {report['process_resources'][0]['logical_processors']}論理CPU / OS可視RAM {report['process_resources'][0]['system_memory_before']['total_bytes']/(1024**3):.2f} GiB。{report['rustc'].splitlines()[0]} {' / .NET ' + report['dotnet'] if not rust_versions else ''}。", "",
             "四分位数は線形補間（type 7）。箱はQ1〜Q3、黒線は中央値、ひげはQ1−1.5×IQR〜Q3＋1.5×IQR内の最端の観測値。赤い菱形は外れ値。外れ値を除外せず、各パネルに中央値・n・外れ値数を表示する。青/橙の点は全観測値。速度図の縦軸は対数で、統計は元のms値から計算する。", "",
             "速度はCoreの打鍵＋JSON応答生成。セッション生成・辞書構築・起動は区間外。CPU・RAMはそれらとウォームアップ・JSON出力を含むプロセス全体。外部変換・OSスペル・ライブ変換・予測・学習・TSF・候補描画・実アプリ入力は対象外。出力/比較対象の打鍵状態の一致は全UI・全候補の同等性を意味しない。", "",
-            "## 全入力の中央値", "", "|入力|C# (ms)|Rust (ms)|Rust/C#|比較対象の状態一致|", "|---|---:|---:|---:|:---:|"]
-    rows += [f"|{r['case']}|{r['median_total_ms']['csharp']:.4f}|{r['median_total_ms']['rust']:.4f}|{r['rust_over_csharp']:.4f}|{'一致' if r['trace_matches'] else '不一致'}|" for r in report["comparisons"]]
-    rows += ["", "## CPU・RAMのプロセス中央値", "", "|指標|C#|Rust|", "|---|---:|---:|"]
+            "## 全入力の中央値", "", f"|入力|{LABELS[0]} (ms)|{LABELS[1]} (ms)|現在/以前|比較対象の状態一致|", "|---|---:|---:|---:|:---:|"]
+    rows += [f"|{r['case']}|{r['median_total_ms'][previous]:.4f}|{r['median_total_ms'][current]:.4f}|{r['current_over_baseline']:.4f}|{'一致' if r['trace_matches'] else '不一致'}|" for r in report["comparisons"]]
+    rows += ["", "## CPU・RAMのプロセス中央値", "", f"|指標|{LABELS[0]}|{LABELS[1]}|", "|---|---:|---:|"]
     for _, _, metrics in panels:
         for key, caption, unit, _ in metrics:
             values = stats["resources"][key]
-            rows.append(f"|{caption.replace(chr(10), ' ')} ({unit})|{values['csharp']['med']:.4f}|{values['rust']['med']:.4f}|")
+            rows.append(f"|{caption.replace(chr(10), ' ')} ({unit})|{values[previous]['med']:.4f}|{values[current]['med']:.4f}|")
     rows += ["", "## 全画像", ""]
     rows += [f"![{name}]({name})\n" for name in IMAGES]
     rows += ["## 証跡・再現", "", "[全測定の合計時間CSV](timings.csv)／[CPU・RAMの全観測CSV](resources.csv)／[中央値・四分位・全外れ値の数値](boxplot-statistics.json)／[測定条件・ハッシュ・コンパイラ・全合計時間](summary.json)", "",
-             "```powershell", "$env:CARGO_TARGET_DIR='C:/opencode-rust/meltype-target-1.94'", "$env:PYTHONUTF8='1'",
-             "python tools/benchmark-windows.py --output dist/windows-benchmark-20261021-final --samples 3 --warmups 1 --rounds 10",
+             "```powershell", "$env:PYTHONUTF8='1'",
+             (f"python tools/compare-rust-benchmarks.py --build --output dist/windows-benchmark --baseline-ref {report['old_ref']} --samples {report['samples_per_round']} --warmups {report['warmups_per_case']} --rounds {len(report['order'])//2}"
+              if rust_versions else
+              f"python tools/benchmark-windows.py --output dist/windows-benchmark --baseline-ref {report['baseline']} --samples {report['samples_per_round']} --warmups {report['warmups_per_case']} --rounds {len(report['order'])//2}"
+              + (" --jit" if runtime.startswith("JIT") else "")),
              "# matplotlib/numpyを導入したPythonで実行。公開summary.jsonからも画像を再作成できる。",
              "python tools/plot-windows-benchmark.py <report.jsonまたはsummary.json> --output <新しいフォルダー>", "```", "",
-             f"ソースとバイナリの前後一致: sources_unchanged={report['sources_unchanged']}, binaries_unchanged={report['binaries_unchanged']}。全辞書のSHA-256一致を測定開始前に検査した。",
-             "最初の試走は描画ライブラリ導入と重なったため途中停止し、集計対象に含めていない。本測定は準備完了後に最初から実施した。外部負荷やOSスケジューリングの影響を完全には除けず、今回の測定を普遍的な速度保証やIME全体の高速化率には使わない。", ""]
+             f"ソースとバイナリの前後一致: sources_unchanged={report['sources_unchanged']}, binaries_unchanged={report['binaries_unchanged']}。{'版ごとの同梱辞書を使用し、ハッシュを記録した。' if rust_versions else '全辞書のSHA-256一致を測定開始前に検査した。'}",
+             "外部負荷やOSスケジューリングの影響を完全には除けず、今回の測定を普遍的な速度保証やIME全体の高速化率には使わない。", ""]
+    if rust_versions:
+        rows[3:3] = ["両版を同じコンパイラでビルドし、それぞれの版の同梱辞書を使用。コード・依存関係・辞書の差を含む版全体の比較です。", ""]
+    if args.github_summary:
+        # Relative artifact images do not render in the Actions summary.
+        summary = rows[:rows.index("## 全画像")]
+        summary += ["", "PNG 5枚・CSV・生データは、この実行のwindows-common-benchmark成果物に保存します。", "",
+                    "GitHub共有ランナー上の観測値です。固定倍率による合否判定は行いません。", ""]
+        with args.github_summary.open("a", encoding="utf-8") as file:
+            file.write("\n".join(summary))
     (output / "README.md").write_text("\n".join(rows), encoding="utf-8")
     print(json.dumps({"output": str(output), "images": IMAGES, "matching_cases": len(matching), "faster_cases": faster}))
 

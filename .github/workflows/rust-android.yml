@@ -7,9 +7,10 @@ permissions:
 jobs:
   android:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     concurrency:
-      group: rust-preview-${{ github.head_ref || github.ref_name }}-android
-      cancel-in-progress: false
+      group: rust-android-${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     steps:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
