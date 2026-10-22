@@ -16,6 +16,9 @@ def main(library):
     clauses_type = c.CFUNCTYPE(c.c_void_p, c.c_char_p, c.c_char_p)
     candidates_type = c.CFUNCTYPE(c.c_void_p, c.c_char_p)
     word_type = c.CFUNCTYPE(c.c_int, c.c_char_p)
+    preview_probe = False
+    preview_calls = []
+    alternative_calls = []
 
     def allocate(text):
         value = text.encode("utf-8") + b"\0"
@@ -27,10 +30,16 @@ def main(library):
 
     @clauses_type
     def clauses(reading, _context):
+        if preview_probe:
+            preview_calls.append(reading)
+            return allocate(reading.decode() + "\t語" + reading.decode())
         return allocate("はし\t橋") if reading == "はし".encode() else None
 
     @candidates_type
     def candidates(reading):
+        if preview_probe:
+            alternative_calls.append(reading)
+            return allocate("別" + reading.decode())
         return allocate("橋\n箸") if reading == "はし".encode() else None
 
     @word_type
@@ -205,7 +214,27 @@ def main(library):
             assert result(api.meltype_commit_preedit(handle))["commits"] == []
         finally:
             api.meltype_destroy(handle)
-    print("Native ABI: callbacks, live conversion, multi-edit, guarded undo/correction, selection reconversion, detection levels, manual Tab, sigil passthrough and privacy passed")
+        handle = api.meltype_create()
+        try:
+            setting("DetectionLevel", "Manual")
+            setting("LiveConversion", True)
+            setting("PredictiveCandidates", False)
+            preview_probe = True
+            for letter in "nihongonyuuryoku":
+                value = key(scalar=ord(letter))
+                assert value["consumed"] and not value["commits"]
+            assert preview_calls, "live preview must still convert primary clause text"
+            assert not alternative_calls, "typing must not wait for candidate enumeration"
+            assert not value["view"]["converting"]
+            assert value["view"]["text"].startswith("語")
+            value = key(32, 32)
+            assert alternative_calls, "explicit conversion must retain alternatives"
+            assert value["view"]["converting"]
+            assert any(text.startswith("別") for text in value["view"]["candidates"])
+        finally:
+            preview_probe = False
+            api.meltype_destroy(handle)
+    print("Native ABI: callbacks, live preview without candidate waits, multi-edit, guarded undo/correction, selection reconversion, detection levels, manual Tab, sigil passthrough and privacy passed")
 
 
 if __name__ == "__main__":

@@ -40,3 +40,4 @@ android/.gradle/
 android/**/build/
 android/local.properties
 android/app/src/main/jniLibs/
+llama.log

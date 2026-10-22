@@ -15,23 +15,15 @@ internal sealed class SnippetsForm : Form
     private readonly Func<string> _mark;
     private readonly TextBox _name = new() { Width = 220 };
     private readonly TextBox _text = new() { Multiline = true, AcceptsReturn = true, ScrollBars = ScrollBars.Vertical, Dock = DockStyle.Fill, Height = 110 };
-    private readonly DataGridView _grid = new()
-    {
-        Dock = DockStyle.Fill,
-        ReadOnly = true,
-        AllowUserToAddRows = false,
-        AllowUserToDeleteRows = false,
-        SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-        AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-        RowHeadersVisible = false,
-        BackgroundColor = SystemColors.Window,
-    };
-    private readonly Label _message = new() { AutoSize = true, ForeColor = Color.Firebrick, Padding = new Padding(0, 6, 0, 0) };
+    private readonly DataGridView _grid = FormControls.ReadOnlyGrid();
+    private readonly Label _message = FormControls.ErrorLabel();
 
     public SnippetsForm(SnippetStore store, Func<string> mark)
     {
         _store = store;
         _mark = mark;
+        // 定型文の文章は日本語で書くので、Meltype キーボードで打てるようにする (名前は半角の英数字・記号なので英数のまま)
+        Input.ForegroundTracker.AllowTyping(this, _name);
         Text = "Meltype 定型文";
         StartPosition = FormStartPosition.CenterScreen;
         Size = new Size(620, 580);
@@ -108,6 +100,11 @@ internal sealed class SnippetsForm : Form
         if (_text.Text.Length == 0)
         {
             _message.Text = "文を入れてください。";
+            return;
+        }
+        if (!SnippetStore.IsValidText(_text.Text))
+        {
+            _message.Text = "文に、改行・タブ以外の制御文字は使えません。";
             return;
         }
         var replaced = _store.Get(name) is not null;

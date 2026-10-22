@@ -8,6 +8,7 @@ func testInputSourceRegistration(_ editor:NativeEditorPolicy) throws {
     let base:[String:Any]=["Bundle ID":identifier,"InputSourceKind":"Keyboard Input Method"]
     let variants:[[String:Any]]=[
         other,base,["Input Mode":identifier+".Japanese"],["Input Mode":identifier+".Other"],
+        ["Bundle ID":identifier,"InputSourceKind":"Keyboard Input Method","metadata":["keep":true]],
         ["Input Mode":identifier+"-suffix"],["Bundle ID":identifier+"X"],
         ["Bundle ID":25,"Input Mode":false],["Bundle ID":NSNull(),"Input Mode":NSNull()],
         ["Input Mode":"other."+identifier],["unknown":["a",1,Data([0])]],

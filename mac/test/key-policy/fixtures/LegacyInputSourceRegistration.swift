@@ -7,13 +7,37 @@ import Foundation
 enum LegacyInputSourceRegistration {
     static let identifier = "io.github.yksr-melt.inputmethod.Meltype"
 
+    // 参照: upstream ecb2ba1c の登録順・付随情報を保持する正規化。
+    static let japaneseIdentifier = identifier + ".Japanese"
+
+    static func isMeltype(_ source: [String: Any]) -> Bool {
+        (source["Bundle ID"] as? String) == identifier ||
+        (source["Input Mode"] as? String) == japaneseIdentifier
+    }
+
     static func normalized(_ sources: [[String: Any]]) -> [[String: Any]] {
-        var result = sources.filter {
-            ($0["Bundle ID"] as? String) != identifier &&
-            !($0["Input Mode"] as? String ?? "").hasPrefix(identifier)
+        var seen = Set<String>()
+        var result: [[String: Any]] = []
+        for source in sources {
+            guard isMeltype(source) else {
+                result.append(source)
+                continue
+            }
+            let kind = source["InputSourceKind"] as? String
+            if kind == "Input Mode", (source["Input Mode"] as? String) == japaneseIdentifier {
+                if seen.insert("Input Mode").inserted { result.append(source) }
+            } else if kind == "Keyboard Input Method", (source["Bundle ID"] as? String) == identifier {
+                if seen.insert("Keyboard Input Method").inserted { result.append(source) }
+            } else {
+                result.append(source)
+            }
         }
-        result.append(["Bundle ID": identifier, "InputSourceKind": "Keyboard Input Method"])
-        result.append(["Bundle ID": identifier, "Input Mode": identifier + ".Japanese", "InputSourceKind": "Input Mode"])
+        if !seen.contains("Input Mode") {
+            result.append(["Bundle ID": identifier, "Input Mode": japaneseIdentifier, "InputSourceKind": "Input Mode"])
+        }
+        if !seen.contains("Keyboard Input Method") {
+            result.append(["Bundle ID": identifier, "InputSourceKind": "Keyboard Input Method"])
+        }
         return result
     }
 

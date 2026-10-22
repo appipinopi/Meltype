@@ -19,6 +19,7 @@ export class ImeController {
   }
   invalidate() {
     this.generation++; this.ownedKeys.clear();
+    this.pending = null;
     if (this.core) this.core.reset();
   }
   activate(engine) { this.invalidate(); this.engine = engine; this.context = null; }
@@ -53,9 +54,35 @@ export class ImeController {
     if (result.commits.some(edit => edit.deleteBefore || edit.delete_before || edit.caretBack || edit.caret_back)) {
       throw new Error("This ChromeOS host does not support destructive edits or caret moves");
     }
-    for (const edit of result.commits) {
+    // Retain only edits that Chrome has not accepted. A retry must never
+    // insert an already accepted prefix twice, even after a partial failure.
+    this.pending = {result, remaining: [...result.commits]};
+    await this.resume(engine, id, generation);
+  }
+  async resume(engine, id, generation) {
+    const valid = () => this.valid(engine, id, generation);
+    const pending = this.pending;
+    if (!pending) return;
+    const {result, remaining} = pending;
+    while (remaining.length) {
+      const edit = remaining[0];
       if (!valid()) return;
-      if (edit.text) await this.call("commitText", {contextID: id, text: edit.text});
+      try {
+        if (edit.text) await this.call("commitText", {contextID: id, text: edit.text});
+      } catch (error) {
+        // The core has already advanced. Keep the rejected text visible and
+        // retry the retained result before allowing the core to advance again.
+        if (valid()) {
+          const text = remaining.map(edit => edit.text ?? "").join("") + (result.view?.text ?? "");
+          if (text) {
+            try { await this.call("setComposition", {contextID: id, text, cursor: text.length,
+              segments: [{start: 0, end: text.length, style: "underline"}]}); }
+            catch (displayError) { this.report(String(displayError)); }
+          }
+        }
+        throw error;
+      }
+      remaining.shift();
     }
     if (!valid()) return;
     const view = result.view;
@@ -77,6 +104,7 @@ export class ImeController {
       auxiliaryText: view?.hint ?? "", auxiliaryTextVisible: Boolean(view?.hint), windowPosition: "composition"}});
     if (valid() && candidates.length && Number.isInteger(selected) && selected >= 0 && selected < candidates.length) await this.call("setCursorPosition", {
       contextID: id, candidateID: selected});
+    if (valid() && this.pending === pending) this.pending = null;
   }
   key(engine, event, requestId) {
     // Older ChromeOS sends the acknowledgement ID inside keyData instead of
@@ -97,6 +125,17 @@ export class ImeController {
           return;
         }
         core.focusIfNeeded?.(generation, this.learning());
+        if (this.pending) {
+          // A failed retry must not let Enter submit the form underneath it.
+          if (mapped.vk === 13) { handled = true; this.ownedKeys.add(event.code); }
+          await this.resume(engine, id, generation);
+          if (!this.valid(engine, id, generation)) return;
+          if (this.learning()) await this.persist(core.snapshot());
+          // Enter retries the failed confirmation; do not also send a newline.
+          if (mapped.vk === 13) {
+            return;
+          }
+        }
         const result = JSON.parse(core.key(mapped.vk, mapped.character, mapped.modifiers, this.now()));
         handled = result.consumed;
         if (handled) this.ownedKeys.add(event.code);
@@ -116,6 +155,11 @@ export class ImeController {
     this.enqueue(async () => {
       const core = await this.ready();
       if (!this.valid(engine, id, generation)) return;
+      if (this.pending) {
+        await this.resume(engine, id, generation);
+        if (this.valid(engine, id, generation) && this.learning()) await this.persist(core.snapshot());
+        return;
+      }
       const view = JSON.parse(core.view()).view;
       const prediction = view && !view.converting && (view.candidates?.length ?? 0) <= 1;
       const candidates = (prediction ? view?.predictions : view?.candidates) ?? [];
