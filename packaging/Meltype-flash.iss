@@ -40,20 +40,28 @@ Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs 
 [Icons]
 Name: "{commonprograms}\Meltype-flash 設定"; Filename: "{app}\meltype-flash.exe"
 [Code]
+var InstallFailed: Boolean;
 function Manage(Action: String): Boolean;
 var Code: Integer;
 begin
-  Result := Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
+  Result := ExecAndLogOutput(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
     '-NoProfile -ExecutionPolicy Bypass -File "' + ExpandConstant('{app}\Manage-Windows.ps1') +
     '" -Action ' + Action + ' -Package "' + ExpandConstant('{app}') + '"',
-    ExpandConstant('{app}'), SW_HIDE, ewWaitUntilTerminated, Code);
+    ExpandConstant('{app}'), SW_HIDE, ewWaitUntilTerminated, Code, nil);
+  Log('Meltype-flash ' + Action + ' result: ' + IntToStr(Code));
   Result := Result and (Code = 0);
 end;
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssPostInstall then
-    if not Manage('Install') then
+    if not Manage('Install') then begin
+      InstallFailed := True;
       RaiseException('Meltype-flash の IME 登録に失敗しました。セットアップログを確認してください。');
+    end;
+end;
+function GetCustomSetupExitCode(): Integer;
+begin
+  if InstallFailed then Result := 1 else Result := 0;
 end;
 function InitializeUninstall(): Boolean;
 begin
