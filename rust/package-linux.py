@@ -39,8 +39,8 @@ def package(bundle, output, version, arch):
         if (app / 'mozc/meltype_mozc_helper').exists():
             (app / 'mozc/meltype_mozc_helper').chmod(0o755)
         # Generate component paths for the final location, not the staging tree.
-        component = subprocess.check_output([str(bundle.resolve() / 'meltype-ibus'), '--print-component'], text=True)
-        component = component.replace(str(bundle.resolve()), '/usr/libexec/meltype-flash/ibus')
+        component = subprocess.check_output([str(bundle.resolve() / 'meltype-ibus'), '--print-component',
+            '--component-executable', '/usr/libexec/meltype-flash/ibus/meltype-ibus'], text=True)
         components = root / 'usr/share/ibus/component'
         components.mkdir(parents=True)
         (components / 'meltype-flash.xml').write_text(component, encoding='utf-8')
@@ -50,6 +50,10 @@ def package(bundle, output, version, arch):
             '[Desktop Entry]\nType=Application\nName=Meltype-flash 設定\n'
             'Exec=/usr/libexec/meltype-flash/ibus/meltype-flash\n'
             'Icon=/usr/libexec/meltype-flash/ibus/icon.png\nCategories=Settings;Utility;\nTerminal=false\n', encoding='utf-8')
+        # GNOMEはIBus名からこの固定名を探す（upstream #489）。
+        (desktop / 'ibus-setup-meltype-flash.desktop').write_text(
+            (desktop / 'meltype-flash.desktop').read_text(encoding='utf-8')
+            + 'NoDisplay=true\nX-Meltype-Flash-IBus=true\n', encoding='utf-8')
         control = root / 'DEBIAN'
         control.mkdir()
         deb_version = version.replace('-pre.', '~pre.')

@@ -5,7 +5,7 @@ on:
       tag:
         description: New Meltype-flash preview tag
         required: true
-        default: flash-v0.1.0-preview.2
+        default: flash-v0.1.0-preview.3
 permissions:
   contents: read
 concurrency:
@@ -15,12 +15,15 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v5
       - env:
-          TAG: ${{ inputs.tag || 'flash-v0.1.0-preview.2' }}
+          TAG: ${{ inputs.tag || 'flash-v0.1.0-preview.3' }}
         run: |
           [[ "$TAG" =~ ^flash-v[0-9]+\.[0-9]+\.[0-9]+-preview\.[0-9]+$ ]]
           test "$GITHUB_REPOSITORY" = appipinopi/Meltype
           test "$GITHUB_REF" = refs/heads/rust
+          VERSION=$(python3 -c 'import tomllib; print(tomllib.load(open("Cargo.toml", "rb"))["workspace"]["package"]["version"])')
+          test "$VERSION" = "$(echo "${TAG#flash-v}" | sed 's/-preview\./-pre./')"
   windows:
     needs: validate
     runs-on: windows-latest
@@ -154,9 +157,9 @@ jobs:
       - name: Publish all platforms together
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ inputs.tag || 'flash-v0.1.0-preview.2' }}
+          TAG: ${{ inputs.tag || 'flash-v0.1.0-preview.3' }}
         run: |
           [[ "$TAG" =~ ^flash-v([0-9]+\.[0-9]+\.[0-9]+)-preview\.([0-9]+)$ ]]
           TITLE="Meltype-flash v${BASH_REMATCH[1]} Pre${BASH_REMATCH[2]}"
           gh release create "$TAG" release-assets/* --target "$GITHUB_SHA" --title "$TITLE" --notes-file rust/RELEASE-NOTES.md --prerelease --draft
-          gh release edit "$TAG" --draft=false
+          # Additional distributions and benchmark evidence are attached before publication.

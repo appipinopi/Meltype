@@ -7,6 +7,7 @@ use super::*;
 struct Frontend {
     direct: bool,
     preedit: bool,
+    predicting: bool,
 }
 fn frontends() -> &'static Mutex<HashMap<usize, Frontend>> {
     static STATES: OnceLock<Mutex<HashMap<usize, Frontend>>> = OnceLock::new();
@@ -62,6 +63,22 @@ pub extern "C" fn meltype_fcitx_set_preedit(handle: *mut c_void, visible: i32) {
         state.preedit = visible != 0;
     }
 }
+pub(crate) fn set_predicting(handle: *mut c_void, predicting: bool) {
+    if let Some(state) = frontends()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .get_mut(&(handle as usize))
+    {
+        state.predicting = predicting;
+    }
+}
+pub(crate) fn predicting(handle: *mut c_void) -> bool {
+    frontends()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .get(&(handle as usize))
+        .is_some_and(|state| state.predicting)
+}
 #[no_mangle]
 pub extern "C" fn meltype_fcitx_set_direct(handle: *mut c_void, direct: i32) {
     // Same lock order as destruction: frontend -> core. Neither operation calls
@@ -78,7 +95,7 @@ pub extern "C" fn meltype_fcitx_set_direct(handle: *mut c_void, direct: i32) {
 fn translate(symbol: u32, scalar: u32) -> (u32, u32) {
     let special = match symbol {
         0xff0d | 0xff8d => 13,
-        0xff09 => 9,
+        0xff09 | 0xfe20 => 9,
         0x20 => 32,
         0xff08 => 8,
         0xffff => 0x2e,
@@ -284,7 +301,7 @@ mod tests {
         for invalid in [0, 31, 0xd800, 0x110000] {
             assert_eq!(meltype_fcitx_key(0, invalid), 0);
         }
-        assert_eq!(meltype_fcitx_key(0xfe20, 0), 0); // former fcitx policy, unlike IBus
+        assert_eq!(meltype_fcitx_key(0xfe20, 0), 9); // ISO_Left_Tab must reach Core as Shift+Tab.
     }
     #[test]
     fn modifier_bits_preserve_all_combinations_without_locks_or_super2() {

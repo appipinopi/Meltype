@@ -108,9 +108,10 @@ fn migration_is_persisted_once_and_does_not_lose_later_edits() {
 #[test]
 fn bracket_caret_request_is_opt_in_and_exact_pair_only() {
     use meltype_core::Session;
-    for enabled in [false, true] {
+    for (enabled, capable) in [(false, false), (false, true), (true, false), (true, true)] {
         for text in ["()", "[]", "{}", "(abc)", "hello"] {
             let mut s = Session::default();
+            s.can_move_caret = capable;
             s.settings
                 .set("CursorIntoBrackets", json!(enabled))
                 .unwrap();
@@ -125,7 +126,9 @@ fn bracket_caret_request_is_opt_in_and_exact_pair_only() {
             let edit = result.commits.last().unwrap();
             assert_eq!(
                 edit.caret_back,
-                u32::from(enabled && meltype_core::shortcuts::is_bracket_pair(&edit.text)),
+                u32::from(
+                    enabled && capable && meltype_core::shortcuts::is_bracket_pair(&edit.text)
+                ),
                 "{text}: {}",
                 edit.text
             );

@@ -5,9 +5,9 @@ use meltype_core::{settings::Settings, storage::Store, Session};
 use std::{
     cell::RefCell,
     sync::{
-        atomic::{AtomicBool, AtomicU64, Ordering},
-        mpsc::{self, SyncSender},
-        Arc, OnceLock,
+        atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering},
+        mpsc::{self, Sender},
+        Arc, Mutex, OnceLock,
     },
     time::Duration,
 };
@@ -16,12 +16,21 @@ use windows_sys::{
     core::w,
     Win32::{
         Foundation::*,
-        Graphics::Gdi::ClientToScreen,
-        System::LibraryLoader::GetModuleHandleW,
+        Graphics::Gdi::{
+            ClientToScreen, GetMonitorInfoW, MonitorFromPoint, MONITORINFO,
+            MONITOR_DEFAULTTONEAREST,
+        },
+        System::{
+            LibraryLoader::GetModuleHandleW,
+            Threading::{
+                OpenProcess, QueryFullProcessImageNameW, PROCESS_QUERY_LIMITED_INFORMATION,
+            },
+        },
         UI::{Input::KeyboardAndMouse::*, WindowsAndMessaging::*},
     },
 };
 const INJECTED_TAG: usize = 0x4d52504b;
+const DELIVERY_END_TAG: usize = 0x4d52504c;
 #[derive(Clone, Copy)]
 struct Key {
     vk: u32,
@@ -29,6 +38,7 @@ struct Key {
     mods: i32,
     target: usize,
     generation: u64,
+    selection: Option<(usize, bool, u64)>,
 }
 enum Event {
     Key(Key),
@@ -42,25 +52,106 @@ struct Shared {
     ready: AtomicBool,
     exit: AtomicBool,
     generation: AtomicU64,
-    queue: SyncSender<Event>,
+    modifiers: AtomicU32,
+    delivery_ack: AtomicU64,
+    // Sending never waits for the foreign UI Automation provider. An accepted
+    // key stays in FIFO order; capacity exhaustion must not invalidate it.
+    queue: Sender<Event>,
+    shortcuts: Mutex<Vec<meltype_core::shortcuts::Shortcut>>,
+    candidates: Mutex<Vec<CandidateHit>>,
     #[cfg(test)]
     test_pid: u32,
 }
 static SHARED: OnceLock<Arc<Shared>> = OnceLock::new();
+const INJECTING: u32 = 1 << 8;
+const MODIFIER_KEYS: [u16; 8] = [
+    VK_LSHIFT,
+    VK_RSHIFT,
+    VK_LCONTROL,
+    VK_RCONTROL,
+    VK_LMENU,
+    VK_RMENU,
+    VK_LWIN,
+    VK_RWIN,
+];
+fn held_keys(mask: u32) -> Vec<u16> {
+    MODIFIER_KEYS
+        .into_iter()
+        .enumerate()
+        .filter(|(i, _)| mask & (1 << i) != 0)
+        .map(|(_, vk)| vk)
+        .collect()
+}
+fn modifier_bit(vk: u32, scan: u32, extended: bool) -> Option<u32> {
+    let vk = match vk as u16 {
+        VK_SHIFT => {
+            if scan == 0x36 {
+                VK_RSHIFT
+            } else {
+                VK_LSHIFT
+            }
+        }
+        VK_CONTROL => {
+            if extended {
+                VK_RCONTROL
+            } else {
+                VK_LCONTROL
+            }
+        }
+        VK_MENU => {
+            if extended {
+                VK_RMENU
+            } else {
+                VK_LMENU
+            }
+        }
+        vk => vk,
+    };
+    MODIFIER_KEYS
+        .iter()
+        .position(|key| *key == vk)
+        .map(|i| 1 << i)
+}
+fn modifier_flags(mask: u32) -> i32 {
+    i32::from(mask & 3 != 0)
+        | (i32::from(mask & 12 != 0) << 1)
+        | (i32::from(mask & 48 != 0) << 2)
+        | (i32::from(mask & 192 != 0) << 3)
+}
+#[derive(Clone, Copy)]
+struct CandidateHit {
+    rect: RECT,
+    key: Key,
+}
 thread_local! { static SUPPRESSED: RefCell<[bool;256]> = const { RefCell::new([false;256]) }; }
-fn modifiers() -> i32 {
+thread_local! { static MOUSE_SUPPRESSED: RefCell<bool> = const { RefCell::new(false) }; }
+fn toggle_shortcuts(settings: &Settings) -> Vec<meltype_core::shortcuts::Shortcut> {
+    let mut keys = meltype_core::shortcuts::parse_list(settings.text("ToggleKeyboardShortcuts"));
+    if keys.is_empty() {
+        keys.push(meltype_core::shortcuts::Shortcut {
+            vk: 0x4a,
+            modifiers: 6,
+        });
+    }
+    keys
+}
+fn initial_modifiers() -> u32 {
     unsafe {
-        i32::from(GetAsyncKeyState(VK_SHIFT as i32) < 0)
-            | (i32::from(GetAsyncKeyState(VK_CONTROL as i32) < 0) << 1)
-            | (i32::from(GetAsyncKeyState(VK_MENU as i32) < 0) << 2)
-            | (i32::from(
-                GetAsyncKeyState(VK_LWIN as i32) < 0 || GetAsyncKeyState(VK_RWIN as i32) < 0,
-            ) << 3)
+        MODIFIER_KEYS
+            .into_iter()
+            .enumerate()
+            .fold(0, |mask, (i, vk)| {
+                mask | if GetAsyncKeyState(vk as i32) < 0 {
+                    1 << i
+                } else {
+                    0
+                }
+            })
     }
 }
 fn captures(vk: u32, ch: i32, composing: bool) -> bool {
     let _ = composing;
-    (0x20..=0x7e).contains(&ch) || matches!(vk, 8|9|13|27|0x21..=0x28|0x2e|0x75..=0x79)
+    (0x20..=0x7e).contains(&ch) || matches!(vk, 8|9|13|27|0x1c|0x21..=0x28|0x2e|0x75..=0x79)
 }
 unsafe extern "system" fn hook(code: i32, message: WPARAM, data: LPARAM) -> LRESULT {
     let consumed = std::panic::catch_unwind(|| {
@@ -79,6 +170,10 @@ unsafe extern "system" fn hook(code: i32, message: WPARAM, data: LPARAM) -> LRES
         };
         #[cfg(not(test))]
         let fixture = false;
+        if event.dwExtraInfo == DELIVERY_END_TAG {
+            shared.delivery_ack.fetch_add(1, Ordering::SeqCst);
+            return false;
+        }
         if (event.flags & LLKHF_INJECTED != 0 && !fixture)
             || event.dwExtraInfo == INJECTED_TAG
             || event.vkCode >= 256
@@ -86,6 +181,18 @@ unsafe extern "system" fn hook(code: i32, message: WPARAM, data: LPARAM) -> LRES
             return false;
         }
         let vk = event.vkCode;
+        if let Some(bit) = modifier_bit(vk, event.scanCode, event.flags & LLKHF_EXTENDED != 0) {
+            let previous = if matches!(message as u32, WM_KEYUP | WM_SYSKEYUP) {
+                shared.modifiers.fetch_and(!bit, Ordering::SeqCst)
+            } else if matches!(message as u32, WM_KEYDOWN | WM_SYSKEYDOWN) {
+                shared.modifiers.fetch_or(bit, Ordering::SeqCst)
+            } else {
+                return false;
+            };
+            // The delivery loop restores the latest physical state before it
+            // atomically re-enables normal modifier delivery.
+            return previous & INJECTING != 0;
+        }
         if matches!(message as u32, WM_KEYUP | WM_SYSKEYUP) {
             return SUPPRESSED
                 .with(|keys| std::mem::replace(&mut keys.borrow_mut()[vk as usize], false));
@@ -93,15 +200,19 @@ unsafe extern "system" fn hook(code: i32, message: WPARAM, data: LPARAM) -> LRES
         if !matches!(message as u32, WM_KEYDOWN | WM_SYSKEYDOWN) {
             return false;
         }
-        let mods = modifiers();
-        if vk == 0x4a && mods & 14 == 6 && shared.permitted.load(Ordering::Acquire) {
+        let mods = modifier_flags(shared.modifiers.load(Ordering::SeqCst));
+        let toggle = shared.shortcuts.try_lock().is_ok_and(|keys| {
+            keys.iter()
+                .any(|key| key.vk == vk as i32 && key.modifiers == mods)
+        });
+        if toggle && shared.permitted.load(Ordering::Acquire) {
             // Ignore auto-repeat; physical key-up re-arms the toggle.
             let repeated = SUPPRESSED
                 .with(|keys| std::mem::replace(&mut keys.borrow_mut()[vk as usize], true));
             if !repeated {
                 shared.active.fetch_xor(true, Ordering::SeqCst);
                 shared.generation.fetch_add(1, Ordering::SeqCst);
-                let _ = shared.queue.try_send(Event::Reset);
+                let _ = shared.queue.send(Event::Reset);
             }
             return true;
         }
@@ -114,9 +225,7 @@ unsafe extern "system" fn hook(code: i32, message: WPARAM, data: LPARAM) -> LRES
         if matches!(vk,0x10..=0x12|0x5b..=0x5c|0xa0..=0xa5) {
             return false;
         }
-        if mods & 14 != 0 {
-            shared.generation.fetch_add(1, Ordering::SeqCst);
-            let _ = shared.queue.try_send(Event::Reset);
+        if mods & 14 != 0 && !shared.composing.load(Ordering::Acquire) {
             return false;
         }
         let target = GetForegroundWindow();
@@ -126,6 +235,8 @@ unsafe extern "system" fn hook(code: i32, message: WPARAM, data: LPARAM) -> LRES
         let thread = GetWindowThreadProcessId(target, std::ptr::null_mut());
         let mut state = [0u8; 256];
         GetKeyboardState(state.as_mut_ptr());
+        state[VK_CONTROL as usize] = if mods & 2 != 0 { 0x80 } else { 0 };
+        state[VK_MENU as usize] = if mods & 4 != 0 { 0x80 } else { 0 };
         state[VK_SHIFT as usize] = if mods & 1 != 0 { 0x80 } else { 0 };
         state[vk as usize] = 0x80;
         let mut text = [0u16; 8];
@@ -139,7 +250,7 @@ unsafe extern "system" fn hook(code: i32, message: WPARAM, data: LPARAM) -> LRES
             GetKeyboardLayout(thread),
         );
         let ch = if count == 1 { text[0] as i32 } else { 0 };
-        if !captures(vk, ch, shared.composing.load(Ordering::Acquire)) {
+        if mods & 14 == 0 && !captures(vk, ch, shared.composing.load(Ordering::Acquire)) {
             return false;
         }
         let key = Key {
@@ -148,10 +259,9 @@ unsafe extern "system" fn hook(code: i32, message: WPARAM, data: LPARAM) -> LRES
             mods,
             target: target as usize,
             generation: shared.generation.load(Ordering::Acquire),
+            selection: None,
         };
-        if shared.queue.try_send(Event::Key(key)).is_err() {
-            shared.active.store(false, Ordering::Release);
-            shared.generation.fetch_add(1, Ordering::SeqCst);
+        if shared.queue.send(Event::Key(key)).is_err() {
             return false;
         }
         if ch >= 0x20 {
@@ -208,7 +318,207 @@ unsafe fn send(inputs: &[INPUT], target: usize) -> bool {
             std::mem::size_of::<INPUT>() as i32,
         ) == inputs.len() as u32
 }
-unsafe fn writable(automation: &IUIAutomation) -> Option<IUIAutomationElement> {
+// Replay against the modifier state at capture time, even when the user has
+// released Ctrl/Shift before the asynchronous provider returns. Commit Unicode
+// with modifiers temporarily released, then restore the physical state.
+fn delivery_inputs(mut commits: Vec<INPUT>, passed: Option<Key>, held: &[u16]) -> Vec<INPUT> {
+    if commits.is_empty() && passed.is_none() {
+        return commits;
+    }
+    let mut inputs: Vec<_> = held.iter().map(|vk| virtual_key(*vk, true)).collect();
+    inputs.append(&mut commits);
+    if let Some(key) = passed {
+        if key.mods & 14 == 0 && key.ch >= 0x20 {
+            if let Some(ch) = char::from_u32(key.ch as u32) {
+                inputs.extend(unicode(&ch.to_string()));
+            }
+        } else {
+            let chord: Vec<_> = [
+                (1, VK_LSHIFT),
+                (2, VK_LCONTROL),
+                (4, VK_LMENU),
+                (8, VK_LWIN),
+            ]
+            .into_iter()
+            .filter(|(bit, _)| key.mods & bit != 0)
+            .map(|(_, vk)| vk)
+            .collect();
+            inputs.extend(chord.iter().map(|vk| virtual_key(*vk, false)));
+            inputs.extend([
+                virtual_key(key.vk as u16, false),
+                virtual_key(key.vk as u16, true),
+            ]);
+            inputs.extend(chord.iter().rev().map(|vk| virtual_key(*vk, true)));
+        }
+    }
+    inputs.extend(held.iter().map(|vk| virtual_key(*vk, false)));
+    inputs
+}
+fn modifier_changes(old: u32, new: u32) -> Vec<INPUT> {
+    MODIFIER_KEYS
+        .into_iter()
+        .enumerate()
+        .filter_map(|(i, vk)| {
+            let bit = 1 << i;
+            ((old ^ new) & bit != 0).then(|| virtual_key(vk, new & bit == 0))
+        })
+        .collect()
+}
+unsafe fn send_acknowledged(mut inputs: Vec<INPUT>, target: Option<usize>, state: &Shared) -> bool {
+    let Some(last) = inputs.last_mut() else {
+        return true;
+    };
+    last.Anonymous.ki.dwExtraInfo = DELIVERY_END_TAG;
+    if target.is_some_and(|target| GetForegroundWindow() as usize != target) {
+        return false;
+    }
+    let previous = state.delivery_ack.load(Ordering::SeqCst);
+    if SendInput(
+        inputs.len() as u32,
+        inputs.as_ptr(),
+        std::mem::size_of::<INPUT>() as i32,
+    ) != inputs.len() as u32
+    {
+        return false;
+    }
+    // SendInput returns after insertion, before the hook has processed every
+    // event. Keep physical modifier edges suppressed until the final edge has
+    // crossed the hook; otherwise a queued restoration can outlive key-up.
+    let deadline = std::time::Instant::now() + Duration::from_millis(500);
+    while state.delivery_ack.load(Ordering::SeqCst) == previous {
+        if std::time::Instant::now() >= deadline {
+            return false;
+        }
+        std::thread::sleep(Duration::from_millis(1));
+    }
+    true
+}
+unsafe fn deliver(commits: Vec<INPUT>, passed: Option<Key>, target: usize, state: &Shared) -> bool {
+    if commits.is_empty() && passed.is_none() {
+        return true;
+    }
+    let mut restored = state.modifiers.fetch_or(INJECTING, Ordering::SeqCst) & !INJECTING;
+    let inputs = delivery_inputs(commits, passed, &held_keys(restored));
+    let mut success = send_acknowledged(inputs, Some(target), state);
+    loop {
+        // A physical release can arrive while SendInput is sending Unicode.
+        // Reconcile it before unlocking; a CAS prevents losing the final edge.
+        let physical = state.modifiers.load(Ordering::SeqCst) & !INJECTING;
+        let changes = modifier_changes(restored, physical);
+        if !changes.is_empty() {
+            success &= send_acknowledged(changes, None, state);
+        }
+        restored = physical;
+        if state
+            .modifiers
+            .compare_exchange(
+                physical | INJECTING,
+                physical,
+                Ordering::SeqCst,
+                Ordering::SeqCst,
+            )
+            .is_ok()
+        {
+            break;
+        }
+    }
+    success
+}
+fn input_step(session: &mut Session, key: Key) -> meltype_core::session::SessionResult {
+    if let Some((index, prediction, expected)) = key.selection {
+        let current = session.result(false);
+        let candidate = current.view.as_ref().and_then(|view| {
+            if prediction {
+                view.predictions.get(index)
+            } else {
+                view.candidates.get(index)
+            }
+        });
+        if candidate.is_none_or(|text| candidate_id(text) != expected) {
+            return current;
+        }
+        if prediction {
+            session.select_prediction(index)
+        } else {
+            session.select_composing(index)
+        }
+    } else {
+        let mut result = session.key(key.vk as i32, key.ch, key.mods);
+        // #19: 選択範囲の再変換を既存IMEへ渡すと、相手のIME状態で文字が消える。
+        // 未確定文字への変換はCoreに任せ、未対応の再変換要求は消費する。
+        if key.vk == 0x1c {
+            result.consumed = true;
+        }
+        result
+    }
+}
+fn candidate_id(text: &str) -> u64 {
+    text.as_bytes().iter().fold(0xcbf29ce484222325_u64, |h, b| {
+        (h ^ *b as u64).wrapping_mul(0x100000001b3)
+    })
+}
+fn display_excerpt(text: &str) -> String {
+    // Only the preview is bounded. The Session retains the complete input.
+    let mut chars = text.chars();
+    let preview: String = chars.by_ref().take(128).collect();
+    if chars.next().is_some() {
+        format!("{preview}…")
+    } else {
+        preview
+    }
+}
+fn popup_bounds(point: POINT, work: RECT, candidate_count: usize) -> RECT {
+    let width = 520.min((work.right - work.left).max(1));
+    let height = (88 + candidate_count.min(7) as i32 * 24).min((work.bottom - work.top).max(1));
+    let left = point
+        .x
+        .clamp(work.left, (work.right - width).max(work.left));
+    let top = point
+        .y
+        .clamp(work.top, (work.bottom - height).max(work.top));
+    RECT {
+        left,
+        top,
+        right: left + width,
+        bottom: top + height,
+    }
+}
+unsafe fn application_name(window: HWND) -> String {
+    let mut pid = 0;
+    GetWindowThreadProcessId(window, &mut pid);
+    let process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid);
+    if process.is_null() {
+        return String::new();
+    }
+    let mut path = vec![0u16; 32768];
+    let mut length = path.len() as u32;
+    let ok = QueryFullProcessImageNameW(process, 0, path.as_mut_ptr(), &mut length) != 0;
+    CloseHandle(process);
+    if !ok {
+        return String::new();
+    }
+    let path = String::from_utf16_lossy(&path[..length as usize]);
+    path.rsplit('\\').next().unwrap_or("").to_owned()
+}
+fn application_policy(session: &mut Session, process: &str) -> bool {
+    session.set_process(process);
+    // 変換ボックス方式は確定前のライブ変換を使わない。
+    let _ = session
+        .settings
+        .set("LiveConversion", serde_json::json!(false));
+    session.settings.boolean("Enabled")
+}
+fn text_input_app(settings: &Settings, process: &str) -> bool {
+    let name = process.to_lowercase();
+    !name.is_empty()
+        && settings
+            .text("TextInputApps")
+            .split([',', ';', '\n'])
+            .map(str::trim)
+            .filter(|entry| !entry.is_empty())
+            .any(|entry| entry.eq_ignore_ascii_case(&name))
+}
+unsafe fn writable(automation: &IUIAutomation, force_text: bool) -> Option<IUIAutomationElement> {
     let element = automation.GetFocusedElement().ok()?;
     let value_readonly = element
         .GetCurrentPatternAs::<IUIAutomationValuePattern>(UIA_ValuePatternId)
@@ -236,7 +546,7 @@ unsafe fn writable(automation: &IUIAutomation) -> Option<IUIAutomationElement> {
         .is_ok_and(|v| v.as_bool());
     let editable = readonly == Some(false)
         && (kind == UIA_EditControlTypeId || kind == UIA_DocumentControlTypeId || focusable)
-        || focusable && ia2_editable(&element);
+        || focusable && (force_text || ia2_editable(&element));
     editable.then_some(element)
 }
 
@@ -292,7 +602,7 @@ fn invalidate() {
     if let Some(state) = SHARED.get() {
         state.ready.store(false, Ordering::Release);
         state.generation.fetch_add(1, Ordering::SeqCst);
-        let _ = state.queue.try_send(Event::Reset);
+        let _ = state.queue.send(Event::Reset);
     }
 }
 unsafe extern "system" fn focus_changed(
@@ -307,6 +617,38 @@ unsafe extern "system" fn focus_changed(
     invalidate();
 }
 unsafe extern "system" fn mouse_hook(code: i32, message: WPARAM, data: LPARAM) -> LRESULT {
+    if code >= 0
+        && message as u32 == WM_LBUTTONUP
+        && MOUSE_SUPPRESSED.with(|v| std::mem::replace(&mut *v.borrow_mut(), false))
+    {
+        return 1;
+    }
+    if code >= 0 && message as u32 == WM_LBUTTONDOWN && data != 0 {
+        if let Some(state) = SHARED.get() {
+            let point = (*(data as *const MSLLHOOKSTRUCT)).pt;
+            let hit = state.candidates.try_lock().ok().and_then(|hits| {
+                hits.iter()
+                    .find(|hit| {
+                        point.x >= hit.rect.left
+                            && point.x < hit.rect.right
+                            && point.y >= hit.rect.top
+                            && point.y < hit.rect.bottom
+                    })
+                    .copied()
+            });
+            if let Some(hit) = hit.filter(|hit| {
+                state.active.load(Ordering::Acquire)
+                    && state.permitted.load(Ordering::Acquire)
+                    && hit.key.generation == state.generation.load(Ordering::Acquire)
+                    && GetForegroundWindow() as usize == hit.key.target
+            }) {
+                if state.queue.send(Event::Key(hit.key)).is_ok() {
+                    MOUSE_SUPPRESSED.with(|v| *v.borrow_mut() = true);
+                    return 1;
+                }
+            }
+        }
+    }
     if code >= 0
         && matches!(
             message as u32,
@@ -330,7 +672,7 @@ impl Keyboard {
         if self.shared.permitted.load(Ordering::Acquire) {
             self.shared.active.store(true, Ordering::Release);
             self.shared.generation.fetch_add(1, Ordering::SeqCst);
-            let _ = self.shared.queue.try_send(Event::Reset);
+            let _ = self.shared.queue.send(Event::Reset);
         }
     }
     pub fn configure(&mut self, settings: &Settings) {
@@ -345,18 +687,21 @@ impl Keyboard {
         {
             return;
         }
+        if let Ok(mut shortcuts) = self.shared.shortcuts.lock() {
+            *shortcuts = toggle_shortcuts(settings);
+        }
         self.shared.generation.fetch_add(1, Ordering::SeqCst);
         if self
             .shared
             .queue
-            .try_send(Event::Settings(Box::new(settings.clone())))
+            .send(Event::Settings(Box::new(settings.clone())))
             .is_ok()
         {
             self.last_settings = Some(settings.clone());
         }
     }
     pub fn start(store: Store) -> Result<Self, String> {
-        let (queue, receiver) = mpsc::sync_channel::<Event>(128);
+        let (queue, receiver) = mpsc::channel::<Event>();
         let shared = Arc::new(Shared {
             active: AtomicBool::new(false),
             permitted: AtomicBool::new(
@@ -369,7 +714,11 @@ impl Keyboard {
             ready: AtomicBool::new(false),
             exit: AtomicBool::new(false),
             generation: AtomicU64::new(0),
+            modifiers: AtomicU32::new(initial_modifiers()),
+            delivery_ack: AtomicU64::new(0),
             queue,
+            shortcuts: Mutex::new(toggle_shortcuts(&store.settings().unwrap_or_default())),
+            candidates: Mutex::new(Vec::new()),
             #[cfg(test)]
             test_pid: std::env::var("MELTYPE_PORTABLE_TEST_PID")
                 .ok()
@@ -463,7 +812,7 @@ impl Keyboard {
                 WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
                 w!("STATIC"),
                 w!("Meltype-flash portable"),
-                WS_POPUP | WS_BORDER | 0x80,
+                WS_POPUP | WS_BORDER | 0x80 | 0x0c,
                 20,
                 40,
                 700,
@@ -480,8 +829,37 @@ impl Keyboard {
                 CoUninitialize();
                 return;
             }
+            let rows: Vec<_> = (0..8)
+                .map(|_| {
+                    CreateWindowExW(
+                        WS_EX_NOACTIVATE,
+                        w!("STATIC"),
+                        w!(""),
+                        WS_CHILD | 0x80 | 0x0c,
+                        0,
+                        0,
+                        1,
+                        24,
+                        overlay,
+                        std::ptr::null_mut(),
+                        GetModuleHandleW(std::ptr::null()),
+                        std::ptr::null(),
+                    )
+                })
+                .collect();
+            if rows.iter().any(|row| row.is_null()) {
+                DestroyWindow(overlay);
+                state.exit.store(true, Ordering::Release);
+                let _ = ready_tx.send(Err("候補の操作部を作成できません".into()));
+                let _ = hook_thread.join();
+                CoUninitialize();
+                return;
+            }
             let _ = ready_tx.send(Ok(()));
             let mut target = 0usize;
+            let mut profile_target = usize::MAX;
+            let mut application_enabled = true;
+            let mut current_application = String::new();
             let mut focused: Option<IUIAutomationElement> = None;
             let mut message = MSG::default();
             while !state.exit.load(Ordering::Acquire) {
@@ -496,11 +874,21 @@ impl Keyboard {
                     session.reset();
                     state.composing.store(false, Ordering::Release);
                     ShowWindow(overlay, SW_HIDE);
+                    state.candidates.lock().unwrap().clear();
                 }
-                let current = if state.active.load(Ordering::Acquire)
+                let foreground = GetForegroundWindow();
+                if profile_target != foreground as usize {
+                    session.reset();
+                    current_application = application_name(foreground);
+                    application_enabled = application_policy(&mut session, &current_application);
+                    profile_target = foreground as usize;
+                }
+                let force_text = text_input_app(&session.settings, &current_application);
+                let current = if application_enabled
+                    && state.active.load(Ordering::Acquire)
                     && state.permitted.load(Ordering::Acquire)
                 {
-                    writable(&automation)
+                    writable(&automation, force_text)
                 } else {
                     None
                 };
@@ -513,6 +901,7 @@ impl Keyboard {
                 if !same {
                     session.reset();
                     ShowWindow(overlay, SW_HIDE);
+                    state.candidates.lock().unwrap().clear();
                 }
                 state.ready.store(current.is_some(), Ordering::Release);
                 focused = current;
@@ -521,18 +910,21 @@ impl Keyboard {
                 };
                 let key = match event {
                     Event::Settings(settings) => {
+                        profile_target = usize::MAX;
                         session.reset();
                         session.settings = *settings;
                         let _ = session
                             .settings
                             .set("LiveConversion", serde_json::json!(false));
                         ShowWindow(overlay, SW_HIDE);
+                        state.candidates.lock().unwrap().clear();
                         continue;
                     }
                     Event::Reset => {
                         state.composing.store(false, Ordering::Release);
                         session.reset();
                         ShowWindow(overlay, SW_HIDE);
+                        state.candidates.lock().unwrap().clear();
                         continue;
                     }
                     Event::Key(key) => key,
@@ -550,7 +942,7 @@ impl Keyboard {
                 }
                 if !focused
                     .as_ref()
-                    .zip(writable(&automation).as_ref())
+                    .zip(writable(&automation, force_text).as_ref())
                     .is_some_and(|(a, b)| {
                         automation.CompareElements(a, b).is_ok_and(|v| v.as_bool())
                     })
@@ -566,7 +958,7 @@ impl Keyboard {
                     );
                     continue;
                 }
-                let reply = session.key(key.vk as i32, key.ch, key.mods);
+                let reply = input_step(&mut session, key);
                 if reply.commits.iter().any(|edit| {
                     edit.delete_before != 0
                         || edit.caret_back as usize > edit.text.encode_utf16().count()
@@ -578,7 +970,7 @@ impl Keyboard {
                 if key.generation != state.generation.load(Ordering::Acquire)
                     || !focused
                         .as_ref()
-                        .zip(writable(&automation).as_ref())
+                        .zip(writable(&automation, force_text).as_ref())
                         .is_some_and(|(a, b)| {
                             automation.CompareElements(a, b).is_ok_and(|v| v.as_bool())
                         })
@@ -586,7 +978,7 @@ impl Keyboard {
                     session.reset();
                     continue;
                 }
-                let inputs: Vec<INPUT> = reply
+                let commits: Vec<INPUT> = reply
                     .commits
                     .iter()
                     .flat_map(|edit| {
@@ -598,19 +990,15 @@ impl Keyboard {
                         inputs
                     })
                     .collect();
-                if !inputs.is_empty() && !send(&inputs, target) {
+                if !deliver(
+                    commits,
+                    (!reply.consumed && key.selection.is_none()).then_some(key),
+                    target,
+                    &state,
+                ) {
                     session.reset();
                     state.active.store(false, Ordering::Release);
                     continue;
-                }
-                if !reply.consumed {
-                    let _ = send(
-                        &[
-                            virtual_key(key.vk as u16, false),
-                            virtual_key(key.vk as u16, true),
-                        ],
-                        target,
-                    );
                 }
                 let view = reply.view;
                 state.composing.store(
@@ -618,17 +1006,6 @@ impl Keyboard {
                     Ordering::Release,
                 );
                 if let Some(view) = view.filter(|v| !v.text.is_empty()) {
-                    if view.text.chars().count() > 128
-                        || view
-                            .typed
-                            .as_ref()
-                            .is_some_and(|raw| raw.chars().count() > 128)
-                    {
-                        session.reset();
-                        state.active.store(false, Ordering::Release);
-                        ShowWindow(overlay, SW_HIDE);
-                        continue;
-                    }
                     let prediction = !view.converting && view.candidates.len() <= 1;
                     let visible_candidates = if prediction {
                         &view.predictions
@@ -640,7 +1017,7 @@ impl Keyboard {
                     } else {
                         view.selected_index as i32
                     };
-                    let candidates = visible_candidates
+                    let candidates: Vec<_> = visible_candidates
                         .iter()
                         .take(7)
                         .enumerate()
@@ -652,13 +1029,11 @@ impl Keyboard {
                                 text
                             )
                         })
-                        .collect::<Vec<_>>()
-                        .join("\r\n");
+                        .collect();
                     let display: Vec<u16> = format!(
-                        "{}\r\n{}\r\n{}\r\nCtrl+Alt+J: 入力切替 / Esc: 取消",
-                        view.typed.as_deref().unwrap_or(""),
-                        view.text,
-                        candidates
+                        "{}\r\n{}",
+                        display_excerpt(view.typed.as_deref().unwrap_or("")),
+                        display_excerpt(&view.text),
                     )
                     .encode_utf16()
                     .chain(Some(0))
@@ -687,34 +1062,97 @@ impl Keyboard {
                                 };
                                 ClientToScreen(caret.hwndCaret, &mut point);
                             }
-                            let mut work = RECT::default();
-                            SystemParametersInfoW(
-                                SPI_GETWORKAREA,
-                                0,
-                                (&mut work as *mut RECT).cast(),
-                                0,
-                            );
-                            let width = 520.min((work.right - work.left).max(1));
-                            let height = (88 + visible_candidates.len().min(7) as i32 * 24)
-                                .min((work.bottom - work.top).max(1));
+                            let mut monitor = MONITORINFO {
+                                cbSize: std::mem::size_of::<MONITORINFO>() as u32,
+                                ..Default::default()
+                            };
+                            if GetMonitorInfoW(
+                                MonitorFromPoint(point, MONITOR_DEFAULTTONEAREST),
+                                &mut monitor,
+                            ) == 0
+                            {
+                                continue;
+                            }
+                            let bounds =
+                                popup_bounds(point, monitor.rcWork, visible_candidates.len());
                             SetWindowPos(
                                 overlay,
                                 HWND_TOPMOST,
-                                point
-                                    .x
-                                    .clamp(work.left, (work.right - width).max(work.left)),
-                                point
-                                    .y
-                                    .clamp(work.top, (work.bottom - height).max(work.top)),
-                                width,
-                                height,
+                                bounds.left,
+                                bounds.top,
+                                bounds.right - bounds.left,
+                                bounds.bottom - bounds.top,
                                 SWP_NOACTIVATE,
                             );
                         }
                     }
+                    let mut hits = state.candidates.lock().unwrap();
+                    hits.clear();
+                    for (i, row) in rows.iter().take(7).enumerate() {
+                        if let Some(text) = candidates.get(i) {
+                            let text: Vec<u16> = display_excerpt(text)
+                                .encode_utf16()
+                                .chain(Some(0))
+                                .collect();
+                            SetWindowTextW(*row, text.as_ptr());
+                            let mut client = RECT::default();
+                            GetClientRect(overlay, &mut client);
+                            SetWindowPos(
+                                *row,
+                                std::ptr::null_mut(),
+                                4,
+                                48 + i as i32 * 24,
+                                (client.right - 8).max(1),
+                                24,
+                                SWP_NOACTIVATE | SWP_NOZORDER,
+                            );
+                            ShowWindow(*row, SW_SHOWNOACTIVATE);
+                            let mut rect = RECT::default();
+                            GetWindowRect(*row, &mut rect);
+                            hits.push(CandidateHit {
+                                rect,
+                                key: Key {
+                                    selection: Some((
+                                        i,
+                                        prediction,
+                                        candidate_id(&visible_candidates[i]),
+                                    )),
+                                    vk: 0,
+                                    ch: 0,
+                                    mods: 0,
+                                    target,
+                                    generation: state.generation.load(Ordering::Acquire),
+                                },
+                            });
+                        } else {
+                            ShowWindow(*row, SW_HIDE);
+                        }
+                    }
+                    let shortcut = session.settings.text("ToggleKeyboardShortcuts");
+                    let shortcut = if shortcut.trim().is_empty() {
+                        "Ctrl+Alt+J"
+                    } else {
+                        shortcut
+                    };
+                    let footer: Vec<u16> = format!("{shortcut}: 入力切替 / Esc: 取消")
+                        .encode_utf16()
+                        .chain(Some(0))
+                        .collect();
+                    SetWindowTextW(rows[7], footer.as_ptr());
+                    SetWindowPos(
+                        rows[7],
+                        std::ptr::null_mut(),
+                        4,
+                        48 + candidates.len() as i32 * 24,
+                        500,
+                        24,
+                        SWP_NOACTIVATE | SWP_NOZORDER,
+                    );
+                    ShowWindow(rows[7], SW_SHOWNOACTIVATE);
                     ShowWindow(overlay, SW_SHOWNOACTIVATE);
                 } else {
                     ShowWindow(overlay, SW_HIDE);
+                    state.candidates.lock().unwrap().clear();
                 }
             }
             DestroyWindow(overlay);
@@ -753,8 +1191,249 @@ impl Drop for Keyboard {
 mod tests {
     use super::*;
     #[test]
+    fn issue_223_text_input_override_requires_an_explicit_executable_name() {
+        let mut settings = Settings::default();
+        settings
+            .set(
+                "TextInputApps",
+                serde_json::json!("et.exe, Code.exe; Everything.exe\n"),
+            )
+            .unwrap();
+        for name in ["et.exe", "code.EXE", "Everything.exe"] {
+            assert!(text_input_app(&settings, name));
+        }
+        for name in ["", "Notepad.exe", "other-code.exe", "Code.exe.old"] {
+            assert!(!text_input_app(&settings, name));
+        }
+    }
+    #[test]
+    fn issue_855_application_rules_disable_clibor_and_restore_normal_input() {
+        let directory = tempfile::tempdir().unwrap();
+        let store = Store::new(directory.path());
+        store
+            .change_settings(|settings| {
+                settings.set(
+                    "AppRules",
+                    serde_json::json!([
+                        {"Process":"Clibor.exe","Enabled":true,"Profile":"Game"},
+                        {"Process":"Code.exe","Enabled":true,"Profile":"Code"}
+                    ]),
+                )
+            })
+            .unwrap();
+        let mut session = Session::open(store).unwrap();
+        assert!(!application_policy(&mut session, "Clibor.exe"));
+        assert!(!session.key(0x31, '1' as i32, 0).consumed);
+        assert!(application_policy(&mut session, "Code.exe"));
+        assert!(session.code_input);
+        assert!(!session.key(0, 'a' as i32, 0).consumed);
+        assert!(application_policy(&mut session, "Notepad.exe"));
+        assert!(!session.code_input);
+        assert_eq!(session.key(0, 'a' as i32, 0).view.unwrap().text, "あ");
+    }
+    #[test]
+    fn issue_19_convert_key_never_starts_the_other_ime_reconversion() {
+        assert!(captures(0x1c, 0, false));
+        let mut session = Session::default();
+        let result = input_step(
+            &mut session,
+            Key {
+                vk: 0x1c,
+                ch: 0,
+                mods: 0,
+                target: 0,
+                generation: 0,
+                selection: None,
+            },
+        );
+        assert!(result.consumed);
+        assert!(result.commits.is_empty());
+        assert!(result.view.is_none());
+    }
+    #[test]
+    fn popup_stays_on_the_selected_monitor_including_negative_coordinates() {
+        let work = RECT {
+            left: -1920,
+            top: -1080,
+            right: 0,
+            bottom: 0,
+        };
+        let bounds = popup_bounds(POINT { x: -100, y: -20 }, work, 7);
+        assert_eq!(bounds.right, 0);
+        assert_eq!(bounds.bottom, 0);
+        assert!(bounds.left >= work.left && bounds.top >= work.top);
+        let tiny = RECT {
+            left: 10,
+            top: 20,
+            right: 100,
+            bottom: 60,
+        };
+        let bounds = popup_bounds(POINT { x: 0, y: 0 }, tiny, 20);
+        assert_eq!(
+            (bounds.left, bounds.top, bounds.right, bounds.bottom),
+            (10, 20, 100, 60)
+        );
+    }
+    fn key(vk: u32, ch: i32, mods: i32) -> Key {
+        Key {
+            vk,
+            ch,
+            mods,
+            target: 1,
+            generation: 0,
+            selection: None,
+        }
+    }
+    fn session() -> Session {
+        let mut session = Session::default();
+        session
+            .settings
+            .set("PredictiveCandidates", serde_json::json!(false))
+            .unwrap();
+        session
+            .settings
+            .set("LiveConversion", serde_json::json!(false))
+            .unwrap();
+        session
+    }
+    #[test]
+    fn queued_input_beyond_old_capacity_retains_order_and_long_composition() {
+        let (tx, rx) = mpsc::channel();
+        for _ in 0..140 {
+            tx.send(Event::Key(key(65, 97, 0))).unwrap();
+        }
+        tx.send(Event::Key(key(0x79, 0, 0))).unwrap();
+        tx.send(Event::Key(key(13, 0, 0))).unwrap();
+        drop(tx);
+        let mut session = session();
+        let mut committed = String::new();
+        for event in rx {
+            let Event::Key(key) = event else {
+                panic!("key event");
+            };
+            let reply = input_step(&mut session, key);
+            if let Some(view) = &reply.view {
+                let _ = display_excerpt(&view.text);
+            }
+            for edit in reply.commits {
+                committed.push_str(&edit.text);
+            }
+        }
+        assert_eq!(committed, "a".repeat(140));
+        assert_eq!(
+            display_excerpt(&"日".repeat(140)),
+            format!("{}…", "日".repeat(128))
+        );
+    }
+    #[test]
+    fn control_edit_and_passthrough_preserve_composition_and_modifier_snapshot() {
+        let mut session = session();
+        for ch in "nihongo".chars() {
+            input_step(
+                &mut session,
+                key(ch.to_ascii_uppercase() as u32, ch as i32, 0),
+            );
+        }
+        let edit = input_step(&mut session, key(0x4f, 0, 2)); // Ctrl+O = F10
+        assert!(edit.consumed);
+        assert_eq!(edit.view.unwrap().text, "nihongo");
+        let shortcut = key(0x43, 0, 2);
+        let reply = input_step(&mut session, shortcut);
+        assert!(!reply.consumed);
+        assert_eq!(reply.commits[0].text, "nihongo");
+        let inputs = delivery_inputs(unicode("にほんご"), Some(shortcut), &[]);
+        let keys: Vec<_> = inputs
+            .iter()
+            .map(|input| unsafe { (input.Anonymous.ki.wVk, input.Anonymous.ki.dwFlags) })
+            .collect();
+        assert_eq!(
+            &keys[keys.len() - 4..],
+            &[
+                (VK_LCONTROL, 0),
+                (0x43, 0),
+                (0x43, KEYEVENTF_KEYUP),
+                (VK_LCONTROL, KEYEVENTF_KEYUP)
+            ]
+        );
+        let held = delivery_inputs(unicode("日"), None, &[VK_LSHIFT]);
+        unsafe {
+            assert_eq!(held[0].Anonymous.ki.dwFlags, KEYEVENTF_KEYUP);
+            assert_eq!(held.last().unwrap().Anonymous.ki.wVk, VK_LSHIFT);
+            assert_eq!(held.last().unwrap().Anonymous.ki.dwFlags, 0);
+        }
+    }
+    #[test]
+    fn candidate_click_uses_the_displayed_core_list() {
+        let mut session = session();
+        for ch in "hashi".chars() {
+            input_step(
+                &mut session,
+                key(ch.to_ascii_uppercase() as u32, ch as i32, 0),
+            );
+        }
+        input_step(&mut session, key(32, 32, 0));
+        let view = session.result(false).view.unwrap();
+        let index = view
+            .candidates
+            .iter()
+            .position(|word| word == "箸")
+            .expect("candidate");
+        let mut click = key(0, 0, 0);
+        click.selection = Some((index, false, candidate_id("箸")));
+        let mut stale = click;
+        stale.selection = Some((index, false, candidate_id("別の候補")));
+        let before = session.display(false);
+        assert_eq!(input_step(&mut session, stale).view.unwrap().text, before);
+        let selected = input_step(&mut session, click);
+        assert_eq!(selected.view.unwrap().text, "箸");
+        assert_eq!(
+            input_step(&mut session, key(13, 0, 0)).commits[0].text,
+            "箸"
+        );
+    }
+    #[test]
+    fn configured_toggle_replaces_default_and_retains_exact_modifiers() {
+        let mut settings = Settings::default();
+        assert_eq!(toggle_shortcuts(&settings)[0].vk, 0x4a);
+        settings
+            .set(
+                "ToggleKeyboardShortcuts",
+                serde_json::json!("Ctrl+Shift+K;Alt+F9"),
+            )
+            .unwrap();
+        let keys = toggle_shortcuts(&settings);
+        assert_eq!(keys.len(), 2);
+        assert_eq!((keys[0].vk, keys[0].modifiers), (0x4b, 3));
+        assert_eq!((keys[1].vk, keys[1].modifiers), (0x78, 4));
+    }
+    #[test]
+    fn modifier_release_during_unicode_delivery_is_reconciled_before_unlocking() {
+        let ctrl = modifier_bit(VK_CONTROL as u32, 0, false).unwrap();
+        let right_shift = modifier_bit(VK_SHIFT as u32, 0x36, false).unwrap();
+        assert_eq!(modifier_flags(ctrl | right_shift), 3);
+        let state = AtomicU32::new(INJECTING | ctrl);
+        // A real key-up is swallowed while delivery owns the logical state.
+        assert_eq!(
+            state.fetch_and(!ctrl, Ordering::SeqCst) & INJECTING,
+            INJECTING
+        );
+        assert!(state
+            .compare_exchange(INJECTING | ctrl, ctrl, Ordering::SeqCst, Ordering::SeqCst)
+            .is_err());
+        let changes = modifier_changes(ctrl, 0);
+        assert_eq!(changes.len(), 1);
+        unsafe {
+            assert_eq!(changes[0].Anonymous.ki.wVk, VK_LCONTROL);
+            assert_eq!(changes[0].Anonymous.ki.dwFlags, KEYEVENTF_KEYUP);
+        }
+        assert!(state
+            .compare_exchange(INJECTING, 0, Ordering::SeqCst, Ordering::SeqCst)
+            .is_ok());
+        assert_eq!(modifier_flags(state.load(Ordering::SeqCst)), 0);
+    }
+    #[test]
     fn shutdown_disables_capture_without_waiting_for_a_blocked_provider() {
-        let (queue, _events) = mpsc::sync_channel(1);
+        let (queue, _events) = mpsc::channel();
         let shared = Arc::new(Shared {
             active: AtomicBool::new(true),
             permitted: AtomicBool::new(true),
@@ -762,7 +1441,11 @@ mod tests {
             ready: AtomicBool::new(true),
             exit: AtomicBool::new(false),
             generation: AtomicU64::new(0),
+            modifiers: AtomicU32::new(0),
+            delivery_ack: AtomicU64::new(0),
             queue,
+            shortcuts: Mutex::new(Vec::new()),
+            candidates: Mutex::new(Vec::new()),
             test_pid: 0,
         });
         let (release, blocked) = mpsc::channel();

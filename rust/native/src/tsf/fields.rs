@@ -15,6 +15,7 @@ const INPUT_SCOPE: GUID = GUID::from_u128(0x1713dd5a_68e7_4a5b_9af6_592a595c778d
 const SECRET: u32 = 1;
 const PRIVATE: u32 = 2;
 const UNREADABLE: u32 = 4;
+const ASCII: u32 = 8;
 // VARIANT discriminants from wtypes.h: EMPTY, NULL, UNKNOWN, I4.
 const EMPTY: u16 = 0;
 const NULL: u16 = 1;
@@ -111,6 +112,16 @@ unsafe fn inspect(context: *mut c_void, cookie: u32) -> u32 {
                         ) {
                             flags |= SECRET;
                         }
+                        // #992: メール・半角指定欄ではキーをそのままアプリへ渡す。
+                        // URL は検索欄でも使われるので日本語入力を禁止しない。
+                        if matches!(
+                            scope,
+                            IS_EMAIL_USERNAME
+                                | IS_EMAIL_SMTPEMAILADDRESS
+                                | IS_ALPHANUMERIC_HALFWIDTH
+                        ) {
+                            flags |= ASCII;
+                        }
                         if scope == IS_PRIVATE {
                             flags |= PRIVATE;
                         }
@@ -125,7 +136,7 @@ unsafe fn inspect(context: *mut c_void, cookie: u32) -> u32 {
     }
     flags
 }
-/// Return bit flags: secret=1, private/no-learning=2, unreadable=4;
+/// Return bit flags: secret=1, private/no-learning=2, unreadable=4, ASCII/raw=8;
 /// sources=(Windows=1,application=2)<<8; unreadable reason (QI=1,list=2,
 /// variant=3)<<16. Missing metadata/selection is an ordinary unspecified field.
 /// # Safety

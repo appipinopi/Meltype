@@ -20,19 +20,21 @@ def verify(path, checksums):
 
 
 def publish(tag, directory):
-    if not re.fullmatch(r'flash-v\d+\.\d+\.\d+-preview\.\d+', tag):
+    match = re.fullmatch(r'flash-v(\d+\.\d+\.\d+)-preview\.(\d+)', tag)
+    if not match:
         raise ValueError('Invalid Flash tag')
+    version = f'{match[1]}-pre.{match[2]}'
     assets = sorted(Path(directory).iterdir())
     expected = {'Meltype-flash-Windows.zip', 'Meltype-flash-Windows-portable.zip',
-                'Meltype-flash-0.1.0-pre.2-setup.exe', 'Meltype-flash-Linux-x64.zip',
-                'Meltype-flash-Linux-arm64.zip', 'meltype-flash_0.1.0-pre.2_amd64.deb',
-                'meltype-flash_0.1.0-pre.2_arm64.deb', 'Meltype-flash-iOS-Simulator-arm64.zip',
+                f'Meltype-flash-{version}-setup.exe', 'Meltype-flash-Linux-x64.zip',
+                'Meltype-flash-Linux-arm64.zip', f'meltype-flash_{version}_amd64.deb',
+                f'meltype-flash_{version}_arm64.deb', 'Meltype-flash-iOS-Simulator-arm64.zip',
                 'Meltype-flash-iOS-source.zip', 'Meltype-flash-iOS-unsigned.ipa', 'README-iOS.md'}
     if {p.name for p in assets} != expected or any(not p.is_file() or not p.stat().st_size for p in assets):
         raise ValueError('Missing, extra, or empty distribution assets')
     release = json.loads(subprocess.check_output(['gh', 'api', f'repos/{REPO}/releases/tags/{tag}']))
-    if not release['prerelease'] or release['draft']:
-        raise ValueError('Expected an existing published prerelease')
+    if not release['prerelease']:
+        raise ValueError('Expected an existing prerelease')
     names = {asset['name'] for asset in release['assets']}
     if names & expected:
         raise ValueError('Distribution assets already exist; refusing to overwrite')
@@ -54,7 +56,7 @@ def publish(tag, directory):
         sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
         notes = release['body'] + '\n\n## 追加の配布形式\n\n'
         notes += 'WindowsセットアップEXE・ポータブルZIP、Linux x64/ARM64 ZIP・debを追加しました。\n'
-        notes += 'デスクトップのエンジンは同じPre2タグから作成しています。debはUbuntu 24.04以降向けです。\n'
+        notes += 'デスクトップのエンジンは同じリリースタグから作成しています。debはUbuntu 24.04以降向けです。\n'
         notes += 'iOSは初期プレビューです。unsigned.ipaはWindowsのAltStore Classicなどで自分のApple IDを使って署名して入れるための実機用IPAです。直接インストールはできず、キーボード拡張を残して署名する必要があります。Simulator ZIPはApple Silicon Mac用、source ZIPはXcode向けです。\n'
         notes += f'追加パッケージとiOSのソース: {REPO}@{sha}。手順は添付のREADME-iOS.mdを参照してください。\n'
         note_file = Path(temporary) / 'notes.md'

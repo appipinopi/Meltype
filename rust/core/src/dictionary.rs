@@ -17,6 +17,7 @@ pub struct Dictionary {
     candidates: HashMap<String, Vec<String>>,
     emoji: HashMap<String, Vec<String>>,
     kana_words: HashSet<String>,
+    max_kana_word_bytes: usize,
     common_english: HashSet<String>,
     readable_english: HashSet<String>,
     proper: HashSet<String>,
@@ -208,6 +209,7 @@ impl Dictionary {
                     .collect(),
                 candidates: HashMap::new(),
                 emoji: HashMap::new(),
+                max_kana_word_bytes: 0,
                 kana_words: crate::system_data::text("readings.txt")
                     .lines()
                     .filter(|l| !l.starts_with('#'))
@@ -276,6 +278,7 @@ impl Dictionary {
                 PrefixIndex::bundled(include_bytes!(concat!(env!("OUT_DIR"), "/common.fst")));
             dict.proper_index =
                 PrefixIndex::bundled(include_bytes!(concat!(env!("OUT_DIR"), "/proper.fst")));
+            dict.max_kana_word_bytes = dict.kana_words.iter().map(String::len).max().unwrap_or(0);
             dict
         })
     }
@@ -1261,6 +1264,14 @@ impl Dictionary {
     }
     pub fn is_common_english(&self, raw: &str) -> bool {
         self.common_english.contains(&raw.to_ascii_lowercase())
+    }
+    pub(crate) fn splits_known_kana_word(&self, text: &str, registered_bytes: usize) -> bool {
+        // #487: 登録名「ちな」を既知語「ちなみに」の途中へ強制挿入しない。
+        // 辞書の最長語を上限にし、長い入力全体の走査は避ける。
+        text.char_indices()
+            .map(|(at, ch)| at + ch.len_utf8())
+            .take_while(|end| *end <= self.max_kana_word_bytes)
+            .any(|end| end > registered_bytes && self.kana_words.contains(&text[..end]))
     }
     pub fn is_japanese(&self, raw: &str) -> bool {
         self.japanese.contains(&raw.to_ascii_lowercase())

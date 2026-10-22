@@ -45,6 +45,8 @@ pub struct Dialogs {
     recent: VecDeque<Correction>,
     selected: Option<usize>,
     draft: Correction,
+    #[cfg(windows)]
+    ime_recent: Vec<meltype_core::session::report_corrections::Entry>,
 }
 fn environment(settings: &Settings) -> String {
     format!(
@@ -322,6 +324,35 @@ impl Dialogs {
             );
         }
         if self.corrections {
+            #[cfg(windows)]
+            {
+                ctx.request_repaint_after(Duration::from_millis(500));
+                let entries = meltype_core::session::report_corrections::recent(&store.directory);
+                for entry in &entries {
+                    if self.ime_recent.contains(entry)
+                        || self.recent.iter().any(|old| {
+                            old.typed == entry.typed
+                                && old.shown == entry.shown
+                                && old.expected == entry.expected
+                                && old.before == entry.before
+                        })
+                    {
+                        continue;
+                    }
+                    if self.recent.len() == RECENT_LIMIT {
+                        self.recent.pop_front();
+                        self.selected = self.selected.and_then(|i| i.checked_sub(1));
+                    }
+                    self.recent.push_back(Correction {
+                        typed: entry.typed.clone(),
+                        shown: entry.shown.clone(),
+                        expected: entry.expected.clone(),
+                        before: entry.before.clone(),
+                        key: 1,
+                    });
+                }
+                self.ime_recent = entries;
+            }
             self.corrections = window(
                 ctx,
                 "flash-corrections",
@@ -329,7 +360,17 @@ impl Dialogs {
                 [640., 480.],
                 |ui| {
                     ui.label("直した判定を選んで中身を確かめ、個人的な文章は似た例に書き換えてから「GitHub で報告」を押してください。");
-                    ui.weak("一覧はこの画面の入力テストで直した判定です。IME全体の訂正履歴は未接続です。終了すると消えます。");
+                    ui.weak("IMEで英字・かなの判定を直して確定した履歴と、この画面の入力テストを表示します。秘密欄・学習禁止欄は記録しません。履歴はメモリだけに保持し、Meltypeの全プロセス終了で消えます。");
+                    if ui.button("履歴を消す").clicked() {
+                        self.recent.clear();
+                        self.selected = None;
+                        self.draft = Correction::default();
+                        #[cfg(windows)]
+                        {
+                            meltype_core::session::report_corrections::clear(&store.directory);
+                            self.ime_recent.clear();
+                        }
+                    }
                     ui.add_space(6.);
                     let list_height = (ui.available_height() - 220.).max(80.);
                     egui::Frame::group(ui.style()).show(ui, |ui| {

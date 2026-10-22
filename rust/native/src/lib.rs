@@ -1034,10 +1034,30 @@ pub extern "C" fn meltype_set_private(handle: *mut c_void, enabled: i32) {
         s.private = enabled != 0;
     });
 }
+/// Host input attributes. Bit 0: secret/raw input, 1: no learning, 2: terminal.
+/// Changing privacy invalidates pending input before any further edit or learn.
+#[no_mangle]
+pub extern "C" fn meltype_set_input_attributes(handle: *mut c_void, flags: u32) {
+    set(handle, |s| {
+        let secret = flags & 1 != 0;
+        let no_learning = flags & 3 != 0;
+        if s.private != secret || s.no_learning != no_learning {
+            s.reset();
+            s.set_context(Some(""), Some(""));
+        }
+        s.private = secret;
+        s.no_learning = no_learning;
+        s.code_input = flags & 4 != 0 || s.settings.text("AppProfile") == "Code";
+    });
+}
 // Deletion is permitted only when the host supports expected-text validation.
 #[no_mangle]
 pub extern "C" fn meltype_set_can_delete(handle: *mut c_void, enabled: i32) {
     set(handle, |s| s.can_delete = enabled != 0);
+}
+#[no_mangle]
+pub extern "C" fn meltype_set_can_move_caret(handle: *mut c_void, enabled: i32) {
+    set(handle, |s| s.can_move_caret = enabled != 0);
 }
 // NULL tells existing frontends to apply their regular mode-switch behavior.
 #[no_mangle]
@@ -1087,6 +1107,57 @@ mod android_input;
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn linux_attributes_distinguish_secret_no_learning_and_terminal() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = CString::new(directory.path().to_string_lossy().as_bytes()).unwrap();
+        unsafe {
+            let handle = meltype_create_at(path.as_ptr());
+            let key = |ch: char| {
+                serde_json::from_str::<serde_json::Value>(
+                    &take(meltype_handle_key(
+                        handle,
+                        0,
+                        ch as i32,
+                        0,
+                        std::ptr::null(),
+                        std::ptr::null(),
+                    ))
+                    .unwrap(),
+                )
+                .unwrap()
+            };
+            meltype_set_input_attributes(handle, 2);
+            assert_eq!(key('k')["view"]["text"], "k");
+            assert_eq!(key('a')["view"]["text"], "か");
+            {
+                let all = sessions().lock().unwrap();
+                let session = all.get(&(handle as usize)).unwrap();
+                assert!(!session.private && session.no_learning);
+            }
+            meltype_free(meltype_commit(handle).cast());
+            assert!(
+                !directory.path().join("state.json").exists(),
+                "学習禁止では履歴を保存しない"
+            );
+            meltype_set_input_attributes(handle, 1);
+            assert_eq!(key('a')["consumed"], false);
+            meltype_set_input_attributes(handle, 4);
+            assert_eq!(key('a')["consumed"], false);
+            meltype_set_input_attributes(handle, 0);
+            assert_eq!(key('a')["view"]["text"], "あ");
+            meltype_set_can_move_caret(handle, 0);
+            assert!(
+                !sessions()
+                    .lock()
+                    .unwrap()
+                    .get(&(handle as usize))
+                    .unwrap()
+                    .can_move_caret
+            );
+            meltype_destroy(handle);
+        }
+    }
     #[test]
     fn persistent_control_and_prediction() {
         unsafe {

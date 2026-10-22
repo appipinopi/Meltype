@@ -14,6 +14,7 @@
 #include <fcitx/inputmethodgroup.h>
 #include <fcitx/inputmethodmanager.h>
 #include <fcitx/inputpanel.h>
+#include <fcitx/surroundingtext.h>
 #include <fcitx/candidatelist.h>
 #include <fcitx/instance.h>
 
@@ -67,6 +68,45 @@ void scheduleEvent(EventDispatcher *dispatcher, Instance *instance) {
         frontend->call<ITestFrontend::pushCommitExpectation>(preedit.toString());
         typeKeys(frontend, uuid, "\n");
         FCITX_ASSERT(!ic->inputPanel().candidateList()) << "確定したら候補の一覧を閉じる";
+
+#ifdef MELTYPE_RUST_CORE
+        // clientPreedit の確定は fcitx 本体が行う。アドオンは二度挿入しない。
+        const auto originalCaps = ic->capabilityFlags();
+        ic->setCapabilityFlags(originalCaps | CapabilityFlag::Preedit);
+        ic->focusIn();
+        typeKeys(frontend, uuid, "nihon");
+        frontend->call<ITestFrontend::pushCommitExpectation>("にほn");
+        ic->focusOut();
+        ic->focusIn();
+        FCITX_ASSERT(ic->inputPanel().clientPreedit().empty());
+        typeKeys(frontend, uuid, "ka");
+        ic->reset();
+        FCITX_ASSERT(ic->inputPanel().clientPreedit().empty());
+        ic->focusOut(); // reset 後には確定を送らない。
+        ic->focusIn();
+
+        // Preedit 非対応欄でも表示どおりの文字を一度だけ確定する。
+        ic->setCapabilityFlags(originalCaps & ~CapabilityFlags(CapabilityFlag::Preedit));
+        typeKeys(frontend, uuid, "nihon");
+        frontend->call<ITestFrontend::pushCommitExpectation>("にほn");
+        ic->focusOut();
+        ic->focusIn();
+
+        // 選択範囲がある入力欄では周辺文字を置き換えない。
+        int deletions = 0;
+        auto watcher = instance->watchEvent(EventType::InputContextDeleteSurroundingText,
+            EventWatcherPhase::PreInputMethod, [&deletions](Event &) { deletions++; });
+        ic->setCapabilityFlags(originalCaps | CapabilityFlag::SurroundingText);
+        frontend->call<ITestFrontend::keyEvent>(uuid, Key("Muhenkan"), false);
+        typeKeys(frontend, uuid, "kon");
+        ic->surroundingText().setText("konXYZ", 3, 6);
+        ic->updateSurroundingText();
+        typeKeys(frontend, uuid, "n");
+        FCITX_ASSERT(deletions == 0);
+        ic->reset();
+        frontend->call<ITestFrontend::keyEvent>(uuid, Key("Henkan"), false);
+        ic->setCapabilityFlags(originalCaps);
+#endif
 
         dispatcher->schedule([dispatcher, instance]() {
             dispatcher->detach();

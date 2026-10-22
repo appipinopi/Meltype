@@ -19,6 +19,8 @@ struct State {
     session: Obj,
     direct: bool,
     private: bool,
+    no_learning: bool,
+    terminal: bool,
     preedit: bool,
     caps: u32,
     selected: usize,
@@ -69,6 +71,8 @@ unsafe extern "C" fn initialize(engine: Obj, _class: Obj) {
             session: native::meltype_create(),
             direct: false,
             private: false,
+            no_learning: false,
+            terminal: false,
             preedit: false,
             caps: 0,
             selected: 0,
@@ -77,6 +81,7 @@ unsafe extern "C" fn initialize(engine: Obj, _class: Obj) {
             timer: 0,
         };
         native::meltype_set_direct_detection(state.session, 1);
+        native::meltype_set_can_move_caret(state.session, 0);
         g_object_set_data_full(
             engine,
             KEY.as_ptr(),
@@ -105,6 +110,17 @@ unsafe extern "C" fn initialize(engine: Obj, _class: Obj) {
     }));
 }
 impl State {
+    fn sync_attributes(&self) {
+        let flags = u32::from(self.private)
+            | (u32::from(self.no_learning) << 1)
+            | (u32::from(self.terminal) << 2);
+        native::meltype_set_input_attributes(self.session, flags);
+        // Synchronous-only clients explicitly forbid forwarded key events.
+        native::meltype_set_can_move_caret(
+            self.session,
+            i32::from(self.caps & 8 != 0 && self.caps & (1 << 7) == 0),
+        );
+    }
     fn cancel_timer(&mut self) {
         if self.timer != 0 {
             unsafe {
@@ -170,6 +186,18 @@ impl State {
             return;
         };
         for edit in result.commits {
+            if edit.caret_back != 0
+                && (edit.caret_back != 1
+                    || !meltype_core::shortcuts::is_bracket_pair(&edit.text)
+                    || self.caps & 8 == 0
+                    || self.caps & (1 << 7) != 0)
+            {
+                unsafe {
+                    result_free(native::meltype_reset(self.session));
+                }
+                self.hide(engine);
+                return;
+            }
             self.hide(engine);
             if edit.delete_before > 0 {
                 let expected = edit.expect.as_deref().unwrap_or("");
@@ -195,6 +223,10 @@ impl State {
             if !edit.text.is_empty() {
                 unsafe {
                     ibus_engine_commit_text(engine, text(&edit.text));
+                    if edit.caret_back != 0 {
+                        ibus_engine_forward_key_event(engine, 0xff51, 0, 0);
+                        ibus_engine_forward_key_event(engine, 0xff51, 0, 1 << 30);
+                    }
                 }
             }
         }
@@ -239,7 +271,7 @@ impl State {
             } else {
                 ibus_engine_update_auxiliary_text(engine, text(&hint), 1);
             }
-            self.predicting = !view.converting;
+            self.predicting = !view.converting && view.candidates.len() <= 1;
             let candidates = if self.predicting {
                 &view.predictions
             } else {
@@ -285,6 +317,7 @@ impl State {
         }
     }
     fn key(&mut self, engine: Obj, vk: i32, ch: i32, modifiers: i32) -> bool {
+        self.sync_attributes();
         let surrounding = if self.preedit {
             None
         } else {
@@ -411,21 +444,28 @@ unsafe extern "C" fn enable(engine: Obj, _data: Obj) {
     });
 }
 unsafe extern "C" fn capabilities(engine: Obj, caps: u32, _data: Obj) {
-    with(engine, |s| s.caps = caps);
+    with(engine, |s| {
+        s.caps = caps;
+        s.sync_attributes();
+    });
 }
 unsafe extern "C" fn content_type(engine: Obj, purpose: u32, hints: u32, _data: Obj) {
     with(engine, |s| {
-        let private = matches!(purpose, 8 | 9) || hints & ((1 << 11) | (1 << 12)) != 0;
-        if private != s.private {
+        let private = matches!(purpose, 8 | 9) || hints & (1 << 12) != 0;
+        let no_learning = private || hints & (1 << 11) != 0;
+        if private != s.private || no_learning != s.no_learning {
             s.hide(engine);
             result_free(native::meltype_reset(s.session));
         }
         s.private = private;
-        native::meltype_set_private(s.session, private as i32);
+        s.no_learning = no_learning;
+        s.terminal = purpose == 10;
+        s.sync_attributes();
     });
 }
 unsafe extern "C" fn candidate(engine: Obj, index: u32, _button: u32, _state: u32, _data: Obj) {
     with(engine, |s| {
+        s.sync_attributes();
         let index = s.selected / 9 * 9 + index as usize;
         if index >= s.count {
             return;
@@ -500,6 +540,7 @@ unsafe extern "C" fn focus_in_id(
         let identity = meltype_core::app_identity::ibus_application(client);
         let identity = CString::new(identity).unwrap_or_default();
         native::meltype_set_application(state.session, identity.as_ptr());
+        state.sync_attributes();
     });
     focus_in(engine, data);
 }

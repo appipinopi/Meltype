@@ -5,7 +5,7 @@ on:
       tag:
         description: Existing Flash preview release to extend (engine built from this tag)
         required: true
-        default: flash-v0.1.0-preview.2
+        default: flash-v0.1.0-preview.3
       publish:
         description: Attach tested packages to the existing prerelease
         type: boolean
@@ -23,8 +23,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - env:
-          TAG: ${{ inputs.tag || 'flash-v0.1.0-preview.2' }}
-        run: test "$TAG" = flash-v0.1.0-preview.2
+          TAG: ${{ inputs.tag || 'flash-v0.1.0-preview.3' }}
+        run: test "$TAG" = flash-v0.1.0-preview.3
   windows:
     needs: validate
     runs-on: windows-latest
@@ -34,7 +34,7 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ inputs.tag || 'flash-v0.1.0-preview.2' }}
+          TAG: ${{ inputs.tag || 'flash-v0.1.0-preview.3' }}
         run: |
           gh release download $env:TAG --repo appipinopi/Meltype --pattern Meltype-flash-Windows-x64.zip --pattern SHA256SUMS.txt --dir input
           if ($LASTEXITCODE -ne 0) { throw 'Release download failed' }
@@ -101,7 +101,7 @@ jobs:
       - run: python3 -m unittest discover -s tools -p test_flash_distributions.py -v
       - uses: actions/checkout@v5
         with:
-          ref: ${{ inputs.tag || 'flash-v0.1.0-preview.2' }}
+          ref: ${{ inputs.tag || 'flash-v0.1.0-preview.3' }}
           path: engine
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
@@ -115,7 +115,7 @@ jobs:
         run: |
           python3 engine/rust/ibus/tests/installation.py engine/target/release/meltype-ibus
           MELTYPE_IBUS_TEST_INSTALLED=1 xvfb-run -a dbus-run-session -- /usr/bin/python3 engine/rust/ibus/tests/integration.py engine/target/release/meltype-ibus
-          python3 rust/package-linux.py engine/linux/build/Meltype-flash-linux dist --version 0.1.0-pre.2 --arch ${{ matrix.arch }}
+          python3 rust/package-linux.py engine/linux/build/Meltype-flash-linux dist --version 0.1.0-pre.3 --arch ${{ matrix.arch }}
           dpkg-deb --info dist/*.deb
           sudo apt-get install -y ./dist/*.deb
           test -x /usr/libexec/meltype-flash/ibus/meltype-ibus
@@ -169,6 +169,12 @@ jobs:
           pattern: flash-distributions-*
           path: distributions
           merge-multiple: true
+      - name: Require packaging source to match the release tag
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          git fetch origin "refs/tags/$TAG:refs/tags/$TAG"
+          test "$(git rev-parse HEAD)" = "$(git rev-parse "$TAG^{commit}")"
       - name: Attach only after every package test passes
         env:
           GH_TOKEN: ${{ github.token }}

@@ -297,6 +297,9 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
             insert: { text, range in
                 client.insertText(NSAttributedString(string: text), replacementRange: range)
                 self.hasMarkedText = false
+            }, clearMarked: {
+                client.setMarkedText(NSAttributedString(string: ""), selectionRange: NSRange(location: 0, length: 0), replacementRange: NSRange(location: NSNotFound, length: 0))
+                self.hasMarkedText = false
             }, render: {
                 if let view = result.view { self.showComposition(view, client: client) }
                 else { self.hideComposition(client: client) }

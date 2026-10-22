@@ -8,6 +8,7 @@ final class Native {
     static native String showSettingsConfirmation(long handle,Object activity,String confirmation);
     static native String completeSettingsConfirmation(long handle,String payload,boolean accept);
     static native void serviceStart(long handle,Object service,Object info);
+    static native void serviceRestart(long handle,Object service,Object info);
     static native boolean serviceKey(long handle,Object service,int key,Object event);
     static native void serviceFinish(long handle,Object service);
     static native void serviceSelection(long handle,Object service,int start,int end,int composingEnd);

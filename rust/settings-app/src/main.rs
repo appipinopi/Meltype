@@ -157,9 +157,7 @@ impl App {
                     Ok(keyboard) => {
                         keyboard.activate();
                         app.keyboard = Some(keyboard);
-                        app.status =
-                        "ポータブル入力: Ctrl+Alt+J で ON/OFF。登録済みIMEは英数にしてください。"
-                            .into();
+                        app.status = "ポータブル入力を開始しました。切替キーは設定画面で変更できます。登録済みIMEは英数にしてください。".into();
                     }
                     Err(error) => app.status = error,
                 }
@@ -268,6 +266,21 @@ impl App {
         }
     }
     fn save(&mut self) -> bool {
+        if cfg!(windows)
+            && self.settings.text("ToggleKeyboardShortcuts")
+                != self.opened.text("ToggleKeyboardShortcuts")
+            && self
+                .settings
+                .text("ToggleKeyboardShortcuts")
+                .split([';', ',', '\n'])
+                .any(|part| {
+                    !part.trim().is_empty() && meltype_core::shortcuts::parse(part).is_none()
+                })
+        {
+            self.status =
+                "切替キーを確認してください。例: Ctrl+Alt+J（複数は ; で区切ります）".into();
+            return false;
+        }
         if self.settings.0 == self.opened.0 {
             return true;
         }
@@ -651,17 +664,21 @@ impl App {
                                     }
                                     return;
                                 }
-                                if key == "ToggleKeyboardShortcuts" {
-                                    ui.label(metadata::label(key))
-                                        .on_hover_text(metadata::description(key));
-                                    let mut shortcut = value.as_str().unwrap_or("").to_owned();
-                                    ui.add_enabled(
-                                        false,
-                                        egui::TextEdit::singleline(&mut shortcut),
+                                let limitation =
+                                    if cfg!(windows) && self.settings.text("Mode") == "Keyboard" {
+                                        keyboard_limitation(key)
+                                    } else {
+                                        None
+                                    };
+                                if let Some(reason) = limitation {
+                                    ui.weak(reason);
+                                    ui.disable();
+                                }
+                                if key == "ToggleKeyboardShortcuts" && !cfg!(windows) {
+                                    ui.weak(
+                                        "この切替キーはWindowsのキーボード方式に対応しています。",
                                     );
-                                    ui.label("キーボード方式の接続が完了すると使用できます。");
-                                    ui.separator();
-                                    return;
+                                    ui.disable();
                                 }
                                 let row = ui.horizontal(|ui| {
                                     let label_width = (ui.available_width() * 0.55 + 4.).min(349.);
@@ -1342,7 +1359,42 @@ fn supported(key: &str) -> bool {
         "SlashAsMiddleDot",
     ]
     .contains(&key)
-        || cfg!(windows) && ["ShowNotifications", "CursorIntoBrackets"].contains(&key)
+        || cfg!(windows)
+            && [
+                "TextInputApps",
+                "ShowNotifications",
+                "CursorIntoBrackets",
+                "ToggleKeyboardShortcuts",
+                "ConversionEngine",
+            ]
+            .contains(&key)
+}
+fn keyboard_limitation(key: &str) -> Option<&'static str> {
+    match key {
+        "LiveConversion" => {
+            Some("キーボード方式ではライブ変換を使用できません。IME方式で使用できます。")
+        }
+        "LearningEnabled" | "ContextualLearning" => {
+            Some("キーボード方式では学習を保存しません。IME方式で使用できます。")
+        }
+        "AutoCorrectAfterCommit" | "DirectModeAutoDetect" => {
+            Some("キーボード方式では確定済みの文章を書き換えません。IME方式で使用できます。")
+        }
+        "ConversionEngine"
+        | "ClipboardCandidates"
+        | "GitHubIssueCandidates"
+        | "GitHubRepository" => {
+            Some("キーボード方式ではこの候補源を使用できません。IME方式で使用できます。")
+        }
+        "CompositionTheme"
+        | "CompositionSize"
+        | "CompositionPlacement"
+        | "CompositionOpacity"
+        | "ShowCandidateMeanings" => {
+            Some("キーボード方式の簡易候補表示では、この表示設定を使用できません。")
+        }
+        _ => None,
+    }
 }
 fn choices(key: &str) -> Option<&'static [&'static str]> {
     Some(match key {
@@ -1494,11 +1546,16 @@ impl eframe::App for App {
                 });
                 #[cfg(windows)]
                 if let Some(keyboard) = &self.keyboard {
-                    ui.label(if keyboard.enabled() {
-                        "ポータブル入力: ON（Ctrl+Alt+JでOFF）"
+                    let shortcut = self.opened.text("ToggleKeyboardShortcuts");
+                    let shortcut = if shortcut.trim().is_empty() {
+                        "Ctrl+Alt+J"
                     } else {
-                        "ポータブル入力: OFF（Ctrl+Alt+JでON）"
-                    });
+                        shortcut
+                    };
+                    ui.label(format!(
+                        "ポータブル入力: {}（{shortcut}で切替）",
+                        if keyboard.enabled() { "ON" } else { "OFF" }
+                    ));
                     ui.small(
                     "編集可能な通常入力欄のみ対応。OS辞書・確定後訂正・学習保存は使用しません。",
                 );
@@ -1760,6 +1817,35 @@ impl eframe::App for App {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(windows)]
+    #[test]
+    fn keyboard_shortcut_validation_and_capabilities_preserve_saved_values() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = Store::new(dir.path());
+        let mut app = App::with_store(store.clone());
+        app.settings
+            .set("ToggleKeyboardShortcuts", json!("Ctrl+Unknown"))
+            .unwrap();
+        assert!(!app.save());
+        assert_eq!(
+            store.settings().unwrap().text("ToggleKeyboardShortcuts"),
+            ""
+        );
+        app.settings
+            .set("ToggleKeyboardShortcuts", json!("Ctrl+Shift+K;Alt+F9"))
+            .unwrap();
+        app.settings.set("Mode", json!("Keyboard")).unwrap();
+        assert!(app.save());
+        assert!(keyboard_limitation("LiveConversion").is_some());
+        assert!(keyboard_limitation("LearningEnabled").is_some());
+        assert!(keyboard_limitation("ConversionEngine").is_some());
+        assert!(keyboard_limitation("ControlKeyBindings").is_none());
+        // Capability presentation does not overwrite the user's TSF preferences.
+        assert_eq!(
+            store.settings().unwrap().boolean("LiveConversion"),
+            Settings::default().boolean("LiveConversion")
+        );
+    }
     #[test]
     fn mouse_click_can_change_settings_in_the_complete_window() {
         use eframe::App as _;
@@ -1861,8 +1947,7 @@ mod tests {
                 visible_by_default(key) || !cfg!(windows) && key == "CursorIntoBrackets",
                 "missing row {key}"
             );
-            // The last shortcut setting is explicitly shown as not connected.
-            if key != "ToggleKeyboardShortcuts" && (cfg!(windows) || key != "CursorIntoBrackets") {
+            if cfg!(windows) || !["CursorIntoBrackets", "ToggleKeyboardShortcuts"].contains(&key) {
                 assert!(supported(key), "hidden {key}");
             }
             count += 1;

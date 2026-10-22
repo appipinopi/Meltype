@@ -245,6 +245,20 @@ class FieldTests(unittest.TestCase):
                     self.assertEqual(self.inspect(host), 0x300 | 1)
                     self.assertEqual(host.value_reads, [0, 1])
 
+    def test_issue_992_ascii_only_fields_are_raw_without_being_secret(self):
+        for source in [0, 1]:
+            for scope in [4, 5, 40]:
+                with self.subTest(source=source, scope=scope):
+                    host=self.host()
+                    host.values[source].values=[scope]
+                    self.assertEqual(self.inspect(host), 0x300 | 8)
+                    host.values[1-source].values=[61]
+                    self.assertEqual(self.inspect(host), 0x300 | 8 | 2)
+        # URL/検索・通常テキスト・全角指定欄では日本語入力を継続する。
+        for scope in [0,1,2,3,6,39,41,50,52,57,58,9999]:
+            host=self.host();host.values[0].values=[scope]
+            self.assertEqual(self.inspect(host), 0x300)
+
     def test_private_scope_is_independent_and_combines_with_secret(self):
         host = self.host()
         host.values[0].values = [61]
@@ -289,9 +303,11 @@ class FieldTests(unittest.TestCase):
         host.values[0].kind = 3
         self.assertEqual(self.inspect(host), 0x300 | 5 | 3 << 16)
 
-    def test_unknown_nonsecret_and_empty_scope_lists_are_ordinary(self):
+    def test_known_ascii_and_unknown_scope_flags_are_distinct(self):
         host = self.host()
         host.values[0].values = [0, 4, 9999]
+        self.assertEqual(self.inspect(host), 0x308)
+        host.values[0].values = [0, 50, 9999]
         self.assertEqual(self.inspect(host), 0x300)
 
     def test_failed_query_with_partial_interface_output_releases_references(self):

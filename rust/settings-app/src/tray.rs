@@ -273,11 +273,16 @@ impl Tray {
     }
     pub fn input_status(&self, settings: &Settings, active: bool) {
         if settings.boolean("Enabled") && settings.text("Mode") == "Keyboard" {
-            self.status.set_text(if active {
-                "Meltype-flash キーボード: 入力ON (Ctrl+Alt+J でOFF)"
+            let shortcut = settings.text("ToggleKeyboardShortcuts");
+            let shortcut = if shortcut.trim().is_empty() {
+                "Ctrl+Alt+J"
             } else {
-                "Meltype-flash キーボード: 入力OFF (Ctrl+Alt+J でON)"
-            });
+                shortcut
+            };
+            self.status.set_text(format!(
+                "Meltype-flash キーボード: 入力{} ({shortcut} で切替)",
+                if active { "ON" } else { "OFF" }
+            ));
         }
     }
     pub fn sync(&mut self, settings: &Settings) -> Result<(), String> {
@@ -302,11 +307,19 @@ impl Tray {
         self.keyboard_mode
             .set_checked(settings.text("Mode") == "Keyboard");
         self.status.set_text(if !enabled {
-            "Meltype-flash: 一時停止"
+            "Meltype-flash: 一時停止".to_owned()
         } else if settings.text("Mode") == "Keyboard" {
-            "Meltype-flash キーボード (Ctrl+Alt+J で入力ON/OFF)"
+            let shortcut = settings.text("ToggleKeyboardShortcuts");
+            format!(
+                "Meltype-flash キーボード ({} で入力ON/OFF)",
+                if shortcut.trim().is_empty() {
+                    "Ctrl+Alt+J"
+                } else {
+                    shortcut
+                }
+            )
         } else {
-            "Meltype-flash IME (Win + Space で Meltype-flash を選んで入力)"
+            "Meltype-flash IME (Win + Space で Meltype-flash を選んで入力)".to_owned()
         });
         if enabled != self.last_enabled {
             self.icon

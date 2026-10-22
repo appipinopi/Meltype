@@ -135,6 +135,7 @@ for initial in ["", "前😀", "e\u{301}", "a\u{0}b"] {
      range=NSRange(location:caret-edit.deleteBefore,length:edit.deleteBefore)
      referenceTrace.append("substring:\(range.location):\(range.length)")
      guard (reference as NSString).substring(with:range)==expected else {referencePublished=false;break}
+     if referenceMarked { referenceTrace.append("clear"); referenceMarked=false }
     }
     referenceTrace.append("insert:\(range.location):\(range.length):\(edit.text)")
     if range.location==NSNotFound {reference+=edit.text}
@@ -146,18 +147,18 @@ for initial in ["", "前😀", "e\u{301}", "a\u{0}b"] {
      selected:{trace.append("selected");return NSRange(location:(document as NSString).length,length:0)},
      substring:{range in trace.append("substring:\(range.location):\(range.length)");return (document as NSString).substring(with:range)},
      insert:{text,range in trace.append("insert:\(range.location):\(range.length):\(text)");if range.location==NSNotFound {document+=text}else{document=(document as NSString).replacingCharacters(in:range,with:text)};marked=false},
-     render:{published=true;trace.append("render")})
+     clearMarked:{marked=false;trace.append("clear")}, render:{published=true;trace.append("render")})
    precondition(completed==referencePublished && published==referencePublished && document==reference && trace==referenceTrace,"old/new edit loop mismatch")
    applyCount+=1
   }
  }
 }
 var canonicalDocument="é", canonicalRendered=false
-precondition(editor.apply(response([(1,"x","e\u{301}")]),marked:{NSRange(location:NSNotFound,length:0)},selected:{NSRange(location:1,length:0)},substring:{_ in "é"},insert:{_,_ in fatalError("UTF16 mismatch must reject before mutation")},render:{fatalError("invalid length rendered")} )==false)
+precondition(editor.apply(response([(1,"x","e\u{301}")]),marked:{NSRange(location:NSNotFound,length:0)},selected:{NSRange(location:1,length:0)},substring:{_ in "é"},insert:{_,_ in fatalError("UTF16 mismatch must reject before mutation")},clearMarked:{fatalError("invalid edit cleared preedit")},render:{fatalError("invalid length rendered")} )==false)
 // A host may return canonically equivalent text with a different UTF16 length.
-precondition(editor.apply(response([(2,"x","e\u{301}")]),marked:{NSRange(location:2,length:1)},selected:{fatalError("marked caret must suppress selectedRange")},substring:{_ in canonicalDocument},insert:{text,_ in canonicalDocument=text},render:{canonicalRendered=true}))
+precondition(editor.apply(response([(2,"x","e\u{301}")]),marked:{NSRange(location:2,length:1)},selected:{fatalError("marked caret must suppress selectedRange")},substring:{_ in canonicalDocument},insert:{text,_ in canonicalDocument=text},clearMarked:{},render:{canonicalRendered=true}))
 precondition(canonicalDocument=="x" && canonicalRendered)
-print("macOS Rust apply: \(applyCount) independent legacy edit traces/final documents, current ranges, Unicode/NUL, ordered edits, mismatch stop and canonical comparison passed")
+print("macOS Rust apply: \(applyCount) legacy final documents and edit traces with verified preedit clearing, current ranges, Unicode/NUL, ordered edits, mismatch stop and canonical comparison passed")
 
 var compositionCount=0
 for text in ["", "前😀後", "e\u{301}", "a\u{0}b"] {
