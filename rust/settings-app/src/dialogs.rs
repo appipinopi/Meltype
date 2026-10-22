@@ -157,6 +157,7 @@ pub fn window(
         egui::ViewportId::from_hash_of(id),
         egui::ViewportBuilder::default()
             .with_title(title)
+            .with_icon(crate::branding::icon())
             .with_inner_size(size)
             .with_min_inner_size([size[0].min(480.), size[1].min(420.)]),
         |ctx, class| draw(ctx, class == egui::ViewportClass::Embedded),
