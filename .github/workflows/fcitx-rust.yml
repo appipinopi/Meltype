@@ -1,16 +1,18 @@
 name: Rust fcitx ABI
 on:
+  workflow_call:
   workflow_dispatch:
   pull_request:
     paths: ['rust/native/**', 'rust/core/**', 'Cargo.*', 'dictionaries/**', 'linux/fcitx5/**', '.github/workflows/fcitx-rust.yml']
 permissions:
   contents: read
 concurrency:
-  group: fcitx-rust-abi-${{ github.head_ref || github.ref_name }}
-  cancel-in-progress: false
+  group: fcitx-rust-abi-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   sdk-abi:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable

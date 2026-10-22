@@ -72,3 +72,17 @@ python tools/check-core-parity.py --csharp dist/windows-common-benchmark/csharp/
 全機能・実アプリ・OS変換・候補描画の速度を示すものではありません。FST検索部分の改善は別に記録し、全IMEの倍率には使いません。
 
 古い報告・生ログ・生成物・比較専用の一時ビルドを整理しました。[過去のGit履歴](https://github.com/appipinopi/Meltype/tree/96d575f/tools/performance/windows/results)で元の報告を参照できます。現在の生測定データと固定Rustバイナリ、必要なコンパイラ情報はdistの今回の比較先に残しています。
+
+## CIでの測定と画像
+
+CIでは、前のRust公開版と現在版を比較します。`Cargo.toml`の版より古い公開タグを数値順に選びます。現在のPre3ではPre2を使います。手動実行の`benchmark_baseline`で基準を変更できます。
+
+```powershell
+python -m pip install matplotlib==3.10.8 numpy==2.4.2
+python tools/compare-rust-benchmarks.py --build --output dist/windows-common-benchmark --samples 5 --warmups 1 --rounds 2
+python tools/plot-windows-benchmark.py dist/windows-common-benchmark/report.json --output dist/windows-common-benchmark/charts
+```
+
+両版を同じコンパイラでビルドし、旧→新、新→旧で測定します。各版の同梱辞書をそのまま使用し、版の違いに含めます。`--baseline-ref flash-v0.1.0-preview.2`のように基準を固定できます。事前ビルド済みの`--old/--new/--old-ref/--new-ref`形式も利用できますが、その場合の同一コンパイラは呼び出し側で保証してください。
+
+CIは既存WindowsジョブとRelease依存関係を利用します。追加ビルドは前の版のCoreと測定ホストだけです。PNG5枚とJSON・CSV・ログを`windows-common-benchmark`成果物に14日保存し、`--github-summary "$env:GITHUB_STEP_SUMMARY"`でSummaryに表を表示します。日付・比較する版・試行数・再実行コマンドは測定データから生成します。固定倍率の合否基準は設けません。詳細は[CIの構成](../../../docs/CI.md)を参照してください。

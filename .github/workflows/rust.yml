@@ -1,8 +1,32 @@
 name: Rust preview
 on:
   workflow_dispatch:
+    inputs:
+      benchmark_baseline:
+        description: '比較する公開タグまたはコミット（auto: Cargoの版より前の最新タグ）'
+        type: string
+        default: auto
   pull_request:
-    paths: ['rust/**', 'android/**', 'Cargo.*', 'dictionaries/**', 'native/tip/**', 'linux/fcitx5/**', 'tools/parity/*.py', 'tools/check-rust-windows-package.py', 'tools/test_rust_windows_package.py', 'tools/parity/settings-candidates/**', 'tools/parity/settings-apps/**', 'tools/parity/windows-converter/**', 'tools/parity/mozc-lifecycle/**', '.github/workflows/rust.yml']
+    paths:
+      - 'rust/**'
+      - 'android/**'
+      - 'Cargo.*'
+      - 'dictionaries/**'
+      - 'native/tip/**'
+      - 'linux/**'
+      - 'src/**'
+      - 'assets/branding/**'
+      - 'tools/parity/**'
+      - 'tools/ci/**'
+      - 'tools/*rust*'
+      - 'tools/benchmark-windows.py'
+      - 'tools/plot-windows-benchmark.py'
+      - 'tools/performance/windows/*.py'
+      - 'tools/performance/windows/*.cs'
+      - 'tools/performance/windows/*.csproj'
+      - 'tools/extract-rust-settings-ui.py'
+      - '.github/workflows/rust.yml'
+      - '.github/workflows/rust-android.yml'
 permissions:
   contents: read
 jobs:
@@ -12,55 +36,91 @@ jobs:
       matrix:
         os: [windows-latest, ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
     concurrency:
-      group: rust-preview-${{ github.head_ref || github.ref_name }}-${{ matrix.os }}
-      # Finish each active platform without blocking other platforms.
-      cancel-in-progress: false
+      group: rust-preview-${{ github.workflow }}-${{ github.ref }}-${{ matrix.os }}
+      # PR の更新では古い検査を止め、手動実行は最後まで動かす。
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     steps:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Fetch previous Rust release
+        if: runner.os == 'Windows'
+        env:
+          BENCHMARK_BASELINE: ${{ inputs.benchmark_baseline || 'auto' }}
+        run: |
+          if ($env:BENCHMARK_BASELINE -eq 'auto') {
+            git fetch --no-tags --depth=1 origin 'refs/tags/flash-*:refs/tags/flash-*' 'refs/tags/rust-*:refs/tags/rust-*'
+          } elseif ($env:BENCHMARK_BASELINE -match '^[0-9a-fA-F]{40}$') {
+            git fetch --no-tags --depth=1 origin $env:BENCHMARK_BASELINE
+          } else {
+            $tagRef = "refs/tags/$env:BENCHMARK_BASELINE"
+            git check-ref-format $tagRef
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            git fetch --no-tags --depth=1 origin "${tagRef}:${tagRef}"
+          }
+      - name: Install benchmark plotting dependencies
+        if: runner.os == 'Windows'
+        run: python -m pip install --disable-pip-version-check matplotlib==3.10.8 numpy==2.4.2
       - name: Linux IBus development and isolated-test runtime
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y libibus-1.0-dev ibus gir1.2-ibus-1.0 python3-gi dbus-x11 xvfb fonts-noto-cjk libxkbcommon-x11-0
       - run: cargo fmt --all --check
+        if: runner.os == 'Linux'
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo clippy -p meltype-native --all-targets --features tsf-server --locked -- -D warnings
         if: runner.os == 'Windows'
       - run: cargo test --workspace --locked
       - run: cargo run -p meltype-core --example quality -- quality-report.json --check
-      - name: Build fcitx5 adapter
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake libfcitx5core-dev libfcitx5utils-dev libfcitx5config-dev
-          cmake -S linux/fcitx5 -B linux/build/fcitx5-rust -DMELTYPE_RUST_CORE=ON -DMELTYPE_RUST_ABI_TESTS=ON
-          cmake --build linux/build/fcitx5-rust --parallel 2
-          cmake -S linux/fcitx5 -B linux/build/fcitx5-legacy -DMELTYPE_RUST_CORE=OFF
-          cmake --build linux/build/fcitx5-legacy --parallel 2
       - run: cargo build --workspace --release --locked
+      # 現在版のRelease依存関係を再利用し、同じコンパイラで前の版のCoreだけを追加ビルドする。
+      - name: Benchmark previous and current Rust releases
+        id: benchmark
+        if: runner.os == 'Windows'
+        timeout-minutes: 20
+        env:
+          PYTHONUTF8: '1'
+          BENCHMARK_BASELINE: ${{ inputs.benchmark_baseline || 'auto' }}
+        run: python tools/compare-rust-benchmarks.py --build --baseline-ref "$env:BENCHMARK_BASELINE" --output dist/windows-common-benchmark --samples 5 --warmups 1 --rounds 2
+      - name: Render benchmark PNGs and summary
+        if: runner.os == 'Windows' && steps.benchmark.outcome == 'success'
+        env:
+          PYTHONUTF8: '1'
+        run: python tools/plot-windows-benchmark.py dist/windows-common-benchmark/report.json --output dist/windows-common-benchmark/charts --github-summary "$env:GITHUB_STEP_SUMMARY"
+      - name: Save benchmark evidence
+        id: benchmark-artifact
+        if: always() && runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-common-benchmark
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            dist/windows-common-benchmark/*.json
+            dist/windows-common-benchmark/*.jsonl
+            dist/windows-common-benchmark/*.log
+            dist/windows-common-benchmark/charts/
+      - name: Link benchmark evidence
+        if: always() && runner.os == 'Windows' && steps.benchmark-artifact.outputs.artifact-url != ''
+        env:
+          BENCHMARK_ARTIFACT_URL: ${{ steps.benchmark-artifact.outputs.artifact-url }}
+        run: '"[ベンチマークのPNG・CSV・生データ]($env:BENCHMARK_ARTIFACT_URL)" >> $env:GITHUB_STEP_SUMMARY'
       - name: Windows converter batch ABI bounds and cleanup
         if: runner.os == 'Windows'
         run: python rust/native/tests/windows_converter_batch_smoke.py target/release/meltype_native.dll
-      - name: fcitx5 Rust JSON ABI and reference/core projection parity
-        if: runner.os == 'Linux'
-        run: |
-          python3 linux/fcitx5/test/json_bridge.py target/release/libmeltype_native.so
-          linux/build/fcitx5-rust/testkeymapping "${{ github.workspace }}/target/release/libmeltype_native.so"
-          python3 linux/fcitx5/test/state_abi.py target/release/libmeltype_native.so
-          python3 linux/fcitx5/test/event_abi.py target/release/libmeltype_native.so
       - name: Rust IBus engine through a private daemon and input context
         if: runner.os == 'Linux'
         run: |
           xvfb-run -a dbus-run-session -- /usr/bin/python3 rust/ibus/tests/integration.py target/release/meltype-ibus
           MELTYPE_IBUS_TEST_INSTALLED=1 xvfb-run -a dbus-run-session -- /usr/bin/python3 rust/ibus/tests/integration.py target/release/meltype-ibus
           /usr/bin/python3 rust/ibus/tests/installation.py target/release/meltype-ibus
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
       - name: Batch evidence and resume integrity
         run: python -m unittest discover -s tools/parity -p test_batch_compare.py -v
       - name: Windows preview file and PE dependency integrity
@@ -441,66 +501,8 @@ jobs:
             rust/README.md
             quality-report.json
   android:
-    runs-on: ubuntu-latest
-    concurrency:
-      group: rust-preview-${{ github.head_ref || github.ref_name }}-android
-      cancel-in-progress: false
-    steps:
-      - uses: actions/checkout@v5
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-linux-android,x86_64-linux-android
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-      - uses: android-actions/setup-android@v3
-        with:
-          packages: platform-tools
-          log-accepted-android-sdk-licenses: false
-      - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.13'
-      - name: Rust Android editor through a checked JVM JNI host
-        run: |
-          cargo clippy -p meltype-native --all-targets --features android-jni-test --locked -- -D warnings
-          cargo test -p meltype-native --lib --features android-jni-test --locked
-          cargo build -p meltype-native --features android-jni-test --locked
-          python3 rust/native/tests/android_editor_smoke.py target/debug
-      - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018'
-      - run: cargo install cargo-ndk --version 4.1.2 --locked
-      - name: Build JNI libraries
-        env:
-          CARGO_NDK_PLATFORM: '26'
-        run: |
-          export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/27.2.12479018"
-          export ANDROID_NDK_ROOT="$ANDROID_NDK_HOME"
-          export ANDROID_NDK="$ANDROID_NDK_HOME"
-          cargo ndk -t arm64-v8a -t x86_64 -o android/app/src/main/jniLibs build -p meltype-native --release --locked
-      - run: gradle -p android assembleDebug assembleDebugAndroidTest lintDebug --no-daemon
-      - name: Instrumentation result gate checks
-        run: python3 android/tests/test_instrument_report.py
-      - name: Install private emulator runtime
-        run: |
-          sdkmanager 'emulator' 'system-images;android-35;google_apis;x86_64'
-          test -e /dev/kvm
-          sudo chmod a+rw /dev/kvm
-      - name: Real Android widgets and controlled InputConnection
-        timeout-minutes: 12
-        run: bash android/tests/run-emulator.sh
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: meltype-android-runtime-evidence
-          path: dist/android-emulator/
-          if-no-files-found: ignore
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: meltype-rust-android-debug
-          path: |
-            android/app/build/outputs/apk/debug/*.apk
-            android/app/build/outputs/apk/androidTest/debug/*.apk
-            android/app/build/reports/lint-results-debug.html
-            LICENSE
-            THIRD-PARTY-NOTICES.md
+    uses: ./.github/workflows/rust-android.yml
+  # PR では専用ワークフローが同じ検査を行う。手動実行でも省略しない。
+  fcitx:
+    if: github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/fcitx-rust.yml
