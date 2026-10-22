@@ -460,7 +460,7 @@ fn text_icon(enabled: bool) -> Result<Icon, String> {
     let mut rgba = image.rgba;
     // A white plate keeps the supplied black mark visible on dark taskbars.
     // The small status dot preserves the existing enabled/disabled indication.
-    for pixel in rgba.chunks_exact_mut(4) {
+    for pixel in rgba.as_chunks_mut::<4>().0 {
         let alpha = u16::from(pixel[3]);
         for channel in &mut pixel[..3] {
             *channel = ((u16::from(*channel) * alpha + 255 * (255 - alpha)) / 255) as u8;
