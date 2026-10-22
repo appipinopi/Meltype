@@ -3,8 +3,8 @@
 import {translateKey} from "./keys.mjs";
 const editable = new Set(["text", "search", "url", "email"]);
 export class ImeController {
-  constructor({ime, load, persist, report, now = () => performance.now(), incognito = false}) {
-    Object.assign(this, {ime, load, persist, report, now, incognito});
+  constructor({ime, load, persist, report, now = () => performance.now(), incognito = false, resolveMode = async () => "normal"}) {
+    Object.assign(this, {ime, load, persist, report, now, incognito, resolveMode});
     this.engine = null; this.context = null; this.generation = 0;
     this.queue = Promise.resolve(); this.core = null; this.ownedKeys = new Set();
   }
@@ -19,8 +19,24 @@ export class ImeController {
   }
   invalidate() {
     this.generation++; this.ownedKeys.clear();
+    this.refreshMode();
     this.pending = null;
     if (this.core) this.core.reset();
+  }
+  refreshMode() { this.modeTask = null; }
+  async prepareMode(core, engine, id, generation) {
+    while (this.valid(engine, id, generation)) {
+      const task = this.modeTask ??= {promise: this.resolveMode({...this.context})};
+      const mode = await task.promise;
+      if (!this.valid(engine, id, generation)) return false;
+      // A tab/permission event during lookup must not pass an unconverted letter
+      // into a live composition. Resolve the fresh policy for the same key.
+      if (this.modeTask !== task) continue;
+      // The core defers changes until composition ends; tab events never erase text.
+      core.set_code_mode?.(mode === "code");
+      return true;
+    }
+    return false;
   }
   activate(engine) { this.invalidate(); this.engine = engine; this.context = null; }
   deactivate(engine) {
@@ -136,6 +152,7 @@ export class ImeController {
             return;
           }
         }
+        if (!await this.prepareMode(core, engine, id, generation)) return;
         const result = JSON.parse(core.key(mapped.vk, mapped.character, mapped.modifiers, this.now()));
         handled = result.consumed;
         if (handled) this.ownedKeys.add(event.code);

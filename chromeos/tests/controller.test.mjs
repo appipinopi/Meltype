@@ -16,6 +16,46 @@ function fixture(loadOverride) {
   return {controller, core, ime, calls, errors, saved};
 }
 const event = {type: "keydown", key: "a", code: "KeyA"};
+
+test("site mode is cached, refreshed without resetting composition, and stale lookups never reach Core", async () => {
+  const f = fixture();
+  let queries = 0, resets = 0;
+  const modes = [];
+  f.core.reset = () => resets++;
+  f.core.set_code_mode = mode => modes.push(mode);
+  f.controller.resolveMode = async () => {queries++; return "code";};
+  for (const id of ["first", "second"]) { f.controller.key("meltype-rust", event, id); await f.controller.queue; }
+  assert.equal(queries, 1);
+  assert.deepEqual(modes, [true, true]);
+  let release, started;
+  const waiting = new Promise(resolve => {started = resolve;});
+  f.controller.resolveMode = () => {started(); return new Promise(resolve => {release = resolve;});};
+  f.controller.refreshMode();
+  f.controller.key("meltype-rust", event, "stale");
+  await waiting;
+  f.controller.resolveMode = async () => "normal";
+  f.controller.refreshMode(); release("code"); await f.controller.queue;
+  assert.deepEqual(f.calls.at(-1), ["ack", "stale", true]);
+  assert.deepEqual(modes, [true, true, false]);
+  assert.equal(resets, 0);
+  f.controller.resolveMode = async () => "normal";
+  f.controller.key("meltype-rust", event, "normal"); await f.controller.queue;
+  assert.deepEqual(modes, [true, true, false, false]);
+});
+
+test("a field change during site lookup never applies the old key or mode", async () => {
+  const f = fixture();
+  let release, started;
+  const waiting = new Promise(resolve => {started = resolve;});
+  f.controller.resolveMode = () => {started(); return new Promise(resolve => {release = resolve;});};
+  f.core.key = () => assert.fail("old key reached Core");
+  f.core.set_code_mode = () => assert.fail("old mode reached Core");
+  f.controller.key("meltype-rust", event, "old-field");
+  await waiting;
+  f.controller.focus({contextID: 8, type: "text"});
+  release("code"); await f.controller.queue;
+  assert.deepEqual(f.calls, [["ack", "old-field", false]]);
+});
 test("named/OEM/JIS keys and modifiers map to Core ABI", () => {
   assert.deepEqual(translateKey({...event, shiftKey: true, ctrlKey: true}), {vk: 65, character: 97, modifiers: 3});
   assert.equal(translateKey({key: ";", code: "Semicolon"}).vk, 186);

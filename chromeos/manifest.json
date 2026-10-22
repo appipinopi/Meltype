@@ -5,6 +5,7 @@
   "version": "0.1.1",
   "minimum_chrome_version": "119",
   "permissions": ["input", "storage"],
+  "optional_permissions": ["tabs"],
   "background": {"service_worker": "background.mjs", "type": "module"},
   "content_security_policy": {"extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"},
   "input_components": [{"name": "Meltype Rust", "id": "meltype-rust", "language": ["ja"], "layouts": ["us::eng"], "options_page": "options.html"}],
