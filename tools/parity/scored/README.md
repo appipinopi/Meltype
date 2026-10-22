@@ -1,5 +1,9 @@
 # スコア区切りの元版比較
 
+<!-- meltype-flash-document-banner:start -->
+<p align="center"><img src="../../../assets/branding/readme/documentation.svg" alt="Meltype-flash — 稲妻のように、言葉の壁を駆け抜ける日本語入力。" width="1000"></p>
+<!-- meltype-flash-document-banner:end -->
+
 `rust/core/tests/data/upstream-scored-keys.json` は、基準コミット
 `45e14f86558aa6ea34f2c2ecd038ba95ca8c3c46` の実際のC# Coreから採取した87入力です。
 元版の `ScoredSegmentationTests` の12入力と、既定入力の固定試験75入力について、

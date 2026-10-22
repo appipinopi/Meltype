@@ -1,3 +1,7 @@
+<!-- meltype-flash-document-banner:start -->
+<p align="center"><img src="../../assets/branding/readme/documentation.svg" alt="Meltype-flash — 稲妻のように、言葉の壁を駆け抜ける日本語入力。" width="1000"></p>
+<!-- meltype-flash-document-banner:end -->
+
 <a name="性能の計測"></a>
 <img src="../../docs/images/headings/performance/title.svg" alt="性能の計測" height="80">
 

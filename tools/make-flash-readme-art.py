@@ -13,6 +13,7 @@ import html
 import os
 from pathlib import Path
 import re
+import subprocess
 
 from fontTools.pens.svgPathPen import SVGPathPen
 from fontTools.pens.transformPen import TransformPen
@@ -90,6 +91,16 @@ class Art:
                 + self.bolt(913, 212, .85))
         self.save(OUT / key / "hero.svg", 1000, 300, f"Meltype-flash for {name}", body)
 
+    def document_banner(self):
+        motto = "稲妻のように、言葉の壁を駆け抜ける日本語入力。"
+        body = (f'<rect x="1" y="1" width="998" height="218" rx="24" fill="{INK}"/>'
+                f'<path d="M25 1H975Q999 1 999 25V29H1V25Q1 1 25 1Z" fill="{YELLOW}"/>'
+                + self.text("MELTYPE-FLASH / README", 40, 65, 16, "#b8bac3")
+                + self.text("Meltype-flash", 40, 127, 48, "#fff", 740)
+                + self.text(motto, 40, 178, 23, "#fff", 745)
+                + self.bolt(850, 58, 2.3))
+        self.save(OUT / "documentation.svg", 1000, 220, f"Meltype-flash — {motto}", body)
+
     def card(self, key, name, sub, detail, _, active=False):
         body = (f'<rect x="1.5" y="1.5" width="317" height="187" rx="18" fill="{"#fffbe8" if active else "#fff"}" stroke="{INK if active else "#d9dade"}" stroke-width="{3 if active else 1}"/>'
                 + self.symbol(24, 20, 46) + self.bolt(279, 22, .45)
@@ -114,6 +125,39 @@ class Art:
 
 def relative(target, document):
     return Path(os.path.relpath(target, document.parent)).as_posix()
+
+
+def document_banners(write):
+    """OS別ヘッダー以外の、Gitで管理する全READMEにも雷画像を置く。"""
+    paths = subprocess.run(
+        ['git', '-C', str(ROOT), 'ls-files', '-z', '--', '*README.md'],
+        check=True, capture_output=True).stdout.decode('utf-8').split('\0')
+    handled = {'README.md', *(p[4] for p in PLATFORMS)}
+    start = '<!-- meltype-flash-document-banner:start -->'
+    end = '<!-- meltype-flash-document-banner:end -->'
+    count = 0
+    for file in paths:
+        if not file or file in handled:
+            continue
+        document = ROOT / file
+        original = document.read_text(encoding='utf-8')
+        image = relative(OUT / 'documentation.svg', document)
+        block = (f'{start}\n<p align="center"><img src="{image}" '
+                 'alt="Meltype-flash — 稲妻のように、言葉の壁を駆け抜ける日本語入力。" '
+                 f'width="1000"></p>\n{end}')
+        if start in original:
+            text = re.sub(re.escape(start) + r'.*?' + re.escape(end),
+                          lambda _: block, original, count=1, flags=re.S)
+        else:
+            title = re.match(r'(# [^\n]+\n)', original)
+            if title:
+                text = title[1] + '\n' + block + '\n' + original[title.end():]
+            else:
+                text = block + '\n\n' + original
+        if write and text != original:
+            document.write_text(text, encoding='utf-8')
+        count += 1
+    print(f'folder READMEs: {count} banners')
 
 
 def navigation(document, current=None):
@@ -225,6 +269,7 @@ def main():
     args = parser.parse_args()
     art = Art(args.font)
     art.common_logo()
+    art.document_banner()
     for platform in PLATFORMS:
         art.hero(*platform)
         art.card(*platform)
@@ -257,6 +302,7 @@ def main():
             return tag
         text = re.sub(r'^## (?P<title>[^\n]+)$|<img src="assets/branding/readme/overview/headings/[^\"]+\.svg" alt="(?P<alt>[^"]+)"[^>]*>', root_heading, text, flags=re.M)
         document.write_text(text, encoding='utf-8')
+    document_banners(args.write_readmes)
     preview()
 
 

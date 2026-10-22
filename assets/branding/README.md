@@ -1,5 +1,9 @@
 # Meltype-flash artwork
 
+<!-- meltype-flash-document-banner:start -->
+<p align="center"><img src="readme/documentation.svg" alt="Meltype-flash — 稲妻のように、言葉の壁を駆け抜ける日本語入力。" width="1000"></p>
+<!-- meltype-flash-document-banner:end -->
+
 `meltype-flash-logo.png`（横長）と`meltype-flash-mark.png`（正方形）は、
 2026-10-22に提供された透過PNGをそのまま保存した原本です。
 
