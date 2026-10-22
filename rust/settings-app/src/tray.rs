@@ -5,7 +5,6 @@ use crate::{
     startup::Startup,
     windows_services::{self, Hotkey},
 };
-use ab_glyph::{Font, FontArc, PxScale, ScaleFont};
 use eframe::egui;
 use meltype_core::{settings::Settings, storage::Store};
 use std::sync::mpsc::{self, Receiver};
@@ -454,63 +453,40 @@ pub fn write_action(store: &Store, action: &Action) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 fn text_icon(enabled: bool) -> Result<Icon, String> {
-    let font = [
-        "C:/Windows/Fonts/YuGothB.ttc",
-        "C:/Windows/Fonts/YuGothM.ttc",
-        "C:/Windows/Fonts/meiryo.ttc",
-        "C:/Windows/Fonts/segoeui.ttf",
-    ]
-    .iter()
-    .find_map(|path| {
-        std::fs::read(path)
-            .ok()
-            .and_then(|bytes| FontArc::try_from_vec(bytes).ok())
-    })
-    .ok_or("tray icon font unavailable")?;
-    let character = if !enabled {
-        'A'
-    } else if font.glyph_id('あ').0 != 0 {
-        'あ'
+    let image = eframe::icon_data::from_png_bytes(include_bytes!(
+        "../../../assets/branding/meltype-flash-32.png"
+    ))
+    .map_err(|e| e.to_string())?;
+    let mut rgba = image.rgba;
+    // A white plate keeps the supplied black mark visible on dark taskbars.
+    // The small status dot preserves the existing enabled/disabled indication.
+    for pixel in rgba.as_chunks_mut::<4>().0 {
+        let alpha = u16::from(pixel[3]);
+        for channel in &mut pixel[..3] {
+            *channel = ((u16::from(*channel) * alpha + 255 * (255 - alpha)) / 255) as u8;
+            if !enabled {
+                *channel = (*channel / 2) + 127;
+            }
+        }
+        pixel[3] = 255;
+    }
+    let color = if enabled {
+        [0, 120, 212]
     } else {
-        'M'
+        [120, 120, 120]
     };
-    let glyph = font.as_scaled(PxScale::from(15.)).scaled_glyph(character);
-    let outline = font
-        .outline_glyph(glyph)
-        .ok_or("tray icon glyph unavailable")?;
-    let bounds = outline.px_bounds();
-    let mut rgba = vec![0_u8; 32 * 32 * 4];
-    // Upstream CreateIcon uses a 30px accent/gray circle with white text.
-    let background = if enabled {
-        [0_u8, 120, 212]
-    } else {
-        [120_u8, 120, 120]
-    };
-    for y in 0..32 {
-        for x in 0..32 {
-            let distance = ((x as f32 + 0.5 - 16.).powi(2) + (y as f32 + 0.5 - 16.).powi(2)).sqrt();
-            let alpha = ((15.5 - distance).clamp(0., 1.) * 255.) as u8;
-            let i = (y * 32 + x) * 4;
-            rgba[i..i + 3].copy_from_slice(&background);
-            rgba[i + 3] = alpha;
+    for y in 23_i32..32 {
+        for x in 23_i32..32 {
+            let distance = (x - 27).pow(2) + (y - 27).pow(2);
+            if distance <= 16 {
+                let at = (y as usize * 32 + x as usize) * 4;
+                rgba[at..at + 3].copy_from_slice(if distance <= 9 { &color } else { &[255; 3] });
+            }
         }
     }
-    let left = (32. - bounds.width()) / 2.;
-    let top = (32. - bounds.height()) / 2. + 1.;
-    outline.draw(|x, y, coverage| {
-        let x = x as usize + left.max(0.) as usize;
-        let y = y as usize + top.max(0.) as usize;
-        if x < 32 && y < 32 {
-            let i = (y * 32 + x) * 4;
-            for channel in 0..3 {
-                rgba[i + channel] =
-                    (background[channel] as f32 * (1. - coverage) + 255. * coverage) as u8;
-            }
-            rgba[i + 3] = 255;
-        }
-    });
-    Icon::from_rgba(rgba, 32, 32).map_err(|e| e.to_string())
+    Icon::from_rgba(rgba, image.width, image.height).map_err(|e| e.to_string())
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -532,7 +508,7 @@ mod tests {
         assert_eq!(merged.text("DetectionLevel"), "Conservative");
     }
     #[test]
-    fn both_tray_icon_glyphs_render_on_windows() {
+    fn both_tray_states_render_the_supplied_mark_on_windows() {
         assert!(text_icon(true).is_ok());
         assert!(text_icon(false).is_ok());
     }
