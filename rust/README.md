@@ -1,5 +1,15 @@
 # Meltype-flash 移植プレビュー
 
+## リリース本文と配布物の自動作成
+
+GitHub Actionsの **Meltype-flash release** を `rust` ブランチで実行し、`tag` に次の版（例: `flash-v0.1.0-preview.4`）を指定します。Cargoの版も対応する `0.1.0-pre.4` に更新しておく必要があります。比較元は既定の `auto` で現在版より前の最新タグを選びます。
+
+Windows・Linux・macOS（Apple Silicon / Intel）・Android・ChromeOS・iOSのビルドと検証が全て成功すると、全OSの配布ファイルを添付したリリースの**下書き**を自動作成します。既存の同じタグのリリースは上書きしません。公開は下書きの内容を確認してから行います。
+
+同じ実行のWindowsランナーで以前の版と現在版を測定し、比較条件・全ケースの表・CPUとRAMの表・箱ひげ図5枚を本文へ入れます。表と画像はGitHubのMarkdown APIで描画を検査します。測定対象はWindows上の共通Coreで、各OSの実機入力の性能を示すものではありません。
+
+画像は `release-media` ブランチへ保存し、変更されないコミットSHAのURLを本文へ埋め込みます。画像・ベンチマークZIP・レポート・生データ・重複ZIP・単独の説明書やビルド記録はリリースのAssetsへ添付しません。処理の受け渡し用CI成果物は1日保持です。
+
 <!-- meltype-flash-document-banner:start -->
 <p align="center"><img src="../assets/branding/readme/documentation.svg" alt="Meltype-flash — 稲妻のように、言葉の壁を駆け抜ける日本語入力。" width="1000"></p>
 <!-- meltype-flash-document-banner:end -->
