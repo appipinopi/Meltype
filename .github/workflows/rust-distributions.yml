@@ -36,7 +36,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ inputs.tag || 'flash-v0.1.0-preview.3' }}
         run: |
-          gh release download $env:TAG --repo appipinopi/Meltype --pattern Meltype-flash-Windows-x64.zip --pattern SHA256SUMS.txt --dir input
+          gh release download $env:TAG --repo appipinopi/Meltype-Flash --pattern Meltype-flash-Windows-x64.zip --pattern SHA256SUMS.txt --dir input
           if ($LASTEXITCODE -ne 0) { throw 'Release download failed' }
           python tools/extend-flash-release.py verify input/Meltype-flash-Windows-x64.zip input/SHA256SUMS.txt
           if ($LASTEXITCODE -ne 0) { throw 'Checksum failed' }
