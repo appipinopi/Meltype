@@ -5,7 +5,7 @@ on:
       tag:
         description: New Meltype-flash preview tag
         required: true
-        default: flash-v0.1.1-preview.1
+        default: flash-v0.1.0-preview.2
 permissions:
   contents: read
 concurrency:
@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - env:
-          TAG: ${{ inputs.tag || 'flash-v0.1.1-preview.1' }}
+          TAG: ${{ inputs.tag || 'flash-v0.1.0-preview.2' }}
         run: |
           [[ "$TAG" =~ ^flash-v[0-9]+\.[0-9]+\.[0-9]+-preview\.[0-9]+$ ]]
           test "$GITHUB_REPOSITORY" = appipinopi/Meltype
@@ -37,6 +37,15 @@ jobs:
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo test --workspace --locked
       - run: ./rust/build-windows.ps1 -WithTip
+      - name: Software OpenGL and actual tray lifecycle
+        shell: pwsh
+        run: |
+          ./tools/ci/setup-windows-opengl.ps1 -Directories target/x86_64-pc-windows-msvc/release
+      - name: Exercise normal and portable tray shutdown
+        shell: pwsh
+        run: |
+          ./rust/Test-TrayStop.ps1 -Binary target/x86_64-pc-windows-msvc/release/meltype-flash.exe
+          ./rust/Test-TrayStop.ps1 -Binary target/x86_64-pc-windows-msvc/release/meltype-flash.exe -Portable
       - name: Inspect native server and package lifecycle
         shell: pwsh
         run: |
@@ -145,7 +154,9 @@ jobs:
       - name: Publish all platforms together
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ inputs.tag || 'flash-v0.1.1-preview.1' }}
+          TAG: ${{ inputs.tag || 'flash-v0.1.0-preview.2' }}
         run: |
-          gh release create "$TAG" release-assets/* --target "$GITHUB_SHA" --title "Meltype-flash $TAG" --notes-file rust/RELEASE-NOTES.md --prerelease --draft
+          [[ "$TAG" =~ ^flash-v([0-9]+\.[0-9]+\.[0-9]+)-preview\.([0-9]+)$ ]]
+          TITLE="Meltype-flash v${BASH_REMATCH[1]} Pre${BASH_REMATCH[2]}"
+          gh release create "$TAG" release-assets/* --target "$GITHUB_SHA" --title "$TITLE" --notes-file rust/RELEASE-NOTES.md --prerelease --draft
           gh release edit "$TAG" --draft=false
