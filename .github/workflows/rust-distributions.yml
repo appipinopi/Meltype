@@ -19,7 +19,14 @@ concurrency:
   group: flash-distributions-${{ github.ref }}
   cancel-in-progress: false
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          TAG: ${{ inputs.tag || 'flash-v0.1.0-preview.2' }}
+        run: test "$TAG" = flash-v0.1.0-preview.2
   windows:
+    needs: validate
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v5
@@ -79,6 +86,7 @@ jobs:
           path: dist/*
           if-no-files-found: error
   linux:
+    needs: validate
     strategy:
       fail-fast: false
       matrix:
@@ -122,6 +130,7 @@ jobs:
           path: dist/*
           if-no-files-found: error
   ios:
+    needs: validate
     runs-on: macos-15
     timeout-minutes: 45
     steps:

@@ -31,6 +31,8 @@ cargo run -p meltype-settings -- --tray
 
 ## 配布
 
+各OSのセットアップ・ZIP・debなどの選び方は [配布ファイルの案内](rust/DOWNLOADS.md) を参照してください。
+
 最新のプレリリースは [v0.1.0 Pre2](https://github.com/appipinopi/Meltype/releases/tag/flash-v0.1.0-preview.2) です。既存の `rust-v0.1.0-preview.1` は改名前のRustプレビューです。
 新しい配布は `Meltype-flash-*` という名前で、専用のFlashリリースワークフローから作成します。
 参照元のC#版インストーラーをFlashのダウンロードとして案内しません。
