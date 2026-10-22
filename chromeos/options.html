@@ -8,13 +8,28 @@
   <p>chrome.input.ime を使う試験版です。ChromeOSの設定 → 言語と入力 → 入力方法で「Meltype Rust」を追加して選択してください。</p>
   <p id="status" role="status" aria-live="polite">起動状態を確認中…</p>
   <p>共通Coreの変換・判定・辞書を使います。OS辞書、確定後の削除・Undo、カーソル移動、全画面の互換性は未対応です。物理JIS配列は実機未確認です。</p>
-  <form id="settings-form">
-    <h2>設定</h2>
-    <label for="settings">Core設定（JSON。元版の設定名と未知の項目を保持します）</label>
+  <form id="site-form">
+    <h2>入力モード</h2>
+    <label for="default-mode">通常使うモード</label>
+    <select id="default-mode"><option value="normal">通常入力（日英の自動判定）</option><option value="code">コード入力（英数字をそのまま入力）</option></select>
+    <p>コード入力では識別子や記号をそのまま入力します。周辺テキストを取得できるエディターでは、コメント・文字列の中で日本語入力を使えます。</p>
+    <label class="check"><input type="checkbox" id="site-enabled"> サイトごとの自動切替を使う</label>
+    <p class="help">有効にするとChromeにタブの参照許可を求めます。現在のサイトを判定するためにURLを参照し、閲覧履歴・URL・ページ内容は記録しません。下のホスト名と設定だけを端末に保存します。</p>
+    <p>アプリ別設定の代わりにサイトを登録できます。サブドメインにも適用し、より具体的なサイトの設定を優先します。アドレス欄やシークレットではサイト別設定を適用しません。</p>
+    <div id="site-rules" aria-label="サイトごとの入力モード"></div>
+    <button type="button" id="site-add">サイトを追加</button>
+    <button type="submit">入力モードを保存</button>
+    <p id="site-status" role="status" aria-live="polite"></p>
+  </form>
+  <details>
+    <summary>詳細設定（Core JSON）</summary>
+    <form id="settings-form">
+    <label for="settings">変換・判定の共通設定（デスクトップのアプリ別項目は表示しません）</label>
     <textarea id="settings" rows="24" spellcheck="false"></textarea>
     <button type="submit">設定を保存</button>
     <button type="button" id="reload">保存済み設定へ戻す</button>
   </form>
+  </details>
   <h2>学習とデータ</h2>
   <p>設定・学習・ユーザー辞書はこの端末の拡張機能ストレージに保存します。未確定文字列は保存しません。Chrome Syncやサーバーへ送信しません。</p>
   <button id="export" type="button">設定・学習・辞書をJSONで書き出す</button>

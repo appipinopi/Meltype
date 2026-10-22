@@ -6,6 +6,41 @@ import {initSync, BrowserSession} from "../pkg/meltype_browser.js";
 initSync({module: readFileSync(new URL("../pkg/meltype_browser_bg.wasm", import.meta.url))});
 const key = (s, vk, c = 0, mods = 0) => JSON.parse(s.key(vk, typeof c === "string" ? c.codePointAt(0) : c, mods, 100));
 const type = (s, text) => { for (const c of text) key(s, c.toUpperCase().charCodeAt(0), c); };
+
+test("website code mode passes source through and permits Japanese in comments and strings", () => {
+  const s = new BrowserSession("");
+  assert.equal(s.set_code_mode(true), true);
+  for (const c of "const answer = 42;") {
+    const result = key(s, c.toUpperCase().charCodeAt(0), c);
+    assert.equal(result.consumed, false, c);
+    assert.deepEqual(result.commits, []);
+    assert.equal(result.view, null);
+  }
+  for (const before of ["// ", 'const message = "']) {
+    s.focus(false); s.context(before, "");
+    for (const c of "nihongo") assert.equal(key(s, c.toUpperCase().charCodeAt(0), c).consumed, true);
+    assert.equal(JSON.parse(s.view()).view.text, "にほんご");
+    assert.equal(key(s, 13).commits[0].text, "にほんご");
+  }
+  s.focus(false);
+  assert.equal(s.set_code_mode(false), true);
+  assert.equal(key(s, 65, "a").view.text, "あ");
+  s.free();
+});
+
+test("website mode changes wait for composition and are never saved in the Core snapshot", () => {
+  const s = new BrowserSession("");
+  type(s, "nihongo");
+  const before = s.view();
+  assert.equal(s.set_code_mode(true), false);
+  assert.equal(s.view(), before);
+  assert.equal(key(s, 13).commits[0].text, "にほんご");
+  assert.equal(s.set_code_mode(true), true);
+  assert.equal(key(s, 65, "a").consumed, false);
+  const restored = new BrowserSession(s.snapshot());
+  assert.equal(key(restored, 65, "a").view.text, "あ");
+  s.free(); restored.free();
+});
 test("real WASM shares composition, FST candidates, selection and durable learning", () => {
   const s = new BrowserSession("");
   type(s, "hashi");

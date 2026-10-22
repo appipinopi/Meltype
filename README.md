@@ -9,6 +9,7 @@ Meltypeを参照して開発している、Rust版の日本語入力です。製
 - [本家との共存・専用IME登録ID](rust/BRANDING.md)
 - [上流の安全な取り込み](rust/UPSTREAM-SYNC.md)
 - [画面の再現状況](rust/UI-V0.1.1.md)
+- [ChromeOS試験版・サイトごとのコード入力](chromeos/README.md)
 
 ## 起動
 

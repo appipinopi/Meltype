@@ -21,6 +21,12 @@ test("real service-worker module exposes an actionable status when IME API is ab
   });
   assert.equal(reply.available, false);
   assert(reply.diagnostic.includes("chrome.input.ime"));
+  const sender = {id: chrome.runtime.id, url: chrome.runtime.getURL("options.html")};
+  const preferences = await new Promise(resolve => message({op: "site_preferences"}, sender, resolve));
+  assert.equal(preferences.preferences.enabled, false);
+  const saved = await new Promise(resolve => message({op: "save_site_preferences", preferences: {...preferences.preferences, defaultMode: "code"}}, sender, resolve));
+  assert.equal(saved.preferences.defaultMode, "code");
+  assert.equal(message({op: "save_site_preferences", preferences: saved.preferences}, {id: chrome.runtime.id, url: "https://vscode.dev/"}, () => assert.fail()), false);
 });
 test("real service-worker listeners register before hydration and route keys into actual WASM", {timeout: 10000}, async () => {
   globalThis.chrome = baseChrome();
@@ -31,8 +37,14 @@ test("real service-worker listeners register before hydration and route keys int
   for (const name of ["setComposition", "clearComposition", "commitText", "setCandidates",
     "setCandidateWindowProperties", "setCursorPosition"]) ime[name] = async args => {calls.push([name, args]); return true;};
   chrome.input = {ime};
-  let reads = 0;
-  chrome.storage.local.get = async () => {reads++; return {};};
+  chrome.permissions = {contains: async () => true, onAdded: event(), onRemoved: event()};
+  chrome.windows = {getLastFocused: async () => ({id: 1, focused: true, type: "normal"}), onFocusChanged: event()};
+  let activeUrl = "https://vscode.dev/project";
+  chrome.tabs = {query: async () => [{active: true, url: activeUrl}], onActivated: event(), onUpdated: event(), onRemoved: event()};
+  const reads = [];
+  const stored = {};
+  chrome.storage.local.get = async key => {reads.push(key); return {[key]: stored[key]};};
+  chrome.storage.local.set = async value => {Object.assign(stored, value);};
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async url => {
     assert.equal(url, chrome.runtime.getURL("pkg/meltype_browser_bg.wasm"));
@@ -40,7 +52,7 @@ test("real service-worker listeners register before hydration and route keys int
   };
   try {
     await import("../background.mjs?available");
-    assert.equal(reads, 0);
+    assert.deepEqual(reads, []);
     assert.equal(ime.onKeyEvent.listeners.length, 1);
     ime.onActivate.listeners[0]("meltype-rust");
     ime.onFocus.listeners[0]({contextID: 5, type: "text", shouldDoLearning: false});
@@ -48,7 +60,7 @@ test("real service-worker listeners register before hydration and route keys int
     const result = ime.onKeyEvent.listeners[0]("meltype-rust", {type: "keydown", key: "a", code: "KeyA"}, "first-key");
     assert.equal(result, undefined);
     assert.deepEqual(await acknowledged, {id: "first-key", handled: true});
-    assert.equal(reads, 1);
+    assert.deepEqual(reads, ["snapshot", "sitePreferences"]);
     assert.equal(calls.find(([name]) => name === "setComposition")[1].text, "あ");
     // Legacy ChromeOS places requestId in keyData, with no third argument.
     // Exercise the complete real-WASM -> candidate window -> commit route.
@@ -70,6 +82,24 @@ test("real service-worker listeners register before hydration and route keys int
     const committed = new Promise(resolve => {ime.commitText = async args => {resolve(args); return true;};});
     ime.onCandidateClicked.listeners[0]("meltype-rust", chopsticks.id, "left");
     assert.deepEqual(await committed, {contextID: 5, text: "箸"});
-
+    const message = chrome.runtime.onMessage.listeners[0];
+    const send = data => new Promise(resolve => message(data, {id: chrome.runtime.id, url: chrome.runtime.getURL("options.html")}, resolve));
+    const {preferences} = await send({op: "site_preferences"});
+    assert.equal((await send({op: "save_site_preferences", preferences: {...preferences, enabled: true}})).preferences.enabled, true);
+    ime.onReset.listeners[0]("meltype-rust");
+    const codeAck = new Promise(resolve => {ime.keyEventHandled = (id, handled) => resolve({id, handled});});
+    ime.onKeyEvent.listeners[0]("meltype-rust", {type: "keydown", key: "a", code: "KeyA"}, "code");
+    assert.deepEqual(await codeAck, {id: "code", handled: false});
+    ime.onSurroundingTextChanged.listeners[0]("meltype-rust", {text: "// ", focus: 3, anchor: 3});
+    for (const [index, character] of [..."nihongo"].entries()) await legacyKey(character, `Key${character.toUpperCase()}`, `comment-${index}`);
+    assert.equal(calls.filter(([name]) => name === "setComposition").at(-1)[1].text, "にほんご");
+    // Tab updates refresh policy without clearing the existing composition.
+    activeUrl = "https://example.com/";
+    chrome.tabs.onUpdated.listeners[0](1, {url: activeUrl});
+    await legacyKey("Enter", "Enter", "comment-confirm");
+    assert.equal(calls.filter(([name]) => name === "setComposition").at(-1)[1].text, "にほんご");
+    ime.onReset.listeners[0]("meltype-rust");
+    await legacyKey("a", "KeyA", "normal-after-navigation");
+    assert.equal(calls.filter(([name]) => name === "setComposition").at(-1)[1].text, "あ");
   } finally { globalThis.fetch = originalFetch; }
 });
