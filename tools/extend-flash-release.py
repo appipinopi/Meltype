@@ -10,7 +10,7 @@ import subprocess
 import sys
 import tempfile
 
-REPO = 'appipinopi/Meltype'
+REPO = 'appipinopi/Meltype-Flash'
 
 
 def verify(path, checksums):
