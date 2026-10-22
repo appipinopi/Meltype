@@ -49,6 +49,7 @@ class DistributionTests(unittest.TestCase):
                 linux.package(bundle, output, '0.1.0-pre.2', 'amd64')
             self.assertFalse(output.exists())
             def inspect_deb(command, check):
+                self.assertEqual(Path(command[-1]).name, 'meltype-flash_0.1.0-pre.2_arm64.deb')
                 root = Path(command[-2])
                 control = (root / 'DEBIAN/control').read_text()
                 self.assertIn('Package: meltype-flash\n', control)

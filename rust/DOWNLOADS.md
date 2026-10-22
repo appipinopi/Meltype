@@ -10,8 +10,8 @@
 | `Meltype-flash-Windows.zip` / `Meltype-flash-Windows-x64.zip` | Windows向け。PowerShellで導入・更新するための従来の一式。同じ内容です。 |
 | `Meltype-flash-Linux-x64.zip` | Linux x64向け。展開後 `sudo bash install.sh --system` で導入します。 |
 | `Meltype-flash-Linux-arm64.zip` | Linux ARM64向け。同じ手順で導入します。 |
-| `meltype-flash_0.1.0~pre.2_amd64.deb` | Ubuntu 24.04以降のx64向け。`sudo apt install ./meltype-flash_0.1.0~pre.2_amd64.deb` で導入します。 |
-| `meltype-flash_0.1.0~pre.2_arm64.deb` | Ubuntu 24.04以降のARM64向け。`sudo apt install ./meltype-flash_0.1.0~pre.2_arm64.deb` で導入します。 |
+| `meltype-flash_0.1.0-pre.2_amd64.deb` | Ubuntu 24.04以降のx64向け。`sudo apt install ./meltype-flash_0.1.0-pre.2_amd64.deb` で導入します。 |
+| `meltype-flash_0.1.0-pre.2_arm64.deb` | Ubuntu 24.04以降のARM64向け。`sudo apt install ./meltype-flash_0.1.0-pre.2_arm64.deb` で導入します。 |
 | `Meltype-flash-macOS-arm64.zip` | Apple Silicon Mac向け。 |
 | `Meltype-flash-macOS-x64.zip` | Intel Mac向け。 |
 | `Meltype-flash-Android-debug.apk` | Android試験版。デバッグ署名です。 |

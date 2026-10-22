@@ -69,7 +69,7 @@ def package(bundle, output, version, arch):
                               '  ibus write-cache --system >/dev/null 2>&1 || true\nfi\nexit 0\n', encoding='utf-8')
             script.chmod(0o755)
         subprocess.run(['dpkg-deb', '--root-owner-group', '-Zxz', '--build', str(root),
-                        str(output.resolve() / f'meltype-flash_{deb_version}_{arch}.deb')], check=True)
+                        str(output.resolve() / f'meltype-flash_{version}_{arch}.deb')], check=True)
 
 
 if __name__ == '__main__':
