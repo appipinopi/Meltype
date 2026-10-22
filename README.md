@@ -19,7 +19,7 @@ Windows・Mac・Linux・Android・ChromeOS・iOSで共通の入力コアを使�
 </p>
 
 <a id="できること"></a>
-<h2><img src="assets/branding/readme/overview/headings/68c041a95cee.svg" alt="できること" width="1000"></h2>
+<h2><img src="assets/branding/readme/overview/headings/a331281f2141.svg" alt="できること" width="1000"></h2>
 
 - **日本語と英語を混ぜて入力**：共通Coreがローマ字・かなと英単語を判定します。
 - **変換して、候補を選ぶ**：かな・漢字候補、字種切替、予測などを各環境の入力方法へ接続しています。候補の内容は同梱辞書や接続先の変換エンジンで変わります。
@@ -35,7 +35,7 @@ Windows・Mac・Linux・Android・ChromeOS・iOSで共通の入力コアを使�
 | 英単語を含む文を入力 | 英語のまま残したい語を確認し、必要なら字種を切り替える |
 
 <a id="インストール"></a>
-<h2><img src="assets/branding/readme/overview/headings/d95bee28d794.svg" alt="インストール" width="1000"></h2>
+<h2><img src="assets/branding/readme/overview/headings/6fb33e8c98c4.svg" alt="インストール" width="1000"></h2>
 
 **カードを押すと、各環境の「動く環境・インストール・使い方・困ったとき」が開きます。**
 
@@ -66,7 +66,7 @@ ZIP・APK・IPAは互換ではありません。本家のC#版の配布ファイ
 | iOS | 未署名IPAを自分で署名、またはXcodeでビルドしてキーボードを追加。 |
 
 <a id="使い始める"></a>
-<h2><img src="assets/branding/readme/overview/headings/20cb5f03c127.svg" alt="使い始める" width="1000"></h2>
+<h2><img src="assets/branding/readme/overview/headings/f02cecb06ef8.svg" alt="使い始める" width="1000"></h2>
 
 インストール後は、そのOSの入力方法としてMeltype-flashを選びます。設定画面だけを起動しても、IMEの登録やOS側の切替は完了しません。
 
@@ -78,7 +78,7 @@ ZIP・APK・IPAは互換ではありません。本家のC#版の配布ファイ
 iOSでは未確定文字をキーボード内に表示し、確定後に入力欄へ送ります。Windowsのポータブル入力も、登録したIMEとは対応範囲が異なります。
 
 <a id="よくある質問"></a>
-<h2><img src="assets/branding/readme/overview/headings/aac36ecc7cb2.svg" alt="よくある質問" width="1000"></h2>
+<h2><img src="assets/branding/readme/overview/headings/67c5c49ab38b.svg" alt="よくある質問" width="1000"></h2>
 
 <details>
 <summary>本家Meltypeと何が違いますか？</summary>
@@ -105,14 +105,14 @@ OSごとの登録と入力方法の選択が必要です。Macの `Meltype.app` 
 </details>
 
 <a id="プライバシー"></a>
-<h2><img src="assets/branding/readme/overview/headings/fd55785d8031.svg" alt="プライバシー" width="1000"></h2>
+<h2><img src="assets/branding/readme/overview/headings/733cbe4ad684.svg" alt="プライバシー" width="1000"></h2>
 
-入力と変換の基本処理は端末内で行います。デスクトップやAndroidでは設定・学習・辞書を保存し、ChromeOSでは拡張機能のローカルストレージを使います。iOSプレビューでは学習・設定の永続保存は無効です。
+入力と変換の基本処理は端末内で行います。通常のデスクトップ入力やAndroidでは設定・学習・辞書を保存します。Windowsのポータブル入力は学習の永続保存に対応していません。ChromeOSでは拡張機能のローカルストレージを使います。iOSプレビューでは学習・設定の永続保存は無効です。
 自動更新・不具合報告・サイト別切替に必要な権限などは、各環境のREADMEで説明しています。
 セキュリティ連絡は [SECURITY.md](SECURITY.md) を参照してください。
 
 <a id="開発者向け"></a>
-<h2><img src="assets/branding/readme/overview/headings/03db5f43cd99.svg" alt="開発者向け" width="1000"></h2>
+<h2><img src="assets/branding/readme/overview/headings/1a30f6f268b2.svg" alt="開発者向け" width="1000"></h2>
 
 Rust 1.88以上。WindowsはMSVC Build Tools、MacはXcode、LinuxはIBusなどの開発用ライブラリが必要です。
 リポジトリのルートから、共通CoreとWindows設定画面を次のように確認できます。
@@ -132,7 +132,7 @@ Windowsの起動先は **meltype-flash.exe** です。各OSのビルドは、各
 - [貢献の手順](CONTRIBUTING.md)
 
 <a id="ライセンス協力"></a>
-<h2><img src="assets/branding/readme/overview/headings/a6c6363716e3.svg" alt="ライセンス・協力" width="1000"></h2>
+<h2><img src="assets/branding/readme/overview/headings/e30b57a30d65.svg" alt="ライセンス・協力" width="1000"></h2>
 
 [GPL-3.0-or-later](LICENSE)。著作権表示・第三者ライセンスは [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) を参照してください。
 元のMeltypeと、その開発・辞書・検証に協力された方々に感謝します。[本家のREADME](https://github.com/yksr-melt/Meltype#readme) で本家の協力者と活動を確認できます。

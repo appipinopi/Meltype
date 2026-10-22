@@ -22,7 +22,7 @@ Linuxの入力ソースとして使うRust版Meltype-flashです。**公開プ�
 fcitx5アダプターのソースと試験はありますが、公開IBusパッケージにfcitx5版は同梱していません。
 
 <a id="内容"></a>
-<h2><img src="../assets/branding/readme/linux/headings/7a688306423b.svg" alt="内容" width="1000"></h2>
+<h2><img src="../assets/branding/readme/linux/headings/df8764ebcf5d.svg" alt="内容" width="1000"></h2>
 
 ローマ字・かな入力、英語・日本語の判定、補助辞書による漢字候補、確定、設定・学習・辞書保存を共通Coreへ接続しています。
 公開版にはMozcヘルパーを同梱していないため、辞書の規模や変換結果には制限があります。
@@ -30,7 +30,7 @@ fcitx5アダプターのソースと試験はありますが、公開IBusパッ�
 [動く環境](#動く環境) · [インストール](#インストール) · [使い方](#使い方) · [困ったとき](#困ったとき) · [アンインストール](#アンインストール) · [開発者向け](#開発者向け)
 
 <a id="動く環境"></a>
-<h2><img src="../assets/branding/readme/linux/headings/53a51e559889.svg" alt="動く環境" width="1000"></h2>
+<h2><img src="../assets/branding/readme/linux/headings/f378dd1f4672.svg" alt="動く環境" width="1000"></h2>
 
 - Ubuntu 24.04以降向けに作成したx64 / ARM64パッケージ。
 - IBusを使用するデスクトップ環境。GNOMEの「日本語入力」などへ追加します。
@@ -40,10 +40,10 @@ fcitx5アダプターのソースと試験はありますが、公開IBusパッ�
 fcitx5を使う環境は、下記のソースビルドと開発状況を参照してください。
 
 <a id="インストール"></a>
-<h2><img src="../assets/branding/readme/linux/headings/d95bee28d794.svg" alt="インストール" width="1000"></h2>
+<h2><img src="../assets/branding/readme/linux/headings/4f36b3b314d8.svg" alt="インストール" width="1000"></h2>
 
 <a id="ubuntu向けdeb"></a>
-<h3><img src="../assets/branding/readme/linux/headings/cc787ef749d3.svg" alt="Ubuntu向けdeb" width="1000"></h3>
+<h3><img src="../assets/branding/readme/linux/headings/a3beabf6efc7.svg" alt="Ubuntu向けdeb" width="1000"></h3>
 
 [FlashのPre2](https://github.com/appipinopi/Meltype/releases/tag/flash-v0.1.0-preview.2) からCPUに合うdebを取得し、そのファイルがあるフォルダーで実行します。
 
@@ -55,7 +55,7 @@ sudo apt install ./meltype-flash_0.1.0-pre.2_amd64.deb
 ```
 
 <a id="zipから入れる"></a>
-<h3><img src="../assets/branding/readme/linux/headings/c90757242f41.svg" alt="ZIPから入れる" width="1000"></h3>
+<h3><img src="../assets/branding/readme/linux/headings/49219135210e.svg" alt="ZIPから入れる" width="1000"></h3>
 
 `Meltype-flash-Linux-x64.zip` または `Meltype-flash-Linux-arm64.zip` を**全体展開**し、`install.sh` のあるフォルダーで実行します。
 
@@ -68,7 +68,7 @@ ZIP用インストーラーはIBusを自動再起動したり、既定の入力�
 debとZIPの管理方法を混ぜず、どちらで導入したか記録してください。
 
 <a id="使い方"></a>
-<h2><img src="../assets/branding/readme/linux/headings/17c9e4160d4f.svg" alt="使い方" width="1000"></h2>
+<h2><img src="../assets/branding/readme/linux/headings/23ca31abc8fa.svg" alt="使い方" width="1000"></h2>
 
 入力ソースをMeltype-flashへ切り替え、テキスト欄にローマ字を入力します。
 
@@ -86,13 +86,13 @@ debとZIPの管理方法を混ぜず、どちらで導入したか記録して�
 アプリ別設定は [専用の案内](../rust/APP-RULES.md) を参照してください。IBusがアプリ名を渡さない経路では、自動切替を行いません。
 
 <a id="プライバシー"></a>
-<h2><img src="../assets/branding/readme/linux/headings/fd55785d8031.svg" alt="プライバシー" width="1000"></h2>
+<h2><img src="../assets/branding/readme/linux/headings/8e97c515b5c1.svg" alt="プライバシー" width="1000"></h2>
 
 共通Coreのデータは `${XDG_DATA_HOME:-~/.local/share}/Meltype-flash` に保存します。`MELTYPE_FLASH_DATA_DIR` で明示した保存先はそちらを優先します。
 通常の変換はローカルで処理します。設定・学習・辞書のバックアップには個人の語句が含まれる場合があります。
 
 <a id="困ったとき"></a>
-<h2><img src="../assets/branding/readme/linux/headings/8a43843d6479.svg" alt="困ったとき" width="1000"></h2>
+<h2><img src="../assets/branding/readme/linux/headings/eb24f202926d.svg" alt="困ったとき" width="1000"></h2>
 
 <details>
 <summary>入力ソースに出てこない</summary>
@@ -112,7 +112,7 @@ debとZIPの管理方法を混ぜず、どちらで導入したか記録して�
 </details>
 
 <a id="アンインストール"></a>
-<h2><img src="../assets/branding/readme/linux/headings/0612e88f2939.svg" alt="アンインストール" width="1000"></h2>
+<h2><img src="../assets/branding/readme/linux/headings/0ccba09763e7.svg" alt="アンインストール" width="1000"></h2>
 
 先にOSの入力ソースを別のものへ切り替え、Meltype-flashを入力ソース一覧から外します。
 
@@ -131,10 +131,10 @@ sudo bash /usr/libexec/meltype-flash/ibus/install.sh --system --uninstall
 個人の設定・学習は残ります。必要なデータを保存してから、削除するか判断してください。
 
 <a id="開発者向け"></a>
-<h2><img src="../assets/branding/readme/linux/headings/03db5f43cd99.svg" alt="開発者向け" width="1000"></h2>
+<h2><img src="../assets/branding/readme/linux/headings/2e75e45b5878.svg" alt="開発者向け" width="1000"></h2>
 
 <a id="ソースからビルドする"></a>
-<h3><img src="../assets/branding/readme/linux/headings/6bb169c5a5e1.svg" alt="ソースからビルドする" width="1000"></h3>
+<h3><img src="../assets/branding/readme/linux/headings/7d54fb5c85d4.svg" alt="ソースからビルドする" width="1000"></h3>
 
 Rust 1.88以上、Cリンカー、IBus / GLibの開発用パッケージが必要です。リポジトリのルートで実行します。
 
@@ -149,6 +149,6 @@ fcitx5のRustアダプターは `linux/fcitx5` にあり、必要な開発用ラ
 本家向けの `linux/build.sh` / `linux/install.sh` とFlashの上記スクリプトを取り違えないでください。
 
 <a id="ライセンス"></a>
-<h2><img src="../assets/branding/readme/linux/headings/f52c3ba0fc99.svg" alt="ライセンス" width="1000"></h2>
+<h2><img src="../assets/branding/readme/linux/headings/c9f99e4fd56f.svg" alt="ライセンス" width="1000"></h2>
 
 [GPL-3.0-or-later](../LICENSE)。辞書と依存ライブラリのライセンスは [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md) を参照してください。

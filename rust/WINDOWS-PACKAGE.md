@@ -22,7 +22,7 @@ Windowsの入力欄に直接入力するRust版IMEと、登録不要のポータ
 **開発プレビューです。Windowsへの登録と、各アプリでの実入力の検証は別に扱っています。**
 
 <a id="内容"></a>
-<h2><img src="../assets/branding/readme/windows/headings/7a688306423b.svg" alt="内容" width="1000"></h2>
+<h2><img src="../assets/branding/readme/windows/headings/df8764ebcf5d.svg" alt="内容" width="1000"></h2>
 
 - `meltype-flash.exe`：設定画面・管理トレイ。
 - `MeltypeTip.dll` と `meltype-tip-worker.exe`：Windows TSF用IME。64bit用と32bitアプリ用を同梱します。
@@ -32,7 +32,7 @@ Windowsの入力欄に直接入力するRust版IMEと、登録不要のポータ
 [動く環境](#動く環境) · [インストール](#インストール) · [使い方](#使い方) · [困ったとき](#困ったとき) · [アンインストール](#アンインストール) · [開発者向け](#開発者向け)
 
 <a id="動く環境"></a>
-<h2><img src="../assets/branding/readme/windows/headings/53a51e559889.svg" alt="動く環境" width="1000"></h2>
+<h2><img src="../assets/branding/readme/windows/headings/f378dd1f4672.svg" alt="動く環境" width="1000"></h2>
 
 - Windows 10 / 11 x64。32bitアプリ用のTIP / workerも同梱します。
 - IMEを登録する場合は管理者権限。
@@ -42,10 +42,10 @@ Windows ARM64向けのネイティブ配布を案内するものではありま�
 本家C#版とは専用の登録ID・実行ファイル名・データ保存先を使います。[共存方針](BRANDING.md) を参照してください。
 
 <a id="インストール"></a>
-<h2><img src="../assets/branding/readme/windows/headings/d95bee28d794.svg" alt="インストール" width="1000"></h2>
+<h2><img src="../assets/branding/readme/windows/headings/4f36b3b314d8.svg" alt="インストール" width="1000"></h2>
 
 <a id="セットアップ版"></a>
-<h3><img src="../assets/branding/readme/windows/headings/bceb18e73600.svg" alt="セットアップ版" width="1000"></h3>
+<h3><img src="../assets/branding/readme/windows/headings/f361bd6b29a2.svg" alt="セットアップ版" width="1000"></h3>
 
 1. [FlashのPre2](https://github.com/appipinopi/Meltype/releases/tag/flash-v0.1.0-preview.2) から `Meltype-flash-0.1.0-pre.2-setup.exe` を取得します。
 2. 起動してウィザードを進めます。IME登録には管理者権限の確認が出ます。
@@ -54,7 +54,7 @@ Windows ARM64向けのネイティブ配布を案内するものではありま�
 警告やセキュリティ製品の検出が出た場合は、配布元・ファイル名・チェックサムを確認し、保護機能の無効化を前提に進めないでください。
 
 <a id="zipから登録する"></a>
-<h3><img src="../assets/branding/readme/windows/headings/ca0190c7e7cd.svg" alt="ZIPから登録する" width="1000"></h3>
+<h3><img src="../assets/branding/readme/windows/headings/b7962eec4c15.svg" alt="ZIPから登録する" width="1000"></h3>
 
 `Meltype-flash-Windows-x64.zip`（`Meltype-flash-Windows.zip` も同じ一式）を全体展開します。
 管理者PowerShellで、そのフォルダーから実行します。
@@ -68,7 +68,7 @@ Windows ARM64向けのネイティブ配布を案内するものではありま�
 本家のCOM登録を置き換えるための `-ReplaceExisting` を通常のFlash導入で指定する必要はありません。
 
 <a id="登録不要で試す"></a>
-<h3><img src="../assets/branding/readme/windows/headings/fd59aff1d3d6.svg" alt="登録不要で試す" width="1000"></h3>
+<h3><img src="../assets/branding/readme/windows/headings/c0cbccf1a1d5.svg" alt="登録不要で試す" width="1000"></h3>
 
 `Meltype-flash-Windows-portable.zip` を全体展開し、`Start-Portable.cmd` を起動します。
 ZIPの構成によっては、PowerShellから次を使います。
@@ -82,10 +82,10 @@ ZIPの構成によっては、PowerShellから次を使います。
 登録不要のバッファ入力です。OS側のIMEは英数入力へ切り替え、ほかの日本語入力と同時に処理しない状態で試してください。
 
 <a id="使い方"></a>
-<h2><img src="../assets/branding/readme/windows/headings/17c9e4160d4f.svg" alt="使い方" width="1000"></h2>
+<h2><img src="../assets/branding/readme/windows/headings/504586dee137.svg" alt="使い方" width="1000"></h2>
 
 <a id="登録したime"></a>
-<h3><img src="../assets/branding/readme/windows/headings/ce9d0c30afe1.svg" alt="登録したIME" width="1000"></h3>
+<h3><img src="../assets/branding/readme/windows/headings/1d7ca330ed92.svg" alt="登録したIME" width="1000"></h3>
 
 Win + Spaceで入力方法を選んでからテキスト欄へ入力します。設定・トレイの起動だけでは、OSの入力方法は切り替わりません。
 
@@ -100,7 +100,7 @@ Win + Spaceで入力方法を選んでからテキスト欄へ入力します。
 設定アプリの入力テストでは、通常の外部アプリへのIME登録と分けてCoreの動作を確認できます。
 
 <a id="ポータブル入力"></a>
-<h3><img src="../assets/branding/readme/windows/headings/63c296e519d7.svg" alt="ポータブル入力" width="1000"></h3>
+<h3><img src="../assets/branding/readme/windows/headings/c5082295d280.svg" alt="ポータブル入力" width="1000"></h3>
 
 Ctrl + Alt + Jで入力をON / OFFにします。未確定文字と候補は別ウィンドウに表示し、確定時に文字を送ります。
 通常のUI Automation対応入力欄が対象で、パスワード・読取専用・判別できない入力欄、管理者アプリへの入力は対象外です。
@@ -108,14 +108,14 @@ Ctrl + Alt + Jで入力をON / OFFにします。未確定文字と候補は別�
 OS辞書・ライブ変換・確定後訂正・学習の永続保存など、登録したIMEと同じ機能は保証しません。
 
 <a id="プライバシー"></a>
-<h2><img src="../assets/branding/readme/windows/headings/fd55785d8031.svg" alt="プライバシー" width="1000"></h2>
+<h2><img src="../assets/branding/readme/windows/headings/3f227be2ff9a.svg" alt="プライバシー" width="1000"></h2>
 
 登録したIMEの既定データは `%LOCALAPPDATA%\Meltype-flash`、ポータブル起動は展開先の `data` を使います。
 通常の入力と変換は端末内で処理します。更新確認・更新ファイルの取得や、自分で開く不具合報告は通信を伴います。
 本家の個人データを自動で取り込む前提にはしていません。
 
 <a id="困ったとき"></a>
-<h2><img src="../assets/branding/readme/windows/headings/8a43843d6479.svg" alt="困ったとき" width="1000"></h2>
+<h2><img src="../assets/branding/readme/windows/headings/ecff8916cc2a.svg" alt="困ったとき" width="1000"></h2>
 
 <details>
 <summary>設定画面は開くのに入力できない</summary>
@@ -143,7 +143,7 @@ TSF版とポータブル入力では対応する入力欄が異なります。�
 </details>
 
 <a id="アンインストール"></a>
-<h2><img src="../assets/branding/readme/windows/headings/0612e88f2939.svg" alt="アンインストール" width="1000"></h2>
+<h2><img src="../assets/branding/readme/windows/headings/0f0d9bc7afc2.svg" alt="アンインストール" width="1000"></h2>
 
 先にWin + Spaceで別の入力方法へ切り替え、Flashのトレイと設定画面を終了します。
 セットアップ版はWindowsの「インストールされているアプリ」から削除します。
@@ -157,7 +157,7 @@ TSF版とポータブル入力では対応する入力欄が異なります。�
 ポータブル版は終了後、展開フォルダーを削除します。個人データの扱いは導入形式で異なるため、必要な設定・辞書を先に保存してください。
 
 <a id="開発者向け"></a>
-<h2><img src="../assets/branding/readme/windows/headings/03db5f43cd99.svg" alt="開発者向け" width="1000"></h2>
+<h2><img src="../assets/branding/readme/windows/headings/f4832b647e65.svg" alt="開発者向け" width="1000"></h2>
 
 Rust 1.88以上とMSVC Build Toolsが必要です。リポジトリのルートから実行します。
 
@@ -170,6 +170,6 @@ cargo run -p meltype-settings
 ソースから起動する設定アプリは `meltype-flash.exe` です。登録・更新・起動設定・COM検証の詳細は [Windows管理・検証記録](WINDOWS-DEVELOPMENT.md)、実装差分は [移行記録](MIGRATION.md) を参照してください。
 
 <a id="ライセンス"></a>
-<h2><img src="../assets/branding/readme/windows/headings/f52c3ba0fc99.svg" alt="ライセンス" width="1000"></h2>
+<h2><img src="../assets/branding/readme/windows/headings/ce4422debab0.svg" alt="ライセンス" width="1000"></h2>
 
 [GPL-3.0-or-later](../LICENSE)。ランタイムと辞書などの表示は [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md) を参照してください。

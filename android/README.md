@@ -22,7 +22,7 @@ Androidの画面キーボードとして動く、Rust Core + JNIの日本語入�
 **公開中のdebug APKは開発検証用です。Play Store配布・正式な配布署名・物理端末での入力確認は未対応です。**
 
 <a id="内容"></a>
-<h2><img src="../assets/branding/readme/android/headings/7a688306423b.svg" alt="内容" width="1000"></h2>
+<h2><img src="../assets/branding/readme/android/headings/df8764ebcf5d.svg" alt="内容" width="1000"></h2>
 
 QWERTYローマ字入力、かな・補助辞書による変換、候補タップ、確定・削除・英数切替、外付けキーボードの入力に対応する実装です。
 設定画面から、入力設定・ユーザー辞書・定型文・学習削除・プロファイル・バックアップを扱います。
@@ -31,7 +31,7 @@ QWERTYローマ字入力、かな・補助辞書による変換、候補タッ�
 [動く環境](#動く環境) · [インストール](#インストール) · [使い方](#使い方) · [困ったとき](#困ったとき) · [アンインストール](#アンインストール) · [開発者向け](#開発者向け)
 
 <a id="動く環境"></a>
-<h2><img src="../assets/branding/readme/android/headings/53a51e559889.svg" alt="動く環境" width="1000"></h2>
+<h2><img src="../assets/branding/readme/android/headings/f378dd1f4672.svg" alt="動く環境" width="1000"></h2>
 
 - Android 8.0（API 26）以降。
 - arm64-v8a / x86_64向けの開発用APK。
@@ -40,7 +40,7 @@ QWERTYローマ字入力、かな・補助辞書による変換、候補タッ�
 32bit専用のAndroid端末はこのAPKの対象ではありません。管理端末では組織のポリシーに従ってください。
 
 <a id="インストール"></a>
-<h2><img src="../assets/branding/readme/android/headings/d95bee28d794.svg" alt="インストール" width="1000"></h2>
+<h2><img src="../assets/branding/readme/android/headings/4f36b3b314d8.svg" alt="インストール" width="1000"></h2>
 
 1. [FlashのPre2](https://github.com/appipinopi/Meltype/releases/tag/flash-v0.1.0-preview.2) から `Meltype-flash-Android-debug.apk` を取得します。
 2. 取得したAPKを開き、Androidの案内に従って導入します。必要な場合は、取得に使ったアプリについてインストールを許可します。
@@ -52,7 +52,7 @@ debug署名はCIの生成版ごとに変わる場合があるため、別のAPK�
 その場合も、必要な辞書・バックアップを保存する前にアプリを削除しないでください。
 
 <a id="使い方"></a>
-<h2><img src="../assets/branding/readme/android/headings/17c9e4160d4f.svg" alt="使い方" width="1000"></h2>
+<h2><img src="../assets/branding/readme/android/headings/936b17951891.svg" alt="使い方" width="1000"></h2>
 
 | ボタン | 操作 |
 | --- | --- |
@@ -70,14 +70,14 @@ debug署名はCIの生成版ごとに変わる場合があるため、別のAPK�
 各アプリのInputConnectionの対応により、再変換・Undo・選択範囲の操作などに差が出る場合があります。
 
 <a id="プライバシー"></a>
-<h2><img src="../assets/branding/readme/android/headings/fd55785d8031.svg" alt="プライバシー" width="1000"></h2>
+<h2><img src="../assets/branding/readme/android/headings/733cbe4ad684.svg" alt="プライバシー" width="1000"></h2>
 
 ネットワーク権限とストレージ全体へのアクセス権限は要求しません。通常の学習・辞書はアプリ専用領域に保存します。
 パスワードや学習禁止欄では保存しない方針です。辞書・バックアップの入出力はAndroidのドキュメント選択を使います。
 復元・学習の全消去は確認画面で内容を確認してから実行します。
 
 <a id="困ったとき"></a>
-<h2><img src="../assets/branding/readme/android/headings/8a43843d6479.svg" alt="困ったとき" width="1000"></h2>
+<h2><img src="../assets/branding/readme/android/headings/e959b3efbcc9.svg" alt="困ったとき" width="1000"></h2>
 
 <details>
 <summary>キーボードが出てこない</summary>
@@ -96,13 +96,13 @@ OS・メーカー・APKの版・アプリ名・入力したキーと期待する
 </details>
 
 <a id="アンインストール"></a>
-<h2><img src="../assets/branding/readme/android/headings/0612e88f2939.svg" alt="アンインストール" width="1000"></h2>
+<h2><img src="../assets/branding/readme/android/headings/e6db153b59cc.svg" alt="アンインストール" width="1000"></h2>
 
 Androidの入力方式を別のキーボードへ切り替えてから、設定のアプリ一覧でMeltypeをアンインストールします。
 アプリ専用領域の設定・学習・辞書も失われるため、必要なものを先にバックアップしてください。
 
 <a id="開発者向け"></a>
-<h2><img src="../assets/branding/readme/android/headings/03db5f43cd99.svg" alt="開発者向け" width="1000"></h2>
+<h2><img src="../assets/branding/readme/android/headings/98935a8c563d.svg" alt="開発者向け" width="1000"></h2>
 
 Rust 1.88以上、JDK 17、Gradle 8.13、Android SDK platform 35 / build-tools 35.0.0、NDK 27.2.12479018が必要です。
 
@@ -121,6 +121,6 @@ Windowsでは環境変数をPowerShellの `$env:ANDROID_NDK_HOME` / `$env:CARGO_
 詳しいJVMコマンド・エミュレーター成果物・実装経緯は [開発・検証記録](DEVELOPMENT.md) を参照してください。
 
 <a id="ライセンス"></a>
-<h2><img src="../assets/branding/readme/android/headings/f52c3ba0fc99.svg" alt="ライセンス" width="1000"></h2>
+<h2><img src="../assets/branding/readme/android/headings/bad2dd3c907b.svg" alt="ライセンス" width="1000"></h2>
 
 [GPL-3.0-or-later](../LICENSE)。辞書などの表示は [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md) を参照してください。

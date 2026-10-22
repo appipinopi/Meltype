@@ -22,7 +22,7 @@ ChromeOSの `chrome.input.ime` と共通Rust CoreのWASMを接続する、日本
 **通常のWindows・Mac・Linux上のChrome用IMEではありません。Chrome Web Storeへは公開していません。**
 
 <a id="内容"></a>
-<h2><img src="../assets/branding/readme/chromeos/headings/7a688306423b.svg" alt="内容" width="1000"></h2>
+<h2><img src="../assets/branding/readme/chromeos/headings/df8764ebcf5d.svg" alt="内容" width="1000"></h2>
 
 ローマ字・かな、英語・日本語の判定、同梱FSTの漢字候補、予測候補、候補選択、設定と学習の保存を接続しています。
 設定画面では、通常入力とコード入力、サイトごとの切替、詳細JSON、スナップショットの保存を扱います。
@@ -31,7 +31,7 @@ ChromeOSの `chrome.input.ime` と共通Rust CoreのWASMを接続する、日本
 [動く環境](#動く環境) · [インストール](#インストール) · [使い方](#使い方) · [困ったとき](#困ったとき) · [アンインストール](#アンインストール) · [開発者向け](#開発者向け)
 
 <a id="動く環境"></a>
-<h2><img src="../assets/branding/readme/chromeos/headings/53a51e559889.svg" alt="動く環境" width="1000"></h2>
+<h2><img src="../assets/branding/readme/chromeos/headings/f378dd1f4672.svg" alt="動く環境" width="1000"></h2>
 
 - `chrome.input.ime` を利用できるChromeOS。
 - Manifest V3の拡張機能を手動読込できる環境。
@@ -40,7 +40,7 @@ ChromeOSの `chrome.input.ime` と共通Rust CoreのWASMを接続する、日本
 管理端末では導入や権限が制限される場合があります。OSのDeveloper Modeへ切り替える手順ではありません。
 
 <a id="インストール"></a>
-<h2><img src="../assets/branding/readme/chromeos/headings/d95bee28d794.svg" alt="インストール" width="1000"></h2>
+<h2><img src="../assets/branding/readme/chromeos/headings/4f36b3b314d8.svg" alt="インストール" width="1000"></h2>
 
 1. [FlashのPre2](https://github.com/appipinopi/Meltype/releases/tag/flash-v0.1.0-preview.2) から `Meltype-flash-ChromeOS.zip` を取得し、フォルダーへ全体展開します。
 2. ChromeOSの `chrome://extensions` を開き、拡張機能の「デベロッパーモード」を有効にします。
@@ -51,7 +51,7 @@ ChromeOSの `chrome.input.ime` と共通Rust CoreのWASMを接続する、日本
 既存版を更新する場合は、先に設定画面で必要なスナップショットを保存します。同じフォルダーを新しいファイルで更新し、拡張機能を再読み込みしてください。学習を残したい場合は、先に拡張機能を削除しないでください。
 
 <a id="使い方"></a>
-<h2><img src="../assets/branding/readme/chromeos/headings/17c9e4160d4f.svg" alt="使い方" width="1000"></h2>
+<h2><img src="../assets/branding/readme/chromeos/headings/936b17951891.svg" alt="使い方" width="1000"></h2>
 
 | 操作 | 動作 |
 | --- | --- |
@@ -65,7 +65,7 @@ ChromeOSの `chrome.input.ime` と共通Rust CoreのWASMを接続する、日本
 ChromeOSの入力方式切替はOS側の設定を使います。
 
 <a id="サイトごとの通常入力コード入力"></a>
-<h3><img src="../assets/branding/readme/chromeos/headings/92cd9e4dde01.svg" alt="サイトごとの通常入力・コード入力" width="1000"></h3>
+<h3><img src="../assets/branding/readme/chromeos/headings/56ec4448115b.svg" alt="サイトごとの通常入力・コード入力" width="1000"></h3>
 
 初期状態ではサイト別の自動切替は無効です。設定画面で「サイトごとの自動切替」を有効にし、必要なタブ参照を許可して保存します。
 `vscode.com`・`vscode.dev`・`github.dev` は初期候補です。権限を許可しない場合は手動の入力モードを使えます。
@@ -73,14 +73,14 @@ ChromeOSの入力方式切替はOS側の設定を使います。
 サイト別設定はCoreの学習スナップショットとは別で、現在のJSON書き出しには含まれません。
 
 <a id="プライバシー"></a>
-<h2><img src="../assets/branding/readme/chromeos/headings/fd55785d8031.svg" alt="プライバシー" width="1000"></h2>
+<h2><img src="../assets/branding/readme/chromeos/headings/5b98193660c4.svg" alt="プライバシー" width="1000"></h2>
 
 入力と変換は拡張機能内のWASMで処理し、設定・学習は `chrome.storage.local` に保存します。学習禁止やシークレットでは保存を抑止します。
 サイト別切替の任意権限 `tabs` は、現在のタブを調べるために使います。ページへ入力用スクリプトを挿入する構成ではありません。
 拡張機能の削除でローカルデータを失うため、必要なスナップショットは先に保存してください。
 
 <a id="困ったとき"></a>
-<h2><img src="../assets/branding/readme/chromeos/headings/8a43843d6479.svg" alt="困ったとき" width="1000"></h2>
+<h2><img src="../assets/branding/readme/chromeos/headings/4466f22d7395.svg" alt="困ったとき" width="1000"></h2>
 
 <details>
 <summary>拡張機能として入ったのに入力方法が出ない</summary>
@@ -99,13 +99,13 @@ OS・拡張機能の版・サイト・入力手順を [Issues](https://github.co
 </details>
 
 <a id="アンインストール"></a>
-<h2><img src="../assets/branding/readme/chromeos/headings/0612e88f2939.svg" alt="アンインストール" width="1000"></h2>
+<h2><img src="../assets/branding/readme/chromeos/headings/9648f59fe13b.svg" alt="アンインストール" width="1000"></h2>
 
 入力方法を別のものへ切り替え、ChromeOSの入力方法一覧からMeltypeを外してから、`chrome://extensions` で拡張機能を削除します。
 削除前に必要な設定・学習スナップショットを保存してください。展開フォルダーも不要になってから削除します。
 
 <a id="開発者向け"></a>
-<h2><img src="../assets/branding/readme/chromeos/headings/03db5f43cd99.svg" alt="開発者向け" width="1000"></h2>
+<h2><img src="../assets/branding/readme/chromeos/headings/9f8c2f09ae3c.svg" alt="開発者向け" width="1000"></h2>
 
 Rustと `wasm-bindgen-cli`、Pythonが必要です。リポジトリのルートから実行します。
 
@@ -118,6 +118,6 @@ python chromeos/build.py
 模擬APIでの成功とChromeOS実機での成功は別です。[移行記録](../rust/MIGRATION.md) と [ビルドスクリプト](build.py) も参照してください。
 
 <a id="ライセンス"></a>
-<h2><img src="../assets/branding/readme/chromeos/headings/f52c3ba0fc99.svg" alt="ライセンス" width="1000"></h2>
+<h2><img src="../assets/branding/readme/chromeos/headings/cfc7325a7d0e.svg" alt="ライセンス" width="1000"></h2>
 
 [GPL-3.0-or-later](../LICENSE)。ZIPにはライセンス・第三者表示・解決済み依存関係の表示を同梱します。[THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md) を参照してください。

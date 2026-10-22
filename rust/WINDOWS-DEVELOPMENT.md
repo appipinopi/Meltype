@@ -1,7 +1,7 @@
 # Windows版の管理・検証記録
 
 現在の導入・操作は [Windows版README](WINDOWS-PACKAGE.md)、現在の公開ファイルは [配布案内](DOWNLOADS.md) を参照してください。
-以下は以前の開発用READMEから移した記録です。「リリースがない」「登録IDを共有する」などの記述は当時の状況であり、現在のFlash専用登録・公開状況を説明するものではありません。
+以下は以前の開発用READMEから移した記録です。「リリースがない」などの記述は当時の状況であり、現在の公開状況を説明するものではありません。導入コマンドと登録IDの説明は、現在のFlash専用登録に合わせています。
 
 # Meltype-flash Windows版・配布前確認用
 
@@ -53,7 +53,6 @@ python tools/check-rust-windows-package.py <展開フォルダー> --report <検
 .\Manage-Windows.ps1 -Action Inspect
 .\Manage-Windows.ps1 -Action Install -WhatIf
 .\Manage-Windows.ps1 -Action Install
-# 既存の元版Meltypeを置き換えるときだけ、バックアップ後に -ReplaceExisting を追加
 .\Manage-Windows.ps1 -Action Update -Package 'C:\path\to\new-package'
 .\Manage-Windows.ps1 -Action Uninstall
 ```
@@ -61,7 +60,7 @@ python tools/check-rust-windows-package.py <展開フォルダー> --report <検
 SHA256SUMS.jsonの全ファイルを検査し、Program Files/Meltype-flash/versions/<配布ハッシュ>へ配置します。
 両アーキテクチャのDLLとworker・CRTをまとめて配置し、登録失敗時は以前のDLLを再登録します。
 ハッシュは破損検知用です。配布元の認証や署名の代わりではありません。
-元版との共通COM登録を置き換える場合は、元版のトレイを終了して起動設定を解除し、`-ReplaceExisting` を明示してください。
+Flashは元版と異なるCOM／入力プロファイルIDを使うため、元版の登録を置き換える `-ReplaceExisting` は不要です。
 古いバージョンは保持するため、稼働中DLLの上書きを避けます。
 更新前に現在ユーザーの同じデータフォルダーのトレイへ終了要求を送り、終了を待ちます。未保存の設定があれば処理を止めるため、保存または取り消して再実行してください。更新時は自動起動がONなら新しい実行ファイルへ付け替え、OFFなら維持します。更新後は新フォルダーからトレイを起動してください。
 
@@ -140,6 +139,6 @@ Chromium/Electronの空のcontenteditableには、UIAのValue/TextPatternに加�
 
 ## 直接入力IMEとポータブル入力の違い
 
-「Meltype IME (入力欄に直接入力)」にはRust TIPのWindowsへの登録とWin+Spaceによる選択が必要です。トレイの選択だけでは登録されません。C#版とCOM登録IDを共有するため、Rustへ登録を切り替える際は元の登録先を保存し、`Manage-Windows.ps1 -Action Install -ReplaceExisting`を管理者として実行します。開いているアプリを再起動してください。
+「Meltype IME (入力欄に直接入力)」にはRust TIPのWindowsへの登録とWin+Spaceによる選択が必要です。トレイの選択だけでは登録されません。Meltype-flashはC#版と異なるCOM登録IDを使うため、元版の登録先を変更せず、`Manage-Windows.ps1 -Action Install`を管理者として実行します。開いているアプリを再起動してください。
 
 直接入力用の設定・学習は通常`%LOCALAPPDATA%/Meltype-flash`です。`Start-Portable.ps1`はパッケージ内`data`を使うため、直接入力のトレイは`MELTYPE_FLASH_DATA_DIR`（旧 `MELTYPE_RUST_DATA_DIR` も明示指定時のみ対応）を指定せず`meltype-flash.exe --tray`で起動してください。Rust設定のMode=Tsf/Enabled=trueと、Windows側でMeltypeが選択されていることの両方が必要です。C#プロセスとポータブル入力の同時動作は避けてください。

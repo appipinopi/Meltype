@@ -22,7 +22,7 @@ iPhone・iPadのカスタムキーボードとして動く、Rust版Meltype-flas
 **未確定文字はキーボードの中に表示し、確定した文字だけを入力欄へ送ります。**
 
 <a id="内容"></a>
-<h2><img src="../assets/branding/readme/ios/headings/7a688306423b.svg" alt="内容" width="1000"></h2>
+<h2><img src="../assets/branding/readme/ios/headings/df8764ebcf5d.svg" alt="内容" width="1000"></h2>
 
 QWERTY入力、英語・日本語の判定、補助辞書による候補、空白・削除・確定を実装しています。
 フリック入力、デスクトップの外部変換エンジン、翻訳、アプリ別設定、学習・設定の永続保存は未対応です。
@@ -31,7 +31,7 @@ QWERTY入力、英語・日本語の判定、補助辞書による候補、空�
 [動く環境](#動く環境) · [インストール](#インストール) · [使い方](#使い方) · [困ったとき](#困ったとき) · [アンインストール](#アンインストール) · [開発者向け](#開発者向け)
 
 <a id="動く環境"></a>
-<h2><img src="../assets/branding/readme/ios/headings/53a51e559889.svg" alt="動く環境" width="1000"></h2>
+<h2><img src="../assets/branding/readme/ios/headings/f378dd1f4672.svg" alt="動く環境" width="1000"></h2>
 
 - iOS 15以降のiPhone / iPad。
 - 実機へ導入するには自分の署名が必要です。
@@ -40,7 +40,7 @@ QWERTY入力、英語・日本語の判定、補助辞書による候補、空�
 iOS側が標準キーボードへ切り替えるパスワード欄や、外部キーボードを禁止したアプリでは使えません。
 
 <a id="インストール"></a>
-<h2><img src="../assets/branding/readme/ios/headings/d95bee28d794.svg" alt="インストール" width="1000"></h2>
+<h2><img src="../assets/branding/readme/ios/headings/4f36b3b314d8.svg" alt="インストール" width="1000"></h2>
 
 [FlashのPre2](https://github.com/appipinopi/Meltype/releases/tag/flash-v0.1.0-preview.2) の配布から、目的に合うものを選びます。
 
@@ -53,7 +53,7 @@ iOS側が標準キーボードへ切り替えるパスワード欄や、外部�
 IPAをファイルアプリで開いたり、ZIPの拡張子を変更したりするだけでは導入できません。
 
 <a id="windowsから自分のiphoneへ入れる"></a>
-<h3><img src="../assets/branding/readme/ios/headings/e2a68db635fe.svg" alt="Windowsから自分のiPhoneへ入れる" width="1000"></h3>
+<h3><img src="../assets/branding/readme/ios/headings/49dd50c723c5.svg" alt="Windowsから自分のiPhoneへ入れる" width="1000"></h3>
 
 1. [AltStore ClassicのWindows向け公式手順](https://faq.altstore.io/altstore-classic/how-to-install-altstore-windows) に従い、必要なApple製ソフトとAltServerをPCに用意します。
 2. iPhoneをUSB接続し、「このコンピュータを信頼」を許可してAltStore Classicを導入します。Apple IDはAltServer / AltStoreの画面で扱います。
@@ -65,27 +65,27 @@ AltStore PALとは別の導入方法です。[更新と制限](https://faq.altst
 この経路による実機入力は未検証です。署名・導入サービス側の画面や条件は公式の案内を優先してください。
 
 <a id="キーボードを有効にする"></a>
-<h3><img src="../assets/branding/readme/ios/headings/ec0c93aa24f9.svg" alt="キーボードを有効にする" width="1000"></h3>
+<h3><img src="../assets/branding/readme/ios/headings/819be477da10.svg" alt="キーボードを有効にする" width="1000"></h3>
 
 導入後は「設定 → 一般 → キーボード → キーボード → 新しいキーボードを追加」からMeltype-flashを追加し、入力欄で🌐から選びます。
 **フルアクセスの許可は不要です。**
 
 <a id="使い方"></a>
-<h2><img src="../assets/branding/readme/ios/headings/17c9e4160d4f.svg" alt="使い方" width="1000"></h2>
+<h2><img src="../assets/branding/readme/ios/headings/23ca31abc8fa.svg" alt="使い方" width="1000"></h2>
 
 文字キーで入力し、キーボード上部の未確定表示と候補を確認します。候補の選択または確定ボタンで入力欄へ送ります。
 空白・削除などはキーボード上のボタンを使い、🌐から別のキーボードへ戻れます。
 入力欄を移動すると未確定入力を破棄し、確定済みの文字をさかのぼって修正しません。
 
 <a id="プライバシー"></a>
-<h2><img src="../assets/branding/readme/ios/headings/fd55785d8031.svg" alt="プライバシー" width="1000"></h2>
+<h2><img src="../assets/branding/readme/ios/headings/8e97c515b5c1.svg" alt="プライバシー" width="1000"></h2>
 
 通信・フルアクセス・アプリ間の共有領域は使いません。学習・設定の永続保存も無効です。
 キーボードの制限はiOSと使用中のアプリの挙動にも従います。
 署名・アプリ導入に使うApple IDや認証情報を不具合報告へ添付しないでください。
 
 <a id="困ったとき"></a>
-<h2><img src="../assets/branding/readme/ios/headings/8a43843d6479.svg" alt="困ったとき" width="1000"></h2>
+<h2><img src="../assets/branding/readme/ios/headings/eb24f202926d.svg" alt="困ったとき" width="1000"></h2>
 
 <details>
 <summary>キーボード一覧に出ない</summary>
@@ -104,13 +104,13 @@ iOSはパスワード欄などで標準キーボードへ切り替えます。�
 </details>
 
 <a id="アンインストール"></a>
-<h2><img src="../assets/branding/readme/ios/headings/0612e88f2939.svg" alt="アンインストール" width="1000"></h2>
+<h2><img src="../assets/branding/readme/ios/headings/0ccba09763e7.svg" alt="アンインストール" width="1000"></h2>
 
 設定のキーボード一覧からMeltype-flashを外し、ホーム画面またはアプリ一覧からアプリ本体を削除します。
 署名・更新に使った導入サービス側の登録やデータの扱いは、そのサービスの案内に従ってください。
 
 <a id="開発者向け"></a>
-<h2><img src="../assets/branding/readme/ios/headings/03db5f43cd99.svg" alt="開発者向け" width="1000"></h2>
+<h2><img src="../assets/branding/readme/ios/headings/2e75e45b5878.svg" alt="開発者向け" width="1000"></h2>
 
 MacにXcode、Rust、XcodeGenを用意し、リポジトリのルートから実行します。
 
@@ -125,6 +125,6 @@ Rust ABIの入力・確定・長文・セッション分離と、Xcodeのビル�
 Appleの [カスタムキーボード資料](https://developer.apple.com/documentation/uikit/creating-a-custom-keyboard) も参照してください。
 
 <a id="ライセンス"></a>
-<h2><img src="../assets/branding/readme/ios/headings/f52c3ba0fc99.svg" alt="ライセンス" width="1000"></h2>
+<h2><img src="../assets/branding/readme/ios/headings/7b96bc7bad42.svg" alt="ライセンス" width="1000"></h2>
 
 [GPL-3.0-or-later](../LICENSE)。辞書などの表示は [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md) を参照してください。

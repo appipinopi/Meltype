@@ -22,7 +22,7 @@ macOSの入力ソースとして動く、Rust版Meltype-flashです。共通Core
 **開発プレビューです。Developer ID署名・Apple公証、物理端末や各アプリでの入力確認は未完了です。**
 
 <a id="内容"></a>
-<h2><img src="../assets/branding/readme/mac/headings/7a688306423b.svg" alt="内容" width="1000"></h2>
+<h2><img src="../assets/branding/readme/mac/headings/df8764ebcf5d.svg" alt="内容" width="1000"></h2>
 
 ローマ字入力、英語・日本語の判定、変換候補、確定、文節操作をMacの入力方法へ接続しています。
 画面・メニュー・辞書・入力モードの移植状況は [移行記録](../rust/MIGRATION.md) を参照してください。
@@ -30,7 +30,7 @@ macOSの入力ソースとして動く、Rust版Meltype-flashです。共通Core
 [動く環境](#動く環境) · [インストール](#インストール) · [使い方](#使い方) · [困ったとき](#困ったとき) · [アンインストール](#アンインストール) · [開発者向け](#開発者向け)
 
 <a id="動く環境"></a>
-<h2><img src="../assets/branding/readme/mac/headings/53a51e559889.svg" alt="動く環境" width="1000"></h2>
+<h2><img src="../assets/branding/readme/mac/headings/f378dd1f4672.svg" alt="動く環境" width="1000"></h2>
 
 - macOS 13以降。
 - Apple Siliconには `Meltype-flash-macOS-arm64.zip`、Intelには `Meltype-flash-macOS-x64.zip`。
@@ -39,7 +39,7 @@ macOSの入力ソースとして動く、Rust版Meltype-flashです。共通Core
 本家のHomebrew caskは本家版です。このFlash版のインストールには下記の配布ファイルを使ってください。
 
 <a id="インストール"></a>
-<h2><img src="../assets/branding/readme/mac/headings/d95bee28d794.svg" alt="インストール" width="1000"></h2>
+<h2><img src="../assets/branding/readme/mac/headings/4f36b3b314d8.svg" alt="インストール" width="1000"></h2>
 
 1. [FlashのPre2](https://github.com/appipinopi/Meltype/releases/tag/flash-v0.1.0-preview.2) から、CPUに合うmacOS ZIPを取得します。
 2. **ZIP全体を展開**します。`Meltype.app` だけでなく、インストール用のcommand・shellスクリプトも同じフォルダーに必要です。
@@ -51,7 +51,7 @@ macOSの入力ソースとして動く、Rust版Meltype-flashです。共通Core
 本家と一部のOSホスト側IDが残るため、同時インストール・同時動作は未確認です。先に標準の入力ソースへ切り替えてから導入してください。
 
 <a id="使い方"></a>
-<h2><img src="../assets/branding/readme/mac/headings/17c9e4160d4f.svg" alt="使い方" width="1000"></h2>
+<h2><img src="../assets/branding/readme/mac/headings/936b17951891.svg" alt="使い方" width="1000"></h2>
 
 入力メニューで選択し、テキスト欄にローマ字を入力します。候補や未確定文字が出たら、次のキーで操作します。
 
@@ -69,21 +69,21 @@ macOSの入力ソースとして動く、Rust版Meltype-flashです。共通Core
 アプリ別の通常入力・コード入力については [アプリ別設定](../rust/APP-RULES.md) を参照してください。
 
 <a id="設定辞書"></a>
-<h3><img src="../assets/branding/readme/mac/headings/41fdb1b7c5a0.svg" alt="設定・辞書" width="1000"></h3>
+<h3><img src="../assets/branding/readme/mac/headings/6a6763f17c9f.svg" alt="設定・辞書" width="1000"></h3>
 
 共通Coreの既定データ保存先は `~/Library/Application Support/Meltype-flash` です。
 明示した `MELTYPE_FLASH_DATA_DIR` または互換用の `MELTYPE_RUST_DATA_DIR` がある場合は、その保存先を使います。
 旧本家のデータを自動で取り込む前提にはしないでください。利用できる管理画面と辞書操作の範囲は [Rust版の構成](../rust/README.md) を参照してください。
 
 <a id="プライバシー"></a>
-<h2><img src="../assets/branding/readme/mac/headings/fd55785d8031.svg" alt="プライバシー" width="1000"></h2>
+<h2><img src="../assets/branding/readme/mac/headings/5b98193660c4.svg" alt="プライバシー" width="1000"></h2>
 
 入力の判定・変換はローカルのCoreと同梱変換エンジンで行います。学習や辞書などの個人データは上記の保存先に置きます。
 初回の**ソースビルド**では、Rust・Swiftの依存関係や辞書のダウンロードが発生します。
 不具合報告に個人の文章やデータフォルダー全体を添付しないでください。
 
 <a id="困ったとき"></a>
-<h2><img src="../assets/branding/readme/mac/headings/8a43843d6479.svg" alt="困ったとき" width="1000"></h2>
+<h2><img src="../assets/branding/readme/mac/headings/4466f22d7395.svg" alt="困ったとき" width="1000"></h2>
 
 <details>
 <summary>入力ソースに出てこない・起動しない</summary>
@@ -103,7 +103,7 @@ Flashのソースから作る場合は、下記の `rust/build-desktop.sh` を�
 </details>
 
 <a id="アンインストール"></a>
-<h2><img src="../assets/branding/readme/mac/headings/0612e88f2939.svg" alt="アンインストール" width="1000"></h2>
+<h2><img src="../assets/branding/readme/mac/headings/9648f59fe13b.svg" alt="アンインストール" width="1000"></h2>
 
 1. 入力メニューでABCなど別の入力ソースを選びます。
 2. システム設定のキーボードからMeltypeの入力ソースを外します。
@@ -113,10 +113,10 @@ Flashのソースから作る場合は、下記の `rust/build-desktop.sh` を�
 本家と同名のバンドルを使っている場合は、取り除くものを確認してください。
 
 <a id="開発者向け"></a>
-<h2><img src="../assets/branding/readme/mac/headings/03db5f43cd99.svg" alt="開発者向け" width="1000"></h2>
+<h2><img src="../assets/branding/readme/mac/headings/9f8c2f09ae3c.svg" alt="開発者向け" width="1000"></h2>
 
 <a id="ソースからビルドする"></a>
-<h3><img src="../assets/branding/readme/mac/headings/6bb169c5a5e1.svg" alt="ソースからビルドする" width="1000"></h3>
+<h3><img src="../assets/branding/readme/mac/headings/f9d4e9685bb1.svg" alt="ソースからビルドする" width="1000"></h3>
 
 macOS、XcodeまたはCommand Line Tools、Rust 1.88以上が必要です。リポジトリのルートから実行します。
 
@@ -131,6 +131,6 @@ bash rust/build-desktop.sh
 共通Coreは `cargo test -p meltype-core --locked`、MacのOS連携は [Mac用CI](../.github/workflows/macos-rust.yml) と [移行記録](../rust/MIGRATION.md) を参照してください。ABI・IMKを使う試験の成功と、物理端末の各アプリでの入力確認は別です。
 
 <a id="ライセンス"></a>
-<h2><img src="../assets/branding/readme/mac/headings/f52c3ba0fc99.svg" alt="ライセンス" width="1000"></h2>
+<h2><img src="../assets/branding/readme/mac/headings/7b96bc7bad42.svg" alt="ライセンス" width="1000"></h2>
 
 [GPL-3.0-or-later](../LICENSE)。変換エンジン・Swift依存関係の表示は [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md) を参照してください。

@@ -101,7 +101,7 @@ class Art:
         self.save(OUT / "cards" / f"os-{key}{'-active' if active else ''}.svg", 320, 190, f"{name} — {sub}", body)
 
     def heading(self, key, title, index, small=False):
-        digest = hashlib.sha256(title.encode()).hexdigest()[:12]
+        digest = hashlib.sha256(f"{index}:{title}".encode()).hexdigest()[:12]
         path = OUT / key / "headings" / f"{digest}.svg"
         body = (f'<rect x="1" y="1" width="998" height="78" rx="12" fill="#fff" stroke="#dedfe3"/>'
                 f'<rect x="1" y="1" width="66" height="78" rx="12" fill="{YELLOW}"/>'
@@ -197,8 +197,12 @@ def preview():
         sections.append(f'<section><h2>{name}</h2><img src="{key}/hero.svg"><img src="{sample}"></section>')
     samples = []
     for key, title in [("windows", "内容"), ("linux", "動く環境"), ("linux", "インストール")]:
-        digest = hashlib.sha256(title.encode()).hexdigest()[:12]
-        samples.append(f'<img src="{key}/headings/{digest}.svg" alt="{title}">')
+        document = ROOT / next(p[4] for p in PLATFORMS if p[0] == key)
+        text = document.read_text(encoding='utf-8')
+        match = re.search(r'<img src="([^"]*/headings/[^"]+\.svg)" alt="' + re.escape(title) + r'"', text)
+        if match:
+            sample = (document.parent / match[1]).resolve().relative_to(OUT).as_posix()
+            samples.append(f'<img src="{sample}" alt="{title}">')
     content = ('<!doctype html><html lang="ja"><meta charset="utf-8"><link rel="icon" href="data:,"><title>Meltype-flash — 6環境のREADME画像</title>'
                '<style>*{box-sizing:border-box}body{margin:0;padding:40px;background:#eeeef0;color:#17181b;font-family:system-ui}'
                'main{max-width:1280px;margin:auto}.logo{display:block;width:520px;max-width:100%;margin:0 auto 24px}'
