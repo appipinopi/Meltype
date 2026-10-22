@@ -1,0 +1,69 @@
+name: MeltypeFlash
+options:
+  bundleIdPrefix: com.appipinopi.meltypeflash
+  deploymentTarget:
+    iOS: '15.0'
+settings:
+  base:
+    SWIFT_VERSION: '5.0'
+    ARCHS: arm64
+    MARKETING_VERSION: '0.1.0'
+    CURRENT_PROJECT_VERSION: '2'
+    CODE_SIGNING_ALLOWED: NO
+targets:
+  MeltypeFlash:
+    type: application
+    platform: iOS
+    sources: [App.swift]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.appipinopi.meltypeflash
+        TARGETED_DEVICE_FAMILY: '1,2'
+    info:
+      path: generated/App-Info.plist
+      properties:
+        CFBundleDisplayName: Meltype-flash
+        UILaunchScreen: {}
+    dependencies:
+      - target: MeltypeFlashKeyboard
+        embed: true
+  MeltypeFlashKeyboard:
+    type: app-extension
+    platform: iOS
+    sources: [KeyboardViewController.swift]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.appipinopi.meltypeflash.keyboard
+        SWIFT_OBJC_BRIDGING_HEADER: Bridge.h
+        LIBRARY_SEARCH_PATHS: ['$(inherited)', '$(PROJECT_DIR)/lib/$(PLATFORM_NAME)']
+        OTHER_LDFLAGS: ['$(inherited)', '-lmeltype_ios', '-liconv']
+        APPLICATION_EXTENSION_API_ONLY: YES
+        TARGETED_DEVICE_FAMILY: '1,2'
+    info:
+      path: generated/Keyboard-Info.plist
+      properties:
+        CFBundleDisplayName: Meltype-flash
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.keyboard-service
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).KeyboardViewController
+          NSExtensionAttributes:
+            IsASCIICapable: true
+            PrimaryLanguage: ja-JP
+            RequestsOpenAccess: false
+  KeyboardTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [KeyboardViewController.swift, KeyboardTests.swift]
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_OBJC_BRIDGING_HEADER: Bridge.h
+        LIBRARY_SEARCH_PATHS: ['$(inherited)', '$(PROJECT_DIR)/lib/$(PLATFORM_NAME)']
+        OTHER_LDFLAGS: ['$(inherited)', '-lmeltype_ios', '-liconv']
+schemes:
+  MeltypeFlash:
+    build:
+      targets:
+        MeltypeFlash: all
+    test:
+      targets: [KeyboardTests]
