@@ -9,9 +9,22 @@ $configPath = Join-Path $root 'config.json'
 $config = '{"SettingsVersion":5,"WelcomeShown":true,"TsfIntroduced":true,"AutoUpdate":false,"Enabled":true}'
 [IO.File]::WriteAllText($configPath, $config)
 $previousDataDirectory = $env:MELTYPE_RUST_DATA_DIR
+$previousFlashDirectory = $env:MELTYPE_FLASH_DATA_DIR
 $tray = $null; $helper = $null
 try {
     $env:MELTYPE_RUST_DATA_DIR = $root
+    $env:MELTYPE_FLASH_DATA_DIR = $root
+    if ($Portable) {
+        # --portable-keyboard intentionally selects Keyboard mode at startup.
+        # Prepare its canonical configuration first; shutdown must preserve these
+        # exact bytes, including Enabled, rather than compare against TSF mode.
+        $cli = Join-Path (Split-Path -Parent $exe) 'meltype-rs.exe'
+        & $cli --control '{"op":"settings_set","name":"Mode","value":"Keyboard"}' | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw 'Could not prepare portable configuration' }
+        $config = [IO.File]::ReadAllText($configPath)
+        $prepared = $config | ConvertFrom-Json
+        if ($prepared.Mode -ne 'Keyboard' -or $prepared.Enabled -ne $true) { throw 'Invalid portable fixture' }
+    }
     $trayArguments = if ($Portable) { @('--tray','--portable-keyboard') } else { @('--tray') }
     $tray = Start-Process -FilePath $exe -ArgumentList $trayArguments -WindowStyle Hidden -PassThru -RedirectStandardError (Join-Path $root 'tray.log')
     $deadline = [DateTime]::UtcNow.AddSeconds(20)
@@ -51,4 +64,5 @@ try {
         }
     }
     $env:MELTYPE_RUST_DATA_DIR = $previousDataDirectory
+    $env:MELTYPE_FLASH_DATA_DIR = $previousFlashDirectory
 }
