@@ -1,5 +1,9 @@
 # 画面の検証範囲
 
+<!-- meltype-flash-document-banner:start -->
+<p align="center"><img src="../../../assets/branding/readme/documentation.svg" alt="Meltype-flash — 稲妻のように、言葉の壁を駆け抜ける日本語入力。" width="1000"></p>
+<!-- meltype-flash-document-banner:end -->
+
 `capture_settings.py <visual-test付き実行ファイル> <出力フォルダー>` は利用中のデータから隔離した6プロファイルで、設定・辞書・定型文・学習・バックアップ・入力テストを描画します。設定の保存やSQLiteへの移行を行わなかったことも確認します。Linuxでは `xvfb-run -a` が必要です。
 
 Windowsの記録は [evidence/windows-fst-sqlite](evidence/windows-fst-sqlite) にあります。これは元版と全画面が一致したという証拠ではありません。元版 `src/Meltype/UI/UserDictionaryForm.cs` は560×520、`SnippetsForm.cs` は620×580の独立ウィンドウですが、Rustは740×740の共通ウィンドウ内のページです。設定項目名・説明・列挙名の一致、画面レイアウトの一致、実ファイル選択/キーボード操作は別々に確認します。

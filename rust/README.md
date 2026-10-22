@@ -1,5 +1,9 @@
 # Meltype-flash 移植プレビュー
 
+<!-- meltype-flash-document-banner:start -->
+<p align="center"><img src="../assets/branding/readme/documentation.svg" alt="Meltype-flash — 稲妻のように、言葉の壁を駆け抜ける日本語入力。" width="1000"></p>
+<!-- meltype-flash-document-banner:end -->
+
 Windows の新しい配布は本家と異なる IME 登録 ID・実行ファイル・保存先を使用します。[名称と共存方針](BRANDING.md)を参照してください。
 
 Fork: https://github.com/appipinopi/Meltype · 元: https://github.com/yksr-melt/Meltype

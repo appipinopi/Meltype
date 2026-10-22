@@ -1,5 +1,9 @@
 # 設定の組合せと候補源の互換試験
 
+<!-- meltype-flash-document-banner:start -->
+<p align="center"><img src="../../../assets/branding/readme/documentation.svg" alt="Meltype-flash — 稲妻のように、言葉の壁を駆け抜ける日本語入力。" width="1000"></p>
+<!-- meltype-flash-document-banner:end -->
+
 元版 `45e14f86558aa6ea34f2c2ecd038ba95ca8c3c46` の `src/Meltype.Core` を変更せず、Windows CompositionService と同じ CompositionOptions を組み立てる。外部変換器は固定応答を返す。利用者の実データには触れない。
 
 - 68設定の値域を定義し、全2項目間の値の組合せ12,595通りを42構成で網羅。生成時に網羅数を検査する。

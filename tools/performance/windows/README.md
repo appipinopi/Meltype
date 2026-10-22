@@ -1,5 +1,9 @@
 # Windows・共通コアの C# / Rust 比較
 
+<!-- meltype-flash-document-banner:start -->
+<p align="center"><img src="../../../assets/branding/readme/documentation.svg" alt="Meltype-flash — 稲妻のように、言葉の壁を駆け抜ける日本語入力。" width="1000"></p>
+<!-- meltype-flash-document-banner:end -->
+
 開発の優先対象は Windows と共通コアです。他 OS の連携部分の移植は保留し、元版との動作一致と、この Windows 計測を先に確認します。
 
 リポジトリのルートから実行します。Python 3.12 以降、.NET 10 SDK と NativeAOT 用の Visual C++ ビルド環境、Rust が必要です。
