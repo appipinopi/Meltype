@@ -59,7 +59,14 @@ class DistributionTests(unittest.TestCase):
                 self.assertNotIn(str(bundle), xml)
                 self.assertIn('/usr/libexec/meltype-flash/ibus/meltype-ibus', xml)
                 self.assertTrue((root / 'usr/libexec/meltype-flash/ibus/LICENSE').exists())
-            with patch.object(linux.subprocess, 'check_output', return_value=f'<exec>{bundle.resolve()}/meltype-ibus --ibus</exec>'), patch.object(linux.subprocess, 'run', side_effect=inspect_deb):
+                setup = (root / 'usr/share/applications/ibus-setup-meltype-flash.desktop').read_text(encoding='utf-8')
+                self.assertIn('Exec=/usr/libexec/meltype-flash/ibus/meltype-flash\n', setup)
+                self.assertIn('NoDisplay=true\n', setup)
+                self.assertIn('X-Meltype-Flash-IBus=true\n', setup)
+            def component_command(command, text):
+                self.assertEqual(command[1:], ['--print-component', '--component-executable', '/usr/libexec/meltype-flash/ibus/meltype-ibus'])
+                return '<exec>/usr/libexec/meltype-flash/ibus/meltype-ibus --ibus</exec>'
+            with patch.object(linux.subprocess, 'check_output', side_effect=component_command), patch.object(linux.subprocess, 'run', side_effect=inspect_deb):
                 linux.package(bundle, output, '0.1.0-pre.2', 'arm64')
             with zipfile.ZipFile(output / 'Meltype-flash-Linux-arm64.zip') as archive:
                 self.assertIn('Meltype-flash-linux/install.sh', archive.namelist())

@@ -1585,6 +1585,17 @@ class StateTests(unittest.TestCase):
         for data,lifetime,worker in [(None,c.byref(host.context),self.worker),(address,None,self.worker),(address,c.byref(host.context),None)]:
             self.assertEqual(self.api.meltype_tsf_service_abandon(data,lifetime,worker,None,TOGGLE()),-1)
         self.assertEqual(c.string_at(address,c.sizeof(State)),before);host.verify(self)
+    def test_issue_992_halfwidth_and_email_scopes_pass_through_service(self):
+        for scope in [4,5,40]:
+            state=self.create();host=CompartmentHost()
+            host.values[0].values=[scope]
+            self.assertEqual(self.scope(state,host),1)
+            self.assertFalse(state.private_field)
+            host.values[0].values=[61]
+            self.assertEqual(self.scope(state,host),0)
+            self.assertTrue(state.private_field)
+            host.verify(self)
+
     def scope(self,state,host,notice=None,lifetime=None):
         return self.api.meltype_tsf_service_input_scope(c.addressof(state),lifetime or c.byref(host.context),c.byref(host.context),7,123,notice or CORE_NOTICE(lambda *_:None))
     def mode_action(self,state,host,op=1,value=1,worker=None,notice=None,context='same'):

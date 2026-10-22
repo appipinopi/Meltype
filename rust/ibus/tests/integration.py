@@ -66,8 +66,8 @@ class EngineTests(unittest.TestCase):
         components.mkdir(parents=True, exist_ok=True)
         os.environ["IBUS_COMPONENT_PATH"] = str(components)
         (cls.root / "data").mkdir()
-        (cls.root / "data/config.json").write_text(json.dumps({"LiveConversion":False, "PredictiveCandidates":False, "SigilWordsDirect":True}), encoding="utf-8")
-        (cls.root / "data/state.json").write_text(json.dumps({"preferences":{"user_dictionary":{"めるたいぷ":[f"候補{i}" for i in range(18)]}}}), encoding="utf-8")
+        (cls.root / "data/config.json").write_text(json.dumps({"LiveConversion":False, "PredictiveCandidates":False, "SigilWordsDirect":True, "CursorIntoBrackets":True, "FullWidthParentheses":False}), encoding="utf-8")
+        (cls.root / "data/state.json").write_text(json.dumps({"preferences":{"user_dictionary":{"めるたいぷ":[f"候補{i}" for i in range(18)],"ちな":["千奈"]}}}), encoding="utf-8")
         cls.daemon_log = (cls.root / "daemon.log").open("w+")
         cls.daemon = subprocess.Popen(["ibus-daemon", "--single", "--panel", "disable", "--config", "disable", "--emoji-extension", "disable", "--address", os.environ["IBUS_ADDRESS"], "--cache=none", "--timeout=3000"], stdout=cls.daemon_log, stderr=subprocess.STDOUT)
         cls.addClassCleanup(cls.stop, cls.daemon)
@@ -98,6 +98,8 @@ class EngineTests(unittest.TestCase):
 
     def setUp(self):
         self.document = ""
+        self.caret = None
+        self.forwarded = []
         self.marked = ""
         self.candidates = []
         self.selected_candidate = 0
@@ -109,6 +111,7 @@ class EngineTests(unittest.TestCase):
         self.context = self.bus.create_input_context(client)
         self.addCleanup(self.context.destroy)
         self.context.connect("commit-text", self.commit)
+        self.context.connect("forward-key-event", self.forward)
         self.context.connect("update-preedit-text", self.preedit)
         self.context.connect("update-lookup-table", self.lookup)
         self.context.connect("hide-lookup-table", lambda *_: self.candidates.clear())
@@ -129,7 +132,8 @@ class EngineTests(unittest.TestCase):
         pump()
 
     def surrounding(self):
-        cursor, anchor = self.selection or (len(self.document), len(self.document))
+        at = len(self.document) if self.caret is None else self.caret
+        cursor, anchor = self.selection or (at, at)
         self.context.set_surrounding_text(IBus.Text.new_from_string(self.document), cursor, anchor)
 
     def require_surrounding(self, *_):
@@ -137,8 +141,18 @@ class EngineTests(unittest.TestCase):
         self.surrounding()
 
     def commit(self, _ic, text):
-        self.document += text.get_text()
+        at = len(self.document) if self.caret is None else self.caret
+        value = text.get_text()
+        self.document = self.document[:at] + value + self.document[at:]
+        if self.caret is not None:
+            self.caret += len(value)
         self.surrounding()
+
+    def forward(self, _ic, keyval, keycode, state):
+        self.forwarded.append((keyval, state))
+        if keyval == IBus.KEY_Left and not state & int(IBus.ModifierType.RELEASE_MASK):
+            self.caret = max(0, (len(self.document) if self.caret is None else self.caret) - 1)
+            self.surrounding()
 
     def preedit(self, _ic, text, cursor, visible):
         self.marked = text.get_text() if visible else ""
@@ -158,12 +172,18 @@ class EngineTests(unittest.TestCase):
         consumed = self.context.process_key_event(keyval, 0, state)
         pump(0.015)
         if not consumed and scalar is not None:
-            self.document += scalar
-            self.surrounding()
+            self.commit(None, IBus.Text.new_from_string(scalar))
         return consumed
 
     def type(self, raw):
         return [self.key(IBus.unicode_to_keyval(c), c) for c in raw]
+
+    def test_issue_487_registered_name_does_not_split_known_longer_word(self):
+        self.type("chinamini")
+        self.key(IBus.KEY_space," ")
+        self.assertEqual(self.marked,"ちなみに")
+        self.key(IBus.KEY_Return)
+        self.assertEqual(self.document,"ちなみに")
 
     def test_japanese_conversion_candidates_and_commit(self):
         self.assertTrue(all(self.type("hashi")))
@@ -203,6 +223,13 @@ class EngineTests(unittest.TestCase):
         self.panel.candidate_clicked(index, 1, 0)
         wait(lambda: self.document == "箸", "panel candidate commit")
         self.assertEqual(self.document, "箸")
+        self.assertEqual(self.marked, "")
+
+    def test_typing_candidates_can_be_clicked_before_conversion(self):
+        self.type("go")
+        self.assertEqual(self.candidates[:2], ["go", "ご"])
+        self.panel.candidate_clicked(1, 1, 0)
+        wait(lambda: self.document == "ご", "typing candidate commit")
         self.assertEqual(self.marked, "")
 
     def test_candidate_panel_paging_click_uses_the_current_page(self):
@@ -276,6 +303,55 @@ class EngineTests(unittest.TestCase):
         self.type("ka")
         self.assertEqual(self.marked, "か")
 
+    def test_private_hint_preserves_conversion_without_learning(self):
+        self.context.set_content_type(int(IBus.InputPurpose.FREE_FORM), 1 << 11)
+        pump()
+        state = (self.root / "data/state.json").read_bytes()
+        self.assertTrue(all(self.type("nihongo")))
+        self.assertEqual(self.marked, "にほんご")
+        self.key(IBus.KEY_Return)
+        self.assertEqual(self.document, "にほんご")
+        self.assertEqual((self.root / "data/state.json").read_bytes(), state)
+        self.context.set_content_type(int(IBus.InputPurpose.FREE_FORM), 0)
+        pump()
+        self.type("ka")
+        self.assertEqual(self.marked, "か")
+
+    def test_terminal_purpose_is_restored_on_return_to_normal_field(self):
+        self.context.set_content_type(int(IBus.InputPurpose.TERMINAL), 0)
+        pump()
+        self.assertFalse(any(self.type("const x=42;")))
+        self.context.set_content_type(int(IBus.InputPurpose.FREE_FORM), 0)
+        pump()
+        self.type("ka")
+        self.assertEqual(self.marked, "か")
+
+    def test_bracket_commit_moves_cursor_between_pair(self):
+        self.caret = 0
+        self.type("()")
+        self.key(IBus.KEY_Return)
+        self.assertEqual(self.document, "()")
+        self.assertEqual(self.caret, 1)
+        # IBus は配送時に FORWARD_MASK を付ける。
+        self.assertEqual([(key, state & ~(1 << 25)) for key, state in self.forwarded],
+                         [(IBus.KEY_Left, 0), (IBus.KEY_Left, int(IBus.ModifierType.RELEASE_MASK))])
+        self.type("ka")
+        self.key(IBus.KEY_Return)
+        self.assertEqual(self.document, "(か)")
+
+    def test_sync_client_bracket_commit_keeps_end_context(self):
+        self.context.set_capabilities(int(IBus.Capabilite.PREEDIT_TEXT | IBus.Capabilite.FOCUS | IBus.Capabilite.SURROUNDING_TEXT) | (1 << 7))
+        pump()
+        self.caret = 0
+        self.type("()")
+        self.key(IBus.KEY_Return)
+        self.assertEqual(self.document, "()")
+        self.assertEqual(self.caret, 2)
+        self.assertEqual(self.forwarded, [])
+        self.type("ka")
+        self.key(IBus.KEY_Return)
+        self.assertEqual(self.document, "()か")
+
     def test_direct_detection_replaces_only_verified_prefix(self):
         self.key(IBus.KEY_Muhenkan)
         self.assertFalse(any(self.type("kon")))
@@ -286,6 +362,18 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(self.deletions, [(-3, 3)])
         self.key(IBus.KEY_Return)
         self.assertEqual(self.document, "こん")
+
+    def test_issues_397_516_paste_then_small_tsu_preserves_document(self):
+        for pasted in ["貼り付けた文章😀", "貼り付けた文章😀\n"]:
+            for raw, expected in [("tta","った"),("tti","っち"),("ttu","っつ"),("tte","って"),("tto","っと")]:
+                with self.subTest(pasted=pasted,raw=raw):
+                    self.context.reset();pump()
+                    self.document="";self.deletions.clear();self.selection=None;self.caret=None
+                    self.assertFalse(self.key(IBus.KEY_v,state=int(IBus.ModifierType.CONTROL_MASK)))
+                    self.document=pasted;self.surrounding()
+                    self.type(raw);self.key(IBus.KEY_Return)
+                    self.assertEqual(self.document,pasted+expected)
+                    self.assertEqual(self.deletions,[])
 
     def test_nonempty_selection_disables_backward_replacement(self):
         self.key(IBus.KEY_Muhenkan)

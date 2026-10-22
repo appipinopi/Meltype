@@ -181,6 +181,8 @@ pub struct Session {
     kana_text: String,
     process: String,
     pub can_delete: bool,
+    /// Host can place the caret inside a newly committed bracket pair.
+    pub can_move_caret: bool,
     last_commit: Option<CommittedInput>,
     typed_keys: Vec<(i32, char, bool)>,
     reconversion_origin: Option<String>,
@@ -244,6 +246,7 @@ impl Default for Session {
             kana_text: String::new(),
             process: String::new(),
             can_delete: false,
+            can_move_caret: true,
             last_commit: None,
             typed_keys: vec![],
             reconversion_origin: None,
@@ -1250,6 +1253,8 @@ impl Session {
         } else {
             reading.clone()
         };
+        #[cfg(all(windows, feature = "filesystem"))]
+        self.record_report_correction(&text);
         self.record_engine_learning();
         if !self.private
             && !self.no_learning
@@ -1412,7 +1417,8 @@ impl Session {
             });
         }
         let caret_back = u32::from(
-            self.settings.boolean("CursorIntoBrackets")
+            self.can_move_caret
+                && self.settings.boolean("CursorIntoBrackets")
                 && correction.is_none()
                 && crate::shortcuts::is_bracket_pair(&text),
         );
@@ -1804,7 +1810,11 @@ impl Session {
                 .iter()
                 .filter(|(key, (_, user))| {
                     reading[cursor..].starts_with(key.as_str())
-                        && (!*user || engine.is_empty() || boundaries.contains_key(&cursor))
+                        && (!*user
+                            || (engine.is_empty() || boundaries.contains_key(&cursor))
+                                && !self
+                                    .dictionary()
+                                    .splits_known_kana_word(&reading[cursor..], key.len()))
                 })
                 .max_by_key(|(key, _)| key.len());
             if let Some((key, (word, _))) = matched.filter(|(_, (word, _))| {
@@ -2867,4 +2877,357 @@ fn space_english(text: &str, before: &str, after: &str) -> String {
         output.push(' ');
     }
     output
+}
+
+// Pagefile-backed history shared by the tray and per-application TIP workers.
+// No input history is written to the filesystem or included in HTTP requests.
+#[cfg(all(windows, feature = "filesystem"))]
+pub mod report_corrections {
+    use serde::{Deserialize, Serialize};
+    use std::{
+        collections::HashMap,
+        ffi::c_void,
+        path::Path,
+        sync::{Mutex, OnceLock},
+    };
+    const SIZE: usize = 128 * 1024;
+    #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+    pub struct Entry {
+        pub typed: String,
+        pub shown: String,
+        pub expected: String,
+        pub before: String,
+    }
+    #[link(name = "kernel32")]
+    unsafe extern "system" {
+        fn CreateFileMappingW(
+            file: *mut c_void,
+            security: *const c_void,
+            protection: u32,
+            high: u32,
+            low: u32,
+            name: *const u16,
+        ) -> *mut c_void;
+        fn MapViewOfFile(
+            handle: *mut c_void,
+            access: u32,
+            high: u32,
+            low: u32,
+            length: usize,
+        ) -> *mut c_void;
+        fn UnmapViewOfFile(view: *const c_void) -> i32;
+        fn CreateMutexW(security: *const c_void, owned: i32, name: *const u16) -> *mut c_void;
+        fn WaitForSingleObject(handle: *mut c_void, timeout: u32) -> u32;
+        fn ReleaseMutex(handle: *mut c_void) -> i32;
+        fn CloseHandle(handle: *mut c_void) -> i32;
+    }
+    struct Memory {
+        map: *mut c_void,
+        gate: *mut c_void,
+        view: *mut u8,
+    }
+    // The process-local Mutex protects handles; the named mutex protects all
+    // mapped bytes between processes. No pointer or Rust layout crosses the ABI.
+    unsafe impl Send for Memory {}
+    impl Drop for Memory {
+        fn drop(&mut self) {
+            unsafe {
+                if !self.view.is_null() {
+                    UnmapViewOfFile(self.view.cast());
+                }
+                if !self.map.is_null() {
+                    CloseHandle(self.map);
+                }
+                if !self.gate.is_null() {
+                    CloseHandle(self.gate);
+                }
+            }
+        }
+    }
+    impl Memory {
+        fn open(name: &str) -> Option<Self> {
+            unsafe {
+                let wide = |s: String| s.encode_utf16().chain(Some(0)).collect::<Vec<_>>();
+                let mut result = Self {
+                    map: std::ptr::null_mut(),
+                    gate: std::ptr::null_mut(),
+                    view: std::ptr::null_mut(),
+                };
+                result.gate =
+                    CreateMutexW(std::ptr::null(), 0, wide(format!("{name}-lock")).as_ptr());
+                if result.gate.is_null() {
+                    return None;
+                }
+                result.map = CreateFileMappingW(
+                    (-1isize) as *mut c_void,
+                    std::ptr::null(),
+                    4,
+                    0,
+                    SIZE as u32,
+                    wide(name.to_owned()).as_ptr(),
+                );
+                if result.map.is_null() {
+                    return None;
+                }
+                result.view = MapViewOfFile(result.map, 6, 0, 0, SIZE).cast();
+                (!result.view.is_null()).then_some(result)
+            }
+        }
+        fn access(&self, update: impl FnOnce(&mut Vec<Entry>) -> bool) -> Vec<Entry> {
+            unsafe {
+                // Input must never wait for the report dialog or another worker.
+                let wait = WaitForSingleObject(self.gate, 0);
+                if wait != 0 && wait != 0x80 {
+                    return Vec::new();
+                }
+                struct Unlock(*mut c_void);
+                impl Drop for Unlock {
+                    fn drop(&mut self) {
+                        unsafe {
+                            ReleaseMutex(self.0);
+                        }
+                    }
+                }
+                let _unlock = Unlock(self.gate);
+                let len = u32::from_le_bytes(std::ptr::read_unaligned(self.view.cast())) as usize;
+                let mut entries: Vec<Entry> = if (1..=SIZE - 4).contains(&len) {
+                    serde_json::from_slice(std::slice::from_raw_parts(self.view.add(4), len))
+                        .unwrap_or_default()
+                } else {
+                    Vec::new()
+                };
+                if entries.len() > 20 {
+                    entries.clear();
+                }
+                if update(&mut entries) {
+                    if let Ok(bytes) = serde_json::to_vec(&entries) {
+                        if bytes.len() <= SIZE - 4 {
+                            // Clear removed content as well as its length.
+                            std::ptr::write_bytes(self.view, 0, SIZE);
+                            std::ptr::copy_nonoverlapping(
+                                bytes.as_ptr(),
+                                self.view.add(4),
+                                bytes.len(),
+                            );
+                            std::ptr::write_unaligned(
+                                self.view.cast::<[u8; 4]>(),
+                                (bytes.len() as u32).to_le_bytes(),
+                            );
+                        }
+                    }
+                }
+                entries
+            }
+        }
+    }
+    fn access(directory: &Path, update: impl FnOnce(&mut Vec<Entry>) -> bool) -> Vec<Entry> {
+        static ALL: OnceLock<Mutex<HashMap<String, Memory>>> = OnceLock::new();
+        let path = directory
+            .canonicalize()
+            .unwrap_or_else(|_| directory.to_path_buf());
+        let identity = path.to_string_lossy().to_lowercase();
+        let hash = identity
+            .as_bytes()
+            .iter()
+            .fold(0xcbf29ce484222325_u64, |h, b| {
+                (h ^ *b as u64).wrapping_mul(0x100000001b3)
+            });
+        let name = format!("Local\\Meltype-flash-corrections-v1-{hash:016x}");
+        let Ok(mut all) = ALL.get_or_init(Default::default).try_lock() else {
+            return Vec::new();
+        };
+        if !all.contains_key(&name) {
+            let Some(memory) = Memory::open(&name) else {
+                return Vec::new();
+            };
+            all.insert(name.clone(), memory);
+        }
+        all[&name].access(update)
+    }
+    pub fn recent(directory: &Path) -> Vec<Entry> {
+        access(directory, |_| false)
+    }
+    pub fn clear(directory: &Path) {
+        access(directory, |entries| {
+            entries.clear();
+            true
+        });
+    }
+    pub fn record(directory: &Path, mut entry: Entry) {
+        for value in [&mut entry.typed, &mut entry.shown, &mut entry.expected] {
+            *value = value.chars().take(256).collect();
+        }
+        entry.before = entry
+            .before
+            .chars()
+            .rev()
+            .take(20)
+            .collect::<String>()
+            .chars()
+            .rev()
+            .collect();
+        access(directory, |entries| {
+            if entries.last() == Some(&entry) {
+                return false;
+            }
+            entries.push(entry);
+            if entries.len() > 20 {
+                entries.remove(0);
+            }
+            true
+        });
+    }
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        #[test]
+        fn independent_handles_share_bounded_memory_without_files() {
+            let directory = tempfile::tempdir().unwrap();
+            let name = format!(
+                "Local\\Meltype-flash-history-test-{}",
+                directory.path().file_name().unwrap().to_string_lossy()
+            );
+            let a = Memory::open(&name).unwrap();
+            let b = Memory::open(&name).unwrap();
+            let entry = Entry {
+                typed: "nihongo".into(),
+                shown: "にほんご".into(),
+                expected: "nihongo".into(),
+                before: String::new(),
+            };
+            a.access(|entries| {
+                entries.push(entry.clone());
+                true
+            });
+            assert_eq!(b.access(|_| false), vec![entry]);
+            b.access(|entries| {
+                entries.clear();
+                true
+            });
+            assert!(a.access(|_| false).is_empty());
+            a.access(|entries| {
+                entries.push(Entry {
+                    typed: "temporary".into(),
+                    shown: "仮".into(),
+                    expected: "temporary".into(),
+                    before: String::new(),
+                });
+                true
+            });
+            drop(a);
+            drop(b);
+            assert!(Memory::open(&name).unwrap().access(|_| false).is_empty());
+            for i in 0..25 {
+                record(
+                    directory.path(),
+                    Entry {
+                        typed: i.to_string(),
+                        shown: "日".repeat(300),
+                        expected: "a".into(),
+                        before: "前".repeat(50),
+                    },
+                );
+            }
+            let entries = recent(directory.path());
+            assert_eq!(entries.len(), 20);
+            assert_eq!(entries[0].typed, "5");
+            assert_eq!(entries[0].shown.chars().count(), 256);
+            assert_eq!(entries[0].before.chars().count(), 20);
+            assert_eq!(std::fs::read_dir(directory.path()).unwrap().count(), 0);
+            clear(directory.path());
+            assert!(recent(directory.path()).is_empty());
+        }
+        #[test]
+        fn only_explicit_nonprivate_corrections_are_reported() {
+            let directory = tempfile::tempdir().unwrap();
+            let mut session =
+                super::super::Session::open(crate::storage::Store::new(directory.path())).unwrap();
+            session
+                .settings
+                .set("LiveConversion", serde_json::json!(false))
+                .unwrap();
+            session
+                .settings
+                .set("PredictiveCandidates", serde_json::json!(false))
+                .unwrap();
+            for suppressed in [false, true] {
+                for ch in "nihongo".chars() {
+                    session.key(ch.to_ascii_uppercase() as i32, ch as i32, 0);
+                }
+                session.key(0x79, 0, 0);
+                session.no_learning = suppressed;
+                session.commit();
+                if !suppressed {
+                    let history = recent(directory.path());
+                    assert_eq!(history.len(), 1);
+                    assert_eq!(history[0].shown, "にほんご");
+                    assert_eq!(history[0].expected, "nihongo");
+                    clear(directory.path());
+                } else {
+                    assert!(recent(directory.path()).is_empty());
+                }
+            }
+            session.no_learning = false;
+            for ch in "nihongo".chars() {
+                session.key(ch.to_ascii_uppercase() as i32, ch as i32, 0);
+            }
+            session.key(0x75, 0, 0);
+            session.private = true;
+            session.commit();
+            assert!(recent(directory.path()).is_empty());
+        }
+    }
+}
+#[cfg(all(windows, feature = "filesystem"))]
+impl Session {
+    fn record_report_correction(&mut self, text: &str) {
+        if self.private
+            || self.no_learning
+            || self.reconversion_origin.is_some()
+            || self.raw.is_empty()
+            || !self.raw.bytes().any(|c| c.is_ascii_alphabetic())
+            || self.v130.clipboard.is_some()
+            || self.selected_prediction >= 0
+            || self.store.is_none()
+        {
+            return;
+        }
+        let shown = if self.is_converting() {
+            let switched = self.clauses.iter().any(|clause| {
+                clause.changed
+                    && (clause.english && clause.text().chars().any(crate::linguistics::kana)
+                        || !clause.english && clause.raw.as_deref() == Some(clause.text()))
+            });
+            if !switched {
+                return;
+            }
+            self.clauses
+                .iter()
+                .filter_map(|clause| clause.candidates.first())
+                .cloned()
+                .collect::<String>()
+        } else {
+            if self.function_key == 0 {
+                return;
+            }
+            let explicit = self.explicit.take();
+            let key = std::mem::replace(&mut self.function_key, 0);
+            let shown = self.display(true);
+            self.function_key = key;
+            self.explicit = explicit;
+            shown
+        };
+        if shown == text || text.is_empty() {
+            return;
+        }
+        report_corrections::record(
+            &self.store.as_ref().unwrap().directory,
+            report_corrections::Entry {
+                typed: self.raw.clone(),
+                shown,
+                expected: text.to_owned(),
+                before: self.before.clone(),
+            },
+        );
+    }
 }

@@ -44,5 +44,5 @@ pub unsafe extern "C" fn meltype_tsf_service_input_scope(
             notice(adapter, 5, (value >> 16) as i32);
         }
     }
-    i32::from(value & 1 != 0)
+    i32::from(value & (1 | 8) != 0)
 }

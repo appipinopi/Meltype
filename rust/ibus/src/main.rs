@@ -6,9 +6,25 @@ mod keys;
 mod platform;
 
 fn main() {
-    if std::env::args().any(|arg| arg == "--print-component") {
-        match std::env::current_exe() {
-            Ok(exe) => print!("{}", component::xml(&exe)),
+    if std::env::args().any(|arg| arg == "--print-component" || arg == "--print-setup-desktop") {
+        let args: Vec<_> = std::env::args_os().collect();
+        let executable =
+            if let Some(index) = args.iter().position(|arg| arg == "--component-executable") {
+                args.get(index + 1)
+                    .map(std::path::PathBuf::from)
+                    .ok_or_else(|| std::io::Error::other("--component-executable requires a path"))
+            } else {
+                std::env::current_exe()
+            };
+        match executable {
+            Ok(exe) => print!(
+                "{}",
+                if args.iter().any(|arg| arg == "--print-setup-desktop") {
+                    component::desktop(&exe)
+                } else {
+                    component::xml(&exe)
+                }
+            ),
             Err(error) => {
                 eprintln!("{error}");
                 std::process::exit(1);

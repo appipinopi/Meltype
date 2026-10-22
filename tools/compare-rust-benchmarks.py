@@ -28,8 +28,9 @@ def main():
     p.add_argument("--output",type=Path,required=True)
     p.add_argument("--samples",type=int,default=5)
     p.add_argument("--warmups",type=int,default=2)
+    p.add_argument("--rounds",type=int,default=2)
     args=p.parse_args()
-    if args.samples<3 or args.warmups<1:p.error("samples>=3 and warmups>=1 required")
+    if args.samples<3 or args.warmups<1 or args.rounds<2:p.error("samples>=3, warmups>=1 and rounds>=2 required")
     output=args.output.resolve()
     output.mkdir(parents=True,exist_ok=True)
     if (output/"report.json").exists():p.error("choose a new output directory")
@@ -44,9 +45,9 @@ def main():
     inputs.write_text(json.dumps(cases,ensure_ascii=False,indent=2),encoding="utf-8")
     rows=[];resources=[];traces={};order=[]
     env=os.environ.copy();env["MELTYPE_BENCH_PROGRESS"]="1"
-    for round_index in range(2):
-        for label in (["old","new"] if round_index==0 else ["new","old"]):
-            order.append(label);print(f"Round {round_index+1}/2: {label}",flush=True)
+    for round_index in range(args.rounds):
+        for label in (["old","new"] if round_index%2==0 else ["new","old"]):
+            order.append(label);print(f"Round {round_index+1}/{args.rounds}: {label}",flush=True)
             raw=output/f"{label}-{round_index}.jsonl"
             with raw.open("w",encoding="utf-8") as log:
                 usage=benchmark.measure_process([str(binaries[label]),str(inputs),str(args.samples),str(args.warmups)],cwd=ROOT,env=env,stdout=log)
@@ -66,7 +67,7 @@ def main():
         same=traces[("old",name)]==traces[("new",name)]
         results.append(dict(case=name,medians_ms=medians,new_over_old=medians["new"]/medians["old"],matching_projection=same,eligible_for_speed_claim=same and unchanged))
     report=dict(measured_at=datetime.datetime.now(datetime.timezone.utc).isoformat(),old_ref=args.old_ref,new_ref=args.new_ref,
-                samples=args.samples,warmups=args.warmups,rounds=2,order=order,binary_sha256=hashes,binaries_unchanged=unchanged,
+                samples=args.samples,warmups=args.warmups,rounds=args.rounds,order=order,binary_sha256=hashes,binaries_unchanged=unchanged,
                 rustc=benchmark.command(["rustc","+stable","-Vv"]),results=results,process_resources=resources,
                 scope="In-memory keys and JSON, no OS engine/live conversion/prediction/learning. Same compiler must be used when building both binaries. Source/dependency revisions differ; this does not isolate one code change.")
     (output/"report.json").write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")

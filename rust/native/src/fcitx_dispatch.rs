@@ -124,7 +124,7 @@ pub unsafe extern "C" fn meltype_fcitx_key_event(
         handle,
         vk,
         (packed >> 32) as i32,
-        meltype_fcitx_modifiers(states),
+        meltype_fcitx_modifiers(states) | i32::from(symbol == 0xfe20),
         before.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
         after.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
     );
@@ -134,7 +134,9 @@ pub unsafe extern "C" fn meltype_fcitx_key_event(
     apply(handle, &bytes, context, callback);
     i32::from(value.get("consumed").and_then(serde_json::Value::as_bool) == Some(true))
 }
-/// Commit pending input (action 0) or select a candidate (action 1/index).
+/// Actions: 0 commit, 1 select the displayed list, 2 remember host-committed
+/// preedit without reinsertion, 3 cancel without commit or learning,
+/// 4 commit exactly the displayed preedit (server-side preedit).
 /// # Safety
 /// Same callback/buffer contract as meltype_fcitx_key_event.
 #[no_mangle]
@@ -149,13 +151,28 @@ pub unsafe extern "C" fn meltype_fcitx_action(
     let (Some(query), Some(callback)) = (query, callback) else {
         return 0;
     };
-    if action > 1 || !sync(handle, context, query) {
+    if action > 4 || !sync(handle, context, query) {
         return 0;
     }
-    let pointer = if action == 0 {
-        meltype_commit(handle)
-    } else {
-        meltype_select_candidate(handle, index)
+    let pointer = match action {
+        0 => meltype_commit(handle),
+        1 if predicting(handle) => meltype_select_prediction(handle, index),
+        1 => meltype_select_candidate(handle, index),
+        2 => {
+            let pointer = meltype_commit_preedit(handle);
+            if pointer.is_null() {
+                return 0;
+            }
+            meltype_free(pointer.cast());
+            let reset = meltype_reset(handle);
+            meltype_free(reset.cast());
+            set_predicting(handle, false);
+            meltype_fcitx_set_preedit(handle, 0);
+            return i32::from(callback(context, 8, 0, b"".as_ptr(), 0) > 0);
+        }
+        3 => meltype_reset(handle),
+        4 => meltype_commit_preedit(handle),
+        _ => unreachable!(),
     };
     let Some((bytes, _)) = reply(pointer) else {
         return 0;

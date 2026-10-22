@@ -16,7 +16,9 @@ int main(int argc,char **argv) {
         if(!key||!modifiers||!mode)throw std::runtime_error("Rust key/mode ABI missing");
         size_t count=0;
         auto compare=[&](uint32_t symbol) {
-            const auto expected=meltype_fcitx::virtualKey(static_cast<fcitx::KeySym>(symbol));
+            auto expected=meltype_fcitx::virtualKey(static_cast<fcitx::KeySym>(symbol));
+            // ISO_Left_Tab は Shift+Tab として扱う修正。ほかは旧実装と比較する。
+            if(symbol==0xfe20)expected={9,0};
             const auto actual=key(symbol,fcitx::Key::keySymToUnicode(static_cast<fcitx::KeySym>(symbol)));
             if(static_cast<int>(actual&0xffffffffu)!=expected.first || static_cast<uint32_t>(actual>>32)!=expected.second)
                 throw std::runtime_error("key mapping mismatch: "+std::to_string(symbol));

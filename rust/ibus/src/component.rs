@@ -10,6 +10,7 @@ fn escape(text: &str) -> String {
 }
 pub fn xml(executable: &Path) -> String {
     let icon = escape(&executable.with_file_name("icon.png").to_string_lossy());
+    let setup = shell_path(&executable.with_file_name("meltype-flash"));
     let executable = escape(&executable.to_string_lossy());
     // IBus executes this command with GLib shell parsing, not an actual shell.
     // Single quotes are escaped for that parser before the XML escaping pass.
@@ -30,11 +31,35 @@ pub fn xml(executable: &Path) -> String {
   <name>meltype-flash</name><longname>Meltype-flash</longname>
   <description>日本語と英語を打ち分ける日本語入力</description>
   <language>ja</language><license>GPL-3.0-or-later</license>
-  <icon>{icon}</icon>
+  <icon>{icon}</icon><setup>{setup}</setup>
   <author>Yukishiro, appipinopi</author><layout>default</layout><symbol>あ</symbol><rank>0</rank>
  </engine></engines>
 </component>
 "#,
         env!("CARGO_PKG_VERSION")
     )
+}
+
+fn shell_path(path: &Path) -> String {
+    escape(&format!(
+        "'{}'",
+        path.to_string_lossy().replace('\'', "'\\''")
+    ))
+}
+// Exec はシェル用の引用とDesktop Entryの文字列エスケープを分ける。
+pub fn desktop(executable: &Path) -> String {
+    let path = executable.with_file_name("meltype-flash");
+    let path = path.to_string_lossy();
+    let quoted = path
+        .replace('\\', "\\\\")
+        .replace('"', "\\\"")
+        .replace('`', "\\`")
+        .replace('$', "\\$")
+        .replace('%', "%%");
+    let command = format!("\"{quoted}\"")
+        .replace('\\', "\\\\")
+        .replace('\n', "\\n")
+        .replace('\r', "\\r")
+        .replace('\t', "\\t");
+    format!("[Desktop Entry]\nType=Application\nName=Meltype-flash 設定\nExec=/usr/bin/env -- {command}\nNoDisplay=true\nTerminal=false\nX-Meltype-Flash-IBus=true\n")
 }

@@ -109,6 +109,7 @@ extern "C" {
     );
     pub fn ibus_engine_delete_surrounding_text(engine: Obj, offset: i32, count: u32);
     pub fn ibus_engine_commit_text(engine: Obj, text: Obj);
+    pub fn ibus_engine_forward_key_event(engine: Obj, keyval: u32, keycode: u32, state: u32);
     pub fn ibus_engine_update_preedit_text_with_mode(
         engine: Obj,
         text: Obj,

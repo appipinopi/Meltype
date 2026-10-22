@@ -269,3 +269,20 @@ fn host_committed_preedit_preserves_display_without_learning_unfinished_kana() {
     assert!(s.state.phrases.is_empty());
     assert!(s.commit_preedit().commits.is_empty());
 }
+
+#[test]
+fn issue_301_tool_names_remain_english_as_whole_words() {
+    for raw in [
+        "opencode",
+        "openrouter",
+        "tokenrouter",
+        "OpenRouter",
+        "TOKENROUTER",
+    ] {
+        let mut session = Session::default();
+        for ch in raw.chars() {
+            session.key(0, ch as i32, 0);
+        }
+        assert_eq!(session.commit().commits[0].text, raw, "{raw}");
+    }
+}
