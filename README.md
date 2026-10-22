@@ -1,5 +1,7 @@
 # Meltype-flash
 
+![Meltype-flash](assets/branding/readme-banner.svg)
+
 Meltypeを参照して開発している、Rust版の日本語入力です。製品の開発ブランチは **`rust`** です。
 
 - [Windowsの起動・導入・制限](rust/WINDOWS-PACKAGE.md)

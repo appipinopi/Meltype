@@ -3,7 +3,7 @@
 #include <winver.h>
 
 // 1 つ目のアイコン (言語の切り替えの一覧に出る)
-101 ICON "meltype.ico"
+101 ICON "assets/branding/meltype-flash.ico"
 
 // DLL の版は Meltype.exe の版とは別に、DLL を変えたときだけ上げる
 // (同じ DLL なら入れ直したときに登録し直さない (管理者権限の確認を出さない) ため、アプリの版を埋め込まない)

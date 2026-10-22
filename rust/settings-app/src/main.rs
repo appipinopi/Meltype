@@ -4,6 +4,7 @@
 use eframe::egui;
 use meltype_core::{control, settings::Settings, storage::Store, Session};
 use serde_json::{json, Value};
+mod branding;
 mod dialogs;
 mod lifecycle;
 mod metadata;
@@ -29,6 +30,7 @@ fn main() -> eframe::Result {
         && std::env::args().any(|a| matches!(a.as_str(), "--tray" | "--portable-keyboard"));
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
+            .with_icon(branding::icon())
             .with_inner_size([720., 700.])
             .with_min_inner_size([480., 400.]),
         ..Default::default()

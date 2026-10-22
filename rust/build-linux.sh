@@ -12,7 +12,8 @@ fi
 cargo build --manifest-path "$root/Cargo.toml" --locked --release --workspace --target-dir "$target"
 mkdir -p "$out"
 cp "$target/release/meltype-ibus" "$target/release/meltype-flash" "$target/release/meltype-rs" "$out/"
-cp "$root/LICENSE" "$root/THIRD-PARTY-NOTICES.md" "$root/rust/README.md" "$root/rust/MIGRATION.md" "$root/rust/ibus/install.sh" "$root/linux/icon.png" "$out/"
+cp "$root/LICENSE" "$root/THIRD-PARTY-NOTICES.md" "$root/rust/README.md" "$root/rust/MIGRATION.md" "$root/rust/ibus/install.sh" "$out/"
+cp "$root/assets/branding/meltype-flash-256.png" "$out/icon.png"
 files=(meltype-ibus meltype-flash meltype-rs LICENSE THIRD-PARTY-NOTICES.md README.md MIGRATION.md install.sh icon.png)
 if [[ -x "$root/native/mozc/bin/linux/meltype_mozc_helper" ]]; then
     mkdir -p "$out/mozc"
