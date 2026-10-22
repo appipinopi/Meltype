@@ -5,7 +5,7 @@
 
 <!-- meltype-flash-platform:end -->
 
-<p align="center"><b>日本語と英語を、ひとつの入力で。</b></p>
+<p align="center"><b>稲妻のように、言葉の壁を駆け抜ける日本語入力。</b></p>
 
 本家 [Meltype](https://github.com/yksr-melt/Meltype) を参照して開発している、Rust版の日本語入力です。
 Windows・Mac・Linux・Android・ChromeOS・iOSで共通の入力コアを使います。

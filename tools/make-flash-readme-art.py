@@ -132,7 +132,7 @@ def header(document, key, name):
     return (f'{START}\n<p align="center"><img src="{relative(OUT / "logo.svg", document)}" alt="Meltype-flash" width="520"></p>\n'
             f'<a id="meltype-for-{key}"></a>\n'
             f'<p align="center"><img src="{relative(OUT / key / "hero.svg", document)}" alt="Meltype-flash for {name}" width="1000"></p>\n'
-            '<p align="center"><b>日本語と英語を、ひとつの入力で。</b></p>\n'
+            '<p align="center"><b>稲妻のように、言葉の壁を駆け抜ける日本語入力。</b></p>\n'
             '<p align="center"><a href="https://github.com/appipinopi/Meltype/releases/tag/flash-v0.1.0-preview.2">'
             '<img src="https://img.shields.io/badge/Flash-v0.1.0_Pre2-ffe34a" alt="Flash v0.1.0 Pre2"></a> '
             '<img src="https://img.shields.io/badge/status-開発プレビュー-666973" alt="開発プレビュー"></p>\n'
