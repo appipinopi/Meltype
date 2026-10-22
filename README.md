@@ -9,6 +9,8 @@ Meltypeを参照して開発している、Rust版の日本語入力です。製
 - [本家との共存・専用IME登録ID](rust/BRANDING.md)
 - [上流の安全な取り込み](rust/UPSTREAM-SYNC.md)
 - [画面の再現状況](rust/UI-V0.1.1.md)
+- [Linux・Macを含むアプリ別設定](rust/APP-RULES.md)
+- [ChromeOS試験版・サイトごとのコード入力](chromeos/README.md)
 
 ## 起動
 
@@ -28,7 +30,7 @@ cargo run -p meltype-settings -- --tray
 
 ## 配布
 
-この変更でMeltype-flashのリリースは公開していません。既存の `rust-v0.1.0-preview.1` は改名前のRustプレビューです。
+最新のプレリリースは [v0.1.0 Pre2](https://github.com/appipinopi/Meltype/releases/tag/flash-v0.1.0-preview.2) です。既存の `rust-v0.1.0-preview.1` は改名前のRustプレビューです。
 新しい配布は `Meltype-flash-*` という名前で、専用のFlashリリースワークフローから作成します。
 参照元のC#版インストーラーをFlashのダウンロードとして案内しません。
 

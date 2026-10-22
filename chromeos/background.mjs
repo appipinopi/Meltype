@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import init, {BrowserSession} from "./pkg/meltype_browser.js";
 import {ImeController} from "./controller.mjs";
+import {SiteProfiles} from "./site-profiles.mjs";
+const profiles = new SiteProfiles(chrome);
 const available = Boolean(chrome.input?.ime?.onKeyEvent);
 let diagnostic = available ? "Rust Coreの起動待ち" : "この環境ではchrome.input.imeを利用できません。ChromeOSの対応状況・管理ポリシーを確認してください。";
 const report = message => { diagnostic = message; console.warn("Meltype:", message); };
 const controller = available ? new ImeController({
   ime: chrome.input.ime, report, incognito: chrome.extension?.inIncognitoContext === true,
+  resolveMode: context => profiles.resolve(context),
   load: async () => {
     const saved = await chrome.storage.local.get("snapshot");
     await init({module_or_path: chrome.runtime.getURL("pkg/meltype_browser_bg.wasm")});
@@ -20,6 +23,18 @@ const controller = available ? new ImeController({
   },
   persist: snapshot => chrome.storage.local.set({snapshot}),
 }) : null;
+const refreshMode = () => controller?.refreshMode();
+chrome.tabs?.onActivated?.addListener(refreshMode);
+chrome.tabs?.onRemoved?.addListener(refreshMode);
+chrome.tabs?.onUpdated?.addListener((_id, change) => {
+  if (change.url !== undefined || change.status !== undefined) refreshMode();
+});
+chrome.windows?.onFocusChanged?.addListener(refreshMode);
+chrome.permissions?.onAdded?.addListener(refreshMode);
+chrome.permissions?.onRemoved?.addListener(refreshMode);
+chrome.storage.onChanged?.addListener((changes, area) => {
+  if (area === "local" && changes.sitePreferences) { profiles.invalidate(); refreshMode(); }
+});
 if (controller) {
   const ime = chrome.input.ime;
   ime.onActivate.addListener(engine => controller.activate(engine));
@@ -46,6 +61,12 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (sender.id !== chrome.runtime.id || sender.url !== chrome.runtime.getURL("options.html")) return false;
   (async () => {
     if (message.op === "status") return {available, diagnostic};
+    if (message.op === "site_preferences") return {preferences: await profiles.preferences()};
+    if (message.op === "save_site_preferences") {
+      const preferences = await profiles.save(message.preferences);
+      refreshMode();
+      return {preferences};
+    }
     if (!controller) throw new Error(diagnostic);
     return controller.enqueue(async () => {
       const core = await controller.ready();

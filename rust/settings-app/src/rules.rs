@@ -30,7 +30,13 @@ pub fn editor(ui: &mut egui::Ui, key: &str, value: &mut Value, settings: &Settin
             ui.label(if kinds {
                 "名前"
             } else {
-                "プロセス名 (例: code.exe)"
+                if cfg!(windows) {
+                    "プロセス名 (例: Code.exe)"
+                } else if cfg!(target_os = "macos") {
+                    "アプリID (例: com.microsoft.VSCode)"
+                } else {
+                    "アプリ名 (例: code)"
+                }
             });
             ui.label(if kinds { "最初は英数" } else { "有効" });
             ui.label(if kinds { "基本の種類" } else { "種類" });
@@ -124,7 +130,7 @@ pub fn editor(ui: &mut egui::Ui, key: &str, value: &mut Value, settings: &Settin
         rows.push(if kinds {
             json!({"Name":"新しい種類","Base":"General","StartInEnglish":false})
         } else {
-            json!({"Process":"new.exe","Enabled":true,"Profile":"General"})
+            json!({"Process":if cfg!(windows) { "new.exe" } else if cfg!(target_os = "macos") { "com.example.app" } else { "new-app" },"Enabled":true,"Profile":"General"})
         });
     }
     *rows != old

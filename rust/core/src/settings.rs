@@ -519,19 +519,27 @@ impl Settings {
         Ok(unique)
     }
     pub fn for_app(&self, process: &str) -> Self {
+        self.for_app_on(process, crate::app_identity::Platform::current())
+    }
+    fn application_rule(
+        &self,
+        process: &str,
+        platform: crate::app_identity::Platform,
+    ) -> Option<&Value> {
+        let find = |identity: &str| {
+            self.0["AppRules"].as_array()?.iter().rev().find(|rule| {
+                rule["Process"]
+                    .as_str()
+                    .is_some_and(|name| name.to_lowercase() == identity.to_lowercase())
+            })
+        };
+        find(process).or_else(|| crate::app_identity::legacy_rule(process, platform).and_then(find))
+    }
+    pub fn for_app_on(&self, process: &str, platform: crate::app_identity::Platform) -> Self {
         let mut settings = self.clone();
         settings.0.insert("AppProfile".into(), json!("General"));
         settings.0.insert("StartInEnglish".into(), json!(false));
-        let rule = self.0["AppRules"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .rev()
-            .find(|r| {
-                r["Process"]
-                    .as_str()
-                    .is_some_and(|s| s.to_lowercase() == process.to_lowercase())
-            });
+        let rule = self.application_rule(process, platform);
         if let Some(rule) = rule {
             if rule["Enabled"] == false {
                 settings.0.insert("Enabled".into(), json!(false));
@@ -563,16 +571,12 @@ impl Settings {
         settings
     }
     /// Shared effective app policy; executable matching follows upstream and
-    /// deliberately keeps extensions significant.
+    /// keeps extensions significant, with explicit aliases for native applications.
     pub fn app_policy(&self, process: &str, looks_like_game: bool) -> Value {
         let app = self.for_app(process);
-        let explicit = self.0["AppRules"].as_array().is_some_and(|rules| {
-            rules.iter().any(|r| {
-                r["Process"]
-                    .as_str()
-                    .is_some_and(|p| p.to_lowercase() == process.to_lowercase())
-            })
-        });
+        let explicit = self
+            .application_rule(process, crate::app_identity::Platform::current())
+            .is_some();
         json!({"enabled":app.boolean("Enabled") && !(self.boolean("StopInGames")&&looks_like_game&&!explicit),"profile":app.text("AppProfile"),"level":app.text("DetectionLevel"),"live":app.boolean("LiveConversion"),"startInEnglish":app.boolean("StartInEnglish")})
     }
 }

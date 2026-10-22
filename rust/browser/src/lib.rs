@@ -84,6 +84,19 @@ impl BrowserSession {
         self.session.set_context(Some(before), Some(after));
     }
 
+    /// A website policy is transient and must not discard an active composition.
+    pub fn set_code_mode(&mut self, enabled: bool) -> bool {
+        if self.session.code_input == enabled {
+            return true;
+        }
+        if !self.session.raw().is_empty() {
+            return false;
+        }
+        self.session.caret_moved(0, false);
+        self.session.code_input = enabled;
+        true
+    }
+
     pub fn configure(&mut self, settings: &str) -> Result<(), String> {
         let settings = Settings::parse(settings)?;
         Self::validate(&settings)?;

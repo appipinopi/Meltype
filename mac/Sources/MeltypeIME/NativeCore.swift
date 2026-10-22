@@ -16,6 +16,7 @@ private typealias HandleKeyFunction = @convention(c) (UnsafeMutableRawPointer?, 
 private typealias CommitFunction = @convention(c) (UnsafeMutableRawPointer?) -> UnsafeMutablePointer<CChar>?
 private typealias SelectFunction = @convention(c) (UnsafeMutableRawPointer?, Int32) -> UnsafeMutablePointer<CChar>?
 private typealias SetDirectFunction = @convention(c) (UnsafeMutableRawPointer?, Int32) -> Void
+private typealias SetApplicationFunction = @convention(c) (UnsafeMutableRawPointer?, UnsafePointer<CChar>?) -> Int32
 private typealias DataDirectoryFunction = @convention(c) () -> UnsafeMutablePointer<CChar>?
 private typealias ReportUrlFunction = @convention(c) (UnsafePointer<CChar>?) -> UnsafeMutablePointer<CChar>?
 private typealias WordCountFunction = @convention(c) () -> UInt64
@@ -128,6 +129,7 @@ final class NativeCore {
     private let selectFunction: SelectFunction?
     private let setDirectFunction: SetDirectFunction?
     private let setCodeInputFunction: SetDirectFunction?
+    private let setApplicationFunction: SetApplicationFunction?
     private let dataDirectoryFunction: DataDirectoryFunction?
     private let reportUrlFunction: ReportUrlFunction?
     private let freeFunction: FreeFunction?
@@ -172,6 +174,7 @@ final class NativeCore {
 #endif
         setDirectFunction = symbol("meltype_set_direct", as: SetDirectFunction.self)
         setCodeInputFunction = symbol("meltype_set_code_input", as: SetDirectFunction.self)
+        setApplicationFunction = symbol("meltype_set_application", as: SetApplicationFunction.self)
         dataDirectoryFunction = symbol("meltype_data_directory", as: DataDirectoryFunction.self)
         reportUrlFunction = symbol("meltype_report_url", as: ReportUrlFunction.self)
         freeFunction = symbol("meltype_free", as: FreeFunction.self)
@@ -225,6 +228,9 @@ final class NativeCore {
 
     func setCodeInput(_ session: UnsafeMutableRawPointer?, _ enabled: Bool) {
         setCodeInputFunction?(session, enabled ? 1 : 0)
+    }
+    func setApplication(_ session: UnsafeMutableRawPointer?, _ identity: String) -> Bool {
+        identity.withCString { setApplicationFunction?(session, $0) == 1 }
     }
 
     /// 設定・学習データ・ユーザー辞書の保存場所。

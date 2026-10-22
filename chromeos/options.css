@@ -5,5 +5,14 @@ label { display: block; margin-bottom: 8px; }
 textarea { box-sizing: border-box; width: 100%; padding: 12px; font: 14px/1.5 monospace; }
 button { margin: 12px 8px 0 0; padding: 10px 16px; font: inherit; cursor: pointer; }
 #status { padding: 12px; background: #e8f2ff; overflow-wrap: anywhere; }
-button:focus-visible, textarea:focus-visible { outline: 3px solid #2464bc; outline-offset: 2px; }
+button:focus-visible, textarea:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline: 3px solid #2464bc; outline-offset: 2px; }
+input, select { padding: 10px; font: inherit; max-width: 100%; box-sizing: border-box; }
+.check { margin-top: 20px; }
+.help { font-size: 14px; color: #4b5563; }
+.site-rule { display: grid; grid-template-columns: minmax(120px, 1fr) minmax(120px, 1fr) auto; gap: 10px; margin-bottom: 10px; align-items: center; }
+.site-rule button { margin: 0; }
+details { margin-top: 32px; padding: 16px; border: 1px solid #d1d9e6; border-radius: 8px; }
+summary { cursor: pointer; font-weight: 600; }
+#site-status { overflow-wrap: anywhere; }
+@media (max-width: 500px) { .site-rule { grid-template-columns: 1fr auto; } .site-rule input { grid-column: 1 / -1; } }
 @media (max-width: 640px) { main { margin: 8px; padding: 16px; } }
