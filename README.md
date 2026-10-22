@@ -11,6 +11,7 @@ Meltypeを参照して開発している、Rust版の日本語入力です。製
 - [画面の再現状況](rust/UI-V0.1.1.md)
 - [Linux・Macを含むアプリ別設定](rust/APP-RULES.md)
 - [ChromeOS試験版・サイトごとのコード入力](chromeos/README.md)
+- [iOSキーボードのビルド・実機署名と制限](ios/README.md)
 
 ## 起動
 
