@@ -29,6 +29,12 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
             directInput = selected == .direct
             codeInput = selected == .code
         }
+#if MELTYPE_RUST_CORE
+        let application = NSWorkspace.shared.frontmostApplication
+        let identity = application?.bundleIdentifier ?? application?.executableURL?.lastPathComponent ?? ""
+        let applicationCode = NativeCore.shared.setApplication(session, identity)
+        if selected == .automatic { codeInput = applicationCode }
+#endif
         NativeCore.shared.setDirect(session, directInput)
         NativeCore.shared.setCodeInput(session, codeInput)
     }

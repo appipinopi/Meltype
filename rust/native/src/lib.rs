@@ -1000,6 +1000,31 @@ pub extern "C" fn meltype_set_direct_detection(handle: *mut c_void, enabled: i32
 pub extern "C" fn meltype_set_code_input(handle: *mut c_void, enabled: i32) {
     set(handle, |s| s.code_input = enabled != 0);
 }
+/// Set a native process/bundle identity. Returns 1 for the code profile, 0 for
+/// normal input, or -1 for an invalid session. Call on focus, before composition.
+/// # Safety
+/// identity must point to a valid NUL-terminated UTF-8 string.
+#[no_mangle]
+pub unsafe extern "C" fn meltype_set_application(
+    handle: *mut c_void,
+    identity: *const c_char,
+) -> i32 {
+    catch_unwind(AssertUnwindSafe(|| {
+        if identity.is_null() {
+            return -1;
+        }
+        let Ok(identity) = CStr::from_ptr(identity).to_str() else {
+            return -1;
+        };
+        let mut all = sessions().lock().unwrap_or_else(|e| e.into_inner());
+        let Some(session) = all.get_mut(&(handle as usize)) else {
+            return -1;
+        };
+        session.set_process(identity);
+        i32::from(session.code_input)
+    }))
+    .unwrap_or(-1)
+}
 #[no_mangle]
 pub extern "C" fn meltype_set_private(handle: *mut c_void, enabled: i32) {
     set(handle, |s| {
@@ -1115,6 +1140,48 @@ mod tests {
             meltype_destroy(handle);
             assert!(meltype_commit(handle).is_null());
             assert!(meltype_commit(std::ptr::null_mut()).is_null());
+        }
+    }
+    #[test]
+    fn application_identity_controls_native_input_and_rejects_stale_handles() {
+        let directory = tempfile::tempdir().unwrap();
+        let store = meltype_core::storage::Store::new(directory.path());
+        store
+            .change_settings(|settings| {
+                settings.set(
+                    "AppRules",
+                    serde_json::json!([
+                        {"Process":"native-editor","Enabled":true,"Profile":"Code"},
+                        {"Process":"native-chat","Enabled":true,"Profile":"General"}
+                    ]),
+                )
+            })
+            .unwrap();
+        unsafe {
+            let path = CString::new(directory.path().to_string_lossy().as_bytes()).unwrap();
+            let handle = meltype_create_at(path.as_ptr());
+            assert_eq!(
+                meltype_set_application(handle, c"native-editor".as_ptr()),
+                1
+            );
+            let output = meltype_handle_key(handle, 65, 97, 0, std::ptr::null(), std::ptr::null());
+            let value: serde_json::Value = serde_json::from_str(&read(output).unwrap()).unwrap();
+            assert_eq!(value["consumed"], false);
+            meltype_free(output.cast());
+            assert_eq!(meltype_set_application(handle, c"native-chat".as_ptr()), 0);
+            let output = meltype_handle_key(handle, 65, 97, 0, std::ptr::null(), std::ptr::null());
+            let value: serde_json::Value = serde_json::from_str(&read(output).unwrap()).unwrap();
+            assert_eq!(value["view"]["text"], "あ");
+            meltype_free(output.cast());
+            meltype_destroy(handle);
+            assert_eq!(
+                meltype_set_application(handle, c"native-editor".as_ptr()),
+                -1
+            );
+            assert_eq!(
+                meltype_set_application(std::ptr::null_mut(), std::ptr::null()),
+                -1
+            );
         }
     }
 }

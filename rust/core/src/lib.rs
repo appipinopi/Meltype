@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 appipinopi
+pub mod app_identity;
 pub mod calculator;
 mod candidate_sources;
 mod commit_correction;

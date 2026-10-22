@@ -105,7 +105,8 @@ class EngineTests(unittest.TestCase):
         self.auxiliary = ""
         self.context_requests = 0
         self.selection = None
-        self.context = self.bus.create_input_context("Meltype-flash integration")
+        client = "gtk3-im:code" if self._testMethodName == "test_native_application_code_mode" else "Meltype-flash integration"
+        self.context = self.bus.create_input_context(client)
         self.addCleanup(self.context.destroy)
         self.context.connect("commit-text", self.commit)
         self.context.connect("update-preedit-text", self.preedit)
@@ -173,6 +174,17 @@ class EngineTests(unittest.TestCase):
         self.assertTrue(self.key(IBus.KEY_Return))
         self.assertIn(self.document, ["橋", "箸", "端", "はし"])
         self.assertEqual(self.marked, "")
+
+    def test_native_application_code_mode(self):
+        self.assertFalse(any(self.type("const answer = 42;")))
+        self.assertEqual(self.document, "const answer = 42;")
+        self.assertEqual(self.marked, "")
+        self.document = "// "
+        self.surrounding()
+        self.assertTrue(all(self.type("nihongo")))
+        self.assertEqual(self.marked, "にほんご")
+        self.assertTrue(self.key(IBus.KEY_Return))
+        self.assertEqual(self.document, "// にほんご")
 
     def test_completion_keys_pass_and_space_returns_to_japanese(self):
         self.assertFalse(any(self.type("@src/app.ts")))

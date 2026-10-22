@@ -88,6 +88,10 @@ unsafe extern "C" fn initialize(engine: Obj, _class: Obj) {
             connect(engine, signal, flush as *const c_void);
         }
         connect(engine, c"focus-in", focus_in as *const c_void);
+        if g_signal_lookup(c"focus-in-id".as_ptr(), ibus_engine_get_type()) != 0 {
+            connect(engine, c"focus-in-id", focus_in_id as *const c_void);
+            connect(engine, c"focus-out-id", focus_out_id as *const c_void);
+        }
         connect(engine, c"enable", enable as *const c_void);
         connect(engine, c"set-capabilities", capabilities as *const c_void);
         connect(engine, c"set-content-type", content_type as *const c_void);
@@ -481,6 +485,58 @@ unsafe extern "C" fn focus_in(engine: Obj, _data: Obj) {
         ibus_engine_register_properties(engine, properties);
     }));
 }
+unsafe extern "C" fn focus_in_id(
+    engine: Obj,
+    _path: *const c_char,
+    client: *const c_char,
+    data: Obj,
+) {
+    with(engine, |state| {
+        let client = if client.is_null() {
+            ""
+        } else {
+            CStr::from_ptr(client).to_str().unwrap_or("")
+        };
+        let identity = meltype_core::app_identity::ibus_application(client);
+        let identity = CString::new(identity).unwrap_or_default();
+        native::meltype_set_application(state.session, identity.as_ptr());
+    });
+    focus_in(engine, data);
+}
+unsafe extern "C" fn focus_out_id(engine: Obj, _path: *const c_char, data: Obj) {
+    flush(engine, data);
+}
+
+unsafe extern "C" fn create_engine(factory: Obj, name: *const c_char, data: Obj) -> Obj {
+    catch_unwind(AssertUnwindSafe(|| {
+        if name.is_null() || CStr::from_ptr(name) != ENGINE {
+            return ptr::null_mut();
+        }
+        let type_ = data as usize;
+        let class = g_type_class_ref(type_);
+        let supported = !g_object_class_find_property(class, c"has-focus-id".as_ptr()).is_null();
+        g_type_class_unref(class);
+        if !supported {
+            return ptr::null_mut();
+        } // Let the old IBus factory create it.
+        static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+        let id = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let path = CString::new(format!("/org/freedesktop/IBus/Engine/MeltypeFlash{id}")).unwrap();
+        g_object_new(
+            type_,
+            c"engine-name".as_ptr(),
+            name,
+            c"object-path".as_ptr(),
+            path.as_ptr(),
+            c"connection".as_ptr(),
+            ibus_service_get_connection(factory),
+            c"has-focus-id".as_ptr(),
+            1_i32,
+            ptr::null::<c_char>(),
+        )
+    }))
+    .unwrap_or(ptr::null_mut())
+}
 unsafe extern "C" fn property(_engine: Obj, name: *const c_char, _state: u32, _data: Obj) {
     let _ = catch_unwind(AssertUnwindSafe(|| {
         if name.is_null() {
@@ -531,6 +587,14 @@ pub fn run() -> Result<(), String> {
         );
         let factory = ibus_factory_new(ibus_bus_get_connection(bus));
         ibus_factory_add_engine(factory, ENGINE.as_ptr(), type_);
+        g_signal_connect_data(
+            factory,
+            c"create-engine".as_ptr(),
+            create_engine as *const c_void,
+            type_ as Obj,
+            None,
+            0,
+        );
         if let Ok(exe) = std::env::current_exe() {
             let helper = std::env::var_os("MELTYPE_MOZC_HELPER")
                 .map(std::path::PathBuf::from)

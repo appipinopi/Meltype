@@ -1573,45 +1573,55 @@ impl eframe::App for App {
                     });
             }
         }
-        let body = egui::CentralPanel::default().show(ctx, |ui| match self.page {
-            0 => self.settings(ui),
-            1 => self.dictionary(ui),
-            2 => self.snippets(ui),
-            3 => self.learning(ui),
-            4 => self.backup(ui),
-            5 => self.test(ui),
-            _ => {
-                self.dialogs.log = true;
-                self.page = 0;
-                self.settings(ui);
-            }
-        });
-        body.response.context_menu(|ui| {
-            self.navigation(ui);
-            ui.separator();
-            ui.checkbox(&mut self.show_all, "すべての設定・検索を表示");
-            if !self.show_all {
-                self.filter.clear();
-            }
-            if ui.button("使い方...").clicked() {
-                self.lifecycle.welcome = true;
-                ui.close_menu();
-            }
-            if ui.button("不具合の報告・提案...").clicked() {
-                self.dialogs.open_report(&self.store);
-                ui.close_menu();
-            }
-            if ui.button("直した誤判定を報告...").clicked() {
-                self.dialogs.corrections = true;
-                ui.close_menu();
-            }
-            if ui.button("更新...").clicked() {
-                self.lifecycle.updates = true;
-                ui.close_menu();
-            }
-            if ui.button("Meltype-flash について...").clicked() {
-                self.lifecycle.about = true;
-                ui.close_menu();
+        egui::CentralPanel::default().show(ctx, |ui| {
+            // Register the background before its children. context_menu upgrades
+            // its response to Sense::click; registering it last covers every
+            // switch, button and editor with an invisible click target.
+            let background = ui.interact(
+                ui.max_rect(),
+                ui.id().with("page-menu"),
+                egui::Sense::click(),
+            );
+            background.context_menu(|ui| {
+                self.navigation(ui);
+                ui.separator();
+                ui.checkbox(&mut self.show_all, "すべての設定・検索を表示");
+                if !self.show_all {
+                    self.filter.clear();
+                }
+                if ui.button("使い方...").clicked() {
+                    self.lifecycle.welcome = true;
+                    ui.close_menu();
+                }
+                if ui.button("不具合の報告・提案...").clicked() {
+                    self.dialogs.open_report(&self.store);
+                    ui.close_menu();
+                }
+                if ui.button("直した誤判定を報告...").clicked() {
+                    self.dialogs.corrections = true;
+                    ui.close_menu();
+                }
+                if ui.button("更新...").clicked() {
+                    self.lifecycle.updates = true;
+                    ui.close_menu();
+                }
+                if ui.button("Meltype-flash について...").clicked() {
+                    self.lifecycle.about = true;
+                    ui.close_menu();
+                }
+            });
+            match self.page {
+                0 => self.settings(ui),
+                1 => self.dictionary(ui),
+                2 => self.snippets(ui),
+                3 => self.learning(ui),
+                4 => self.backup(ui),
+                5 => self.test(ui),
+                _ => {
+                    self.dialogs.log = true;
+                    self.page = 0;
+                    self.settings(ui);
+                }
             }
         });
         if self.dialogs.log || self.dialogs.report || self.dialogs.corrections {
@@ -1750,6 +1760,59 @@ impl eframe::App for App {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn mouse_click_can_change_settings_in_the_complete_window() {
+        use eframe::App as _;
+        let directory = tempfile::tempdir().unwrap();
+        let mut app = App::with_store(Store::new(directory.path()));
+        let mut lifecycle_settings = app.settings.clone();
+        lifecycle_settings.set("AutoUpdate", json!(false)).unwrap();
+        app.lifecycle = lifecycle::Lifecycle::new(&lifecycle_settings);
+        app.lifecycle.welcome = false;
+        let ctx = egui::Context::default();
+        widgets::configure_style(&ctx);
+        let mut frame = eframe::Frame::_new_kittest();
+        let mut draw = |events| {
+            let _ = ctx.run(
+                egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(720., 700.),
+                    )),
+                    events,
+                    ..Default::default()
+                },
+                |ctx| app.update(ctx, &mut frame),
+            );
+        };
+        draw(vec![]);
+        draw(vec![]);
+        let point = ctx
+            .data(|data| {
+                data.get_temp::<egui::Rect>(egui::Id::new(("toggle_rect", "下部に説明を表示")))
+            })
+            .unwrap()
+            .center();
+        draw(vec![
+            egui::Event::PointerMoved(point),
+            egui::Event::PointerButton {
+                pos: point,
+                button: egui::PointerButton::Primary,
+                pressed: true,
+                modifiers: egui::Modifiers::NONE,
+            },
+        ]);
+        draw(vec![egui::Event::PointerButton {
+            pos: point,
+            button: egui::PointerButton::Primary,
+            pressed: false,
+            modifiers: egui::Modifiers::NONE,
+        }]);
+        assert!(
+            !app.settings.boolean("SettingsShowHelp"),
+            "mouse click did not change the switch"
+        );
+    }
     #[cfg(windows)]
     #[test]
     fn maintenance_exit_preserves_unsaved_drafts_and_enabled_preference() {
