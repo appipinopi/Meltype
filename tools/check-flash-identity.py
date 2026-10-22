@@ -4,7 +4,7 @@
 import argparse, re, sys, tomllib
 from pathlib import Path
 
-UPSTREAM_WORKFLOWS = ('build.yml', 'mac.yml', 'linux.yml', 'winget.yml', 'dotnet-update.yml')
+UPSTREAM_WORKFLOWS = ('build.yml', 'mac.yml', 'linux.yml', 'winget.yml', 'dotnet-update.yml', 'web.yml', 'ime-tests.yml')
 REQUIRED = (
     'README.md', '.gitattributes', 'Cargo.toml', 'rust/settings-app/Cargo.toml',
     'rust/native/src/tsf/identity.rs', 'rust/Manage-Windows.ps1', 'rust/core/src/storage.rs',

@@ -11,15 +11,17 @@ import path from 'node:path';
 const api = process.env.GITHUB_API_URL ?? 'https://api.github.com';
 const repo = process.env.GITHUB_REPOSITORY;
 const token = process.env.GITHUB_TOKEN;
+// workflow_dispatch は bot の App に Actions の権限が無いので、job の GITHUB_TOKEN (actions: write) で叩く
+const dispatchToken = process.env.BOT_DISPATCH_TOKEN || token;
 const event = JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
 const Marker = '<!-- meltype-bot -->';
 const Maintainers = ['OWNER', 'MEMBER', 'COLLABORATOR'];
 const MaxKeys = 300;
 
-async function gh(method, url, body) {
+async function gh(method, url, body, auth = token) {
   const response = await fetch(`${api}/repos/${repo}${url}`, {
     method,
-    headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'User-Agent': 'meltype-bot' },
+    headers: { Authorization: `Bearer ${auth}`, Accept: 'application/vnd.github+json', 'User-Agent': 'meltype-bot' },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   if (!response.ok) throw new Error(`${method} ${url}: ${response.status} ${await response.text()}`);
@@ -77,13 +79,41 @@ async function react(content) {
   if (event.comment) await gh('POST', `/issues/comments/${event.comment.id}/reactions`, { content }).catch(() => {});
 }
 
+// 関連しそうな Issue を、根拠つきで挙げる (issue #456)。ラベルや状態は変えず、自動で閉じもしない。
+//   根拠 1: 本文に書かれた Issue の参照 (#123)
+//   根拠 2: 誤判定の報告の「打ったもの」(打ったキー) が、ほかの Issue の本文と同じ (4 文字以上)
+// 失敗しても Issue の処理は続ける (関連の候補が出ないだけ)。
+async function relatedIssues(number, body, keys) {
+  const found = new Map();
+  try {
+    const refs = [...(body ?? '').matchAll(/(?<![\w/&])#(\d{1,5})\b/g)].map(m => Number(m[1])).filter(n => n !== number);
+    for (const ref of [...new Set(refs)].slice(0, 5)) {
+      const issue = await gh('GET', `/issues/${ref}`).catch(() => null);
+      if (issue && !issue.pull_request) found.set(ref, { title: issue.title, state: issue.state, reason: '本文で参照されている' });
+    }
+    if (keys && keys.length >= 4 && /^[\x20-\x7e]+$/.test(keys) && !/["\\]/.test(keys)) {
+      const query = encodeURIComponent(`repo:${repo} is:issue "${keys}" in:body`);
+      const response = await fetch(`${api}/search/issues?q=${query}&per_page=6`, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'User-Agent': 'meltype-bot' } });
+      if (response.ok) {
+        for (const item of (await response.json()).items ?? []) {
+          if (item.number !== number && !item.pull_request && !found.has(item.number)) {
+            found.set(item.number, { title: item.title, state: item.state, reason: `同じ「打ったもの」(${code(keys)}) の報告` });
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('関連の Issue を調べられませんでした:', error.message);
+  }
+  return [...found].slice(0, 5).map(([n, v]) => `- #${n} ${md(v.title)} (${v.state === 'open' ? '未解決' : '解決済み'}) — ${v.reason}`);
+}
+
 const LabelInfo = {
   '要トリアージ': ['FBCA04', '作者がまだ確認していない報告'],
   'win11': ['0078D4', 'Windows 11'],
   'win10': ['5E9ED6', 'Windows 10'],
   '企業PC': ['5319E7', 'Windows の Enterprise / Education (管理が厳しいことがある)'],
   '管理者で実行': ['D93F0B', 'Meltype を管理者として実行していた'],
-  'IME自動切替': ['C2E0C6', 'IME 自動切替 (Microsoft IME を使う)'],
   'Mozcなし': ['E99695', 'Mozc の変換ヘルパーが無い (Microsoft IME だけで変換)'],
   'かな入力': ['FEF2C0', 'かな入力 (JIS)'],
   'USキーボード': ['FEF2C0', '日本語 (JIS) 以外のキーボード'],
@@ -118,15 +148,14 @@ function environmentLabels(text) {
   }
   const result = [];
   const os = env['OS'] ?? '';
-  if (/^Windows 11/.test(os)) result.push({ label: 'win11', reason: `OS が ${os}` });
-  else if (/^Windows 10/.test(os)) result.push({ label: 'win10', reason: `OS が ${os}` });
+  if (/^Windows 11/.test(os)) result.push({ label: 'win11', reason: `OS が ${md(os)}` });
+  else if (/^Windows 10/.test(os)) result.push({ label: 'win10', reason: `OS が ${md(os)}` });
   if (/Enterprise|Education/i.test(os)) result.push({ label: '企業PC', reason: 'Windows のエディションが Enterprise / Education (会社・学校の PC は制限があることが多い)' });
   if (/^Meltype \S/.test(`Meltype ${env['Meltype'] ?? ''}`) && /^\d+\.\d+\.\d+/.test(env['Meltype'] ?? '')) result.push({ label: `v${env['Meltype'].match(/^\d+\.\d+\.\d+/)[0]}`, reason: '実行環境の版' });
   if (/はい/.test(env['管理者として実行'] ?? '')) result.push({ label: '管理者で実行', reason: 'Meltype を管理者として実行していた' });
-  if (/^AutoSwitch/.test(env['モード'] ?? '')) result.push({ label: 'IME自動切替', reason: 'モードが IME 自動切替' });
   if (/Mozc:\s*なし/.test(env['変換エンジン'] ?? '')) result.push({ label: 'Mozcなし', reason: 'Mozc の変換ヘルパーが無い' });
   if (/Kana/.test(env['入力方式'] ?? '')) result.push({ label: 'かな入力', reason: '入力方式がかな入力' });
-  if (/日本語以外/.test(env['キーボード'] ?? '')) result.push({ label: 'USキーボード', reason: `キーボードが ${env['キーボード']}` });
+  if (/日本語以外/.test(env['キーボード'] ?? '')) result.push({ label: 'USキーボード', reason: `キーボードが ${md(env['キーボード'])}` });
   const scale = Number((env['画面'] ?? '').match(/拡大率\s*(\d+)/)?.[1] ?? 100);
   if (scale > 100) result.push({ label: '高DPI', reason: `画面の拡大率が ${scale}%` });
   return result;
@@ -169,16 +198,67 @@ const Help = [
   '| コマンド | すること | 使える人 |',
   '|---|---|---|',
   '| `/repro <打ったキー> [space\\|enter\\|none]` | 最新のコードで打つ (Mozc があれば漢字も) | だれでも |',
-  '| `/explain <打ったキー>` | IME 自動切替での 1 文字ずつの判定理由 | だれでも |',
+  '| `/explain <打ったキー>` | 英数状態の検知での 1 文字ずつの判定理由 | だれでも |',
   '| `/ca <打ったキー>` | Space で変換して、文節の区切りと最初の文節の候補 (9 件まで) を出す | だれでも |',
   '| `/jht <出てほしい文> [/ 読み]` | 考えられるローマ字打ちで変換テスト (読みはオプション) | だれでも |',
-  '| `/test` | Pull Request のコードでテストを流す | メンテナー |',
-  '| `/pack` | Pull Request のコードでテスト版の zip を作る | メンテナー |',
-  '| `/test-repro <キー>` | PR のコードで `/repro` | メンテナー |',
-  '| `/test-jht <文> [/ 読み]` | PR のコードで `/jht` | メンテナー |',
-  '| `/test-explain <キー>` | PR のコードで `/explain` | メンテナー |',
+  '| `/test <SHA>` | Pull Request のコードでテストを流す | メンテナー |',
+  '| `/pack <SHA>` | Pull Request のコードでテスト版の zip を作る | メンテナー |',
+  '| `/test-repro <SHA> <キー>` | PR のコードで `/repro` | メンテナー |',
+  '| `/test-jht <SHA> <文> [/ 読み]` | PR のコードで `/jht` | メンテナー |',
+  '| `/test-explain <SHA> <キー>` | PR のコードで `/explain` | メンテナー |',
+  '| `/release <版>` | 版 (例: `1.2.3`) のタグとリリースの下書きを作り、Windows・Mac・Linux の配布物のビルドを始める。csproj・Info.plist の版が <版> でなければ止める | 管理者 |',
+  '| `/pre-release <版>` | `/release` のプレリリース版 (版は `1.2.3-pre.1` の形) | 管理者 |',
   '| `/help` | この一覧 | だれでも |',
+  '',
+  'PR のコードを動かすコマンドの `<SHA>` は、中身を確かめた commit の SHA (40 桁)。PR の今の head と違えば動かしません。',
 ].join('\n');
+
+// /release <版>・/pre-release <版> (issue #665)。管理者 (admin / maintain) だけ。
+//   1. 版の形を確かめる (release: 1.2.3 / pre-release: 1.2.3-pre.1)
+//   2. main の csproj (2 つ)・Info.plist の版が <版> と合うか確かめる (版を上げ忘れた配布を防ぐ: issue #601)
+//   3. タグ v<版> を main の先頭に作る (もうあれば止める)
+//   4. リリースの下書きを作る (リリースノートは自動生成。pre-release は prerelease)
+//   5. 配布物のビルド (build / mac / linux) を、そのタグで始める。ビルドが終わると、下書きに配布物が付く
+// タグを GITHUB_TOKEN で作ると push の起動が掛からないので、workflow_dispatch で明示的に起動する。
+async function releaseCommand(issue, command, version) {
+  const reply = text => upsertComment(issue, `release-${event.comment.id}`, text);
+  const pre = command === 'pre-release';
+  const permission = await gh('GET', `/collaborators/${event.comment.user.login}/permission`).then(r => r.permission).catch(() => 'none');
+  if (!['admin', 'maintain'].includes(permission)) return reply(`\`/${command}\` は管理者 (admin / maintain) だけが使えます。`);
+  const shape = pre ? /^\d+\.\d+\.\d+-pre\.\d+$/ : /^\d+\.\d+\.\d+$/;
+  if (!shape.test(version)) return reply(`版を ${pre ? '`1.2.3-pre.1`' : '`1.2.3`'} の形で書いてください (例: \`/${command} ${pre ? '1.2.3-pre.1' : '1.2.3'}\`)。`);
+  await react('eyes');
+  const read = async file => Buffer.from((await gh('GET', `/contents/${file}?ref=main`)).content, 'base64').toString('utf8');
+  const mismatches = [];
+  for (const file of ['src/Meltype/Meltype.csproj', 'src/Meltype.Core/Meltype.Core.csproj']) {
+    const found = (await read(file)).match(/<Version>([^<]+)<\/Version>/)?.[1];
+    if (found !== version) mismatches.push(`${file}: ${found ?? '(版なし)'}`);
+  }
+  const plain = version.replace(/-.*$/, '');
+  const plist = await read('mac/Resources/Info.plist');
+  const plistVersion = plist.match(/<key>CFBundleShortVersionString<\/key>\s*<string>([^<]+)<\/string>/)?.[1];
+  if (plistVersion !== plain) mismatches.push(`mac/Resources/Info.plist: ${plistVersion ?? '(版なし)'} (期待 ${plain})`);
+  if (mismatches.length > 0) return reply(`❌ main の版が ${version} になっていないので、リリースしません (docs/RELEASE.md の「版を上げる」を先に main に入れてください):\n\n${mismatches.map(m => `- ${m}`).join('\n')}`);
+  const tag = `v${version}`;
+  if (await gh('GET', `/git/ref/tags/${tag}`).then(() => true).catch(() => false)) return reply(`❌ タグ \`${tag}\` はもうあります。`);
+  const sha = (await gh('GET', '/git/ref/heads/main')).object.sha;
+  await gh('POST', '/git/refs', { ref: `refs/tags/${tag}`, sha });
+  await gh('POST', '/releases', { tag_name: tag, name: `Meltype ${version}`, draft: true, prerelease: pre, generate_notes: true });
+  const started = [], failed = [];
+  for (const workflow of ['build.yml', 'mac.yml', 'linux.yml']) {
+    try {
+      await gh('POST', `/actions/workflows/${workflow}/dispatches`, { ref: tag }, dispatchToken);
+      started.push(workflow);
+    } catch (error) {
+      failed.push(`${workflow}: ${error.message.slice(0, 120)}`);
+    }
+  }
+  await reply([
+    `✅ タグ \`${tag}\` (${sha.slice(0, 7)}) とリリースの下書き (${pre ? 'プレリリース' : '通常'}、リリースノートは自動生成) を作りました。`,
+    started.length > 0 ? `\nビルドを始めました: ${started.join('・')}。終わると下書きに配布物が付くので、中身を確かめてから公開してください。` : '',
+    failed.length > 0 ? `\n⚠ 始められなかったビルド (Actions の画面から ${tag} で手で実行してください):\n${failed.map(f => `- ${f}`).join('\n')}` : '',
+  ].join('\n'));
+}
 
 async function parse() {
   const issue = event.issue.number;
@@ -210,6 +290,8 @@ async function parse() {
 
     const text = [];
     if (problems.length > 0) text.push('報告ありがとうございます。確認のために、もう少し教えてください。', '', ...problems.map(p => `- ${p}`), '', '本文を編集して直してもらえれば、自動でもう一度確認します。', '');
+    const related = await relatedIssues(issue, event.issue.body, misdetection ? field(form, '打ったもの') : '');
+    if (related.length > 0) text.push('<details><summary>🔗 関連しそうな Issue (自動・根拠つき)</summary>', '', ...related, '', '本文の参照と「打ったもの」の一致だけを根拠にした候補です。同じ問題とは限りません (ラベルや状態は変えていません)。', '</details>', '');
     if (reasons.length > 0) text.push('<details><summary>🤖 自動の仕分け</summary>', '', ...reasons.map(r => `- ${r}`), '', '優先度・分類は本文からの見当です。作者が確認したら `要トリアージ` を外します。', '</details>');
     if (text.length > 0) await upsertComment(issue, 'triage', text.join('\n'));
 
@@ -223,12 +305,17 @@ async function parse() {
   }
 
   const line = (event.comment.body ?? '').split('\n')[0].trim();
-  const match = line.match(/^\/(repro|explain|ca|jht|test-repro|test-jht|test-explain|test|pack|help)\b\s*(.*)$/);
+  const match = line.match(/^\/(repro|explain|ca|jht|test-repro|test-jht|test-explain|test|pack|pre-release|release|help)\b\s*(.*)$/);
   if (!match || event.comment.user?.type === 'Bot') return output({ action: 'none' });
   const [, command, rest] = match;
   const maintainer = Maintainers.includes(event.comment.author_association);
   const prOnly = ['test', 'pack', 'test-repro', 'test-jht', 'test-explain'];
 
+  if (command === 'release' || command === 'pre-release') {
+    // 権限の広い処理は parse では行わない (parse はだれのコメントでも動くので、権限は contents: read のまま)。
+    // 別の job (release) に頼む。管理者かどうかの確認は release の中で、書き込みの前に行う
+    return output({ action: 'none', release_command: command, release_version: rest.trim().replace(/^`|`$/g, '').replace(/^v/, '').slice(0, 40) });
+  }
   if (command === 'help') {
     await upsertComment(issue, `help-${event.comment.id}`, Help);
     return output({ action: 'none' });
@@ -242,25 +329,37 @@ async function parse() {
       await upsertComment(issue, `error-${event.comment.id}`, `\`/${command}\` はメンテナーだけが使えます (Pull Request のコードを動かすため)。`);
       return output({ action: 'none' });
     }
-    await react('eyes');
     const pr = await gh('GET', `/pulls/${issue}`);
+    // メンテナーが確かめた commit だけを動かす。コメントの後に head を差し替えられても、見ていないコードは動かさない。
+    // 40 桁の完全一致だけを受け付ける (短い前方一致だと、先頭が同じ無害な commit と悪意のある commit を作って差し替えられる)
+    const given = rest.trim().split(/\s+/)[0];
+    const sha = given.replace(/^`|`$/g, '').toLowerCase();
+    const args = rest.trim().slice(given.length).trim();
+    const head = pr.head.sha;
+    if (!/^[0-9a-f]{40}$/.test(sha) || sha !== head) {
+      const usage = { 'test-repro': ' <キー>', 'test-jht': ' <文>', 'test-explain': ' <キー>' }[command] ?? '';
+      const why = /^[0-9a-f]{40}$/.test(sha) ? `\`${sha}\` は PR の今の head と違います。` : `\`/${command}\` には、中身を確かめた commit の SHA (40 桁) を付けてください。`;
+      await upsertComment(issue, `error-${event.comment.id}`, `${why}今の head は \`${head}\` です。確かめてから \`/${command} ${head}${usage}\` と書いてください。`);
+      return output({ action: 'none' });
+    }
+    await react('eyes');
     if (command === 'test' || command === 'pack') {
       return output({ action: command, issue, sha: pr.head.sha, comment: event.comment.id });
     }
     if (command === 'test-jht') {
-      const text = rest.trim().replace(/^`|`$/g, '');
+      const text = args.replace(/^`|`$/g, '');
       if (!text) {
-        await upsertComment(issue, `error-${event.comment.id}`, '出てほしい文を書いてください (例: `/test-jht 私はgoogleが好きです` または `/test-jht 私はgoogleが好きです / わたしはgoogleがすきです`)。');
+        await upsertComment(issue, `error-${event.comment.id}`, `出てほしい文を書いてください (例: \`/test-jht ${head} 私はgoogleが好きです\` または \`/test-jht ${head} 私はgoogleが好きです / わたしはgoogleがすきです\`)。`);
         return output({ action: 'none' });
       }
       return output({ action: 'test-jht', issue, keys: text.slice(0, 500), last: '', reported: '', expected: '', kind: '', sha: pr.head.sha, comment: event.comment.id });
     }
-    const words = rest.trim().split(/\s+/);
+    const words = args.split(/\s+/);
     let last = 'enter';
     if (command === 'test-repro' && ['space', 'enter', 'none'].includes(words.at(-1)) && words.length > 1) last = words.pop();
     const keys = words.join(' ').replace(/^`|`$/g, '');
     if (!isKeys(keys)) {
-      await upsertComment(issue, `error-${event.comment.id}`, `打ったキーを英字で書いてください (例: \`/${command} nihongowohanasu\`)。`);
+      await upsertComment(issue, `error-${event.comment.id}`, `打ったキーを英字で書いてください (例: \`/${command} ${head} nihongowohanasu\`)。`);
       return output({ action: 'none' });
     }
     return output({ action: command, issue, keys: keys.slice(0, MaxKeys), last, reported: '', expected: '', kind: '', sha: pr.head.sha, comment: event.comment.id });
@@ -290,7 +389,22 @@ async function parse() {
   return output({ action: command, issue, keys: keys.slice(0, MaxKeys), last, reported: '', expected: '', kind: '', comment: event.comment.id });
 }
 
-const code = text => '`' + String(text ?? '').replace(/`/g, 'ˋ') + '`';
+// 改行は空白にする (空行でコードスパンが切れ、後ろが Markdown として表示されるため)
+const code = text => '`' + String(text ?? '').replace(/\r?\n|\r/g, ' ').replace(/`/g, 'ˋ') + '`';
+// 表のセルに入れるコード。| はコードスパンの中でもセルの区切りになるので \| にする (表の中では | と表示される)
+const cell = text => code(text).replace(/\|/g, '\\|');
+// 利用者が書いた文をそのまま出す。リンク・画像・HTML にならないよう ASCII の記号を \ でエスケープし、
+// @ の後ろに幅の無い空白を入れてメンションにしない
+// 改行は空白にする (表のセルの中でも 1 行に収める)
+const md = text => String(text ?? '').replace(/\r?\n|\r/g, ' ').replace(/[!-/:-?[-`{-~]/g, '\\$&').replace(/@/g, '@\u200b');
+// 複数行の出力を、そのまま見せるコードブロックにする。PR のコードが出した結果は ``` を含められるので、
+// 中のどのバッククォートの並びより長い区切りにして、途中で閉じられないようにする
+const fence = text => {
+  const body = String(text ?? '');
+  const longest = Math.max(0, ...(body.match(/`+/g) ?? []).map(run => run.length));
+  const mark = '`'.repeat(Math.max(3, longest + 1));
+  return `${mark}\n${body}\n${mark}`;
+};
 
 function readJson(file) {
   try {
@@ -329,11 +443,11 @@ async function report() {
     for (const file of versions) {
       const name = file.replace(/^repro-/, '').replace(/\.json$/, '');
       const r = readJson(path.join(dir, file));
-      if (!r) { rows.push(`| ${name} | (失敗) |`); continue; }
+      if (!r) { rows.push(`| ${md(name)} | (失敗) |`); continue; }
       if (r.engine) engine = r.engine;
       const result = (r.committed ?? '') + (r.composing ?? '');
-      const extra = r.converted && r.converted !== result ? ` / Space: ${code(r.converted)}` : '';
-      rows.push(`| ${name} | ${code(result)}${extra} |`);
+      const extra = r.converted && r.converted !== result ? ` / Space: ${cell(r.converted)}` : '';
+      rows.push(`| ${md(name)} | ${cell(result)}${extra} |`);
       if (name === 'main' || name === 'pr') {
         if (expected && (result === expected || r.converted === expected)) verdicts.push('match');
         else if (reported && (result === reported || r.converted === reported)) verdicts.push('reproduced');
@@ -354,7 +468,7 @@ async function report() {
     else if (verdict === 'reproduced') lines.push('🔁 報告と同じ結果になりました。**再現しました。**');
     else if (verdict === 'match') lines.push('✅ 最新のコードでは期待どおりでした。次の版で直っているかもしれません。');
     else if (expected || reported) lines.push('報告とは違う結果になりました。アプリ・前後の文・学習で変わることがあります。');
-    lines.push('', `<sub>変換エンジン: ${engine || 'なし (判定だけ)'}。${!hasMozc ? '漢字の正しさは未確認。' : ''}[実行結果](${runUrl})</sub>`);
+    lines.push('', `<sub>変換エンジン: ${engine ? md(engine) : 'なし (判定だけ)'}。${!hasMozc ? '漢字の正しさは未確認。' : ''}[実行結果](${runUrl})</sub>`);
     await upsertComment(issue, process.env.BOT_COMMENT_ID ? `repro-${process.env.BOT_COMMENT_ID}` : 'repro', lines.join('\n'));
     if (verdict === 'reproduced') await gh('POST', `/issues/${issue}/labels`, { labels: ['再現済み'] }).catch(() => {});
     return;
@@ -379,30 +493,30 @@ async function report() {
     }
     const clauseCell = ({ r }) => {
       if (!r) return '(失敗)';
-      if (r.clauses) return r.clauses.map(code).join(' ｜ ');
+      if (r.clauses) return r.clauses.map(cell).join(' ｜ ');
       // 変換中でも文節に分かれていないときは clauses が無い (Repro.cs)。変換した結果をそのまま出す
-      if (r.candidates) return code(r.converted);
-      return `変換されず ${code((r.committed ?? '') + (r.composing ?? ''))} と確定しました`;
+      if (r.candidates) return cell(r.converted);
+      return `変換されず ${cell((r.committed ?? '') + (r.composing ?? ''))} と確定しました`;
     };
-    const names = results.map(v => v.name);
+    const names = results.map(v => md(v.name));
     const lines = [
       `${code(keys)} を Space で変換しました。`,
       '',
       '| 版 | 文節 |',
       '|---|---|',
-      ...results.map(v => `| ${v.name} | ${clauseCell(v)} |`),
+      ...results.map(v => `| ${md(v.name)} | ${clauseCell(v)} |`),
       '',
     ];
     const count = Math.max(0, ...results.map(v => v.r?.candidates?.length ?? 0));
     if (count > 0) {
       lines.push('最初の文節の候補:', '', `| # | ${names.join(' | ')} |`, `|---|${names.map(() => '---').join('|')}|`);
       for (let i = 0; i < count; i++) {
-        const cells = results.map(v => { const c = v.r?.candidates?.[i]; return c == null ? '' : code(c); });
+        const cells = results.map(v => { const c = v.r?.candidates?.[i]; return c == null ? '' : cell(c); });
         lines.push(`| ${i + 1} | ${cells.join(' | ')} |`);
       }
       lines.push('');
     }
-    lines.push(`<sub>変換エンジン: ${engine}。[実行結果](${runUrl})</sub>`);
+    lines.push(`<sub>変換エンジン: ${md(engine)}。[実行結果](${runUrl})</sub>`);
     await upsertComment(issue, marker, lines.join('\n'));
     return;
   }
@@ -411,7 +525,7 @@ async function report() {
     const text = readText(path.join(dir, 'explain.txt'));
     const head = action === 'test-explain' ? ` (PR ${process.env.BOT_SHA?.slice(0, 7)})` : '';
     await upsertComment(issue, `explain-${process.env.BOT_COMMENT_ID}`,
-      text ? `${code(keys)} の判定理由 (IME 自動切替)${head}:\n\n\`\`\`\n${text.trim()}\n\`\`\`` : `判定理由を出せませんでした ([実行結果](${runUrl}))。`);
+      text ? `${code(keys)} の判定理由 (英数状態の検知)${head}:\n\n${fence(text.trim())}` : `判定理由を出せませんでした ([実行結果](${runUrl}))。`);
     return;
   }
 
@@ -422,7 +536,7 @@ async function report() {
       return;
     }
     if (data.error) {
-      await upsertComment(issue, `jht-${process.env.BOT_COMMENT_ID}`, `⚠️ ${data.error}\n\n漢字を含む文は \`/jht 文 / 読み\` の形で読みを書いてください (例: \`/jht 私はgoogleが好きです / わたしはgoogleがすきです\`)。\n\n[実行結果](${runUrl})`);
+      await upsertComment(issue, `jht-${process.env.BOT_COMMENT_ID}`, `⚠️ ${md(data.error)}\n\n漢字を含む文は \`/jht 文 / 読み\` の形で読みを書いてください (例: \`/jht 私はgoogleが好きです / わたしはgoogleがすきです\`)。\n\n[実行結果](${runUrl})`);
       return;
     }
     const results = data.results ?? [];
@@ -430,14 +544,14 @@ async function report() {
     const okFirst = results.filter(r => r.firstOk).length;
     const rows = results.slice(0, 12).map(r => {
       const mark = r.liveOk ? '✅' : r.firstOk ? '🔶' : '❌';
-      const note = (r.notes ?? []).slice(0, 2).join('; ');
-      return `| ${mark} ${code(r.keys)} | ${code(r.entered)} | ${code(r.first)} | ${note || ''} |`;
+      const note = (r.notes ?? []).slice(0, 2).map(md).join('; ');
+      return `| ${mark} ${cell(r.keys)} | ${cell(r.entered)} | ${cell(r.first)} | ${note || ''} |`;
     });
     const head = action === 'test-jht' ? ` (PR ${process.env.BOT_SHA?.slice(0, 7)})` : '';
     const lines = [
       `**jht**${head}: ${code(data.expected)}`,
       data.reading ? `読み: ${code(data.reading)}` : '',
-      `打ち方 ${results.length} 通り (Enter 一致 ${okLive}/${results.length}、Space 先頭 ${okFirst}/${results.length})。変換エンジン: ${data.engine ?? 'なし (判定だけ)'}${/Mozc/i.test(data.engine ?? '') ? '' : ' — **漢字変換は未検証**'}`,
+      `打ち方 ${results.length} 通り (Enter 一致 ${okLive}/${results.length}、Space 先頭 ${okFirst}/${results.length})。変換エンジン: ${data.engine ? md(data.engine) : 'なし (判定だけ)'}${/Mozc/i.test(data.engine ?? '') ? '' : ' — **漢字変換は未検証**'}`,
       '',
       '| 打ち方 | Enter | Space 先頭 | メモ |',
       '|---|---|---|---|',
@@ -457,7 +571,7 @@ async function report() {
     const failures = text ? text.split('\n').filter(l => /FAIL/.test(l)).slice(0, 20).join('\n') : '';
     await upsertComment(issue, `test-${process.env.BOT_COMMENT_ID}`, [
       `${ok ? '✅' : '❌'} テスト (${process.env.BOT_SHA?.slice(0, 7)}): ${summary ? `${summary[1]}/${summary[2]} 通過` : '結果を読めませんでした'}`,
-      failures ? `\n\`\`\`\n${failures}\n\`\`\`` : '',
+      failures ? `\n${fence(failures)}` : '',
       `\n[実行結果](${runUrl})`,
     ].join('\n'));
     return;
@@ -474,6 +588,10 @@ async function report() {
 const mode = process.argv[2];
 try {
   if (mode === 'parse') await parse();
+  else if (mode === 'release') {
+    const command = process.env.BOT_RELEASE_COMMAND;
+    if (command === 'release' || command === 'pre-release') await releaseCommand(event.issue.number, command, process.env.BOT_RELEASE_VERSION ?? '');
+  }
   else if (mode === 'report') {
     await report();
     await react(process.env.BOT_JOB_RESULT === 'success' ? 'rocket' : 'confused');

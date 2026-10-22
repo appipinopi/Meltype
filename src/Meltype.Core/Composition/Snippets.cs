@@ -21,17 +21,10 @@ public sealed class SnippetStore
     public SnippetStore(string? path)
     {
         _path = path;
-        if (path is null || !File.Exists(path)) return;
-        try
+        Config.DataFile.Load(path, "定型文", content =>
         {
-            foreach (var (name, text) in Parse(File.ReadAllText(path))) _snippets[name] = text;
-        }
-        catch (Exception ex)
-        {
-            try { File.Copy(path, path + ".broken", overwrite: true); }
-            catch (Exception copyEx) { Diagnostics.Log.Warn($"{Path.GetFileName(path)} を .broken に残せませんでした: {copyEx.Message}"); }
-            Diagnostics.Log.Warn($"定型文を読めませんでした: {ex.Message}");
-        }
+            foreach (var (name, text) in Parse(content)) _snippets[name] = text;
+        });
     }
 
     public int Count { get { lock (_gate) return _snippets.Count; } }
@@ -49,10 +42,13 @@ public sealed class SnippetStore
         lock (_gate) return _snippets.OrderBy(s => s.Key, StringComparer.Ordinal).Select(s => (s.Key, s.Value)).ToList();
     }
 
-    /// <summary>登録する (同じ名前なら置き換える)。名前に使えない文字があるか、文が空なら false。</summary>
+    /// <summary>文に使えるか。改行・タブ以外の制御文字 (ESC・Ctrl+U など) は、入れるとアプリにキー操作として届くので使えない。</summary>
+    public static bool IsValidText(string text) => text.Length > 0 && !text.Any(c => char.IsControl(c) && c is not ('\n' or '\r' or '\t'));
+
+    /// <summary>登録する (同じ名前なら置き換える)。名前に使えない文字があるか、文が空か、文に制御文字があれば false。</summary>
     public bool Set(string name, string text)
     {
-        if (!IsValidName(name) || text.Length == 0) return false;
+        if (!IsValidName(name) || !IsValidText(text)) return false;
         lock (_gate) _snippets[name] = text.ReplaceLineEndings("\n");
         Save();
         return true;
@@ -86,7 +82,7 @@ public sealed class SnippetStore
     {
         var loaded = JsonSerializer.Deserialize(json, Config.SnippetJsonContext.Default.Snippets) ?? [];
         foreach (var (name, text) in loaded)
-            if (IsValidName(name) && !string.IsNullOrEmpty(text)) yield return (name, text.ReplaceLineEndings("\n"));
+            if (IsValidName(name) && text is not null && IsValidText(text)) yield return (name, text.ReplaceLineEndings("\n"));
     }
 
     private void Save()
@@ -94,10 +90,7 @@ public sealed class SnippetStore
         if (_path is null) return;
         try
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
-            var temp = _path + ".tmp";
-            File.WriteAllText(temp, Export(), Encoding.UTF8);
-            File.Move(temp, _path, overwrite: true);
+            Config.DataFile.Write(_path, temp => File.WriteAllText(temp, Export(), Encoding.UTF8));
         }
         catch (Exception ex)
         {

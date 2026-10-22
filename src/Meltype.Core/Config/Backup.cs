@@ -17,7 +17,7 @@ public static class Backup
     private const int FormatVersion = 1;
 
     /// <summary>バックアップに入れるファイル (データフォルダーからの相対パス)。dictionaries/ はユーザーが足した辞書。</summary>
-    private static readonly string[] RootFiles = ["config.json", "model.json", "conversions.json", "translations.json", "languages.json", "userdict.txt", "snippets.json", "phrases.txt"];
+    private static readonly string[] RootFiles = ["config.json", "conversions.json", "translations.json", "languages.json", "userdict.txt", "snippets.json", "phrases.txt"];
 
     /// <summary>
     /// 戻してよい名前か (バックアップに入れるファイルと同じ名前だけ: 決まった名前か、dictionaries/ の直下の .txt)。
@@ -49,6 +49,7 @@ public static class Backup
     /// <summary>バックアップを作る。戻り値はファイルの中身と、入れたファイルの数。</summary>
     public static (byte[] Content, int Files) Create(string dataDirectory, string appVersion)
     {
+        Composition.LearningSaves.FlushAll();
         using var stream = new MemoryStream();
         var count = 0;
         using (var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true }))
