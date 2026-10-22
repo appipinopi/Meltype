@@ -1,192 +1,154 @@
+<!-- meltype-flash-platform:start -->
+<p align="center"><img src="../assets/branding/readme/logo.svg" alt="Meltype-flash" width="520"></p>
+<a id="meltype-for-linux"></a>
+<p align="center"><img src="../assets/branding/readme/linux/hero.svg" alt="Meltype-flash for Linux" width="1000"></p>
+<p align="center"><b>日本語と英語を、ひとつの入力で。</b></p>
+<p align="center"><a href="https://github.com/appipinopi/Meltype/releases/tag/flash-v0.1.0-preview.2"><img src="https://img.shields.io/badge/Flash-v0.1.0_Pre2-ffe34a" alt="Flash v0.1.0 Pre2"></a> <img src="https://img.shields.io/badge/status-開発プレビュー-666973" alt="開発プレビュー"></p>
+<p align="center"><a href="#インストール">ダウンロード・導入</a> · <a href="#使い方">使い方</a> · <a href="#困ったとき">困ったとき</a> · <a href="https://github.com/appipinopi/Meltype/issues/new/choose">不具合の報告・提案</a></p>
 <p align="center">
-  <img src="../docs/images/logo.png" alt="Meltype" width="360">
+  <a href="../rust/WINDOWS-PACKAGE.md"><img src="../assets/branding/readme/cards/os-windows.svg" alt="Windows" width="32%"></a>
+  <a href="README.md"><img src="../assets/branding/readme/cards/os-linux-active.svg" alt="Linux" width="32%"></a>
+  <a href="../mac/README.md"><img src="../assets/branding/readme/cards/os-mac.svg" alt="Mac" width="32%"></a>
 </p>
-
-<a name="meltype-for-linux"></a>
-<p align="center"><img src="../docs/images/headings/linux/title.svg" alt="Meltype for Linux" height="80"></p>
-
-<p align="center"><b>雪解けのように、半角/全角の壁を溶かす日本語入力。</b></p>
-
 <p align="center">
-  <a href="https://github.com/yksr-melt/Meltype/releases/latest"><img src="https://img.shields.io/github/v/release/yksr-melt/Meltype?color=5ec4f0" alt="release"></a>
-  <img src="https://img.shields.io/badge/Linux-IBus%20%2F%20fcitx5-7a96f0?logo=linux&logoColor=white" alt="IBus / fcitx5">
-  <img src="https://img.shields.io/badge/プレビュー版-ff8ab4" alt="プレビュー版">
+  <a href="../android/README.md"><img src="../assets/branding/readme/cards/os-android.svg" alt="Android" width="32%"></a>
+  <a href="../chromeos/README.md"><img src="../assets/branding/readme/cards/os-chromeos.svg" alt="ChromeOS" width="32%"></a>
+  <a href="../ios/README.md"><img src="../assets/branding/readme/cards/os-ios.svg" alt="iOS" width="32%"></a>
 </p>
+<p align="center"><a href="../README.md">トップのREADME</a></p>
+<!-- meltype-flash-platform:end -->
 
-<p align="center">
-  <a href="https://github.com/yksr-melt/Meltype/releases/latest"><b>ダウンロード</b></a>
-  &nbsp;·&nbsp;
-  <a href="../README.md">トップの README</a>
-  &nbsp;·&nbsp;
-  <a href="https://github.com/yksr-melt/Meltype/issues/new/choose">不具合の報告・提案</a>
-</p>
+Linuxの入力ソースとして使うRust版Meltype-flashです。**公開プレビューはRust製IBusエンジン**です。
+fcitx5アダプターのソースと試験はありますが、公開IBusパッケージにfcitx5版は同梱していません。
 
-<p align="center">
-  <a href="../docs/WINDOWS.md"><img src="../docs/images/cards/os-windows.svg" alt="Windows" width="30%"></a>
-  <a href="../mac/README.md"><img src="../docs/images/cards/os-mac.svg" alt="Mac" width="30%"></a>
-  <a href="README.md"><img src="../docs/images/cards/os-linux.svg" alt="Linux" width="30%"></a>
-</p>
+<a id="内容"></a>
+<h2><img src="../assets/branding/readme/linux/headings/7a688306423b.svg" alt="内容" width="1000"></h2>
 
-Meltype は Linux では「入力ソース」(日本語入力) として動きます。IBus のエンジンと fcitx5 のアドオンの両方があります。
-Windows 版と同じく、日本語を打っている途中の英単語は英字のまま出ます！
+ローマ字・かな入力、英語・日本語の判定、補助辞書による漢字候補、確定、設定・学習・辞書保存を共通Coreへ接続しています。
+公開版にはMozcヘルパーを同梱していないため、辞書の規模や変換結果には制限があります。
 
-> **プレビュー版です。** 動かないところがあります。気づいたことはなんでも [Issues](https://github.com/yksr-melt/Meltype/issues) で教えてください！
+[動く環境](#動く環境) · [インストール](#インストール) · [使い方](#使い方) · [困ったとき](#困ったとき) · [アンインストール](#アンインストール) · [開発者向け](#開発者向け)
 
-<br>
+<a id="動く環境"></a>
+<h2><img src="../assets/branding/readme/linux/headings/53a51e559889.svg" alt="動く環境" width="1000"></h2>
 
-<a name="動く環境"></a>
-<img src="../docs/images/headings/linux/01.svg" alt="動く環境" height="53"><br>
+- Ubuntu 24.04以降向けに作成したx64 / ARM64パッケージ。
+- IBusを使用するデスクトップ環境。GNOMEの「日本語入力」などへ追加します。
+- システムのIBus / GLibと、設定画面を動かすGUI環境。
 
-- Ubuntu 24.04 など (x86_64 / ARM64)
-- 入力の仕組みが IBus (GNOME、Ubuntu の標準) か fcitx5 (KDE など) のもの
+他のディストリビューションや、Wayland / X11・GTK / Qtの組合せすべてでの動作を保証するものではありません。
+fcitx5を使う環境は、下記のソースビルドと開発状況を参照してください。
 
-fcitx5 のアドオンは、Ubuntu 24.04 の fcitx5 5.1 で作っています。版が大きく違う fcitx5 では動かないことがあります。
+<a id="インストール"></a>
+<h2><img src="../assets/branding/readme/linux/headings/d95bee28d794.svg" alt="インストール" width="1000"></h2>
 
-<br>
+<a id="ubuntu向けdeb"></a>
+<h3><img src="../assets/branding/readme/linux/headings/cc787ef749d3.svg" alt="Ubuntu向けdeb" width="1000"></h3>
 
-<a name="インストール"></a>
-<img src="../docs/images/headings/linux/02.svg" alt="インストール" height="53"><br>
+[FlashのPre2](https://github.com/appipinopi/Meltype/releases/tag/flash-v0.1.0-preview.2) からCPUに合うdebを取得し、そのファイルがあるフォルダーで実行します。
 
-1. [Releases](https://github.com/yksr-melt/Meltype/releases/latest) から `Meltype-<version>-linux.zip` (ARM64 のパソコンは `Meltype-<version>-linux-arm64.zip`) をダウンロードして展開する
-2. 「端末」(ターミナル) を開いて、展開したフォルダーで次を実行する (管理者のパスワードを聞かれます。足りない部品があれば自動で入れます)
-   ```bash
-   bash install.sh
-   ```
-
-Debian / Ubuntu では、`.deb` からも入れられます (apt で外せます。中身は `install.sh` で入れるものと同じです)。
-[Releases](https://github.com/yksr-melt/Meltype/releases/latest) から CPU に合う `.deb` をダウンロードして、次のコマンドでインストールします。
-
-x86_64:
-
-```bash
-sudo apt install ./meltype_<version>_amd64.deb
+```sh
+# x64
+sudo apt install ./meltype-flash_0.1.0-pre.2_amd64.deb
+# ARM64ではこちら
+# sudo apt install ./meltype-flash_0.1.0-pre.2_arm64.deb
 ```
 
-ARM64:
+<a id="zipから入れる"></a>
+<h3><img src="../assets/branding/readme/linux/headings/c90757242f41.svg" alt="ZIPから入れる" width="1000"></h3>
 
-```bash
-sudo apt install ./meltype_<version>_arm64.deb
+`Meltype-flash-Linux-x64.zip` または `Meltype-flash-Linux-arm64.zip` を**全体展開**し、`install.sh` のあるフォルダーで実行します。
+
+```sh
+sudo bash install.sh --system
 ```
 
-`.deb` は IBus と fcitx5 の両方に入れます (IBus の部品は「おすすめ」なので、ふつうは一緒に入ります)。
+導入後はログアウト・ログインし、OSのキーボード設定またはIBusの入力ソースに **Meltype-flash** を追加して選びます。
+ZIP用インストーラーはIBusを自動再起動したり、既定の入力方法を変更したりしません。
+debとZIPの管理方法を混ぜず、どちらで導入したか記録してください。
 
-apt リポジトリから入れると、以後 `sudo apt update && sudo apt upgrade` で更新できます。初回だけ、公開鍵とリポジトリを登録します。
+<a id="使い方"></a>
+<h2><img src="../assets/branding/readme/linux/headings/17c9e4160d4f.svg" alt="使い方" width="1000"></h2>
 
-```bash
-sudo install -d -m 0755 /etc/apt/keyrings
-curl -fsSL https://yksr-melt.github.io/Meltype/apt/meltype-archive-key.asc | sudo tee /etc/apt/keyrings/meltype-archive-key.asc >/dev/null
-sudo chmod 0644 /etc/apt/keyrings/meltype-archive-key.asc
-sudo tee /etc/apt/sources.list.d/meltype.sources >/dev/null <<'EOF'
-Types: deb
-URIs: https://yksr-melt.github.io/Meltype/apt
-Suites: stable
-Components: main
-Architectures: amd64 arm64
-Signed-By: /etc/apt/keyrings/meltype-archive-key.asc
-EOF
-sudo apt update
-sudo apt install meltype
-```
+入力ソースをMeltype-flashへ切り替え、テキスト欄にローマ字を入力します。
 
-apt リポジトリがまだ公開されていない場合は、上の Releases から `.deb` を入れる方法を使ってください.
-
-Fedora では、`.rpm` から入れられます (dnf で外せます。中身は `.deb` と同じです。Fedora 44 でビルドしています)。
-[Releases](https://github.com/yksr-melt/Meltype/releases/latest) から CPU に合う `.rpm` をダウンロードして、次のコマンドでインストールします。
-
-x86_64:
-
-```bash
-sudo dnf install ./meltype-<version>-1.x86_64.rpm
-```
-
-ARM64:
-
-```bash
-sudo dnf install ./meltype-<version>-1.aarch64.rpm
-```
-
-dnf リポジトリから入れると、以後 `sudo dnf upgrade` で更新できます。初回だけ、リポジトリを登録します (公開鍵は最初のインストールのときに確認を求められます)。
-
-```bash
-sudo dnf config-manager addrepo --from-repofile=https://yksr-melt.github.io/Meltype/rpm/meltype.repo
-sudo dnf install meltype
-```
-
-<a name="ibus-のとき"></a>
-<img src="../docs/images/headings/linux/s01.svg" alt="IBus のとき" height="40">
-
-1. いったんログアウトしてログインし直す
-2. 設定 → キーボード → 入力ソース →「+ 入力ソースを追加」→ 日本語 → Meltype を追加
-3. 画面右上の入力ソースのメニュー (または <kbd>Super</kbd> + <kbd>Space</kbd>) で Meltype を選ぶ
-
-<a name="fcitx5-のとき"></a>
-<img src="../docs/images/headings/linux/s02.svg" alt="fcitx5 のとき" height="40">
-
-fcitx5 が入っていれば、`install.sh` が fcitx5 にも入れます (fcitx5 だけに入れるなら `bash install.sh --fcitx5`)。
-
-1. fcitx5 の設定 (`fcitx5-configtool`) →「入力メソッド」で Meltype を追加する
-2. <kbd>Ctrl</kbd> + <kbd>Space</kbd> などで Meltype に切り替える
-
-<br>
-
-<a name="使い方"></a>
-<img src="../docs/images/headings/linux/03.svg" alt="使い方" height="53"><br>
-
-ふつうにローマ字で打つと日本語、英単語 (google、github …) は英字のまま！
-
-| キー | |
-|---|---|
-| <kbd>Space</kbd> | 変換 |
-| <kbd>Enter</kbd> | 確定 |
-| <kbd>←</kbd> <kbd>→</kbd> | 文節を選ぶ |
-| <kbd>Esc</kbd> | 取り消し |
-| <kbd>F6</kbd> / <kbd>F7</kbd> / <kbd>F8</kbd> | ひらがな / カタカナ / 半角カタカナ |
-| <kbd>F9</kbd> / <kbd>F10</kbd> | 全角英数 / 半角英数 |
-| <kbd>半角/全角</kbd> | 英数と日本語の切り替え |
-
-設定と学習データは `~/.local/share/Meltype` にあります (`config.json` は Windows 版と同じ形式)。
-
-<br>
-
-<a name="困ったとき"></a>
-<img src="../docs/images/headings/linux/04.svg" alt="困ったとき" height="53"><br>
-
-不具合を報告するときは、どのアプリで・何と打って・どうなったか (できればスクリーンショットも) を教えてください。
-
-動かないときは、端末で次を実行してから操作すると、エラーが表示されます。表示された内容を送ってください (終わるときは <kbd>Ctrl</kbd> + <kbd>C</kbd>)。
-
-```bash
-ibus restart; sleep 2; pkill -f ibus-engine-meltype; /opt/meltype/ibus-engine-meltype
-```
-
-入力ソースに出てこないときは、[WSL / Linux でビルドする](../docs/WSL.md#入力ソースに出てこないとき) の「入力ソースに出てこないとき」も見てください。
-
-<br>
-
-<a name="アンインストール"></a>
-<img src="../docs/images/headings/linux/05.svg" alt="アンインストール" height="53"><br>
-
-展開したフォルダーで次を実行します。
-
-```bash
-bash uninstall.sh
-# 設定と学習データも消すなら
-bash uninstall.sh --data
-```
-
-`.deb` で入れたときは `sudo apt remove meltype`、`.rpm` で入れたときは `sudo dnf remove meltype` で外します (設定と学習データ `~/.local/share/Meltype` は残るので、要らなければ消してください)。
-
-<br>
-
-<a name="開発者向け"></a>
-<img src="../docs/images/headings/linux/06.svg" alt="開発者向け" height="53"><br>
-
-| 部分 | 中身 |
+| キー | 操作 |
 | --- | --- |
-| IBus のエンジン (`ibus-engine-meltype`, Python) | IBus からキーを受け取り、判定の本体に渡して、変換中の文字・候補・確定を入力欄に反映する |
-| fcitx5 のアドオン (`fcitx5/`, C++) | fcitx5 からキーを受け取り、判定の本体に渡す |
-| 判定の本体 (`libMeltypeNative.so`) | Windows 版と共通の C# の部分 (`src/Meltype.Core`) を NativeAOT で Linux 用のライブラリにしたもの |
-| 漢字変換 | Mozc の変換ヘルパー (`native/mozc`) |
+| Space | 変換・候補の切替 |
+| Enter | 確定 |
+| Esc | 取消 |
+| ← / → | 変換中の文節選択 |
+| F6〜F10 | ひらがな・カタカナ・英数などの字種切替 |
 
-- ビルドとインストール → [docs/WSL.md](../docs/WSL.md) (`linux/build.sh`)
-- 全体の仕組み・テスト → [docs/DEVELOPMENT.md](../docs/DEVELOPMENT.md)
+補助辞書による候補を確認する例は `hashi` → Space → 「橋」「箸」などを選んでEnterです。
+入力ソースの切替キーはOS側の設定を使います。
+設定アプリは `meltype-flash`、共通CLIは `meltype-rs` です。インストール形式によってはフルパスで起動します。
+アプリ別設定は [専用の案内](../rust/APP-RULES.md) を参照してください。IBusがアプリ名を渡さない経路では、自動切替を行いません。
+
+<a id="プライバシー"></a>
+<h2><img src="../assets/branding/readme/linux/headings/fd55785d8031.svg" alt="プライバシー" width="1000"></h2>
+
+共通Coreのデータは `${XDG_DATA_HOME:-~/.local/share}/Meltype-flash` に保存します。`MELTYPE_FLASH_DATA_DIR` で明示した保存先はそちらを優先します。
+通常の変換はローカルで処理します。設定・学習・辞書のバックアップには個人の語句が含まれる場合があります。
+
+<a id="困ったとき"></a>
+<h2><img src="../assets/branding/readme/linux/headings/8a43843d6479.svg" alt="困ったとき" width="1000"></h2>
+
+<details>
+<summary>入力ソースに出てこない</summary>
+
+まずIBusを使う環境か、導入後にログインし直したかを確認してください。
+ユーザー領域への導入ではIBusが追加のコンポーネント検索パスを必要とするため、通常の導入は上記のシステム導入を使います。
+`fcitx5` の設定画面にIBus版を追加することはできません。
+
+</details>
+
+<details>
+<summary>変換の候補が少ない・アプリによって入力できない</summary>
+
+公開IBus版は補助辞書による制限があります。OS・デスクトップ・Wayland/X11・アプリ名・入力例を [Issues](https://github.com/appipinopi/Meltype/issues/new/choose) に添えてください。
+端末や入力方式の違いを確かめるため、別の一般的なテキスト欄でも結果を比較してください。
+
+</details>
+
+<a id="アンインストール"></a>
+<h2><img src="../assets/branding/readme/linux/headings/0612e88f2939.svg" alt="アンインストール" width="1000"></h2>
+
+先にOSの入力ソースを別のものへ切り替え、Meltype-flashを入力ソース一覧から外します。
+
+debで導入した場合:
+
+```sh
+sudo apt remove meltype-flash
+```
+
+ZIPの `--system` で導入した場合:
+
+```sh
+sudo bash /usr/libexec/meltype-flash/ibus/install.sh --system --uninstall
+```
+
+個人の設定・学習は残ります。必要なデータを保存してから、削除するか判断してください。
+
+<a id="開発者向け"></a>
+<h2><img src="../assets/branding/readme/linux/headings/03db5f43cd99.svg" alt="開発者向け" width="1000"></h2>
+
+<a id="ソースからビルドする"></a>
+<h3><img src="../assets/branding/readme/linux/headings/6bb169c5a5e1.svg" alt="ソースからビルドする" width="1000"></h3>
+
+Rust 1.88以上、Cリンカー、IBus / GLibの開発用パッケージが必要です。リポジトリのルートで実行します。
+
+```sh
+cargo test -p meltype-core --locked
+bash rust/build-linux.sh
+```
+
+`linux/build/Meltype-flash-linux` とtar.gzを作成します。ビルドだけではインストールしません。
+Mozcヘルパーがない場合は、補助辞書によるパッケージを作ります。
+fcitx5のRustアダプターは `linux/fcitx5` にあり、必要な開発用ライブラリとCMakeを使います。[Rust用CI](../.github/workflows/rust.yml) と [移行記録](../rust/MIGRATION.md) を参照してください。
+本家向けの `linux/build.sh` / `linux/install.sh` とFlashの上記スクリプトを取り違えないでください。
+
+<a id="ライセンス"></a>
+<h2><img src="../assets/branding/readme/linux/headings/f52c3ba0fc99.svg" alt="ライセンス" width="1000"></h2>
+
+[GPL-3.0-or-later](../LICENSE)。辞書と依存ライブラリのライセンスは [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md) を参照してください。
