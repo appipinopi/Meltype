@@ -1,165 +1,69 @@
-name: Meltype-flash release
+name: Pre3 Windows distribution recovery
 on:
   workflow_dispatch:
-    inputs:
-      tag:
-        description: New Meltype-flash preview tag
-        required: true
-        default: flash-v0.1.0-preview.3
 permissions:
   contents: read
-concurrency:
-  group: rust-release
-  cancel-in-progress: false
+  actions: read
 jobs:
-  validate:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - env:
-          TAG: ${{ inputs.tag || 'flash-v0.1.0-preview.3' }}
-        run: |
-          [[ "$TAG" =~ ^flash-v[0-9]+\.[0-9]+\.[0-9]+-preview\.[0-9]+$ ]]
-          test "$GITHUB_REPOSITORY" = appipinopi/Meltype-Flash
-          test "$GITHUB_REF" = refs/heads/rust
-          VERSION=$(python3 -c 'import tomllib; print(tomllib.load(open("Cargo.toml", "rb"))["workspace"]["package"]["version"])')
-          test "$VERSION" = "$(echo "${TAG#flash-v}" | sed 's/-preview\./-pre./')"
   windows:
-    needs: validate
     runs-on: windows-latest
-    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v5
-      - uses: dtolnay/rust-toolchain@stable
         with:
-          components: clippy
-      - uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: rust-release-windows
-      - run: ./rust/Test-BuildWindowsArgs.ps1
-      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
-      - run: cargo test --workspace --locked
-      - run: ./rust/build-windows.ps1 -WithTip
-      - name: Software OpenGL and actual tray lifecycle
-        shell: pwsh
-        run: |
-          ./tools/ci/setup-windows-opengl.ps1 -Directories target/x86_64-pc-windows-msvc/release
-      - name: Exercise normal and portable tray shutdown
-        shell: pwsh
-        run: |
-          ./rust/Test-TrayStop.ps1 -Binary target/x86_64-pc-windows-msvc/release/meltype-flash.exe
-          ./rust/Test-TrayStop.ps1 -Binary target/x86_64-pc-windows-msvc/release/meltype-flash.exe -Portable
-      - name: Inspect native server and package lifecycle
-        shell: pwsh
-        run: |
-          python rust/native/tests/tsf_server_smoke.py native/tip/bin/rust-x64/MeltypeTip.dll
-          if ($LASTEXITCODE -ne 0) { throw 'TSF server test failed' }
-          ./rust/Test-Manage-Windows.ps1
-          ./rust/Test-WindowsLifecycle.ps1
-          ./rust/Test-UpdateWindows.ps1
-          ./rust/Test-StartupCli.ps1 -Binary target/x86_64-pc-windows-msvc/release/meltype-flash.exe
-          python -m unittest discover -s tools -p test_rust_windows_package.py -v
-          if ($LASTEXITCODE -ne 0) { throw 'Package tests failed' }
-      - name: Assemble audited Windows ZIP
-        shell: pwsh
-        run: |
-          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
-          $vs = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
-          $redist = Get-ChildItem -LiteralPath (Join-Path $vs 'VC/Redist/MSVC') -Directory | Where-Object Name -Match '^\d+\.' | Sort-Object Name -Descending | Select-Object -First 1
-          if (-not $redist) { throw 'Redistributable CRT directory missing' }
-          python rust/package-windows.py --settings target/x86_64-pc-windows-msvc/release/meltype-flash.exe --cli target/x86_64-pc-windows-msvc/release/meltype-rs.exe --worker-x64 target/x86_64-pc-windows-msvc/release/meltype-tip-worker.exe --worker-x86 target/i686-pc-windows-msvc/release/meltype-tip-worker.exe --redist-root $redist.FullName --output dist/Meltype-flash-Windows-x64
-          if ($LASTEXITCODE -ne 0) { throw 'Package audit failed' }
-      - uses: actions/upload-artifact@v4
+          ref: 21b4454fe744c6f0ba662c50a5c3b5a8c7aa4985
+      - name: Download the verified bundle from the pinned release build
+        uses: actions/download-artifact@v4
         with:
           name: release-windows
-          path: dist/Meltype-flash-Windows-x64.zip
-          if-no-files-found: error
-  linux:
-    needs: validate
-    runs-on: ubuntu-24.04
-    timeout-minutes: 40
-    steps:
-      - uses: actions/checkout@v5
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: rust-release-linux
-      - run: sudo apt-get update && sudo apt-get install -y libibus-1.0-dev ibus gir1.2-ibus-1.0 python3-gi dbus-x11 xvfb fonts-noto-cjk libxkbcommon-x11-0
-      - run: cargo test --workspace --locked
-      - run: bash rust/build-linux.sh
-      - name: Validate packaged IBus engine
+          run-id: 39777433481
+          github-token: ${{ github.token }}
+          path: input
+      - name: Inspect the verified bundle
+        shell: pwsh
         run: |
-          python3 rust/ibus/tests/installation.py target/release/meltype-ibus
-          MELTYPE_IBUS_TEST_INSTALLED=1 xvfb-run -a dbus-run-session -- /usr/bin/python3 rust/ibus/tests/integration.py target/release/meltype-ibus
-          cp linux/build/Meltype-flash-linux.tar.gz Meltype-flash-Linux-x64.tar.gz
+          if ((git rev-parse HEAD) -ne '21b4454fe744c6f0ba662c50a5c3b5a8c7aa4985') { throw 'Release source mismatch' }
+          Expand-Archive input/Meltype-flash-Windows-x64.zip -DestinationPath bundle
+          ./bundle/Manage-Windows.ps1 -Action Inspect
+      - name: Build Rust setup and portable distribution
+        shell: pwsh
+        run: |
+          $version = (Get-Content Cargo.toml | Select-String '^version = "([^"]+)"').Matches.Groups[1].Value
+          $iscc = 'C:/Program Files (x86)/Inno Setup 6/ISCC.exe'
+          if (-not (Test-Path -LiteralPath $iscc)) { throw 'Inno Setup is absent' }
+          New-Item -ItemType Directory dist -Force | Out-Null
+          & $iscc "/DAppVersion=$version" "/DSourceDir=$((Resolve-Path bundle).Path)" "/DOutputDir=$((Resolve-Path dist).Path)" packaging/Meltype-flash.iss
+          if ($LASTEXITCODE -ne 0) { throw 'Installer compile failed' }
+          Copy-Item bundle portable -Recurse
+          '@echo off' + "`r`n" + 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Start-Portable.ps1" -Tray' + "`r`n" | Set-Content portable/Start-Portable.cmd -Encoding ascii
+          $manifest = Get-Content portable/SHA256SUMS.json -Raw | ConvertFrom-Json -AsHashtable
+          $manifest['Start-Portable.cmd'] = (Get-FileHash portable/Start-Portable.cmd -Algorithm SHA256).Hash.ToLowerInvariant()
+          $manifest | ConvertTo-Json | Set-Content portable/SHA256SUMS.json -Encoding utf8
+          ./portable/Manage-Windows.ps1 -Action Inspect
+          Compress-Archive portable/* dist/Meltype-flash-Windows-portable.zip
+          Copy-Item input/Meltype-flash-Windows-x64.zip dist/Meltype-flash-Windows.zip
+      - name: Exercise actual installer and uninstaller
+        shell: pwsh
+        run: |
+          $installer = (Get-ChildItem dist/*-setup.exe).FullName
+          $result = Start-Process -FilePath $installer -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /LOG=setup.log' -WindowStyle Hidden -Wait -PassThru
+          Get-Content setup.log -Tail 90
+          Get-ChildItem 'C:/Program Files/Meltype-flash' -Recurse -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
+          if ($result.ExitCode -ne 0) { throw "Setup failed: $($result.ExitCode)" }
+          $state = Get-Content 'C:/Program Files/Meltype-flash/installed.json' -Raw | ConvertFrom-Json
+          if (-not (Test-Path -LiteralPath $state.x64)) { throw 'Installed IME DLL missing' }
+          $result = Start-Process -FilePath 'C:/Program Files/Meltype-flash/installer/unins000.exe' -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /LOG=uninstall.log' -WindowStyle Hidden -Wait -PassThru
+          if ($result.ExitCode -ne 0) { throw "Uninstall failed: $($result.ExitCode)" }
+          $registered = Get-ItemProperty 'Registry::HKEY_LOCAL_MACHINE/SOFTWARE/Classes/CLSID/{C540BAF6-88B1-5B30-B524-2C8702B034FC}/InprocServer32' -ErrorAction SilentlyContinue
+          if ($null -ne $registered) { throw 'Flash COM registration remains' }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: flash-windows-setup-logs
+          path: |
+            setup.log
+            uninstall.log
       - uses: actions/upload-artifact@v4
         with:
-          name: release-linux
-          path: Meltype-flash-Linux-x64.tar.gz
+          name: flash-distributions-windows
+          path: dist/*
           if-no-files-found: error
-  macos:
-    needs: validate
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: macos-15
-            arch: arm64
-          - os: macos-15-intel
-            arch: x64
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@v5
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: rust-release-macos-${{ matrix.arch }}
-      - uses: actions/cache@v5
-        with:
-          path: mac/.build
-          key: release-swift-${{ matrix.arch }}-${{ hashFiles('mac/Package.swift', 'mac/Package.resolved') }}
-      - run: cargo test --workspace --locked
-      - run: bash rust/build-desktop.sh
-      - name: Inspect macOS package
-        run: |
-          codesign --verify --deep --strict mac/build/Meltype.app
-          MELTYPE_RUST_DATA_DIR="$RUNNER_TEMP/meltype-release-test" mac/build/Meltype.app/Contents/MacOS/Meltype --self-test
-          bash mac/test/register-helper/run.sh "$PWD/mac/build/Meltype.app/Contents/MacOS/MeltypeRegisterInputSource"
-          python3 rust/native/tests/macos_product_smoke.py target/release/libmeltype_native.dylib
-          bash mac/package.sh Meltype-flash-macOS-${{ matrix.arch }}.zip
-      - uses: actions/upload-artifact@v4
-        with:
-          name: release-macos-${{ matrix.arch }}
-          path: dist/Meltype-flash-macOS-*.zip
-          if-no-files-found: error
-  android:
-    needs: validate
-    uses: ./.github/workflows/rust-android.yml
-  chromeos:
-    needs: validate
-    uses: ./.github/workflows/chromeos.yml
-  publish:
-    needs: [windows, linux, macos, android, chromeos]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-      - name: Collect verified release assets
-        run: |
-          python3 -m unittest discover -s tools -p test_collect_rust_release.py -v
-          python3 tools/collect-rust-release.py artifacts release-assets
-          cp LICENSE THIRD-PARTY-NOTICES.md rust/RELEASE-NOTES.md release-assets/
-      - name: Publish all platforms together
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ inputs.tag || 'flash-v0.1.0-preview.3' }}
-        run: |
-          [[ "$TAG" =~ ^flash-v([0-9]+\.[0-9]+\.[0-9]+)-preview\.([0-9]+)$ ]]
-          TITLE="Meltype-flash v${BASH_REMATCH[1]} Pre${BASH_REMATCH[2]}"
-          gh release create "$TAG" release-assets/* --target "$GITHUB_SHA" --title "$TITLE" --notes-file rust/RELEASE-NOTES.md --prerelease --draft
-          # Additional distributions and benchmark evidence are attached before publication.
