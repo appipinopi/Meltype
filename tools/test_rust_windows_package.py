@@ -7,6 +7,7 @@ from pathlib import Path
 import struct
 import tempfile
 import unittest
+import uuid
 
 spec = importlib.util.spec_from_file_location('package_audit', Path(__file__).with_name('check-rust-windows-package.py'))
 audit = importlib.util.module_from_spec(spec)
@@ -43,7 +44,7 @@ def image(machine, imports=(), exports=()):
         put('I', 0x220, 0x1080)
         for i, name in enumerate(exports):
             put('I', 0x280+i*4, string(name))
-    return bytes(data)
+    return bytes(data) + b"".join(uuid.UUID(value).bytes_le for value in ["C540BAF6-88B1-5B30-B524-2C8702B034FC", "6D01DE9C-8AB3-5CFC-A5C6-10893CDF8762"])
 
 
 class PackageTests(unittest.TestCase):
@@ -58,6 +59,13 @@ class PackageTests(unittest.TestCase):
             p.write_bytes(image(arch, ['kernel32.dll'], self.exports if p.suffix=='.dll' else ()))
         for name in ['LICENSE', 'THIRD-PARTY-NOTICES.md', 'README-Windows.md', 'Manage-Windows.ps1', 'Start-Portable.ps1', 'Update-Windows.ps1']:
             (self.root/name).write_text('fixture', encoding='utf-8')
+
+    def test_old_shared_identity_dll_is_rejected(self):
+        path = self.root/'tip/x64/MeltypeTip.dll'
+        path.write_bytes(path.read_bytes().replace(uuid.UUID('C540BAF6-88B1-5B30-B524-2C8702B034FC').bytes_le, b'X'*16))
+        result = audit.inspect(self.root)
+        self.assertFalse(result['passed'])
+        self.assertTrue(any('missing Meltype-flash' in error for error in result['errors']))
 
     def test_complete_layout(self):
         self.assertTrue(audit.inspect(self.root)['passed'])
@@ -86,7 +94,7 @@ class PackageTests(unittest.TestCase):
 
     def test_missing_export_and_malformed_pe(self):
         (self.root/'tip/x64/MeltypeTip.dll').write_bytes(image(0x8664))
-        (self.root/'meltype-settings.exe').write_bytes(b'MZ')
+        (self.root/'meltype-flash.exe').write_bytes(b'MZ')
         self.assertFalse(audit.inspect(self.root)['passed'])
 
     def test_manifest_detects_tampering_and_path_escape(self):

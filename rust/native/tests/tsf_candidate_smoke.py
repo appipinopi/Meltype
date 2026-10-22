@@ -75,8 +75,8 @@ select_type = c.CFUNCTYPE(None, P, I, I)
 class Backend:
     def __init__(self, path, reference=False):
         self.api = c.CDLL(str(Path(path).resolve()))
-        self.name = "MeltypeCandidateWindow" if reference else "MeltypeRustCandidateWindow"
-        self.meaning_name = "MeltypeMeaningWindow" if reference else "MeltypeRustMeaningWindow"
+        self.name = "MeltypeCandidateWindow" if reference else "Meltype-flashCandidateWindow"
+        self.meaning_name = "MeltypeMeaningWindow" if reference else "Meltype-flashMeaningWindow"
         self.api.meltype_tsf_candidate_create.argtypes = [P, select_type]
         self.api.meltype_tsf_candidate_create.restype = P
         self.api.meltype_tsf_candidate_show.argtypes = [P, c.c_char_p, c.POINTER(Rect)]

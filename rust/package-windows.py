@@ -32,7 +32,7 @@ def main():
     if output.exists() or archive.exists():
         parser.error('choose new output and ZIP paths; existing artifacts are preserved')
     sources = {
-        'meltype-settings.exe': args.settings,
+        'meltype-flash.exe': args.settings,
         'meltype-rs.exe': args.cli,
         'tip/x64/MeltypeTip.dll': args.tip_source/'rust-x64/MeltypeTip.dll',
         'tip/x86/MeltypeTip.dll': args.tip_source/'rust-x86/MeltypeTip.dll',
@@ -41,6 +41,7 @@ def main():
         'LICENSE': REPO/'LICENSE',
         'THIRD-PARTY-NOTICES.md': REPO/'THIRD-PARTY-NOTICES.md',
         'README-Windows.md': REPO/'rust/WINDOWS-PACKAGE.md',
+        'BRANDING.md': REPO/'rust/BRANDING.md',
         'Manage-Windows.ps1': REPO/'rust/Manage-Windows.ps1',
         'Start-Portable.ps1': REPO/'rust/Start-Portable.ps1',
         'Update-Windows.ps1': REPO/'rust/Update-Windows.ps1',

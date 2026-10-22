@@ -36,8 +36,8 @@ use windows::{
     },
 };
 
-const CLASS: PCWSTR = w!("MeltypeRustCandidateWindow");
-const MEANING_CLASS: PCWSTR = w!("MeltypeRustMeaningWindow");
+const CLASS: PCWSTR = w!("Meltype-flashCandidateWindow");
+const MEANING_CLASS: PCWSTR = w!("Meltype-flashMeaningWindow");
 type Select = unsafe extern "C" fn(*mut c_void, i32, i32);
 #[derive(Default, Deserialize)]
 #[serde(default)]

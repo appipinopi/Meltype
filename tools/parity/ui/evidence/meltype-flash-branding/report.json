@@ -1,0 +1,14 @@
+{
+  "binary_sha256": "7e3a55ff54d7bca759984bad67466ec6548b631d9ce0a825bc002b582ef36c55",
+  "pages": [
+    {
+      "page": "settings",
+      "width": 720,
+      "height": 700,
+      "rgba_sha256": "8d779fb23626033e69936b0207c75572b8f04f1e137ef965d79900fac9656ede",
+      "captured": true,
+      "origin_pixel_equivalence_verified": false
+    }
+  ],
+  "all_screens_equivalent": false
+}

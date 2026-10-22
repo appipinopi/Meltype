@@ -1,0 +1,3 @@
+# Upstream C# sources are retained for parity/reference; Flash is built from rust/.
+# This affects repository language statistics only, never the build or file contents.
+src/** linguist-vendored=true

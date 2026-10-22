@@ -6,9 +6,10 @@ import hashlib
 import json
 from pathlib import Path
 import struct
+import uuid
 
 REQUIRED = {
-    'meltype-settings.exe': 0x8664,
+    'meltype-flash.exe': 0x8664,
     'meltype-rs.exe': 0x8664,
     'tip/x64/MeltypeTip.dll': 0x8664,
     'tip/x64/meltype-tip-worker.exe': 0x8664,
@@ -111,6 +112,11 @@ def inspect(root):
         if info['machine'] != arch:
             errors.append(f'{name}: wrong machine {info["machine"]:x}; expected {arch:x}')
         if path.name == 'MeltypeTip.dll':
+            payload = path.read_bytes()
+            flash_ids = ['C540BAF6-88B1-5B30-B524-2C8702B034FC', '6D01DE9C-8AB3-5CFC-A5C6-10893CDF8762']
+            info['flash_identity'] = all(uuid.UUID(value).bytes_le in payload for value in flash_ids)
+            if not info['flash_identity']:
+                errors.append(f'{name}: missing Meltype-flash service/profile identity; rebuild the Rust DLL')
             for export in ['DllGetClassObject', 'DllCanUnloadNow', 'DllRegisterServer', 'DllUnregisterServer']:
                 if export not in info['exports']:
                     errors.append(f'{name}: missing TSF export {export}')

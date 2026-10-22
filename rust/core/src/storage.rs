@@ -53,18 +53,20 @@ impl Store {
         }
     }
     pub fn default_directory() -> PathBuf {
-        if let Some(path) = std::env::var_os("MELTYPE_RUST_DATA_DIR") {
+        if let Some(path) = std::env::var_os("MELTYPE_FLASH_DATA_DIR")
+            .or_else(|| std::env::var_os("MELTYPE_RUST_DATA_DIR"))
+        {
             return path.into();
         }
         #[cfg(windows)]
         {
             PathBuf::from(std::env::var_os("LOCALAPPDATA").unwrap_or_else(|| ".".into()))
-                .join("MeltypeRust")
+                .join("Meltype-flash")
         }
         #[cfg(target_os = "macos")]
         {
             PathBuf::from(std::env::var_os("HOME").unwrap_or_else(|| ".".into()))
-                .join("Library/Application Support/MeltypeRust")
+                .join("Library/Application Support/Meltype-flash")
         }
         #[cfg(not(any(windows, target_os = "macos")))]
         {
@@ -74,7 +76,7 @@ impl Store {
                     PathBuf::from(std::env::var_os("HOME").unwrap_or_else(|| ".".into()))
                         .join(".local/share")
                 })
-                .join("MeltypeRust")
+                .join("Meltype-flash")
         }
     }
     fn lock(&self) -> io::Result<Lock> {

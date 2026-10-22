@@ -1,14 +1,11 @@
-name: Rust multiplatform release
+name: Meltype-flash release
 on:
-  push:
-    branches: [rust]
-    paths: ['.github/workflows/rust-release.yml']
   workflow_dispatch:
     inputs:
       tag:
-        description: New Rust preview tag
+        description: New Meltype-flash preview tag
         required: true
-        default: rust-v0.1.0-preview.1
+        default: flash-v0.1.1-preview.1
 permissions:
   contents: read
 concurrency:
@@ -19,9 +16,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - env:
-          TAG: ${{ inputs.tag || 'rust-v0.1.0-preview.1' }}
+          TAG: ${{ inputs.tag || 'flash-v0.1.1-preview.1' }}
         run: |
-          [[ "$TAG" =~ ^rust-v[0-9]+\.[0-9]+\.[0-9]+-preview\.[0-9]+$ ]]
+          [[ "$TAG" =~ ^flash-v[0-9]+\.[0-9]+\.[0-9]+-preview\.[0-9]+$ ]]
           test "$GITHUB_REPOSITORY" = appipinopi/Meltype
           test "$GITHUB_REF" = refs/heads/rust
   windows:
@@ -48,7 +45,7 @@ jobs:
           ./rust/Test-Manage-Windows.ps1
           ./rust/Test-WindowsLifecycle.ps1
           ./rust/Test-UpdateWindows.ps1
-          ./rust/Test-StartupCli.ps1 -Binary target/x86_64-pc-windows-msvc/release/meltype-settings.exe
+          ./rust/Test-StartupCli.ps1 -Binary target/x86_64-pc-windows-msvc/release/meltype-flash.exe
           python -m unittest discover -s tools -p test_rust_windows_package.py -v
           if ($LASTEXITCODE -ne 0) { throw 'Package tests failed' }
       - name: Assemble audited Windows ZIP
@@ -58,12 +55,12 @@ jobs:
           $vs = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
           $redist = Get-ChildItem -LiteralPath (Join-Path $vs 'VC/Redist/MSVC') -Directory | Where-Object Name -Match '^\d+\.' | Sort-Object Name -Descending | Select-Object -First 1
           if (-not $redist) { throw 'Redistributable CRT directory missing' }
-          python rust/package-windows.py --settings target/x86_64-pc-windows-msvc/release/meltype-settings.exe --cli target/x86_64-pc-windows-msvc/release/meltype-rs.exe --worker-x64 target/x86_64-pc-windows-msvc/release/meltype-tip-worker.exe --worker-x86 target/i686-pc-windows-msvc/release/meltype-tip-worker.exe --redist-root $redist.FullName --output dist/Meltype-Rust-Windows-x64
+          python rust/package-windows.py --settings target/x86_64-pc-windows-msvc/release/meltype-flash.exe --cli target/x86_64-pc-windows-msvc/release/meltype-rs.exe --worker-x64 target/x86_64-pc-windows-msvc/release/meltype-tip-worker.exe --worker-x86 target/i686-pc-windows-msvc/release/meltype-tip-worker.exe --redist-root $redist.FullName --output dist/Meltype-flash-Windows-x64
           if ($LASTEXITCODE -ne 0) { throw 'Package audit failed' }
       - uses: actions/upload-artifact@v4
         with:
           name: release-windows
-          path: dist/Meltype-Rust-Windows-x64.zip
+          path: dist/Meltype-flash-Windows-x64.zip
           if-no-files-found: error
   linux:
     needs: validate
@@ -82,11 +79,11 @@ jobs:
         run: |
           python3 rust/ibus/tests/installation.py target/release/meltype-ibus
           MELTYPE_IBUS_TEST_INSTALLED=1 xvfb-run -a dbus-run-session -- /usr/bin/python3 rust/ibus/tests/integration.py target/release/meltype-ibus
-          cp linux/build/Meltype-Rust-linux.tar.gz Meltype-Rust-Linux-x64.tar.gz
+          cp linux/build/Meltype-flash-linux.tar.gz Meltype-flash-Linux-x64.tar.gz
       - uses: actions/upload-artifact@v4
         with:
           name: release-linux
-          path: Meltype-Rust-Linux-x64.tar.gz
+          path: Meltype-flash-Linux-x64.tar.gz
           if-no-files-found: error
   macos:
     needs: validate
@@ -118,11 +115,11 @@ jobs:
           MELTYPE_RUST_DATA_DIR="$RUNNER_TEMP/meltype-release-test" mac/build/Meltype.app/Contents/MacOS/Meltype --self-test
           bash mac/test/register-helper/run.sh "$PWD/mac/build/Meltype.app/Contents/MacOS/MeltypeRegisterInputSource"
           python3 rust/native/tests/macos_product_smoke.py target/release/libmeltype_native.dylib
-          bash mac/package.sh Meltype-Rust-macOS-${{ matrix.arch }}.zip
+          bash mac/package.sh Meltype-flash-macOS-${{ matrix.arch }}.zip
       - uses: actions/upload-artifact@v4
         with:
           name: release-macos-${{ matrix.arch }}
-          path: dist/Meltype-Rust-macOS-*.zip
+          path: dist/Meltype-flash-macOS-*.zip
           if-no-files-found: error
   android:
     needs: validate
@@ -148,7 +145,7 @@ jobs:
       - name: Publish all platforms together
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ inputs.tag || 'rust-v0.1.0-preview.1' }}
+          TAG: ${{ inputs.tag || 'flash-v0.1.1-preview.1' }}
         run: |
-          gh release create "$TAG" release-assets/* --target "$GITHUB_SHA" --title "Meltype Rust 0.1.0 Preview 1" --notes-file rust/RELEASE-NOTES.md --prerelease --draft
+          gh release create "$TAG" release-assets/* --target "$GITHUB_SHA" --title "Meltype-flash $TAG" --notes-file rust/RELEASE-NOTES.md --prerelease --draft
           gh release edit "$TAG" --draft=false

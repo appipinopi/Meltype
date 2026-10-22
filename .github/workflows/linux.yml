@@ -25,6 +25,7 @@ concurrency:
 
 jobs:
   app:
+    if: github.repository == 'yksr-melt/Meltype'
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     # タグ時の softprops/action-gh-release 用。permissions は式が使えないため常に write。

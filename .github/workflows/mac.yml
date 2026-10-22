@@ -26,6 +26,7 @@ concurrency:
 
 jobs:
   app:
+    if: github.repository == 'yksr-melt/Meltype'
     runs-on: macos-15
     timeout-minutes: 60
     # タグ時の softprops/action-gh-release 用。permissions は式が使えないため常に write。

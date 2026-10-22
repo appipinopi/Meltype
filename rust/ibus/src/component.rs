@@ -20,14 +20,14 @@ pub fn xml(executable: &Path) -> String {
     format!(
         r#"<?xml version="1.0" encoding="utf-8"?>
 <component>
- <name>org.freedesktop.IBus.MeltypeRust</name>
- <description>Meltype Rust 日本語入力</description>
+ <name>org.freedesktop.IBus.MeltypeFlash</name>
+ <description>Meltype-flash 日本語入力</description>
  <exec>{command}</exec>
  <version>{}</version><license>GPL-3.0-or-later</license>
  <author>Yukishiro, appipinopi</author>
  <homepage>https://github.com/appipinopi/Meltype</homepage>
  <engines><engine>
-  <name>meltype-rust</name><longname>Meltype Rust</longname>
+  <name>meltype-flash</name><longname>Meltype-flash</longname>
   <description>日本語と英語を打ち分ける日本語入力</description>
   <language>ja</language><license>GPL-3.0-or-later</license>
   <icon>{icon}</icon>

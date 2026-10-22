@@ -188,7 +188,7 @@ unsafe extern "C" fn pass(data: *mut c_void, reason: u32) {
         2 => w!("Ctrl・Alt・Windows キーを押している").as_ptr(),
         3 => w!("この入力欄では使わない").as_ptr(),
         4 => w!("英語の単語の続き").as_ptr(),
-        5 => w!("Meltype.exe が使えない").as_ptr(),
+        5 => w!("meltype-flash.exe が使えない").as_ptr(),
         6 => w!("パスワードの入力欄").as_ptr(),
         _ => ptr::null(),
     };

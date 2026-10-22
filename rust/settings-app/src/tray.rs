@@ -10,9 +10,7 @@ use eframe::egui;
 use meltype_core::{settings::Settings, storage::Store};
 use std::sync::mpsc::{self, Receiver};
 use tray_icon::{
-    menu::{
-        CheckMenuItem, ContextMenu, Menu, MenuEvent, MenuId, MenuItem, PredefinedMenuItem, Submenu,
-    },
+    menu::{CheckMenuItem, Menu, MenuEvent, MenuId, MenuItem, PredefinedMenuItem, Submenu},
     Icon, TrayIcon, TrayIconBuilder, TrayIconEvent,
 };
 #[derive(Clone, Debug)]
@@ -25,6 +23,13 @@ pub enum Action {
     Level(String),
     Folder,
     About,
+    Report,
+    Corrections,
+    Backup(bool),
+    Forget(&'static str),
+    Uninstall,
+    AutoUpdate,
+    CheckUpdates,
     Quit,
     MaintenanceQuit,
     Startup,
@@ -41,12 +46,13 @@ pub struct Tray {
     _hotkey: Option<Hotkey>,
     hotkey_receiver: Receiver<()>,
     icon: TrayIcon,
-    menu_handle: usize,
     enabled: CheckMenuItem,
     status: MenuItem,
     ime_mode: CheckMenuItem,
     keyboard_mode: CheckMenuItem,
     levels: Vec<(String, CheckMenuItem)>,
+    level_menu: Submenu,
+    auto_update: CheckMenuItem,
     profiles: Submenu,
     profile_items: Vec<(String, CheckMenuItem)>,
     actions: Vec<(MenuId, Action)>,
@@ -75,9 +81,9 @@ impl Tray {
         fs2::FileExt::try_lock_exclusive(&lock)
             .map_err(|_| "トレイは既に起動しています。設定画面を開きました。".to_owned())?;
         let menu = Menu::new();
-        let status = MenuItem::new("Meltype", false, None);
+        let status = MenuItem::new("Meltype-flash", false, None);
         let enabled = CheckMenuItem::new(
-            "Meltype を有効にする",
+            "Meltype-flash を有効にする",
             true,
             settings.boolean("Enabled"),
             None,
@@ -88,13 +94,13 @@ impl Tray {
         menu.append(&enabled).map_err(|e| e.to_string())?;
         let mut actions = vec![(enabled.id().clone(), Action::Toggle)];
         let ime_mode = CheckMenuItem::new(
-            "Meltype IME (入力欄に直接入力)",
+            "Meltype-flash IME (入力欄に直接入力)",
             true,
             settings.text("Mode") == "Tsf",
             None,
         );
         let keyboard_mode = CheckMenuItem::new(
-            "Meltype キーボード (変換ボックスで入力)",
+            "Meltype-flash キーボード (変換ボックスで入力)",
             true,
             settings.text("Mode") == "Keyboard",
             None,
@@ -128,11 +134,7 @@ impl Tray {
             ("設定...", Action::Page(0)),
             ("ユーザー辞書...", Action::Page(1)),
             ("定型文...", Action::Page(2)),
-            ("学習した語...", Action::Page(3)),
-            ("バックアップ...", Action::Page(4)),
-            ("判定テスト...", Action::Page(5)),
-            ("データフォルダを開く", Action::Folder),
-            ("報告・更新...", Action::About),
+            ("ログ / 判定理由...", Action::Page(6)),
         ] {
             let item = MenuItem::new(label, true, None);
             menu.append(&item).map_err(|e| e.to_string())?;
@@ -140,15 +142,62 @@ impl Tray {
         }
         menu.append(&PredefinedMenuItem::separator())
             .map_err(|e| e.to_string())?;
+        let folder = MenuItem::new("データフォルダを開く", true, None);
+        menu.append(&folder).map_err(|e| e.to_string())?;
+        actions.push((folder.id().clone(), Action::Folder));
+        let backup = Submenu::new("バックアップ", true);
+        for (label, restore) in [
+            ("バックアップを書き出す...", false),
+            ("バックアップから戻す...", true),
+        ] {
+            let item = MenuItem::new(label, true, None);
+            backup.append(&item).map_err(|e| e.to_string())?;
+            actions.push((item.id().clone(), Action::Backup(restore)));
+        }
+        menu.append(&backup).map_err(|e| e.to_string())?;
+        for (label, action) in [
+            ("不具合の報告・提案...", Action::Report),
+            ("直した誤判定を報告...", Action::Corrections),
+            ("Meltype-flash について...", Action::About),
+            ("学習した語...", Action::Page(3)),
+        ] {
+            let item = MenuItem::new(label, true, None);
+            menu.append(&item).map_err(|e| e.to_string())?;
+            actions.push((item.id().clone(), action));
+        }
+        let forget = Submenu::new("学習データを消す", true);
+        for (label, scope) in [
+            ("この 1 時間に覚えたもの...", "hour"),
+            ("今日覚えたもの...", "today"),
+            ("すべて (リセット)...", "all"),
+        ] {
+            let item = MenuItem::new(label, true, None);
+            forget.append(&item).map_err(|e| e.to_string())?;
+            actions.push((item.id().clone(), Action::Forget(scope)));
+        }
+        menu.append(&forget).map_err(|e| e.to_string())?;
+        let uninstall = MenuItem::new("アンインストール...", true, None);
+        menu.append(&uninstall).map_err(|e| e.to_string())?;
+        actions.push((uninstall.id().clone(), Action::Uninstall));
+        let updates = Submenu::new("更新", true);
+        let auto_update =
+            CheckMenuItem::new("自動で更新する", true, settings.boolean("AutoUpdate"), None);
+        updates.append(&auto_update).map_err(|e| e.to_string())?;
+        actions.push((auto_update.id().clone(), Action::AutoUpdate));
+        let check = MenuItem::new("今すぐ更新を確認", true, None);
+        updates.append(&check).map_err(|e| e.to_string())?;
+        actions.push((check.id().clone(), Action::CheckUpdates));
+        menu.append(&updates).map_err(|e| e.to_string())?;
+        menu.append(&PredefinedMenuItem::separator())
+            .map_err(|e| e.to_string())?;
         let quit = MenuItem::new("終了", true, None);
         menu.append(&quit).map_err(|e| e.to_string())?;
         actions.push((quit.id().clone(), Action::Quit));
         let guid = windows_services::tray_guid(&store.directory);
-        let menu_handle = menu.hpopupmenu() as usize;
         let icon = TrayIconBuilder::new()
             .with_menu(Box::new(menu))
             .with_guid(guid)
-            .with_tooltip("Meltype")
+            .with_tooltip("Meltype-flash")
             .with_icon(text_icon(settings.boolean("Enabled"))?)
             .build()
             .map_err(|e| e.to_string())?;
@@ -162,7 +211,7 @@ impl Tray {
         ) {
             Ok(hotkey) => {
                 if let Some(name) = hotkey.name.as_deref() {
-                    enabled.set_text(format!("Meltype を有効にする ({name})"));
+                    enabled.set_text(format!("Meltype-flash を有効にする ({name})"));
                 } else {
                     warnings.push("一時停止/再開のホットキーは、候補がすべて使用中のため登録できませんでした。".into());
                 }
@@ -200,12 +249,13 @@ impl Tray {
             _hotkey: hotkey,
             hotkey_receiver,
             icon,
-            menu_handle,
             enabled,
             status,
             ime_mode,
             keyboard_mode,
             levels,
+            level_menu,
+            auto_update,
             profiles,
             profile_items: vec![],
             actions,
@@ -225,9 +275,9 @@ impl Tray {
     pub fn input_status(&self, settings: &Settings, active: bool) {
         if settings.boolean("Enabled") && settings.text("Mode") == "Keyboard" {
             self.status.set_text(if active {
-                "Meltype キーボード: 入力ON (Ctrl+Alt+J でOFF)"
+                "Meltype-flash キーボード: 入力ON (Ctrl+Alt+J でOFF)"
             } else {
-                "Meltype キーボード: 入力OFF (Ctrl+Alt+J でON)"
+                "Meltype-flash キーボード: 入力OFF (Ctrl+Alt+J でON)"
             });
         }
     }
@@ -235,9 +285,9 @@ impl Tray {
         let enabled = settings.boolean("Enabled");
         let message = if enabled != self.last_enabled {
             Some(if enabled {
-                "Meltype を有効にしました".to_owned()
+                "Meltype-flash を有効にしました".to_owned()
             } else {
-                "Meltype を一時停止しました".to_owned()
+                "Meltype-flash を一時停止しました".to_owned()
             })
         } else if settings.text("ActiveProfile") != self.last_profile {
             Some(format!(
@@ -252,28 +302,12 @@ impl Tray {
         self.ime_mode.set_checked(settings.text("Mode") == "Tsf");
         self.keyboard_mode
             .set_checked(settings.text("Mode") == "Keyboard");
-        // The two input modes are mutually exclusive even when a check item
-        // auto-toggles while the native popup is tracking a click.
-        unsafe {
-            use windows_sys::Win32::UI::WindowsAndMessaging::{CheckMenuRadioItem, MF_BYPOSITION};
-            CheckMenuRadioItem(
-                self.menu_handle as _,
-                3,
-                4,
-                if settings.text("Mode") == "Keyboard" {
-                    4
-                } else {
-                    3
-                },
-                MF_BYPOSITION,
-            );
-        }
         self.status.set_text(if !enabled {
-            "Meltype: 一時停止"
+            "Meltype-flash: 一時停止"
         } else if settings.text("Mode") == "Keyboard" {
-            "Meltype キーボード (Ctrl+Alt+J で入力ON/OFF)"
+            "Meltype-flash キーボード (Ctrl+Alt+J で入力ON/OFF)"
         } else {
-            "Meltype IME (Win + Space で登録済みIMEを選んで入力)"
+            "Meltype-flash IME (Win + Space で Meltype-flash を選んで入力)"
         });
         if enabled != self.last_enabled {
             self.icon
@@ -281,6 +315,13 @@ impl Tray {
                 .map_err(|e| e.to_string())?;
             self.last_enabled = enabled;
         }
+        self.auto_update.set_checked(settings.boolean("AutoUpdate"));
+        self.level_menu.set_text(format!(
+            "自動判定の強さ: {}",
+            crate::metadata::choice("DetectionLevel", settings.text("DetectionLevel"))
+        ));
+        self.profiles
+            .set_text(format!("プロファイル: {}", settings.text("ActiveProfile")));
         for (name, item) in &self.levels {
             item.set_checked(name == settings.text("DetectionLevel"));
         }
@@ -320,7 +361,7 @@ impl Tray {
                 windows_services::notify(
                     self.icon.window_handle(),
                     self.guid,
-                    "Meltype",
+                    "Meltype-flash",
                     &message,
                 )?;
             }
@@ -361,9 +402,9 @@ impl Tray {
                 match result {
                     Ok(enabled) if self.startup_user_request => actions.push(Action::Status(
                         if enabled {
-                            "Windows の起動時に Meltype を起動します。"
+                            "Windows の起動時に Meltype-flash を起動します。"
                         } else {
-                            "Windows の起動時に Meltype を起動しません。"
+                            "Windows の起動時に Meltype-flash を起動しません。"
                         }
                         .into(),
                     )),
@@ -393,6 +434,10 @@ impl Tray {
 pub fn write_action(store: &Store, action: &Action) -> Result<(), String> {
     store
         .change_settings(|settings| match action {
+            Action::AutoUpdate => settings.set(
+                "AutoUpdate",
+                serde_json::json!(!settings.boolean("AutoUpdate")),
+            ),
             Action::Toggle => {
                 settings.set("Enabled", serde_json::json!(!settings.boolean("Enabled")))
             }

@@ -53,7 +53,7 @@ impl Spec {
         Self {
             user,
             executable,
-            task: format!("MeltypeRust-{hash:016x}"),
+            task: format!("Meltype-flash-{hash:016x}"),
         }
     }
     fn xml(&self) -> String {
@@ -69,7 +69,7 @@ impl Spec {
         format!(
             r#"<?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
-<RegistrationInfo><Description>Meltype Rust をサインインしたらすぐ起動する</Description></RegistrationInfo>
+<RegistrationInfo><Description>Meltype-flash をサインインしたらすぐ起動する</Description></RegistrationInfo>
 <Triggers><LogonTrigger><Enabled>true</Enabled><UserId>{user}</UserId></LogonTrigger></Triggers>
 <Principals><Principal id="Author"><UserId>{user}</UserId><LogonType>InteractiveToken</LogonType><RunLevel>LeastPrivilege</RunLevel></Principal></Principals>
 <Settings><MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy><DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries><StopIfGoingOnBatteries>false</StopIfGoingOnBatteries><ExecutionTimeLimit>PT0S</ExecutionTimeLimit><Priority>5</Priority></Settings>
@@ -622,8 +622,8 @@ mod tests {
         assert_eq!(text("LogonType"), "InteractiveToken");
         assert_eq!(text("DisallowStartIfOnBatteries"), "false");
         assert_eq!(text("ExecutionTimeLimit"), "PT0S");
-        assert!(spec.task.starts_with("MeltypeRust-"));
-        assert_ne!(spec.task, "Meltype");
+        assert!(spec.task.starts_with("Meltype-flash-"));
+        assert_ne!(spec.task, "Meltype-flash");
         assert_eq!(
             spec.task,
             Spec::new(spec.user.to_uppercase(), spec.executable.clone()).task

@@ -8,7 +8,7 @@ param(
     [switch]$SkipCurrentUserStartup
 )
 $ErrorActionPreference = 'Stop'
-$clsid = '{417D801B-A9BD-4C26-BD16-356A825A6998}'
+$clsid = '{C540BAF6-88B1-5B30-B524-2C8702B034FC}'
 function Get-Server([Microsoft.Win32.RegistryView]$View) {
     $hive = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::LocalMachine, $View)
     try {
@@ -23,7 +23,7 @@ function Get-InstallRoot {
         $key = $machine.OpenSubKey('SOFTWARE\Microsoft\Windows\CurrentVersion')
         try { $programFiles = [string]$key.GetValue('ProgramFilesDir') } finally { $key.Dispose() }
     } finally { $machine.Dispose() }
-    return [IO.Path]::GetFullPath((Join-Path $programFiles 'MeltypeRust'))
+    return [IO.Path]::GetFullPath((Join-Path $programFiles 'Meltype-flash'))
 }
 function Assert-Administrator {
     $principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
@@ -37,7 +37,7 @@ function Assert-Child([string]$Base, [string]$Path) {
 }
 function Test-Package([string]$Root) {
     $manifest = Get-Content -LiteralPath (Join-Path $Root 'SHA256SUMS.json') -Raw -Encoding UTF8 | ConvertFrom-Json
-    foreach ($name in @('meltype-settings.exe','meltype-rs.exe','tip/x64/MeltypeTip.dll','tip/x86/MeltypeTip.dll',
+    foreach ($name in @('meltype-flash.exe','meltype-rs.exe','tip/x64/MeltypeTip.dll','tip/x86/MeltypeTip.dll',
         'tip/x64/meltype-tip-worker.exe','tip/x86/meltype-tip-worker.exe','Manage-Windows.ps1','Start-Portable.ps1')) {
         if ($manifest.PSObject.Properties.Name -notcontains $name) { throw "Missing manifest entry: $name" }
     }
@@ -50,6 +50,15 @@ function Test-Package([string]$Root) {
             if ($null -eq $cursor) { throw "Invalid package parent: $path" }
         }
         if ((Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash -ne $item.Value) { throw "SHA256 mismatch: $($item.Name)" }
+    }
+    foreach ($arch in 'x64','x86') {
+        $dll = Join-Path $Root "tip/$arch/MeltypeTip.dll"
+        $hex = [BitConverter]::ToString([IO.File]::ReadAllBytes($dll))
+        foreach ($id in @([Guid]$clsid, [Guid]'{6D01DE9C-8AB3-5CFC-A5C6-10893CDF8762}')) {
+            if (-not $hex.Contains([BitConverter]::ToString($id.ToByteArray()))) {
+                throw "Missing Meltype-flash identity: tip/$arch/MeltypeTip.dll. Rebuild the Flash DLL; legacy shared-ID packages cannot be installed."
+            }
+        }
     }
     return $manifest
 }
@@ -67,11 +76,11 @@ if ($Action -eq 'Update' -and $null -eq $state) { throw 'No managed installation
 if ($Action -notin @('Uninstall','Cleanup')) {
     foreach ($arch in 'x64','x86') {
         if ($old[$arch] -and -not $old[$arch].StartsWith($installRoot+'\',[StringComparison]::OrdinalIgnoreCase) -and -not $ReplaceExisting) {
-            throw "Another Meltype is registered: $($old[$arch]). Back up its data; use -ReplaceExisting to replace the shared registration."
+            throw "Another Meltype-flash is registered: $($old[$arch]). Back up its data; use -ReplaceExisting to replace the Meltype-flash registration."
         }
     }
 }
-if (-not $PSCmdlet.ShouldProcess($installRoot, "$Action Meltype Rust IME")) { return }
+if (-not $PSCmdlet.ShouldProcess($installRoot, "$Action Meltype-flash IME")) { return }
 Assert-Administrator
 $windows = [Environment]::GetFolderPath('Windows')
 $reg64 = Join-Path $windows 'System32\regsvr32.exe'
@@ -184,7 +193,7 @@ if ($Action -eq 'Uninstall') {
         if ($state.startupProtocol -ne 1) {
             throw 'This old installation has no startup helper. Update first, or disable startup manually and pass -SkipCurrentUserStartup.'
         }
-        $helper = Assert-Child $installRoot (Join-Path ([string]$state.package) 'meltype-settings.exe')
+        $helper = Assert-Child $installRoot (Join-Path ([string]$state.package) 'meltype-flash.exe')
         $null = Invoke-StartupMaintenance $helper 'stop-tray'
         $null = Invoke-StartupMaintenance $helper 'disable'
     }
@@ -218,7 +227,7 @@ if (Test-Path -LiteralPath (Join-Path $versionRoot 'SHA256SUMS.json')) {
 $attempted = @()
 if (-not $SkipCurrentUserStartup) {
     # Use the new helper so older trays produce an explicit manual-close error.
-    $null = Invoke-StartupMaintenance (Join-Path $versionRoot 'meltype-settings.exe') 'stop-tray'
+    $null = Invoke-StartupMaintenance (Join-Path $versionRoot 'meltype-flash.exe') 'stop-tray'
 }
 try {
     foreach ($arch in 'x64','x86') {
@@ -241,11 +250,11 @@ try {
 }
 if (-not $SkipCurrentUserStartup) {
     try {
-        $startup = Invoke-StartupMaintenance (Join-Path $versionRoot 'meltype-settings.exe') 'rebind'
+        $startup = Invoke-StartupMaintenance (Join-Path $versionRoot 'meltype-flash.exe') 'rebind'
         Write-Host "Current-user startup enabled: $($startup.enabled)"
     } catch {
         throw "IME installation completed, but current-user startup was not updated: $_. Old version files were retained; retry the startup helper from the new folder."
     }
 }
-Write-Host "Installed: $versionRoot. Select Meltype in Windows language settings; restart open applications."
-Write-Host "Start tray: & '$versionRoot\meltype-settings.exe' --tray"
+Write-Host "Installed: $versionRoot. Select Meltype-flash in Windows language settings; restart open applications."
+Write-Host "Start tray: & '$versionRoot\meltype-flash.exe' --tray"
