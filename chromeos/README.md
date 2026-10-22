@@ -1,72 +1,123 @@
-# ChromeOS 試験版 — chrome.input.ime + Rust/WASM
+<!-- meltype-flash-platform:start -->
+<p align="center"><img src="../assets/branding/readme/logo.svg" alt="Meltype-flash" width="520"></p>
+<a id="meltype-for-chromeos"></a>
+<p align="center"><img src="../assets/branding/readme/chromeos/hero.svg" alt="Meltype-flash for ChromeOS" width="1000"></p>
+<p align="center"><b>日本語と英語を、ひとつの入力で。</b></p>
+<p align="center"><a href="https://github.com/appipinopi/Meltype/releases/tag/flash-v0.1.0-preview.2"><img src="https://img.shields.io/badge/Flash-v0.1.0_Pre2-ffe34a" alt="Flash v0.1.0 Pre2"></a> <img src="https://img.shields.io/badge/status-開発プレビュー-666973" alt="開発プレビュー"></p>
+<p align="center"><a href="#インストール">ダウンロード・導入</a> · <a href="#使い方">使い方</a> · <a href="#困ったとき">困ったとき</a> · <a href="https://github.com/appipinopi/Meltype/issues/new/choose">不具合の報告・提案</a></p>
+<p align="center">
+  <a href="../rust/WINDOWS-PACKAGE.md"><img src="../assets/branding/readme/cards/os-windows.svg" alt="Windows" width="32%"></a>
+  <a href="../linux/README.md"><img src="../assets/branding/readme/cards/os-linux.svg" alt="Linux" width="32%"></a>
+  <a href="../mac/README.md"><img src="../assets/branding/readme/cards/os-mac.svg" alt="Mac" width="32%"></a>
+</p>
+<p align="center">
+  <a href="../android/README.md"><img src="../assets/branding/readme/cards/os-android.svg" alt="Android" width="32%"></a>
+  <a href="README.md"><img src="../assets/branding/readme/cards/os-chromeos-active.svg" alt="ChromeOS" width="32%"></a>
+  <a href="../ios/README.md"><img src="../assets/branding/readme/cards/os-ios.svg" alt="iOS" width="32%"></a>
+</p>
+<p align="center"><a href="../README.md">トップのREADME</a></p>
+<!-- meltype-flash-platform:end -->
 
-2026-10-22時点の実装です。ChromeOSの実機を使った導入・入力試験は未実施です。Windows版・全機能の互換性を保証する版ではありません。
+ChromeOSの `chrome.input.ime` と共通Rust CoreのWASMを接続する、日本語入力の試験版です。
+**通常のWindows・Mac・Linux上のChrome用IMEではありません。Chrome Web Storeへは公開していません。**
 
-ソースコード: [appipinopi/Meltype](https://github.com/appipinopi/Meltype)。GPL-3.0-or-laterの全文、辞書等の第三者表示、解決済みRust依存ライブラリのライセンス本文をZIPへ同梱します。
+<a id="内容"></a>
+<h2><img src="../assets/branding/readme/chromeos/headings/df8764ebcf5d.svg" alt="内容" width="1000"></h2>
 
-## 使用するAPIと2023年の告知
+ローマ字・かな、英語・日本語の判定、同梱FSTの漢字候補、予測候補、候補選択、設定と学習の保存を接続しています。
+設定画面では、通常入力とコード入力、サイトごとの切替、詳細JSON、スナップショットの保存を扱います。
+[導入画面の記録](docs/INSTALLATION.md) はありますが、Pre2の修正を含む実機での変換・各アプリ入力の確認は未完了です。
 
-対象は`chrome.input.ime`です。Googleは2023年7月にChromeOS 117での廃止予定を告知し、8月には最短119まで延期しました。[公式告知](https://chromeos.dev/en/posts/chrome-input-ime-deprecation)。廃止予定の告知と、実際に削除されたことは区別します。
+[動く環境](#動く環境) · [インストール](#インストール) · [使い方](#使い方) · [困ったとき](#困ったとき) · [アンインストール](#アンインストール) · [開発者向け](#開発者向け)
 
-現在の[公式API文書](https://developer.chrome.com/docs/extensions/reference/api/input/ime)は存在し、2026-10-21に確認した[Chromiumの機能定義](https://chromium.googlesource.com/chromium/src/+/e060ba3ace847abe456467721691a2b4821b22fa/chrome/common/extensions/api/_api_features.json)には`input`権限・ChromeOS・privileged extensionという条件が残ります。特定の製品版・管理端末で使える証明にはなりません。APIがなければ設定画面で理由を表示し、入力を横取りする代替処理は行いません。Manifest V3を使い、Manifest V2やChrome Appsには依存しません。
+<a id="動く環境"></a>
+<h2><img src="../assets/branding/readme/chromeos/headings/f378dd1f4672.svg" alt="動く環境" width="1000"></h2>
 
-## 作成と導入
+- `chrome.input.ime` を利用できるChromeOS。
+- Manifest V3の拡張機能を手動読込できる環境。
+- パッケージの最低Chromeバージョン指定は119。119以降の全版で動作確認した意味ではありません。
 
-必要なものはRust stable、Python 3.9以上、Node.js 22以上、**wasm-bindgen-cli 0.2.129**です。バインディング生成ツールとCargoで固定した版を一致させます。
+管理端末では導入や権限が制限される場合があります。OSのDeveloper Modeへ切り替える手順ではありません。
 
-```powershell
-rustup target add wasm32-unknown-unknown
-cargo install wasm-bindgen-cli --version 0.2.129 --locked
+<a id="インストール"></a>
+<h2><img src="../assets/branding/readme/chromeos/headings/4f36b3b314d8.svg" alt="インストール" width="1000"></h2>
+
+1. [FlashのPre2](https://github.com/appipinopi/Meltype/releases/tag/flash-v0.1.0-preview.2) から `Meltype-flash-ChromeOS.zip` を取得し、フォルダーへ全体展開します。
+2. ChromeOSの `chrome://extensions` を開き、拡張機能の「デベロッパーモード」を有効にします。
+3. 「パッケージ化されていない拡張機能を読み込む」で、`manifest.json` のあるフォルダーを選びます。
+4. ChromeOSの言語・入力方法の設定からMeltypeを追加し、入力方法として選びます。
+
+メニューの表示名に `Meltype Rust` が残っている版もあります。画面の経路は [画像付きの導入案内](docs/INSTALLATION.md) を参照してください。
+既存版を更新する場合は、先に設定画面で必要なスナップショットを保存します。同じフォルダーを新しいファイルで更新し、拡張機能を再読み込みしてください。学習を残したい場合は、先に拡張機能を削除しないでください。
+
+<a id="使い方"></a>
+<h2><img src="../assets/branding/readme/chromeos/headings/936b17951891.svg" alt="使い方" width="1000"></h2>
+
+| 操作 | 動作 |
+| --- | --- |
+| 文字キー | 共通Coreでローマ字・かなと英語を判定 |
+| Space | 変換・候補切替 |
+| 候補クリック / Enter | 候補を選択して確定 |
+| Esc | 取消 |
+| F6 / F7など | 対応する字種へ切替。OSに取られるキーは届かない場合があります。 |
+
+例: `hashi` → Space → 「橋」「箸」の候補を選択 → Enterで確定。
+ChromeOSの入力方式切替はOS側の設定を使います。
+
+<a id="サイトごとの通常入力コード入力"></a>
+<h3><img src="../assets/branding/readme/chromeos/headings/56ec4448115b.svg" alt="サイトごとの通常入力・コード入力" width="1000"></h3>
+
+初期状態ではサイト別の自動切替は無効です。設定画面で「サイトごとの自動切替」を有効にし、必要なタブ参照を許可して保存します。
+`vscode.com`・`vscode.dev`・`github.dev` は初期候補です。権限を許可しない場合は手動の入力モードを使えます。
+周辺テキストを渡さないエディターではコメント・文字列の判定ができないため、そのサイトは通常入力へ切り替えてください。
+サイト別設定はCoreの学習スナップショットとは別で、現在のJSON書き出しには含まれません。
+
+<a id="プライバシー"></a>
+<h2><img src="../assets/branding/readme/chromeos/headings/5b98193660c4.svg" alt="プライバシー" width="1000"></h2>
+
+入力と変換は拡張機能内のWASMで処理し、設定・学習は `chrome.storage.local` に保存します。学習禁止やシークレットでは保存を抑止します。
+サイト別切替の任意権限 `tabs` は、現在のタブを調べるために使います。ページへ入力用スクリプトを挿入する構成ではありません。
+拡張機能の削除でローカルデータを失うため、必要なスナップショットは先に保存してください。
+
+<a id="困ったとき"></a>
+<h2><img src="../assets/branding/readme/chromeos/headings/4466f22d7395.svg" alt="困ったとき" width="1000"></h2>
+
+<details>
+<summary>拡張機能として入ったのに入力方法が出ない</summary>
+
+ChromeOSであること、OS側の入力方法へ追加したこと、管理ポリシーで許可されていることを確認します。
+通常のデスクトップChromeではこのIME APIを使えません。拡張機能画面に表示されるだけでIME対応とは判断できません。
+
+</details>
+
+<details>
+<summary>英字のまま・候補が出ない・設定が切り替わらない</summary>
+
+まずSpaceで候補を確認します。サイトの周辺文字が取れない場合は通常入力へ変更し、更新後は拡張機能を再読み込みしてください。
+OS・拡張機能の版・サイト・入力手順を [Issues](https://github.com/appipinopi/Meltype/issues/new/choose) に記載してください。タブURLや文章に個人情報がないか確認してください。
+
+</details>
+
+<a id="アンインストール"></a>
+<h2><img src="../assets/branding/readme/chromeos/headings/9648f59fe13b.svg" alt="アンインストール" width="1000"></h2>
+
+入力方法を別のものへ切り替え、ChromeOSの入力方法一覧からMeltypeを外してから、`chrome://extensions` で拡張機能を削除します。
+削除前に必要な設定・学習スナップショットを保存してください。展開フォルダーも不要になってから削除します。
+
+<a id="開発者向け"></a>
+<h2><img src="../assets/branding/readme/chromeos/headings/9f8c2f09ae3c.svg" alt="開発者向け" width="1000"></h2>
+
+Rustと `wasm-bindgen-cli`、Pythonが必要です。リポジトリのルートから実行します。
+
+```sh
 python chromeos/build.py
 ```
 
-既存の生成ツールは`--wasm-bindgen <実行ファイル>`、別の配布先は`--out <専用フォルダー>`で指定できます。`CARGO_TARGET_DIR`も尊重します。
+`dist/chromeos-preview` と同名ZIPを作ります。別のwasm-bindgen実行ファイルは `--wasm-bindgen`、出力先は `--out` で指定します。`CARGO_TARGET_DIR` も尊重します。
+実WASMでの変換・候補・学習復元、模擬IME APIでの順序・UTF-16位置・競合・エラーを検査します。
+模擬APIでの成功とChromeOS実機での成功は別です。[移行記録](../rust/MIGRATION.md) と [ビルドスクリプト](build.py) も参照してください。
 
-`dist/chromeos-preview`と同名ZIPを生成します。ZIPを展開して、対応ChromeOSの`chrome://extensions`でデベロッパーモードを有効にし「パッケージ化されていない拡張機能を読み込む」からフォルダーを選びます。これは拡張機能の開発者向け設定で、OSのDeveloper Modeへ切り替える手順ではありません。管理端末では管理者の許可・ポリシーに従います。ChromeOSの「言語と入力 → 入力方法」でMeltype Rustを追加し、入力方法として選択します。メニューの表記や導入可否はOSと管理設定で異なります。
+<a id="ライセンス"></a>
+<h2><img src="../assets/branding/readme/chromeos/headings/cfc7325a7d0e.svg" alt="ライセンス" width="1000"></h2>
 
-Chrome Web Storeへは公開していません。`manifest.json`の最低119はパッケージの下限であり、119以降の全バージョンで試験した意味ではありません。Windows/LinuxのChromeではIME APIを利用できません。
-
-## 接続した機能
-
-- 同じ`meltype-core::Session`をWASMへコンパイル。ローマ字・かな処理、判定、同梱FST辞書・補助候補、句読点・キー操作を共有する。
-- キーの順序を保ち、非同期`onKeyEvent`には`keyEventHandled`を一度だけ返す。変換中の文字列、候補、選択位置、注釈をOSのIME APIへ送る。カーソル位置はUTF-16単位。
-- Space、候補移動、クリック選択、Enter、Esc、F6〜F10などを共通Coreへ渡す。ChromeOSが先に処理するキーは取得できない。
-- フォーカス・入力先種別の変更、無効化、resetで未確定状態を破棄する。非同期初期化中に入力先が変わった古いイベントは適用しない。パスワード、不明・数値・電話番号欄、他拡張機能からのイベントは処理しない。
-- `chrome.storage.local`へ設定・学習のスナップショットを保存。`shouldDoLearning=false`やシークレットでは学習保存しない。設定JSONの編集、未知の設定の保持、AutoSwitch/Bothの移行、学習削除、JSON書き出しを用意する。
-- API操作・保存の失敗を診断表示する。壊れた保存データを既定値で上書きしない。未確定文字列・周辺文は保存しない。
-
-## 制約と残る確認
-
-Coreのデスクトップ標準ビルドでは従来のSQLite・ファイルロック・原子的保存を維持します。WASMでは`filesystem` featureを外して、同じ学習モデルだけを共有します。ChromeOS版の保存形式はJSONであり、SQLiteを実装したとは扱いません。
-
-OS辞書/Mozcの接続、OSのクリップボード・GitHubへの取得、アプリ別プロセス検出、Windowsの登録・トレイ・自動更新は接続しません。OS辞書に依存する候補の全同等性、全画面一致、ライブ変換・再変換のホスト統合も受入未完了です。設定項目を保存できても、その項目が必要とするOS連携まで動作する意味ではありません。
-
-既存文書の削除・確定後訂正・Undoは`can_delete=false`で制限します。カーソル移動を伴う`CursorIntoBrackets=true`は明示的に拒否します。レイアウトはmanifestで1つの`us::eng`を宣言し、DOMの物理codeからOEM/JISキーを対応付けています。実JIS配列とかな入力・AltGr・拡張文字、媒体キー・修飾キー、候補ページ、複数ウィンドウ、スリープ復帰・Service Worker再起動はChromeOS実機で確認が必要です。Service Worker再起動後は確定済みの学習と設定を復元しますが、未確定文字列を復元しません。
-
-ストレージ容量を超える場合は保存失敗を表示します。サイト別の自動切替を有効にする場合だけ、タブのURLを参照する任意の`tabs`権限を求めます。サーバーへの権限は要求しません。拡張機能を削除すると保存データも失うため、必要なら設定画面からJSONを書き出してください。スナップショット復元画面と辞書編集は未対応です。
-
-## サイトごとの通常入力・コード入力
-
-ChromeOS版ではデスクトップのアプリ別プロセス設定を表示せず、設定画面の「入力モード」から通常使うモードとサイト別のモードを選びます。「サイトごとの自動切替を使う」をチェックし、Chromeのタブ参照許可を承認して「入力モードを保存」を押すと有効になります。自動切替は初期状態では無効です。許可しなくても通常使うモードを手動で選べます。
-
-初期候補は`vscode.com`、`vscode.dev`、`github.dev`のコード入力です。ブラウザー版VS Codeの入口は[vscode.dev（公式説明）](https://code.visualstudio.com/docs/remote/vscode-web)です。URLを貼り付けてもホスト名だけを保存します。サブドメインにも適用し、より具体的なホスト名を優先します。`vscode.dev.evil.example`などの別サイトには一致しません。サイトの追加・削除と、通常入力への上書きもできます。
-
-コード入力では`const answer = 42;`などを自動変換せず、そのままエディターへ渡します。エディターが周辺テキストをIMEへ渡す場合は、コメントや文字列内で通常の日英判定・日本語変換を利用できます。周辺テキストを取得できないエディターでは自動判別できないため、必要に応じてそのサイトを通常入力へ変更してください。編集中のファイルのプログラミング言語までは判定しません。
-
-判定対象はフォーカス中のChromeウィンドウのアクティブなhttp/httpsタブです。アドレス・検索・メール欄、シークレット、Chrome以外が前面のとき、権限がない場合やページの読み込み中はサイト別設定を使いません。切替時に未確定文字が残っていれば確定するまで現在のモードを保ちます。タブURL・タイトル・閲覧履歴・周辺テキストは保存せず、設定したホスト名・モードだけを端末内に保持します。[tabs API](https://developer.chrome.com/docs/extensions/reference/api/tabs)の任意権限を使い、ページ内へのスクリプト挿入は行いません。
-
-サイト別設定はCoreの学習スナップショットと別に保存します。現在のJSON書き出しにはサイト別設定を含みません。デスクトップのアプリ別設定は既存スナップショット内に保持し、ChromeOSの詳細JSON画面からは隠します。ChromeOS実機でのVS Code・複数タブ・権限確認の操作は未検証です。
-
-## 検証
-
-`python chromeos/build.py`は実WASMで変換・候補・選択学習・再起動復元・学習禁止・設定移行・F6/F7を検査し、APIアダプターの順序・UTF-16位置・フォーカス競合・パスワード拒否・初期化/IME API失敗を模擬APIで検査します。APIモック成功をChromeOS実機成功とは扱いません。ZIPには同梱ファイルのSHA256とライセンスを含めます。現在の移行状況は[移行記録](../rust/MIGRATION.md)、全体構成は[ファイル解説](../FILE_GUIDE.md)を参照してください。
-
-## 0.1.1: 漢字候補とキーイベントの互換対応
-
-`onKeyEvent`の第3引数と旧形式の`keyData.requestId`の両方から応答IDを取得します。以前は旧形式だとキーを処理せず素通ししていました。同じ入力欄の属性更新では未確定文字列を消さず、入力先・種別・学習許可が変わる場合は破棄します。漢字候補に加え、学習文章の予測表示と予測クリック確定を接続しました。[公式APIのKeyboardEvent/onKeyEvent定義](https://developer.chrome.com/docs/extensions/reference/api/input/ime)を参照しています。
-
-同梱FSTによる漢字変換は、`hashi` → Space → 「橋」「箸」の候補 → クリックまたはEnterで確定、の手順です。OS/Mozc辞書への接続追加ではありません。自動の日英判定により最初の表示が英語でも、Spaceで変換候補を確認できます。
-
-既存利用者は設定画面で必要ならスナップショットを保存し、新しいZIPの中身を既存の拡張機能フォルダーへ展開して`chrome://extensions`の再読み込みを押します。同じ拡張機能の更新として読み込み、学習を維持したい場合は削除して入れ直さないでください。入力方法からMeltype Rustを再度選択して確認します。
-
-[個人情報を黒塗りしたChromeOS実機の導入画面と手順](https://github.com/appipinopi/Meltype/blob/rust/chromeos/docs/INSTALLATION.md)。この画像は導入経路の記録で、修正版の漢字変換を実機で確認した証跡ではありません。
+[GPL-3.0-or-later](../LICENSE)。ZIPにはライセンス・第三者表示・解決済み依存関係の表示を同梱します。[THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md) を参照してください。
