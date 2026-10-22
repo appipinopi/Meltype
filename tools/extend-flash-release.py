@@ -27,7 +27,7 @@ def publish(tag, directory):
                 'Meltype-flash-0.1.0-pre.2-setup.exe', 'Meltype-flash-Linux-x64.zip',
                 'Meltype-flash-Linux-arm64.zip', 'meltype-flash_0.1.0~pre.2_amd64.deb',
                 'meltype-flash_0.1.0~pre.2_arm64.deb', 'Meltype-flash-iOS-Simulator-arm64.zip',
-                'Meltype-flash-iOS-source.zip', 'README-iOS.md'}
+                'Meltype-flash-iOS-source.zip', 'Meltype-flash-iOS-unsigned.ipa', 'README-iOS.md'}
     if {p.name for p in assets} != expected or any(not p.is_file() or not p.stat().st_size for p in assets):
         raise ValueError('Missing, extra, or empty distribution assets')
     release = json.loads(subprocess.check_output(['gh', 'api', f'repos/{REPO}/releases/tags/{tag}']))
@@ -48,7 +48,7 @@ def publish(tag, directory):
         notes = release['body'] + '\n\n## 追加の配布形式\n\n'
         notes += 'WindowsセットアップEXE・ポータブルZIP、Linux x64/ARM64 ZIP・debを追加しました。\n'
         notes += 'デスクトップのエンジンは同じPre2タグから作成しています。debはUbuntu 24.04以降向けです。\n'
-        notes += 'iOSは初期プレビューです。Simulator ZIPはApple Silicon Mac用、source ZIPはXcodeで署名して実機ビルドするためのソースです。実機用の署名済みIPAではありません。\n'
+        notes += 'iOSは初期プレビューです。unsigned.ipaはWindowsのAltStore Classicなどで自分のApple IDを使って署名して入れるための実機用IPAです。直接インストールはできず、キーボード拡張を残して署名する必要があります。Simulator ZIPはApple Silicon Mac用、source ZIPはXcode向けです。\n'
         notes += f'追加パッケージとiOSのソース: {REPO}@{sha}。手順は添付のREADME-iOS.mdを参照してください。\n'
         note_file = Path(temporary) / 'notes.md'
         note_file.write_text(notes, encoding='utf-8')

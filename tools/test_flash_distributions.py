@@ -4,6 +4,7 @@ import hashlib
 import importlib.util
 from pathlib import Path
 import tempfile
+import plistlib
 import unittest
 from unittest.mock import patch
 import zipfile
@@ -20,6 +21,7 @@ def load(name, path):
 
 linux = load('package_linux', 'rust/package-linux.py')
 release = load('extend_release', 'tools/extend-flash-release.py')
+ios = load('package_ios', 'ios/package.py')
 
 
 class DistributionTests(unittest.TestCase):
@@ -66,6 +68,25 @@ class DistributionTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'distribution'):
                 release.publish('flash-v0.1.0-preview.2', directory)
             invoke.assert_not_called()
+
+    def test_ipa_requires_device_and_preserves_keyboard_extension(self):
+        with tempfile.TemporaryDirectory() as directory:
+            app = Path(directory) / 'MeltypeFlash.app'
+            extension = app / 'PlugIns/MeltypeFlashKeyboard.appex'
+            extension.mkdir(parents=True)
+            for bundle in (app, extension):
+                info = {'DTPlatformName': 'iphoneos', 'CFBundleExecutable': 'binary'}
+                if bundle == extension:
+                    info['NSExtension'] = {'NSExtensionPointIdentifier': 'com.apple.keyboard-service', 'NSExtensionAttributes': {'RequestsOpenAccess': False}}
+                (bundle / 'Info.plist').write_bytes(plistlib.dumps(info))
+                (bundle / 'binary').write_bytes(bytes.fromhex('cffaedfe0c000001'))
+            archive = Path(directory) / 'device.ipa'
+            ios.package(app, archive)
+            with zipfile.ZipFile(archive) as zipped:
+                self.assertIn('Payload/MeltypeFlash.app/PlugIns/MeltypeFlashKeyboard.appex/binary', zipped.namelist())
+            (extension / 'Info.plist').write_bytes(plistlib.dumps({'DTPlatformName': 'iphonesimulator'}))
+            with self.assertRaisesRegex(ValueError, 'device build'):
+                ios.package(app, Path(directory) / 'simulator.ipa')
 
 
 if __name__ == '__main__':

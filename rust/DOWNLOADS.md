@@ -17,6 +17,7 @@
 | `Meltype-flash-Android-debug.apk` | Android試験版。デバッグ署名です。 |
 | `Meltype-flash-ChromeOS.zip` | ChromeOS拡張の試験版。通常のWindows版ChromeではIMEとして動作しません。 |
 | `Meltype-flash-iOS-Simulator-arm64.zip` | Apple Silicon MacのiOS Simulator向け。iPhone実機にはインストールできません。 |
+| `Meltype-flash-iOS-unsigned.ipa` | 自分のApple IDで署名してiPhoneに入れるための実機用IPA。WindowsからのAltStore Classicの手順は [iOSの案内](../ios/README.md) を参照してください。 |
 | `Meltype-flash-iOS-source.zip` | Xcodeで自分の署名を設定して実機ビルドするためのソース。[iOSの手順と制限](../ios/README.md)を参照してください。 |
 
 ZIPをアプリにドラッグしたり、ファイルの拡張子を変えたりして他のOSで使うことはできません。

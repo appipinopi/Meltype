@@ -19,4 +19,5 @@ for sdk in iphoneos iphonesimulator; do
 done
 mkdir -p dist
 ditto -c -k --sequesterRsrc --keepParent ios/build/iphonesimulator/Build/Products/Release-iphonesimulator/MeltypeFlash.app dist/Meltype-flash-iOS-Simulator-arm64.zip
+python3 ios/package.py ios/build/iphoneos/Build/Products/Release-iphoneos/MeltypeFlash.app dist/Meltype-flash-iOS-unsigned.ipa
 echo 'Built unsigned device and simulator applications. A device build needs Apple signing before installation.'
