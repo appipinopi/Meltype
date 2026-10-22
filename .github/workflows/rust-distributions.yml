@@ -57,6 +57,8 @@ jobs:
         run: |
           $installer = (Get-ChildItem dist/*-setup.exe).FullName
           $result = Start-Process -FilePath $installer -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /LOG=setup.log' -WindowStyle Hidden -Wait -PassThru
+          Get-Content setup.log -Tail 90
+          Get-ChildItem 'C:/Program Files/Meltype-flash' -Recurse -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
           if ($result.ExitCode -ne 0) { throw "Setup failed: $($result.ExitCode)" }
           $state = Get-Content 'C:/Program Files/Meltype-flash/installed.json' -Raw | ConvertFrom-Json
           if (-not (Test-Path -LiteralPath $state.x64)) { throw 'Installed IME DLL missing' }
@@ -64,6 +66,13 @@ jobs:
           if ($result.ExitCode -ne 0) { throw "Uninstall failed: $($result.ExitCode)" }
           $registered = Get-ItemProperty 'Registry::HKEY_LOCAL_MACHINE/SOFTWARE/Classes/CLSID/{C540BAF6-88B1-5B30-B524-2C8702B034FC}/InprocServer32' -ErrorAction SilentlyContinue
           if ($null -ne $registered) { throw 'Flash COM registration remains' }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: flash-windows-setup-logs
+          path: |
+            setup.log
+            uninstall.log
       - uses: actions/upload-artifact@v4
         with:
           name: flash-distributions-windows
