@@ -128,9 +128,10 @@ def relative(target, document):
 
 
 def document_banners(write):
-    """OS別ヘッダー以外の、Gitで管理する全READMEにも雷画像を置く。"""
+    """OS別ヘッダー以外の全READMEと指定した導入文書に雷画像を置く。"""
     paths = subprocess.run(
-        ['git', '-C', str(ROOT), 'ls-files', '-z', '--', '*README.md'],
+        ['git', '-C', str(ROOT), 'ls-files', '-z', '--', '*README.md',
+         'chromeos/docs/INSTALLATION.md'],
         check=True, capture_output=True).stdout.decode('utf-8').split('\0')
     handled = {'README.md', *(p[4] for p in PLATFORMS)}
     start = '<!-- meltype-flash-document-banner:start -->'
