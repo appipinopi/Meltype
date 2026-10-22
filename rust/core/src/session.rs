@@ -3080,8 +3080,13 @@ pub mod report_corrections {
     #[cfg(test)]
     mod tests {
         use super::*;
+        // Both scenarios exercise the process-wide best-effort registry.
+        // Keep their full sequences uncontended; production deliberately drops
+        // a report when another report operation owns that registry.
+        static HISTORY_TEST: Mutex<()> = Mutex::new(());
         #[test]
         fn independent_handles_share_bounded_memory_without_files() {
+            let _test = HISTORY_TEST.lock().unwrap();
             let directory = tempfile::tempdir().unwrap();
             let name = format!(
                 "Local\\Meltype-flash-history-test-{}",
@@ -3139,6 +3144,7 @@ pub mod report_corrections {
         }
         #[test]
         fn only_explicit_nonprivate_corrections_are_reported() {
+            let _test = HISTORY_TEST.lock().unwrap();
             let directory = tempfile::tempdir().unwrap();
             let mut session =
                 super::super::Session::open(crate::storage::Store::new(directory.path())).unwrap();
