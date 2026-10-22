@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 appipinopi
 // Embed the supplied product icon in the Windows executable without requiring
 // a resource crate or changing builds on other platforms.
 use std::{env, fs, path::PathBuf, process::Command};

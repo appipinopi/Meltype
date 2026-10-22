@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 appipinopi
 //! Shared product mark for the root window and native child windows.
 use eframe::egui::IconData;
 use std::sync::{Arc, OnceLock};
