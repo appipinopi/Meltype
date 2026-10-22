@@ -14,11 +14,24 @@ pub(super) struct Candidates {
     generator: Option<TextConversionGenerator>,
     unavailable: bool,
     pub(super) timed_out: bool,
+    request_deadline: Option<u64>,
 }
 impl Candidates {
+    pub(super) fn begin_request(&mut self) {
+        // All clauses share one optional-candidate budget. A separate 500ms
+        // wait for every clause can exceed the TSF request's 800ms deadline.
+        self.request_deadline = Some(unsafe { GetTickCount64() }.saturating_add(100));
+    }
     pub(super) fn get(&mut self, reading: &str) -> Vec<String> {
         self.timed_out = false;
         if reading.is_empty() || self.unavailable {
+            return Vec::new();
+        }
+        if self
+            .request_deadline
+            .is_some_and(|deadline| unsafe { GetTickCount64() } >= deadline)
+        {
+            self.timed_out = true;
             return Vec::new();
         }
         if self.generator.is_none() {
@@ -46,7 +59,9 @@ impl Candidates {
             let info: IAsyncInfo = operation.cast().ok()?;
             // Environment.TickCount64 in the original uses this same Windows
             // clock; QPC/Instant would give a different boundary/resolution.
-            let deadline = unsafe { GetTickCount64() }.saturating_add(500);
+            let deadline = self
+                .request_deadline
+                .unwrap_or_else(|| unsafe { GetTickCount64() }.saturating_add(500));
             loop {
                 match info.Status().ok()? {
                     AsyncStatus::Completed => break,

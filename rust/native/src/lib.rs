@@ -260,12 +260,13 @@ pub extern "C" fn meltype_destroy(handle: *mut c_void) {
 }
 
 unsafe fn external_conversion(reading: &str, before: *const c_char) -> (Vec<Clause>, Vec<String>) {
-    external_conversion_min(reading, before, 0)
+    external_conversion_min(reading, before, 0, true)
 }
 unsafe fn external_conversion_min(
     reading: &str,
     before: *const c_char,
     minimum: usize,
+    expand_candidates: bool,
 ) -> (Vec<Clause>, Vec<String>) {
     let mut spans = meltype_core::protection::scan(reading);
     // Detected English within a Japanese reading is literal composition text,
@@ -298,7 +299,7 @@ unsafe fn external_conversion_min(
         if reading.encode_utf16().count() < minimum {
             return (Vec::new(), Vec::new());
         }
-        return external_conversion_unprotected(reading, before);
+        return external_conversion_unprotected(reading, before, expand_candidates);
     }
     let mut segments = Vec::new();
     let mut offset = 0;
@@ -312,7 +313,7 @@ unsafe fn external_conversion_min(
             let (clauses, candidates) = if gap.encode_utf16().count() < minimum {
                 (Vec::new(), Vec::new())
             } else {
-                external_conversion_unprotected(gap, before)
+                external_conversion_unprotected(gap, before, expand_candidates)
             };
             if clauses.is_empty() {
                 segments.push(Clause::new(gap.to_owned(), candidates));
@@ -340,6 +341,7 @@ unsafe fn external_conversion_min(
 unsafe fn external_conversion_unprotected(
     reading: &str,
     before: *const c_char,
+    expand_candidates: bool,
 ) -> (Vec<Clause>, Vec<String>) {
     let mut external = Vec::new();
     let mut segments = Vec::new();
@@ -363,8 +365,8 @@ unsafe fn external_conversion_unprotected(
                         .into_iter()
                         .map(|(r, t)| {
                             let mut candidates = vec![];
-                            if let (Some(callback), Ok(input)) =
-                                (callbacks.candidates, CString::new(r))
+                            if let (true, Some(callback), Ok(input)) =
+                                (expand_candidates, callbacks.candidates, CString::new(r))
                             {
                                 if let Some(text) = take(callback(input.as_ptr())) {
                                     candidates.extend(
@@ -374,7 +376,9 @@ unsafe fn external_conversion_unprotected(
                             }
                             let mut clause = Clause::new(r.to_owned(), vec![t.to_owned()]);
                             clause.expansion = Some(candidates);
-                            clause.standalone = Some(standalone_conversion(r, callbacks));
+                            if expand_candidates {
+                                clause.standalone = Some(standalone_conversion(r, callbacks));
+                            }
                             clause
                         })
                         .collect();
@@ -382,7 +386,7 @@ unsafe fn external_conversion_unprotected(
             }
         }
     }
-    if let Some(callback) = callbacks.candidates {
+    if let (true, Some(callback)) = (expand_candidates, callbacks.candidates) {
         if let Some(text) = take(callback(input.as_ptr())) {
             external.extend(text.lines().filter(|s| !s.is_empty()).map(str::to_owned));
         }
@@ -428,7 +432,8 @@ unsafe fn external_reconversion(reading: &str) -> Vec<String> {
         }
         candidates
     } else {
-        let (clauses, mut candidates) = external_conversion_unprotected(reading, std::ptr::null());
+        let (clauses, mut candidates) =
+            external_conversion_unprotected(reading, std::ptr::null(), true);
         if !clauses.is_empty() {
             candidates.insert(0, clauses.iter().map(Clause::text).collect());
         }
@@ -450,7 +455,7 @@ unsafe fn registered_conversion(
     };
     let mut result = vec![];
     for (reading, word) in plan {
-        let (clauses, extra) = external_conversion_unprotected(&reading, before);
+        let (clauses, extra) = external_conversion_unprotected(&reading, before, true);
         if let Some(word) = word {
             let mut clause = Clause::new(reading.clone(), vec![word]);
             clause.standalone = Some(standalone_conversion(
@@ -535,7 +540,8 @@ unsafe fn external_selection_conversion(reading: &str, prefer_romaji: bool) -> V
                 clauses.push(clause);
             }
         } else {
-            let (segments, candidates) = external_conversion_unprotected(run, std::ptr::null());
+            let (segments, candidates) =
+                external_conversion_unprotected(run, std::ptr::null(), true);
             if segments.is_empty() {
                 clauses.push(Clause::new(run.into(), candidates));
             } else {
@@ -790,7 +796,10 @@ pub unsafe extern "C" fn meltype_handle_key(
         if let Some(reading) = live {
             // CompositionController.LiveConvert applies this threshold to
             // each Japanese segment, excluding protected/English islands.
-            let (mut clauses, candidates) = external_conversion_min(&reading, before, 4);
+            // Live preview needs the primary clause texts only. Enumerating
+            // alternatives (and reconverting every clause standalone) on every
+            // letter grows with sentence length and can kill the TSF worker.
+            let (mut clauses, candidates) = external_conversion_min(&reading, before, 4, false);
             if clauses.is_empty() && !candidates.is_empty() {
                 clauses.push(Clause::new(reading, candidates));
             }
