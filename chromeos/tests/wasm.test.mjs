@@ -11,7 +11,8 @@ test("ChromeOSの同梱辞書で基本語と文を漢字変換し、Enterで確�
   BrowserSession.load_dictionary(readFileSync(new URL("../pkg/kanji.bin", import.meta.url)));
   for (const [input, expected] of [["nihongo", "日本語"], ["watashi", "私"], ["toukyou", "東京"],
     ["kyouhaiitenkidesu", "今日はいい天気です"], ["watashihanihongowobenkyoushiteimasu", "私は日本語を勉強しています"],
-    ["ashitatoukyouniikimasu", "明日東京に行きます"], ["googledekensaku", "googleで検索"]]) {
+    ["ashitatoukyouniikimasu", "明日東京に行きます"], ["googledekensaku", "googleで検索"],
+    ["chatgptwotsukau", "chatgptを使う"], ["ChatGPTwotsukau", "ChatGPTを使う"]]) {
     const s = new BrowserSession("");
     try {
       type(s, input);
