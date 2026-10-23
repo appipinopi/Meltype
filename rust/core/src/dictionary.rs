@@ -1305,25 +1305,36 @@ impl Dictionary {
             return vec![];
         }
         let lower = raw.to_ascii_lowercase();
-        let mut words: Vec<_> = self
-            .english
-            .iter()
-            .filter(|s| s.starts_with(&lower) && s.len() > lower.len())
-            .collect();
-        words.sort_by_key(|s| (!self.common_english.contains(*s), s.len(), *s));
+        use fst::{IntoStreamer, Streamer};
+        // Enumerate only the prefix range and retain the five best words.
+        // Rank exactly as before: common words, length, then lexical order.
+        let mut stream = self.english_index.0.range().gt(&lower).into_stream();
+        let mut words: Vec<(bool, usize, String)> = Vec::with_capacity(5);
+        while let Some(key) = stream.next() {
+            if !key.starts_with(lower.as_bytes()) {
+                break;
+            }
+            let word = std::str::from_utf8(key).expect("dictionary key is UTF-8");
+            let rank = (!self.common_english.contains(word), word.len(), word);
+            let at = words
+                .partition_point(|(uncommon, len, text)| (*uncommon, *len, text.as_str()) < rank);
+            if at < 5 {
+                if words.len() == 5 {
+                    words.pop();
+                }
+                words.insert(at, (rank.0, rank.1, word.to_owned()));
+            }
+        }
+        let uppercase = raw.bytes().all(|c| c.is_ascii_uppercase());
         words
             .into_iter()
-            .take(5)
-            .map(|s| {
-                if raw.bytes().all(|c| c.is_ascii_uppercase()) {
-                    s.to_ascii_uppercase()
+            .map(|(_, _, mut word)| {
+                if uppercase {
+                    word.make_ascii_uppercase();
                 } else if raw.as_bytes()[0].is_ascii_uppercase() {
-                    let mut s = s.clone();
-                    s[..1].make_ascii_uppercase();
-                    s
-                } else {
-                    s.clone()
+                    word[..1].make_ascii_uppercase();
                 }
+                word
             })
             .collect()
     }
@@ -1390,6 +1401,68 @@ mod prefix_tests {
         }
         assert!(rows.windows(2).all(|r| r[0]["hits"] == r[1]["hits"]));
         println!("PREFIX_BENCH={}", serde_json::json!(rows));
+    }
+    #[test]
+    fn predictions_match_full_dictionary_ranking() {
+        let reference = |dictionary: &Dictionary, raw: &str| {
+            if raw.len() < 3 || !raw.bytes().all(|c| c.is_ascii_alphabetic()) {
+                return Vec::new();
+            }
+            let lower = raw.to_ascii_lowercase();
+            let mut words: Vec<_> = dictionary
+                .english
+                .iter()
+                .filter(|s| s.starts_with(&lower) && s.len() > lower.len())
+                .collect();
+            words.sort_by_key(|s| (!dictionary.common_english.contains(*s), s.len(), *s));
+            words
+                .into_iter()
+                .take(5)
+                .map(|s| {
+                    let mut value = s.clone();
+                    if raw.bytes().all(|c| c.is_ascii_uppercase()) {
+                        value.make_ascii_uppercase();
+                    } else if raw.as_bytes()[0].is_ascii_uppercase() {
+                        value[..1].make_ascii_uppercase();
+                    }
+                    value
+                })
+                .collect::<Vec<_>>()
+        };
+        let bundled = Dictionary::bundled();
+        let mut custom = bundled.clone();
+        for word in ["hel", "helzz", "helcustom", "helcommon", "zzzxcustom"] {
+            custom.english.insert(word.into());
+        }
+        custom.common_english.insert("helcommon".into());
+        custom.english_index = PrefixIndex::new(&custom.english);
+        for dictionary in [bundled, &custom] {
+            for raw in [
+                "",
+                "he",
+                "hel",
+                "Hel",
+                "HEL",
+                "hEl",
+                "hello",
+                "com",
+                "con",
+                "pro",
+                "rea",
+                "mel",
+                "google",
+                "zzzx",
+                "qqqzzz",
+                "日本語",
+                "hel1",
+            ] {
+                assert_eq!(
+                    dictionary.predict_english(raw),
+                    reference(dictionary, raw),
+                    "{raw}"
+                );
+            }
+        }
     }
     #[test]
     fn node_prefix_matches_range_lookup() {
