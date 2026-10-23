@@ -123,6 +123,15 @@ impl Dictionary {
         if !raw.bytes().all(|b| b.is_ascii_alphabetic()) || raw.is_empty() {
             return self.composition(raw, final_input, before, after, level);
         }
+        if level != "Manual" {
+            if let Some(end) = self.english_compound_end(raw) {
+                return format!(
+                    "{}{}",
+                    &raw[..end],
+                    self.composition_scored(&raw[end..], final_input, &raw[..end], after, level)
+                );
+            }
+        }
         if let Some(end) = self.capitalized_split(raw, final_input) {
             return format!(
                 "{}{}",

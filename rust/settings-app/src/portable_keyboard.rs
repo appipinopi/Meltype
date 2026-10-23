@@ -31,6 +31,17 @@ use windows_sys::{
 };
 const INJECTED_TAG: usize = 0x4d52504b;
 const DELIVERY_END_TAG: usize = 0x4d52504c;
+// Windows wakes this wait for keyboard, mouse and focus callbacks immediately.
+// The timeout only bounds how long an idle hook takes to notice shutdown.
+unsafe fn wait_for_hook_activity(timeout_ms: u32) -> WAIT_EVENT {
+    MsgWaitForMultipleObjectsEx(
+        0,
+        std::ptr::null(),
+        timeout_ms,
+        QS_ALLINPUT,
+        MWMO_INPUTAVAILABLE,
+    )
+}
 #[derive(Clone, Copy)]
 struct Key {
     vk: u32,
@@ -54,6 +65,8 @@ struct Shared {
     generation: AtomicU64,
     modifiers: AtomicU32,
     delivery_ack: AtomicU64,
+    allow_injected: AtomicBool,
+    remote_control: AtomicBool,
     // Sending never waits for the foreign UI Automation provider. An accepted
     // key stays in FIFO order; capacity exhaustion must not invalidate it.
     queue: Sender<Event>,
@@ -63,6 +76,41 @@ struct Shared {
     test_pid: u32,
 }
 static SHARED: OnceLock<Arc<Shared>> = OnceLock::new();
+fn accepts_injected(flags: u32, tag: usize, allowed: bool) -> bool {
+    tag != INJECTED_TAG && (flags & LLKHF_INJECTED == 0 || allowed)
+}
+fn remote_process(name: &str) -> bool {
+    ["remoting_desktop.exe", "parsecd.exe"]
+        .iter()
+        .any(|expected| name.eq_ignore_ascii_case(expected))
+}
+unsafe fn remote_control_active() -> bool {
+    use windows_sys::Win32::System::Diagnostics::ToolHelp::*;
+    let snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if snapshot == INVALID_HANDLE_VALUE {
+        return false;
+    }
+    let mut entry = PROCESSENTRY32W {
+        dwSize: std::mem::size_of::<PROCESSENTRY32W>() as u32,
+        ..Default::default()
+    };
+    let mut more = Process32FirstW(snapshot, &mut entry) != 0;
+    let mut active = false;
+    while more {
+        let length = entry
+            .szExeFile
+            .iter()
+            .position(|c| *c == 0)
+            .unwrap_or(entry.szExeFile.len());
+        if remote_process(&String::from_utf16_lossy(&entry.szExeFile[..length])) {
+            active = true;
+            break;
+        }
+        more = Process32NextW(snapshot, &mut entry) != 0;
+    }
+    CloseHandle(snapshot);
+    active
+}
 const INJECTING: u32 = 1 << 8;
 const MODIFIER_KEYS: [u16; 8] = [
     VK_LSHIFT,
@@ -174,9 +222,13 @@ unsafe extern "system" fn hook(code: i32, message: WPARAM, data: LPARAM) -> LRES
             shared.delivery_ack.fetch_add(1, Ordering::SeqCst);
             return false;
         }
-        if (event.flags & LLKHF_INJECTED != 0 && !fixture)
-            || event.dwExtraInfo == INJECTED_TAG
-            || event.vkCode >= 256
+        if !accepts_injected(
+            event.flags,
+            event.dwExtraInfo,
+            fixture
+                || shared.allow_injected.load(Ordering::Acquire)
+                || shared.remote_control.load(Ordering::Acquire),
+        ) || event.vkCode >= 256
         {
             return false;
         }
@@ -676,6 +728,9 @@ impl Keyboard {
         }
     }
     pub fn configure(&mut self, settings: &Settings) {
+        self.shared
+            .allow_injected
+            .store(settings.boolean("AllowInjectedInput"), Ordering::Release);
         self.shared.permitted.store(
             settings.boolean("Enabled") && settings.text("Mode") == "Keyboard",
             Ordering::Release,
@@ -716,6 +771,13 @@ impl Keyboard {
             generation: AtomicU64::new(0),
             modifiers: AtomicU32::new(initial_modifiers()),
             delivery_ack: AtomicU64::new(0),
+            allow_injected: AtomicBool::new(
+                store
+                    .settings()
+                    .unwrap_or_default()
+                    .boolean("AllowInjectedInput"),
+            ),
+            remote_control: AtomicBool::new(false),
             queue,
             shortcuts: Mutex::new(toggle_shortcuts(&store.settings().unwrap_or_default())),
             candidates: Mutex::new(Vec::new()),
@@ -792,7 +854,7 @@ impl Keyboard {
                         TranslateMessage(&message);
                         DispatchMessageW(&message);
                     }
-                    std::thread::sleep(Duration::from_millis(2));
+                    wait_for_hook_activity(20);
                 }
                 UnhookWindowsHookEx(handle);
                 if !mouse.is_null() {
@@ -862,7 +924,16 @@ impl Keyboard {
             let mut current_application = String::new();
             let mut focused: Option<IUIAutomationElement> = None;
             let mut message = MSG::default();
+            // #110/#372: inspect processes outside the hook, as upstream does.
+            // remoting_host is only a listener; Parsec remains allowed while running.
+            let mut remote_checked = None::<std::time::Instant>;
             while !state.exit.load(Ordering::Acquire) {
+                if remote_checked.is_none_or(|at| at.elapsed() >= Duration::from_secs(5)) {
+                    state
+                        .remote_control
+                        .store(remote_control_active(), Ordering::Release);
+                    remote_checked = Some(std::time::Instant::now());
+                }
                 while PeekMessageW(&mut message, std::ptr::null_mut(), 0, 0, PM_REMOVE) != 0 {
                     TranslateMessage(&message);
                     DispatchMessageW(&message);
@@ -1191,6 +1262,57 @@ impl Drop for Keyboard {
 mod tests {
     use super::*;
     #[test]
+    fn issue_110_injected_opt_in_never_recaptures_our_own_output() {
+        assert!(accepts_injected(0, 0, false));
+        assert!(!accepts_injected(LLKHF_INJECTED, 0, false));
+        assert!(accepts_injected(LLKHF_INJECTED, 0, true));
+        for allowed in [false, true] {
+            assert!(!accepts_injected(LLKHF_INJECTED, INJECTED_TAG, allowed));
+            assert!(!accepts_injected(0, INJECTED_TAG, allowed));
+        }
+        assert!(remote_process("remoting_desktop.exe"));
+        assert!(remote_process("ParsecD.exe"));
+        assert!(!remote_process("remoting_host.exe"));
+        assert!(!remote_process("parsecd-helper.exe"));
+    }
+    #[test]
+    fn hook_wait_wakes_for_new_and_already_observed_messages() {
+        let (ready_tx, ready_rx) = mpsc::channel();
+        let (wake_tx, wake_rx) = mpsc::channel();
+        let worker = std::thread::spawn(move || unsafe {
+            let mut message = MSG::default();
+            // Create the thread message queue before another thread posts to it.
+            PeekMessageW(&mut message, std::ptr::null_mut(), 0, 0, PM_NOREMOVE);
+            ready_tx
+                .send(windows_sys::Win32::System::Threading::GetCurrentThreadId())
+                .unwrap();
+            let result = wait_for_hook_activity(5000);
+            wake_tx.send(result).unwrap();
+            assert_eq!(result, WAIT_OBJECT_0);
+            assert_ne!(
+                PeekMessageW(&mut message, std::ptr::null_mut(), 0, 0, PM_NOREMOVE),
+                0
+            );
+            // Observing the message must not make the next wait miss it.
+            assert_eq!(wait_for_hook_activity(0), WAIT_OBJECT_0);
+            assert_ne!(
+                PeekMessageW(&mut message, std::ptr::null_mut(), 0, 0, PM_REMOVE),
+                0
+            );
+            assert_eq!(message.message, WM_APP);
+            assert_eq!(wait_for_hook_activity(20), WAIT_TIMEOUT);
+        });
+        let thread_id = ready_rx.recv_timeout(Duration::from_secs(5)).unwrap();
+        assert_ne!(unsafe { PostThreadMessageW(thread_id, WM_APP, 0, 0) }, 0);
+        let result = wake_rx.recv_timeout(Duration::from_secs(1));
+        worker.join().unwrap();
+        assert_eq!(
+            result,
+            Ok(WAIT_OBJECT_0),
+            "input waited for the idle timeout"
+        );
+    }
+    #[test]
     fn issue_223_text_input_override_requires_an_explicit_executable_name() {
         let mut settings = Settings::default();
         settings
@@ -1443,6 +1565,8 @@ mod tests {
             generation: AtomicU64::new(0),
             modifiers: AtomicU32::new(0),
             delivery_ack: AtomicU64::new(0),
+            allow_injected: AtomicBool::new(false),
+            remote_control: AtomicBool::new(false),
             queue,
             shortcuts: Mutex::new(Vec::new()),
             candidates: Mutex::new(Vec::new()),

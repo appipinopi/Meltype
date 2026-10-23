@@ -454,8 +454,6 @@ impl Session {
         {
             return vec![];
         }
-        let mut state = self.state.clone();
-        state.preferences = self.preferences.clone();
         let displayed = self.display(false);
         let english = displayed == self.raw && self.raw.bytes().all(|c| c.is_ascii_alphabetic());
         let reading = if self.uses_kana() {
@@ -470,7 +468,11 @@ impl Session {
                 .chars()
                 .all(|c| ('ぁ'..='ゖ').contains(&c) || c == 'ー')
         {
-            Linguistics::bundled().predict(&reading, &state)
+            Linguistics::bundled().predict_with_preferences(
+                &reading,
+                &self.state.phrases,
+                &self.preferences,
+            )
         } else {
             vec![]
         };
@@ -848,7 +850,10 @@ impl Session {
             .edited_units
             .as_ref()
             .filter(|u| u.raw() == self.raw)
-            .filter(|_| !Dictionary::uses_scored(self.settings.boolean("ScoredSegmentation")))
+            .filter(|u| {
+                !Dictionary::uses_scored(self.settings.boolean("ScoredSegmentation"))
+                    || u.has_z_symbols()
+            })
             .filter(|_| {
                 !crate::protection::scan(&self.raw)
                     .iter()
@@ -1639,7 +1644,16 @@ impl Session {
             self.begin_clauses(clauses);
             return;
         }
-        let reading = self.reading();
+        let mixed = self.conversion_reading();
+        // Mixed prose must keep English islands when matching converter clauses.
+        // Explicit conversion of an English-only word still uses its kana reading.
+        let reading = if mixed.chars().any(crate::linguistics::kana)
+            && mixed.chars().any(|c| c.is_ascii_alphabetic())
+        {
+            mixed
+        } else {
+            self.reading()
+        };
         // A residual alphabetic reading with no engine response still has a
         // Japanese clause and width alternatives. This also applies when the
         // platform adapter declines converter calls because Enabled is false
@@ -2236,6 +2250,13 @@ impl Session {
     /// Monotonic milliseconds, for hosts with an event clock and deterministic
     /// replay tests. Use one clock consistently for a session.
     pub fn key_at(&mut self, vk: i32, ch: i32, modifiers: i32, now_ms: u64) -> SessionResult {
+        // Upstream #630: normalize only full-width Latin letters, preserving
+        // punctuation, kana and non-Latin Unicode input.
+        let ch = if (0xff21..=0xff3a).contains(&ch) || (0xff41..=0xff5a).contains(&ch) {
+            ch - 0xfee0
+        } else {
+            ch
+        };
         let _probes = romaji::probes::Scope::new(self.probe_cache.clone());
         let _romaji = romaji::Scope::new(self.custom_romaji.clone());
         if ch < 0 || char::from_u32(ch as u32).is_none() {
@@ -2303,6 +2324,18 @@ impl Session {
             if let Some(mapped) = mapped {
                 return self.key(mapped, 0, modifiers & 1);
             }
+        }
+        // Upstream PR #802: a send shortcut confirms preedit first. Passing
+        // Ctrl+Enter through can submit before the committed text reaches a chat.
+        if modifiers & 14 == 2
+            && vk == 0x0d
+            && !self.raw.is_empty()
+            && (!self.direct || reconverting)
+            && !self.private
+            && !code_direct
+            && self.settings.boolean("Enabled")
+        {
+            return self.commit();
         }
         if modifiers & 14 != 0
             || self.direct && !reconverting
@@ -2755,31 +2788,35 @@ impl Session {
             _ if ch >= 0x20 && ch != 0x7f => {
                 self.tab_started_conversion = false;
                 // Retain the old commit when a new character starts after conversion.
-                let commits =
-                    if self.is_converting() && !self.settings.boolean("ContinueAfterConversion") {
-                        // A non-deleting host cannot later recover the typed
-                        // separator when an uppercase English word follows
-                        // a Japanese conversion (site Space PR).
-                        if !self.can_delete
-                            && self.space_started_conversion
-                            && char::from_u32(ch as u32).is_some_and(|c| c.is_ascii_uppercase())
-                            && ![
-                                "は", "が", "を", "に", "で", "と", "も", "へ", "の", "や", "か",
-                                "から", "まで", "より",
-                            ]
-                            .contains(&self.reading().as_str())
-                            && self.display(true).chars().any(crate::linguistics::kana)
-                        {
-                            self.explicit = Some(self.display(true) + " ");
-                        }
-                        self.commit().commits
-                    } else {
-                        self.candidates.clear();
-                        self.clauses.clear();
-                        self.live_clauses.clear();
-                        self.selected_clause = 0;
-                        vec![]
-                    };
+                let commits = if self.function_key != 0 && !self.is_converting() {
+                    // #490/#585: an explicit F6-F10 choice applies to the
+                    // current text; the next character starts fresh input.
+                    self.commit().commits
+                } else if self.is_converting() && !self.settings.boolean("ContinueAfterConversion")
+                {
+                    // A non-deleting host cannot later recover the typed
+                    // separator when an uppercase English word follows
+                    // a Japanese conversion (site Space PR).
+                    if !self.can_delete
+                        && self.space_started_conversion
+                        && char::from_u32(ch as u32).is_some_and(|c| c.is_ascii_uppercase())
+                        && ![
+                            "は", "が", "を", "に", "で", "と", "も", "へ", "の", "や", "か",
+                            "から", "まで", "より",
+                        ]
+                        .contains(&self.reading().as_str())
+                        && self.display(true).chars().any(crate::linguistics::kana)
+                    {
+                        self.explicit = Some(self.display(true) + " ");
+                    }
+                    self.commit().commits
+                } else {
+                    self.candidates.clear();
+                    self.clauses.clear();
+                    self.live_clauses.clear();
+                    self.selected_clause = 0;
+                    vec![]
+                };
                 self.explicit = None;
                 self.selected_prediction = -1;
                 self.function_key = 0;
@@ -2789,6 +2826,18 @@ impl Session {
                     return result;
                 }
                 let character = char::from_u32(ch as u32).unwrap();
+                if self.edited_units.is_none()
+                    && !self.uses_kana()
+                    && crate::protection::scan(&self.raw).is_empty()
+                    && romaji::z_symbol(character).is_some()
+                    && !self.raw.to_ascii_lowercase().ends_with("zz")
+                    && romaji::analyze(&self.raw.to_ascii_lowercase(), true).partial == "z"
+                {
+                    self.edited_units = Some(crate::composition_units::Units::capture(
+                        &self.raw,
+                        &self.display(false),
+                    ));
+                }
                 if self.raw.is_empty() && self.custom_romaji.is_some() && !self.uses_kana() {
                     self.edited_units = Some(Default::default());
                 }
