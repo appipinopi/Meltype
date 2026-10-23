@@ -12,7 +12,7 @@ Windows・Mac・Linux・Android・ChromeOS・iOSで共通の入力コアを使�
 **現在は開発プレビューです。環境によって変換エンジン・設定・学習・操作が異なり、本家と同じ機能や精度を保証する完成版ではありません。**
 
 <p align="center">
-<a href="https://github.com/appipinopi/Meltype/releases/tag/flash-v0.1.0-preview.3"><b>ダウンロード</b></a> ·
+<a href="https://github.com/appipinopi/Meltype-Flash/releases/tag/flash-v0.1.0-preview.4"><b>ダウンロード</b></a> ·
 <a href="#使い始める">使い方</a> ·
 <a href="https://github.com/appipinopi/Meltype/issues/new/choose">不具合の報告・提案</a> ·
 <a href="rust/README.md">実装・検証の状況</a>
@@ -52,7 +52,7 @@ Windows・Mac・Linux・Android・ChromeOS・iOSで共通の入力コアを使�
 </p>
 <!-- meltype-flash-os-navigation:end -->
 
-公開済みのプレビューは [v0.1.0 Pre3](https://github.com/appipinopi/Meltype/releases/tag/flash-v0.1.0-preview.3) です。
+公開済みのプレビューは [v0.1.0 Pre4](https://github.com/appipinopi/Meltype-Flash/releases/tag/flash-v0.1.0-preview.4) です。
 [配布ファイルの選び方](rust/DOWNLOADS.md) で、OSとCPUに合うファイルを選んでください。
 ZIP・APK・IPAは互換ではありません。本家のC#版の配布ファイルをFlash用として案内していません。
 

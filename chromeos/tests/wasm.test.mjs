@@ -7,6 +7,45 @@ initSync({module: readFileSync(new URL("../pkg/meltype_browser_bg.wasm", import.
 const key = (s, vk, c = 0, mods = 0) => JSON.parse(s.key(vk, typeof c === "string" ? c.codePointAt(0) : c, mods, 100));
 const type = (s, text) => { for (const c of text) key(s, c.toUpperCase().charCodeAt(0), c); };
 
+test("ChromeOSの同梱辞書で基本語と文を漢字変換し、Enterで確定できる", () => {
+  BrowserSession.load_dictionary(readFileSync(new URL("../pkg/kanji.bin", import.meta.url)));
+  for (const [input, expected] of [["nihongo", "日本語"], ["watashi", "私"], ["toukyou", "東京"],
+    ["kyouhaiitenkidesu", "今日はいい天気です"], ["watashihanihongowobenkyoushiteimasu", "私は日本語を勉強しています"],
+    ["ashitatoukyouniikimasu", "明日東京に行きます"], ["googledekensaku", "googleで検索"]]) {
+    const s = new BrowserSession("");
+    try {
+      type(s, input);
+      const result = key(s, 32, " ");
+      assert(result.view.candidates.includes(expected), `${input}: ${JSON.stringify(result.view.candidates)}`);
+      assert.equal(result.view.text, expected, input);
+      assert.equal(key(s, 13).commits[0].text, expected);
+    } finally { s.free(); }
+  }
+  assert.throws(() => BrowserSession.load_dictionary(new Uint8Array([0, 1, 2])));
+});
+
+test("破損した辞書を拒否し、読み込み済みの漢字辞書と学習スナップショットを保つ", () => {
+  const minimal = new Uint8Array(48);
+  minimal.set(new TextEncoder().encode("MTKKC001"));
+  const view = new DataView(minimal.buffer);
+  for (const [at, value] of [[8, 1], [12, 1], [16, 1], [26, 1], [30, 1], [34, 1]]) view.setUint32(at, value, true);
+  minimal.set([97, 98], 46);
+  for (const [offset, value] of [[8, 0xffffffff], [12, 0xffffffff], [22, 0xffffffff], [26, 0xffffffff], [38, 1], [46, 255]]) {
+    const corrupt = minimal.slice();
+    if (offset === 38) new DataView(corrupt.buffer).setUint16(offset, value, true);
+    else if (offset === 46) corrupt[offset] = value;
+    else new DataView(corrupt.buffer).setUint32(offset, value, true);
+    assert.throws(() => BrowserSession.load_dictionary(corrupt), String(offset));
+  }
+  const s = new BrowserSession("");
+  try {
+    type(s, "nihongo");
+    assert.equal(key(s, 32, " ").view.text, "日本語");
+    assert(!s.snapshot().includes("MTKKC001"));
+    assert(s.snapshot().length < 100000);
+  } finally { s.free(); }
+});
+
 test("website code mode passes source through and permits Japanese in comments and strings", () => {
   const s = new BrowserSession("");
   assert.equal(s.set_code_mode(true), true);

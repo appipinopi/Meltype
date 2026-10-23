@@ -3,7 +3,7 @@
 <a id="meltype-for-chromeos"></a>
 <p align="center"><img src="../assets/branding/readme/chromeos/hero.svg" alt="Meltype-flash for ChromeOS" width="1000"></p>
 <p align="center"><b>稲妻のように、言葉の壁を駆け抜ける日本語入力。</b></p>
-<p align="center"><a href="https://github.com/appipinopi/Meltype/releases/tag/flash-v0.1.0-preview.3"><img src="https://img.shields.io/badge/Flash-v0.1.0_Pre3-ffe34a" alt="Flash v0.1.0 Pre3"></a> <img src="https://img.shields.io/badge/status-開発プレビュー-666973" alt="開発プレビュー"></p>
+<p align="center"><a href="https://github.com/appipinopi/Meltype-Flash/releases/tag/flash-v0.1.0-preview.4"><img src="https://img.shields.io/badge/Flash-v0.1.0_Pre4-ffe34a" alt="Flash v0.1.0 Pre4"></a> <img src="https://img.shields.io/badge/status-開発プレビュー-666973" alt="開発プレビュー"></p>
 <p align="center"><a href="#インストール">ダウンロード・導入</a> · <a href="#使い方">使い方</a> · <a href="#困ったとき">困ったとき</a> · <a href="https://github.com/appipinopi/Meltype/issues/new/choose">不具合の報告・提案</a></p>
 <p align="center">
   <a href="../rust/WINDOWS-PACKAGE.md"><img src="../assets/branding/readme/cards/os-windows.svg" alt="Windows" width="32%"></a>
@@ -24,9 +24,10 @@ ChromeOSの `chrome.input.ime` と共通Rust CoreのWASMを接続する、日本
 <a id="内容"></a>
 <h2><img src="../assets/branding/readme/chromeos/headings/df8764ebcf5d.svg" alt="内容" width="1000"></h2>
 
-ローマ字・かな、英語・日本語の判定、同梱FSTの漢字候補、予測候補、候補選択、設定と学習の保存を接続しています。
+ローマ字・かな、英語・日本語の判定、漢字変換、予測候補、候補選択、設定と学習の保存を接続しています。
+漢字変換には、固定版Mozcの語彙と接続コストを同梱しています。「にほんご → 日本語」「きょうはいいてんきです → 今日はいい天気です」のように、端末内で変換します。Mozc本体とは異なる上限付きの探索処理であり、候補や順位はデスクトップ版と一致するとは限りません。
 設定画面では、通常入力とコード入力、サイトごとの切替、詳細JSON、スナップショットの保存を扱います。
-[導入画面の記録](docs/INSTALLATION.md) はありますが、Pre3の修正を含む実機での変換・各アプリ入力の確認は未完了です。
+[導入画面の記録](docs/INSTALLATION.md) はありますが、Pre4の修正を含む実機での変換・各アプリ入力の確認は未完了です。
 
 [動く環境](#動く環境) · [インストール](#インストール) · [使い方](#使い方) · [困ったとき](#困ったとき) · [アンインストール](#アンインストール) · [開発者向け](#開発者向け)
 
@@ -42,7 +43,7 @@ ChromeOSの `chrome.input.ime` と共通Rust CoreのWASMを接続する、日本
 <a id="インストール"></a>
 <h2><img src="../assets/branding/readme/chromeos/headings/4f36b3b314d8.svg" alt="インストール" width="1000"></h2>
 
-1. [FlashのPre3](https://github.com/appipinopi/Meltype/releases/tag/flash-v0.1.0-preview.3) から `Meltype-flash-ChromeOS.zip` を取得し、フォルダーへ全体展開します。
+1. [FlashのPre4](https://github.com/appipinopi/Meltype-Flash/releases/tag/flash-v0.1.0-preview.4) から `Meltype-flash-ChromeOS.zip` を取得し、フォルダーへ全体展開します。
 2. ChromeOSの `chrome://extensions` を開き、拡張機能の「デベロッパーモード」を有効にします。
 3. 「パッケージ化されていない拡張機能を読み込む」で、`manifest.json` のあるフォルダーを選びます。
 4. ChromeOSの言語・入力方法の設定からMeltypeを追加し、入力方法として選びます。
@@ -94,6 +95,7 @@ ChromeOSであること、OS側の入力方法へ追加したこと、管理ポ�
 <summary>英字のまま・候補が出ない・設定が切り替わらない</summary>
 
 まずSpaceで候補を確認します。サイトの周辺文字が取れない場合は通常入力へ変更し、更新後は拡張機能を再読み込みしてください。
+旧版は補助辞書しか接続しておらず、「橋」など一部の語以外は漢字候補が出ませんでした。修正版では `pkg/kanji.bin` も必要です。JSやWASMだけを個別にコピーせず、同じ拡張機能フォルダーをZIPの全内容で更新してから、拡張機能を再読み込みしてください。
 OS・拡張機能の版・サイト・入力手順を [Issues](https://github.com/appipinopi/Meltype/issues/new/choose) に記載してください。タブURLや文章に個人情報がないか確認してください。
 
 </details>
@@ -108,6 +110,7 @@ OS・拡張機能の版・サイト・入力手順を [Issues](https://github.co
 <h2><img src="../assets/branding/readme/chromeos/headings/9f8c2f09ae3c.svg" alt="開発者向け" width="1000"></h2>
 
 Rustと `wasm-bindgen-cli`、Pythonが必要です。リポジトリのルートから実行します。
+初回ビルドでは `native/mozc/MOZC_COMMIT` に固定したMozcの辞書と接続コストを取得します。取得したデータは `tools/data/chromeos-mozc/<commit>/` に保存し、次回から再利用します。実行時の外部通信は不要です。
 
 ```sh
 python chromeos/build.py
@@ -116,6 +119,7 @@ python chromeos/build.py
 `dist/chromeos-preview` と同名ZIPを作ります。別のwasm-bindgen実行ファイルは `--wasm-bindgen`、出力先は `--out` で指定します。`CARGO_TARGET_DIR` も尊重します。
 実WASMでの変換・候補・学習復元、模擬IME APIでの順序・UTF-16位置・競合・エラーを検査します。
 模擬APIでの成功とChromeOS実機での成功は別です。[移行記録](../rust/MIGRATION.md) と [ビルドスクリプト](build.py) も参照してください。
+パッケージ内の `pkg/MOZC-DICTIONARY-NOTICES.txt` に、辞書の出典・固定commit・取得ファイルのSHA256・ライセンス本文を含めています。
 
 <a id="ライセンス"></a>
 <h2><img src="../assets/branding/readme/chromeos/headings/cfc7325a7d0e.svg" alt="ライセンス" width="1000"></h2>

@@ -71,7 +71,7 @@ unsafe fn request_inner(connection: *mut c_void, request: *const c_char) -> Opti
         if !settings.boolean("Enabled") {
             return Some(inactive());
         }
-        return Some(json!({"active":true,"code":code,"directDetection":direct_detection,"consumed":false,"commits":[],"view":null}).to_string());
+        return Some(json!({"active":true,"code":code,"directDetection":direct_detection,"fullWidthSpace":settings.boolean("FullWidthSpaceByDefault"),"consumed":false,"commits":[],"view":null}).to_string());
     }
     let sid = request["sid"].as_str()?;
     if sid.len() > 256 {
@@ -192,6 +192,7 @@ unsafe fn request_inner(connection: *mut c_void, request: *const c_char) -> Opti
     value["code"] = json!(effective_code);
     value["english"] = json!(english);
     value["directDetection"] = json!(direct_detection && active);
+    value["fullWidthSpace"] = json!(active && settings.boolean("FullWidthSpaceByDefault"));
     value["switchToJapanese"] = json!(switched);
     value["directEnglishWord"] = json!(english_word);
     Some(value.to_string())

@@ -1365,6 +1365,7 @@ fn supported(key: &str) -> bool {
                 "ShowNotifications",
                 "CursorIntoBrackets",
                 "ToggleKeyboardShortcuts",
+                "AllowInjectedInput",
                 "ConversionEngine",
             ]
             .contains(&key)
