@@ -10,6 +10,10 @@ import zipfile
 
 def package(app, archive):
     app, archive = Path(app), Path(archive)
+    app_info = plistlib.loads((app / 'Info.plist').read_bytes())
+    icons = app_info.get('CFBundleIcons', {}).get('CFBundlePrimaryIcon', {})
+    if not icons.get('CFBundleIconName') or not (app / 'Assets.car').is_file():
+        raise ValueError('App icon asset catalog missing')
     for bundle in (app, app / 'PlugIns/MeltypeFlashKeyboard.appex'):
         info = plistlib.loads((bundle / 'Info.plist').read_bytes())
         if info.get('DTPlatformName') != 'iphoneos':
@@ -24,6 +28,13 @@ def package(app, archive):
                 raise ValueError('Keyboard extension missing')
             if extension['NSExtensionAttributes'].get('RequestsOpenAccess', True):
                 raise ValueError('Keyboard must not require full access')
+            if not extension.get('NSExtensionPrincipalClass', '').endswith('.KeyboardViewController'):
+                raise ValueError('Keyboard entry point missing')
+            if not info.get('CFBundleIdentifier', '').startswith(app_info['CFBundleIdentifier'] + '.'):
+                raise ValueError('Keyboard bundle identifier must belong to the containing app')
+            for key in ('CFBundleVersion', 'CFBundleShortVersionString'):
+                if not info.get(key) or info[key] != app_info.get(key):
+                    raise ValueError('App and keyboard versions must match')
     archive.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(archive, 'x', zipfile.ZIP_DEFLATED) as zipped:
         for path in sorted(app.rglob('*')):

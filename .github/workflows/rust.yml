@@ -1,6 +1,12 @@
 name: 全OSビルド・テスト
 on:
   workflow_dispatch:
+    inputs:
+      platform:
+        description: ビルド対象（iosでiOS版だけを実行）
+        type: choice
+        options: [all, ios]
+        default: all
   workflow_call:
     inputs:
       packages_only:
@@ -39,7 +45,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   desktop:
-    if: ${{ !inputs.packages_only }}
+    if: ${{ !inputs.packages_only && inputs.platform != 'ios' }}
     strategy:
       fail-fast: false
       matrix:
@@ -460,6 +466,7 @@ jobs:
             rust/README.md
             quality-report.json
   android:
+    if: ${{ inputs.platform != 'ios' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     concurrency:
@@ -525,6 +532,7 @@ jobs:
             LICENSE
             THIRD-PARTY-NOTICES.md
   extension:
+    if: ${{ inputs.platform != 'ios' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -551,7 +559,7 @@ jobs:
           name: Meltype-ChromeOS-preview
           path: dist/chromeos-preview.zip
   fcitx-sdk:
-    if: ${{ !inputs.packages_only }}
+    if: ${{ !inputs.packages_only && inputs.platform != 'ios' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -588,7 +596,7 @@ jobs:
           path: dist/fcitx-abi
           if-no-files-found: ignore
   macos-sdk:
-    if: ${{ !inputs.packages_only }}
+    if: ${{ !inputs.packages_only && inputs.platform != 'ios' }}
     runs-on: macos-15
     timeout-minutes: 15
     steps:
@@ -632,7 +640,7 @@ jobs:
           path: dist/macos-sdk
           if-no-files-found: ignore
   production-swift:
-    if: ${{ !inputs.packages_only }}
+    if: ${{ !inputs.packages_only && inputs.platform != 'ios' }}
     runs-on: macos-15
     timeout-minutes: 30
     steps:
@@ -679,6 +687,7 @@ jobs:
       - run: brew install xcodegen
       - run: cargo test -p meltype-ios --locked
       - run: cargo clippy -p meltype-ios --all-targets --locked -- -D warnings
+      - run: python3 -m unittest discover -s tools -p test_flash_distributions.py -v
       - run: bash ios/build.sh
       - name: Exercise keyboard controller on iOS Simulator
         run: |

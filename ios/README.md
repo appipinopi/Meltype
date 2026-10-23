@@ -3,8 +3,8 @@
 <a id="meltype-for-ios"></a>
 <p align="center"><img src="../assets/branding/readme/ios/hero.svg" alt="Meltype-flash for iOS" width="1000"></p>
 <p align="center"><b>稲妻のように、言葉の壁を駆け抜ける日本語入力。</b></p>
-<p align="center"><a href="https://github.com/appipinopi/Meltype-Flash/releases/tag/flash-v0.1.0-preview.5"><img src="https://img.shields.io/badge/Flash-v0.1.0_Pre5-ffe34a" alt="Flash v0.1.0 Pre5"></a> <img src="https://img.shields.io/badge/status-開発プレビュー-666973" alt="開発プレビュー"></p>
-<p align="center"><a href="#インストール">ダウンロード・導入</a> · <a href="#使い方">使い方</a> · <a href="#困ったとき">困ったとき</a> · <a href="https://github.com/appipinopi/Meltype-Flash/issues/new/choose">不具合の報告・提案</a></p>
+<p align="center"><a href="https://github.com/appipinopi/Meltype/releases/tag/flash-v0.1.0-preview.3"><img src="https://img.shields.io/badge/Flash-v0.1.0_Pre3-ffe34a" alt="Flash v0.1.0 Pre3"></a> <img src="https://img.shields.io/badge/status-開発プレビュー-666973" alt="開発プレビュー"></p>
+<p align="center"><a href="#インストール">ダウンロード・導入</a> · <a href="#使い方">使い方</a> · <a href="#困ったとき">困ったとき</a> · <a href="https://github.com/appipinopi/Meltype/issues/new/choose">不具合の報告・提案</a></p>
 <p align="center">
   <a href="../rust/WINDOWS-PACKAGE.md"><img src="../assets/branding/readme/cards/os-windows.svg" alt="Windows" width="32%"></a>
   <a href="../linux/README.md"><img src="../assets/branding/readme/cards/os-linux.svg" alt="Linux" width="32%"></a>
@@ -25,7 +25,7 @@ iPhone・iPadのカスタムキーボードとして動く、Rust版Meltype-flas
 <h2><img src="../assets/branding/readme/ios/headings/df8764ebcf5d.svg" alt="内容" width="1000"></h2>
 
 QWERTY入力、英語・日本語の判定、補助辞書による候補、空白・削除・確定を実装しています。
-フリック入力、デスクトップの外部変換エンジン、翻訳、アプリ別設定、学習・設定の永続保存は未対応です。
+フリック入力、デスクトップの外部変換エンジン、翻訳、アプリ別設定、学習・入力設定の永続保存は未対応です。背景・テーマは本体アプリで設定し、端末内に保存できます。
 実機の各アプリでの入力やApp Store審査を完了した製品ではありません。
 
 [動く環境](#動く環境) · [インストール](#インストール) · [使い方](#使い方) · [困ったとき](#困ったとき) · [アンインストール](#アンインストール) · [開発者向け](#開発者向け)
@@ -42,7 +42,7 @@ iOS側が標準キーボードへ切り替えるパスワード欄や、外部�
 <a id="インストール"></a>
 <h2><img src="../assets/branding/readme/ios/headings/4f36b3b314d8.svg" alt="インストール" width="1000"></h2>
 
-[FlashのPre5](https://github.com/appipinopi/Meltype-Flash/releases/tag/flash-v0.1.0-preview.5) の配布から、目的に合うものを選びます。
+[FlashのPre3](https://github.com/appipinopi/Meltype/releases/tag/flash-v0.1.0-preview.3) の配布から、目的に合うものを選びます。
 
 | ファイル | 用途 |
 | --- | --- |
@@ -70,6 +70,19 @@ AltStore PALとは別の導入方法です。[更新と制限](https://faq.altst
 導入後は「設定 → 一般 → キーボード → キーボード → 新しいキーボードを追加」からMeltype-flashを追加し、入力欄で🌐から選びます。
 **フルアクセスの許可は不要です。**
 
+アプリにはロゴ、設定を開くボタン、入力テスト、背景・テーマ設定があります。
+「設定を開く」はアプリの設定を開きます。キーボードの追加はiOSの設定画面で行ってください。
+起動時にキーボード拡張の同梱状態を確認し、削除されている場合は再導入の案内を表示します。
+拡張の同梱表示は、署名の有効性やiOS側の有効化を保証するものではありません。
+
+### 背景とテーマ
+
+本体アプリの「キーボードの背景・テーマ」を開き、システム・ライト・ダーク・ブルー・ピンク・ミントから配色を選びます。「好きな画像を選ぶ」で写真の選択画面を開き、1枚を背景にできます。画像は長辺1280ピクセル以下へ縮小して端末内に保存し、中央基準で切り抜いて表示します。キーボードを開き直すと反映されます。
+
+「背景画像を外す」は画像だけを削除し、テーマは保持します。背景の設定は変換の学習や入力履歴とは別です。キーボードは本体アプリの共有領域から読み取るだけで、`RequestsOpenAccess: false` を維持しています。[Appleの共有領域・フルアクセスの説明](https://developer.apple.com/documentation/uikit/configuring-open-access-for-a-custom-keyboard) を参照してください。
+
+背景の共有には、本体アプリとキーボードの両方で同じApp Groupを署名へ含める必要があります。自分のチームで署名するときは、`ios/project.yml` の `MELTYPE_APP_GROUP` を利用可能なグループIDへ変更し、両方のApp IDとプロビジョニングプロファイルへ登録してください。共有領域を利用できない場合、設定画面にその旨を表示し、キーボードは標準配色で動きます。この追加機能のiOSビルド・Simulator・実機確認は未実施です。
+
 <a id="使い方"></a>
 <h2><img src="../assets/branding/readme/ios/headings/23ca31abc8fa.svg" alt="使い方" width="1000"></h2>
 
@@ -92,6 +105,11 @@ AltStore PALとは別の導入方法です。[更新と制限](https://faq.altst
 
 アプリ本体だけでなく、キーボード拡張も署名・導入されているか確認してください。AltStoreで拡張を外した場合はキーボードを追加できません。
 Simulator用ZIPを実機に使っていないかも確認してください。
+
+**iPASideで導入した場合**: [iPASide公式README](https://github.com/pwnapplehat/iPASide#what-apples-free-account-will-not-let-you-do) は、拡張が通常削除され、キーボードなどが使えなくなると説明しています。
+配布IPAに含まれる `PlugIns/MeltypeFlashKeyboard.appex` を署名時に削除すると、起動画面だけは開けてもキーボード一覧には出ません。
+アイコンの有無とは別の問題で、アプリ画面の操作だけでは削除された拡張を復元できません。
+拡張を保持して本体・拡張の両方を署名できる方法で再導入してください。AltStore Classicを使う場合も、拡張を削除せずに導入する必要があります。
 
 </details>
 
@@ -119,6 +137,8 @@ bash ios/build.sh
 ```
 
 Apple SiliconのSimulator向けZIPと未署名の実機向けアプリを作ります。
+IPAの作成時にアイコン用アセット、キーボード拡張、拡張のエントリーポイント、Bundle Identifier、本体と拡張のバージョン一致を検査します。
+アイコンは既存のFlashマークを使っています。原本を更新した場合はPillowを用意して `python3 ios/make-assets.py` を実行し、生成された `ios/Assets.xcassets` も保存してください。通常のビルドは保存済みアセットを使います。
 実機用は `ios/MeltypeFlash.xcodeproj` をXcodeで開き、アプリ本体とキーボード拡張の両方へ自分の開発チームと固有のBundle Identifierを指定して署名します。
 TestFlight / App Store配布には配布署名とプロビジョニングが必要です。このリポジトリから署名済みIPAやApp Store公開は行っていません。
 Rust ABIの入力・確定・長文・セッション分離と、Xcodeのビルド検証を行います。実機のメモリー使用量や各アプリとの相性は別途確認が必要です。

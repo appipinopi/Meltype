@@ -8,29 +8,42 @@ settings:
     SWIFT_VERSION: '5.0'
     ARCHS: arm64
     MARKETING_VERSION: '0.1.0'
-    CURRENT_PROJECT_VERSION: '5'
+    CURRENT_PROJECT_VERSION: '6'
     CODE_SIGNING_ALLOWED: NO
+    MELTYPE_APP_GROUP: group.com.appipinopi.meltypeflash
 targets:
   MeltypeFlash:
     type: application
     platform: iOS
-    sources: [App.swift]
+    sources: [App.swift, KeyboardAppearance.swift, AppearanceViewController.swift, Assets.xcassets]
+    entitlements:
+      path: generated/App.entitlements
+      properties:
+        com.apple.security.application-groups: ['$(MELTYPE_APP_GROUP)']
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.appipinopi.meltypeflash
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         TARGETED_DEVICE_FAMILY: '1,2'
     info:
       path: generated/App-Info.plist
       properties:
         CFBundleDisplayName: Meltype-flash
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
+        MeltypeAppearanceAppGroup: $(MELTYPE_APP_GROUP)
     dependencies:
       - target: MeltypeFlashKeyboard
         embed: true
   MeltypeFlashKeyboard:
     type: app-extension
     platform: iOS
-    sources: [KeyboardViewController.swift]
+    sources: [KeyboardViewController.swift, KeyboardAppearance.swift]
+    entitlements:
+      path: generated/Keyboard.entitlements
+      properties:
+        com.apple.security.application-groups: ['$(MELTYPE_APP_GROUP)']
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.appipinopi.meltypeflash.keyboard
@@ -43,17 +56,21 @@ targets:
       path: generated/Keyboard-Info.plist
       properties:
         CFBundleDisplayName: Meltype-flash
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        MeltypeAppearanceAppGroup: $(MELTYPE_APP_GROUP)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.keyboard-service
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).KeyboardViewController
           NSExtensionAttributes:
             IsASCIICapable: true
+            PrefersRightToLeft: false
             PrimaryLanguage: ja-JP
             RequestsOpenAccess: false
   KeyboardTests:
     type: bundle.unit-test
     platform: iOS
-    sources: [KeyboardViewController.swift, KeyboardTests.swift]
+    sources: [KeyboardViewController.swift, KeyboardAppearance.swift, KeyboardTests.swift]
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES

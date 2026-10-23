@@ -19,11 +19,21 @@ class KeyboardViewController: UIInputViewController {
     private var upper = false
     private var letters = [UIButton]()
     private var globe: UIButton?
+    private let appearanceStore = KeyboardAppearanceStore()
+    private let backdrop = KeyboardBackdrop()
+    private var appearance = KeyboardAppearance()
+    private var appearanceImage: UIImage?
+    private var loadedImageName: String?
 
     override func viewDidLoad() {
         super.viewDidLoad()
         session = meltype_ios_create()
-        view.backgroundColor = .systemGray5
+        backdrop.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(backdrop)
+        NSLayoutConstraint.activate([
+            backdrop.leadingAnchor.constraint(equalTo: view.leadingAnchor), backdrop.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            backdrop.topAnchor.constraint(equalTo: view.topAnchor), backdrop.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
         let column = UIStackView()
         column.axis = .vertical
         column.spacing = 7
@@ -93,6 +103,34 @@ class KeyboardViewController: UIInputViewController {
             else { self.textDocumentProxy.insertText("\n") }
         })
         column.addArrangedSubview(actions)
+        reloadAppearance()
+    }
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        reloadAppearance()
+    }
+    private func reloadAppearance() {
+        appearance = appearanceStore.load()
+        if loadedImageName != appearance.imageName {
+            appearanceImage = appearanceStore.image(for: appearance)
+            loadedImageName = appearance.imageName
+        }
+        applyAppearance()
+    }
+    private func applyAppearance() {
+        backdrop.apply(appearance.theme, image: appearanceImage)
+        view.backgroundColor = appearance.theme.background
+        preedit.textColor = appearance.theme.text
+        preedit.backgroundColor = appearance.theme.key
+        func style(_ parent: UIView) {
+            if let key = parent as? UIButton { key.backgroundColor = appearance.theme.key; key.setTitleColor(appearance.theme.text, for: .normal) }
+            parent.subviews.forEach(style)
+        }
+        style(view)
+    }
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        if isViewLoaded { applyAppearance() }
     }
     override func viewWillLayoutSubviews() {
         super.viewWillLayoutSubviews()
@@ -119,7 +157,8 @@ class KeyboardViewController: UIInputViewController {
         let key = UIButton(type: .system)
         key.setTitle(title, for: .normal)
         key.titleLabel?.font = .systemFont(ofSize: 16)
-        key.backgroundColor = .secondarySystemBackground
+        key.backgroundColor = appearance.theme.key
+        key.setTitleColor(appearance.theme.text, for: .normal)
         key.layer.cornerRadius = 5
         key.addAction(UIAction { _ in action() }, for: .touchUpInside)
         return key

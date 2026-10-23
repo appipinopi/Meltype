@@ -23,6 +23,48 @@ final class TestKeyboard: KeyboardViewController {
 }
 final class KeyboardTests: XCTestCase {
     @MainActor
+    func testAppearanceImagePreparationAndRemovalPreserveTheme() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = KeyboardAppearanceStore(directory: directory)
+        try store.setTheme(.mint)
+        let format = UIGraphicsImageRendererFormat(); format.scale = 1
+        let source = UIGraphicsImageRenderer(size: CGSize(width: 2400, height: 1600), format: format).image { context in
+            UIColor.blue.setFill(); context.fill(CGRect(x: 0, y: 0, width: 2400, height: 1600))
+        }
+        let file = directory.appendingPathComponent("source.png")
+        try XCTUnwrap(source.pngData()).write(to: file)
+        let prepared = try KeyboardAppearanceStore.prepareImage(from: file)
+        let image = try XCTUnwrap(UIImage(data: prepared))
+        XCTAssertLessThanOrEqual(max(image.size.width, image.size.height), 1280)
+        try store.installImage(prepared)
+        let settings = store.load()
+        XCTAssertEqual(settings.theme, .mint)
+        XCTAssertNotNil(store.image(for: settings))
+        try store.setTheme(.dark)
+        XCTAssertEqual(store.load().imageName, settings.imageName)
+        try store.removeImage()
+        XCTAssertEqual(store.load().theme, .dark)
+        XCTAssertNil(store.load().imageName)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: directory.appendingPathComponent(try XCTUnwrap(settings.imageName)).path))
+    }
+    @MainActor
+    func testInvalidAppearanceAndImageCannotEscapeTheSharedDirectory() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = KeyboardAppearanceStore(directory: directory)
+        try store.save(KeyboardAppearance(theme: .pink, imageName: "../outside.jpg"))
+        XCTAssertNil(store.load().imageName)
+        XCTAssertEqual(store.load().theme, .pink)
+        let file = directory.appendingPathComponent("invalid.png")
+        try Data([1, 2, 3]).write(to: file)
+        XCTAssertThrowsError(try KeyboardAppearanceStore.prepareImage(from: file))
+        XCTAssertEqual(store.load().theme, .pink)
+        try Data("{".utf8).write(to: directory.appendingPathComponent("appearance.json"))
+        XCTAssertEqual(store.load(), KeyboardAppearance())
+    }
+    @MainActor
     private func tap(_ title: String, in view: UIView) {
         func buttons(_ parent: UIView) -> [UIButton] {
             (parent as? UIButton).map { [$0] } ?? parent.subviews.flatMap { buttons($0) }
