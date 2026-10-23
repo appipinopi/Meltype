@@ -12,51 +12,20 @@ mod scored;
 pub struct Dictionary {
     custom_names: HashMap<String, String>,
     custom_kana: Option<PrefixIndex>,
-    english: WordSet,
-    japanese: WordSet,
+    english: HashSet<String>,
+    japanese: HashSet<String>,
     candidates: HashMap<String, Vec<String>>,
     emoji: HashMap<String, Vec<String>>,
-    kana_words: WordSet,
+    kana_words: HashSet<String>,
     max_kana_word_bytes: usize,
-    common_english: WordSet,
-    readable_english: WordSet,
-    proper: WordSet,
-    japanese_origin: WordSet,
+    common_english: HashSet<String>,
+    readable_english: HashSet<String>,
+    proper: HashSet<String>,
+    japanese_origin: HashSet<String>,
     english_index: PrefixIndex,
     japanese_index: PrefixIndex,
     common_index: PrefixIndex,
     proper_index: PrefixIndex,
-}
-
-/// Fixed dictionary words need no spare-capacity field. Keep the same hash
-/// lookup and owned UTF-8 bytes; only the per-entry representation is smaller.
-#[derive(Clone, Default)]
-struct WordSet(HashSet<Box<str>>);
-impl WordSet {
-    fn new() -> Self {
-        Self::default()
-    }
-    #[inline]
-    fn contains<Q: AsRef<str> + ?Sized>(&self, word: &Q) -> bool {
-        self.0.contains(word.as_ref())
-    }
-    #[cfg(any(feature = "filesystem", test))]
-    fn insert(&mut self, word: String) -> bool {
-        self.0.insert(word.into_boxed_str())
-    }
-    fn iter(&self) -> impl Iterator<Item = &Box<str>> {
-        self.0.iter()
-    }
-}
-impl<T: Into<Box<str>>> Extend<T> for WordSet {
-    fn extend<I: IntoIterator<Item = T>>(&mut self, values: I) {
-        self.0.extend(values.into_iter().map(Into::into));
-    }
-}
-impl<T: Into<Box<str>>> FromIterator<T> for WordSet {
-    fn from_iter<I: IntoIterator<Item = T>>(values: I) -> Self {
-        Self(values.into_iter().map(Into::into).collect())
-    }
 }
 
 /// Immutable FST prefix queries share prebuilt system bytes across profiles.
@@ -64,12 +33,12 @@ impl<T: Into<Box<str>>> FromIterator<T> for WordSet {
 struct PrefixIndex(std::sync::Arc<fst::Set<std::borrow::Cow<'static, [u8]>>>);
 impl Default for PrefixIndex {
     fn default() -> Self {
-        Self::new(&WordSet::new())
+        Self::new(&HashSet::new())
     }
 }
 impl PrefixIndex {
-    fn new(words: &WordSet) -> Self {
-        let mut keys: Vec<_> = words.iter().map(|word| word.as_bytes()).collect();
+    fn new(words: &HashSet<String>) -> Self {
+        let mut keys: Vec<_> = words.iter().collect();
         keys.sort_unstable();
         let set = fst::Set::from_iter(keys).expect("sorted dictionary keys");
         Self(std::sync::Arc::new(
@@ -211,14 +180,14 @@ impl Dictionary {
             let mut dict = Self {
                 custom_names: HashMap::new(),
                 custom_kana: None,
-                english: WordSet::new(),
+                english: HashSet::new(),
                 english_index: PrefixIndex::default(),
                 japanese_index: PrefixIndex::default(),
                 common_index: PrefixIndex::default(),
                 proper_index: PrefixIndex::default(),
                 japanese_origin: {
                     let mut section = false;
-                    let mut result = WordSet::new();
+                    let mut result = HashSet::new();
                     for line in crate::system_data::text("english.txt").lines() {
                         if line.starts_with("# ---") {
                             section = line.contains("日本語由来");
@@ -289,7 +258,10 @@ impl Dictionary {
                     let fields: Vec<_> = line.split('\t').collect();
                     if fields.len() > 1 {
                         if emoji {
-                            let entries = dict.emoji.entry(fields[0].to_owned()).or_default();
+                            let entries = dict
+                                .emoji
+                                .entry(fields[0].to_owned())
+                                .or_insert_with(|| Vec::with_capacity(fields.len() - 1));
                             for word in &fields[1..] {
                                 if !word.is_empty() && !entries.iter().any(|s| s == word) {
                                     entries.push((*word).to_owned());
@@ -309,18 +281,18 @@ impl Dictionary {
                 PrefixIndex::bundled(include_bytes!(concat!(env!("OUT_DIR"), "/common.fst")));
             dict.proper_index =
                 PrefixIndex::bundled(include_bytes!(concat!(env!("OUT_DIR"), "/proper.fst")));
-            dict.max_kana_word_bytes = dict
-                .kana_words
-                .iter()
-                .map(|word| word.len())
-                .max()
-                .unwrap_or(0);
+            dict.max_kana_word_bytes = dict.kana_words.iter().map(String::len).max().unwrap_or(0);
             dict
         })
     }
 
     fn add<'a>(&mut self, reading: &str, values: impl Iterator<Item = &'a str>) {
-        let entry = self.candidates.entry(reading.to_owned()).or_default();
+        // System rows already tell us their initial candidate count. Avoid Vec's
+        // four-element minimum allocation for the common one-candidate row.
+        let entry = self
+            .candidates
+            .entry(reading.to_owned())
+            .or_insert_with(|| Vec::with_capacity(values.size_hint().0));
         for value in values.filter(|s| !s.is_empty()) {
             if !entry.iter().any(|v| v == value) {
                 entry.push(value.to_owned());
@@ -1372,30 +1344,14 @@ impl Dictionary {
 mod prefix_tests {
     use super::*;
     #[test]
-    fn compact_words_preserve_membership_and_profile_isolation() {
-        let input: Vec<String> = [
-            "english.txt",
-            "english-words.txt",
-            "propernouns.txt",
-            "readings.txt",
-        ]
-        .into_iter()
-        .flat_map(|name| words(crate::system_data::text(name)))
-        .map(str::to_owned)
-        .collect();
-        let reference: HashSet<String> = input.iter().cloned().collect();
-        let compact: WordSet = input.into_iter().collect();
-        assert_eq!(compact.0.len(), reference.len());
-        for word in &reference {
-            assert!(compact.contains(word), "{word}");
-        }
-        let mut profile = compact.clone();
-        let additional = "__meltype_profile_only_word__";
-        assert!(!compact.contains(additional));
-        assert!(profile.insert(additional.into()));
-        assert!(profile.contains(additional));
-        assert!(!compact.contains(additional));
-        assert!(std::mem::size_of::<Box<str>>() < std::mem::size_of::<String>());
+    fn candidate_storage_preserves_order_without_four_slot_minimum() {
+        let mut dictionary = Dictionary::bundled().clone();
+        let reading = "__compact_candidate_test__";
+        dictionary.add(reading, std::iter::once("候補一"));
+        assert_eq!(dictionary.candidates[reading], ["候補一"]);
+        assert_eq!(dictionary.candidates[reading].capacity(), 1);
+        dictionary.add(reading, ["候補一", "候補二", "候補二"].into_iter());
+        assert_eq!(dictionary.candidates[reading], ["候補一", "候補二"]);
     }
     #[test]
     #[ignore = "manual performance comparison; run with --release --ignored --nocapture"]
@@ -1463,7 +1419,7 @@ mod prefix_tests {
                 .into_iter()
                 .take(5)
                 .map(|s| {
-                    let mut value = s.to_string();
+                    let mut value = s.clone();
                     if raw.bytes().all(|c| c.is_ascii_uppercase()) {
                         value.make_ascii_uppercase();
                     } else if raw.as_bytes()[0].is_ascii_uppercase() {
