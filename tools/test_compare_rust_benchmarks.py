@@ -96,6 +96,7 @@ class ComparisonTests(unittest.TestCase):
                  patch.object(comparison.benchmark, "measure_process", side_effect=measure), \
                  patch.object(comparison.benchmark, "command", return_value="rustc test"), \
                  patch.object(comparison.importlib.util, "find_spec", return_value=object()), \
+                 patch.object(comparison.platform, "processor", return_value="test CPU"), \
                  patch.object(comparison.subprocess, "run") as runner, patch("builtins.print"):
                 comparison.main()
             report = json.loads((output / "report.json").read_text(encoding="utf-8"))

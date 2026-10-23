@@ -162,6 +162,21 @@ class AxisTests(unittest.TestCase):
                 self.assertIn(f"]({name})", notes)
                 self.assertTrue((root / "charts-three" / name).read_bytes().startswith(b"\x89PNG\r\n\x1a\n"))
 
+            # POSIX reports leave unsupported memory counters null, never zero.
+            report.update(host_os="Darwin", backend="native")
+            for row in report["process_resources"]:
+                row["sampled_mean_working_set_bytes"] = None
+                row["sampled_peak_private_bytes"] = None
+            input_file.write_text(json.dumps(report), encoding="utf-8")
+            subprocess.run([sys.executable, str(Path(plotter.__file__)), str(input_file),
+                            "--output", str(root / "charts-posix")],
+                           check=True, capture_output=True, text=True, encoding="utf-8")
+            notes = (root / "charts-posix/README.md").read_text(encoding="utf-8")
+            self.assertIn("Darwin / native", notes)
+            self.assertIn("|未測定|未測定|未測定|", notes)
+            saved = json.loads((root / "charts-posix/summary.json").read_text(encoding="utf-8"))
+            self.assertIsNone(saved["process_resources"][0]["sampled_peak_private_bytes"])
+
 
 
 if __name__ == "__main__":

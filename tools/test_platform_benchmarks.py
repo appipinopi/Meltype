@@ -55,7 +55,8 @@ class ProcessTests(unittest.TestCase):
         import subprocess
         with tempfile.TemporaryFile(mode="w+") as output:
             common = dict(cwd=Path.cwd(), env=os.environ.copy(), stdout=output)
-            big = resources.measure_process([sys.executable, "-c", "a=bytearray(96*1024*1024); print(len(a))"], **common)
+            big = resources.measure_process([sys.executable, "-c",
+                "a=bytearray(96*1024*1024); [a.__setitem__(i,1) for i in range(0,len(a),4096)]; print(len(a))"], **common)
             small = resources.measure_process([sys.executable, "-c", "print('ok')"], **common)
             self.assertGreater(big["peak_working_set_bytes"], small["peak_working_set_bytes"] + 50*1024*1024)
             self.assertGreater(small["cpu_seconds"], 0)
