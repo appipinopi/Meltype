@@ -258,7 +258,10 @@ impl Dictionary {
                     let fields: Vec<_> = line.split('\t').collect();
                     if fields.len() > 1 {
                         if emoji {
-                            let entries = dict.emoji.entry(fields[0].to_owned()).or_default();
+                            let entries = dict
+                                .emoji
+                                .entry(fields[0].to_owned())
+                                .or_insert_with(|| Vec::with_capacity(fields.len() - 1));
                             for word in &fields[1..] {
                                 if !word.is_empty() && !entries.iter().any(|s| s == word) {
                                     entries.push((*word).to_owned());
@@ -284,7 +287,12 @@ impl Dictionary {
     }
 
     fn add<'a>(&mut self, reading: &str, values: impl Iterator<Item = &'a str>) {
-        let entry = self.candidates.entry(reading.to_owned()).or_default();
+        // System rows already tell us their initial candidate count. Avoid Vec's
+        // four-element minimum allocation for the common one-candidate row.
+        let entry = self
+            .candidates
+            .entry(reading.to_owned())
+            .or_insert_with(|| Vec::with_capacity(values.size_hint().0));
         for value in values.filter(|s| !s.is_empty()) {
             if !entry.iter().any(|v| v == value) {
                 entry.push(value.to_owned());
@@ -1324,6 +1332,16 @@ impl Dictionary {
 #[cfg(test)]
 mod prefix_tests {
     use super::*;
+    #[test]
+    fn candidate_storage_preserves_order_without_four_slot_minimum() {
+        let mut dictionary = Dictionary::bundled().clone();
+        let reading = "__compact_candidate_test__";
+        dictionary.add(reading, std::iter::once("候補一"));
+        assert_eq!(dictionary.candidates[reading], ["候補一"]);
+        assert_eq!(dictionary.candidates[reading].capacity(), 1);
+        dictionary.add(reading, ["候補一", "候補二", "候補二"].into_iter());
+        assert_eq!(dictionary.candidates[reading], ["候補一", "候補二"]);
+    }
     #[test]
     #[ignore = "manual performance comparison; run with --release --ignored --nocapture"]
     fn prefix_lookup_timing() {
