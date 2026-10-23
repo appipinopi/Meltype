@@ -3,7 +3,7 @@
 <a id="meltype-for-linux"></a>
 <p align="center"><img src="../assets/branding/readme/linux/hero.svg" alt="Meltype-flash for Linux" width="1000"></p>
 <p align="center"><b>稲妻のように、言葉の壁を駆け抜ける日本語入力。</b></p>
-<p align="center"><a href="https://github.com/appipinopi/Meltype/releases/tag/flash-v0.1.0-preview.3"><img src="https://img.shields.io/badge/Flash-v0.1.0_Pre3-ffe34a" alt="Flash v0.1.0 Pre3"></a> <img src="https://img.shields.io/badge/status-開発プレビュー-666973" alt="開発プレビュー"></p>
+<p align="center"><a href="https://github.com/appipinopi/Meltype-Flash/releases/tag/flash-v0.1.0-preview.4"><img src="https://img.shields.io/badge/Flash-v0.1.0_Pre4-ffe34a" alt="Flash v0.1.0 Pre4"></a> <img src="https://img.shields.io/badge/status-開発プレビュー-666973" alt="開発プレビュー"></p>
 <p align="center"><a href="#インストール">ダウンロード・導入</a> · <a href="#使い方">使い方</a> · <a href="#困ったとき">困ったとき</a> · <a href="https://github.com/appipinopi/Meltype/issues/new/choose">不具合の報告・提案</a></p>
 <p align="center">
   <a href="../rust/WINDOWS-PACKAGE.md"><img src="../assets/branding/readme/cards/os-windows.svg" alt="Windows" width="32%"></a>
@@ -45,7 +45,7 @@ fcitx5を使う環境は、下記のソースビルドと開発状況を参照�
 <a id="ubuntu向けdeb"></a>
 <h3><img src="../assets/branding/readme/linux/headings/a3beabf6efc7.svg" alt="Ubuntu向けdeb" width="1000"></h3>
 
-[FlashのPre3](https://github.com/appipinopi/Meltype/releases/tag/flash-v0.1.0-preview.3) からCPUに合うdebを取得し、そのファイルがあるフォルダーで実行します。
+[FlashのPre4](https://github.com/appipinopi/Meltype-Flash/releases/tag/flash-v0.1.0-preview.4) からCPUに合うdebを取得し、そのファイルがあるフォルダーで実行します。
 
 ```sh
 # x64

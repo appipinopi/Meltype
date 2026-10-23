@@ -607,6 +607,13 @@ impl Dictionary {
         units.iter().any(|unit| suffix.starts_with(unit))
     }
     fn mixed_word(&self, raw: &str, final_input: bool) -> String {
+        if let Some(end) = self.english_compound_end(raw) {
+            return format!(
+                "{}{}",
+                &raw[..end],
+                self.mixed_word(&raw[end..], final_input)
+            );
+        }
         let lower = raw.to_ascii_lowercase();
         let canonical_case = Self::allows_mixed_case(raw);
         if let Some(end) = self.capitalized_split(raw, final_input) {

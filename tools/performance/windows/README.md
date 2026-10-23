@@ -75,7 +75,7 @@ python tools/check-core-parity.py --csharp dist/windows-common-benchmark/csharp/
 
 ## CIでの測定と画像
 
-CIでは、前のRust公開版と現在版を比較します。`Cargo.toml`の版より古い公開タグを数値順に選びます。現在のPre3ではPre2を使います。手動実行の`benchmark_baseline`で基準を変更できます。
+CIでは、前のRust公開版と現在版を比較します。`Cargo.toml`の版より古い公開タグを数値順に選びます。現在のPre4ではPre3を使います。手動実行の`benchmark_baseline`で基準を変更できます。
 
 ```powershell
 python -m pip install matplotlib==3.10.8 numpy==2.4.2
