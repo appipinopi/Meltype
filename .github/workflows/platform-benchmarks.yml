@@ -1,4 +1,4 @@
-name: Platform benchmarks
+name: Compact dictionary benchmarks
 on:
   workflow_dispatch:
   push:
@@ -36,11 +36,17 @@ jobs:
           python -m unittest discover -s tools -p test_platform_benchmarks.py
       - name: Core (C#, previous Rust, current Rust)
         shell: bash
-        run: python tools/compare-rust-benchmarks.py --build --current-ref HEAD --with-csharp --samples 3 --warmups 1 --rounds 3 --plot --output output/platform-benchmark/core --github-summary "${GITHUB_STEP_SUMMARY}"
+        run: python tools/compare-rust-benchmarks.py --build --current-ref HEAD --baseline-ref f981d08b5b605acdb096fb9af74011993b5e623a --samples 5 --warmups 2 --rounds 4 --plot --output output/platform-benchmark/core --github-summary "${GITHUB_STEP_SUMMARY}"
       - name: Native C ABI (previous Rust, current Rust)
         shell: bash
         if: ${{ !cancelled() && hashFiles('output/platform-benchmark/core/report.json') != '' }}
-        run: python tools/compare-rust-benchmarks.py --build --current-ref HEAD --backend native --samples 3 --warmups 1 --rounds 2 --plot --output output/platform-benchmark/native --github-summary "${GITHUB_STEP_SUMMARY}"
+        run: python tools/compare-rust-benchmarks.py --build --current-ref HEAD --baseline-ref f981d08b5b605acdb096fb9af74011993b5e623a --backend native --samples 5 --warmups 2 --rounds 4 --plot --output output/platform-benchmark/native --github-summary "${GITHUB_STEP_SUMMARY}"
+      - name: Core regression and unchanged quality
+        run: |
+          cargo test -p meltype-core --locked
+          cargo run --release --locked --manifest-path output/platform-benchmark/core/baseline-source/Cargo.toml -p meltype-core --example quality -- output/platform-benchmark/before-quality.json
+          cargo run --release --locked -p meltype-core --example quality -- output/platform-benchmark/after-quality.json
+          python -c "import json; from pathlib import Path; p=Path('output/platform-benchmark'); assert json.loads((p/'before-quality.json').read_text(encoding='utf-8')) == json.loads((p/'after-quality.json').read_text(encoding='utf-8'))"
       - name: Record platform coverage
         if: always()
         run: python tools/benchmark-platforms.py --input output/platform-benchmark --output output/platform-benchmark/coverage
@@ -50,6 +56,7 @@ jobs:
           name: platform-benchmark-${{ runner.os }}-${{ runner.arch }}
           retention-days: 3
           path: |
+            output/platform-benchmark/*-quality.json
             output/platform-benchmark/**/report.json
             output/platform-benchmark/**/resources.json
             output/platform-benchmark/**/charts/**
