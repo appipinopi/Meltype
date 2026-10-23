@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! Browser host for the same Session/FST/detection engine as desktop builds.
-use meltype_core::{session::Preferences, settings::Settings, storage::State, Session};
+use meltype_core::{
+    session::{Clause, Preferences},
+    settings::Settings,
+    storage::State,
+    Session,
+};
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use wasm_bindgen::prelude::*;
@@ -258,6 +263,23 @@ impl BrowserSession {
         let was_converting = self.session.is_converting();
         let mut result = self.session.key_at(vk, character, modifiers, now_ms as u64);
         if !was_converting && self.session.is_converting() && result.consumed {
+            let reading = self.session.conversion_reading();
+            // The browser presents sentence candidates in one candidate list.
+            // Retain that contract when Core separates English islands.
+            let mixed = reading.chars().any(|c| c.is_ascii_alphabetic())
+                && reading.chars().any(meltype_core::linguistics::kana);
+            let sentence = KANJI.with(|slot| {
+                slot.borrow()
+                    .as_ref()
+                    .filter(|_| mixed)
+                    .map(|dictionary| Clause::new(reading.clone(), dictionary.convert(&reading)))
+            });
+            if let Some(sentence) = sentence {
+                if self.session.begin_clauses(vec![sentence]) {
+                    return serde_json::to_string(&self.session.result(true))
+                        .map_err(|e| e.to_string());
+                }
+            }
             let readings = self.session.clause_readings();
             let external = KANJI.with(|slot| {
                 slot.borrow().as_ref().map(|dictionary| {

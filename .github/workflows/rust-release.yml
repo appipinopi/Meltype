@@ -1,4 +1,4 @@
-name: Meltype-flash release
+name: リリース
 on:
   pull_request:
     paths:
@@ -177,12 +177,11 @@ jobs:
           name: release-macos-${{ matrix.arch }}
           path: dist/Meltype-flash-macOS-*.zip
           if-no-files-found: error
-  android:
+  mobile-packages:
     needs: validate
-    uses: ./.github/workflows/rust-android.yml
-  chromeos:
-    needs: validate
-    uses: ./.github/workflows/chromeos.yml
+    uses: ./.github/workflows/rust.yml
+    with:
+      packages_only: true
   ios:
     needs: validate
     runs-on: macos-15
@@ -215,7 +214,7 @@ jobs:
             dist/README-iOS.md
           if-no-files-found: error
   publish:
-    needs: [release-policy, windows, linux, macos, android, chromeos, ios]
+    needs: [release-policy, windows, linux, macos, mobile-packages, ios]
     runs-on: ubuntu-latest
     permissions:
       contents: write

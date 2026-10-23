@@ -439,3 +439,65 @@ fn issue_301_tool_names_remain_english_as_whole_words() {
         assert_eq!(session.commit().commits[0].text, raw, "{raw}");
     }
 }
+
+#[test]
+fn chatgpt_mixed_conversion_keeps_english_and_japanese_clauses() {
+    for raw in [
+        "chatgptwotsukau",
+        "chatgptwotsukatteimasu",
+        "googledekensaku",
+        "githubwotsukau",
+    ] {
+        let mut s = Session::default();
+        s.settings
+            .set("LiveConversion", serde_json::json!(false))
+            .unwrap();
+        type_text(&mut s, raw);
+        let reading = s.conversion_reading();
+        let reply = s.key(32, 32, 0);
+        assert!(reply.consumed);
+        assert!(s.is_converting());
+        assert_eq!(s.clause_readings().concat(), reading, "{raw}");
+        assert!(!reply.view.unwrap().clauses.is_empty(), "{raw}");
+    }
+}
+
+#[test]
+fn ctrl_enter_confirms_chat_preedit_before_allowing_a_send_shortcut() {
+    for converting in [false, true] {
+        let mut s = Session::default();
+        s.can_delete = false;
+        type_text(&mut s, "nihongo");
+        if converting {
+            s.key(32, 32, 0);
+        }
+        let shown = s.display(true);
+        let reply = s.key(13, 0, 2);
+        assert!(
+            reply.consumed,
+            "the first Ctrl+Enter must not submit the chat"
+        );
+        assert_eq!(reply.commits.len(), 1);
+        assert_eq!(reply.commits[0].text, shown);
+        assert!(reply.view.is_none());
+        let send = s.key(13, 0, 2);
+        assert!(!send.consumed);
+        assert!(send.commits.is_empty());
+    }
+}
+
+#[test]
+fn upstream_1048_english_final_d_or_t_stays_before_japanese_ha() {
+    for (raw, expected) in [
+        ("Androidha", "Androidは"),
+        ("androidha", "androidは"),
+        ("Redditha", "Redditは"),
+        ("redditha", "redditは"),
+        ("dha", "でゃ"),
+        ("tha", "てゃ"),
+    ] {
+        let mut s = Session::default();
+        type_text(&mut s, raw);
+        assert_eq!(s.display(false), expected, "{raw}");
+    }
+}

@@ -454,8 +454,6 @@ impl Session {
         {
             return vec![];
         }
-        let mut state = self.state.clone();
-        state.preferences = self.preferences.clone();
         let displayed = self.display(false);
         let english = displayed == self.raw && self.raw.bytes().all(|c| c.is_ascii_alphabetic());
         let reading = if self.uses_kana() {
@@ -470,7 +468,11 @@ impl Session {
                 .chars()
                 .all(|c| ('ぁ'..='ゖ').contains(&c) || c == 'ー')
         {
-            Linguistics::bundled().predict(&reading, &state)
+            Linguistics::bundled().predict_with_preferences(
+                &reading,
+                &self.state.phrases,
+                &self.preferences,
+            )
         } else {
             vec![]
         };
@@ -1642,7 +1644,16 @@ impl Session {
             self.begin_clauses(clauses);
             return;
         }
-        let reading = self.reading();
+        let mixed = self.conversion_reading();
+        // Mixed prose must keep English islands when matching converter clauses.
+        // Explicit conversion of an English-only word still uses its kana reading.
+        let reading = if mixed.chars().any(crate::linguistics::kana)
+            && mixed.chars().any(|c| c.is_ascii_alphabetic())
+        {
+            mixed
+        } else {
+            self.reading()
+        };
         // A residual alphabetic reading with no engine response still has a
         // Japanese clause and width alternatives. This also applies when the
         // platform adapter declines converter calls because Enabled is false
@@ -2313,6 +2324,18 @@ impl Session {
             if let Some(mapped) = mapped {
                 return self.key(mapped, 0, modifiers & 1);
             }
+        }
+        // Upstream PR #802: a send shortcut confirms preedit first. Passing
+        // Ctrl+Enter through can submit before the committed text reaches a chat.
+        if modifiers & 14 == 2
+            && vk == 0x0d
+            && !self.raw.is_empty()
+            && (!self.direct || reconverting)
+            && !self.private
+            && !code_direct
+            && self.settings.boolean("Enabled")
+        {
+            return self.commit();
         }
         if modifiers & 14 != 0
             || self.direct && !reconverting

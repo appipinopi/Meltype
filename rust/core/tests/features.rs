@@ -315,3 +315,112 @@ fn protected_spans_preserve_automatic_text_and_honor_explicit_width() {
     uppercase.key(0x79, 0, 0);
     assert_eq!(uppercase.commit().commits[0].text, "@name");
 }
+
+#[test]
+#[ignore = "manual prediction benchmark; run with --release --ignored --nocapture"]
+fn prediction_growth_timing() {
+    use std::{hint::black_box, time::Instant};
+    let dictionary = meltype_core::dictionary::Dictionary::bundled();
+    for round in 0..3 {
+        let start = Instant::now();
+        for _ in 0..200 {
+            black_box(dictionary.predict_english("hel"));
+        }
+        println!(
+            "ENGLISH_BENCH round={round} us={:.2}",
+            start.elapsed().as_secs_f64() * 1e6 / 200.0
+        );
+    }
+    for size in [0, 5000] {
+        let mut session = Session::default();
+        session
+            .settings
+            .set("LiveConversion", json!(false))
+            .unwrap();
+        session
+            .settings
+            .set("PredictiveCandidates", json!(true))
+            .unwrap();
+        session
+            .preferences
+            .user_dictionary
+            .insert("めるたいぷ".into(), vec!["Meltype".into()]);
+        type_text(&mut session, "meru");
+        for i in 0..size {
+            session
+                .state
+                .snippets
+                .insert(format!("snippet{i}"), "x".repeat(128));
+            session
+                .preferences
+                .selected
+                .insert(format!("よみ{i:05}"), format!("単語{i}"));
+        }
+        session.state.preferences = session.preferences.clone();
+        assert!(!session.predictions().is_empty());
+        for round in 0..3 {
+            let start = Instant::now();
+            for _ in 0..200 {
+                black_box(session.predictions());
+            }
+            println!(
+                "PREDICTION_BENCH size={size} round={round} us={:.2}",
+                start.elapsed().as_secs_f64() * 1e6 / 200.0
+            );
+        }
+    }
+}
+
+#[test]
+fn predictions_use_current_preferences_and_preserve_learning_order() {
+    use meltype_core::storage::{Phrase, State};
+    let mut state = State::default();
+    for (reading, text, count, used) in [
+        ("める", "完全一致は除外", 100, 100),
+        ("めるたいぷ", "学習", 3, 10),
+        ("めるたいぷ", "同順位の先", 2, 10),
+        ("めるたいぷ", "同順位の後", 2, 10),
+        ("めるたいぷ", "学習", 1, 20),
+    ] {
+        state.phrases.push(Phrase {
+            reading: reading.into(),
+            text: text.into(),
+            count,
+            used,
+        });
+    }
+    state.preferences.user_dictionary.insert(
+        "めるたいぷ".into(),
+        vec!["新しい登録".into(), "古い登録".into(), "学習".into()],
+    );
+    state
+        .preferences
+        .selected
+        .insert("めるたいぷ".into(), "選択履歴".into());
+    assert_eq!(
+        Linguistics::bundled().predict("める", &state),
+        ["学習", "同順位の先", "同順位の後", "古い登録", "新しい登録"]
+    );
+    state.phrases.clear();
+    assert_eq!(
+        Linguistics::bundled().predict("める", &state),
+        ["学習", "古い登録", "新しい登録", "選択履歴"]
+    );
+    assert!(Linguistics::bundled().predict("め", &state).is_empty());
+    let mut session = Session::default();
+    session.state = state;
+    session
+        .preferences
+        .user_dictionary
+        .insert("めるたいぷ".into(), vec!["Meltype".into()]);
+    session
+        .preferences
+        .selected
+        .insert("めるたいぷ".into(), "最新の選択".into());
+    type_text(&mut session, "meru");
+    let predictions = session.predictions();
+    assert!(predictions.contains(&"Meltype".into()));
+    assert!(predictions.contains(&"最新の選択".into()));
+    assert!(!predictions.contains(&"古い登録".into()));
+    assert!(!predictions.contains(&"選択履歴".into()));
+}
