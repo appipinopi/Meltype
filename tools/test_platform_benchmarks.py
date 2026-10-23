@@ -7,6 +7,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 
 def module(name, path):
@@ -51,6 +52,30 @@ class CoverageTests(unittest.TestCase):
 
 @unittest.skipIf(os.name == "nt", "wait4 is POSIX-only; Windows uses existing Win32 accounting")
 class ProcessTests(unittest.TestCase):
+    def test_prebuilt_comparison_preserves_posix_execute_permission(self):
+        comparison = module("comparison_posix", "compare-rust-benchmarks.py")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            host = root / "host"
+            host.write_text(f"#!{sys.executable}\n" +
+                "import json,sys\n"
+                "case=json.load(open(sys.argv[1]))[0]\n"
+                "for i in range(int(sys.argv[2])):\n"
+                " print(json.dumps(dict(case=case['name'],sample=i,total_ms=1,"
+                "responses=[json.dumps(dict(consumed=True,commits=[],view=None))])))\n")
+            host.chmod(0o755)
+            output = root / "result"
+            args = ["compare", "--old", str(host), "--new", str(host), "--old-ref", "pre3",
+                    "--new-ref", "pre4", "--output", str(output), "--samples", "3"]
+            with patch.object(sys, "argv", args), patch.object(comparison.benchmark, "fixtures",
+                    return_value=[dict(name="short_test", keys=[[13, 0, 0]])]), \
+                 patch.object(comparison.benchmark, "command", return_value="rustc test"), patch("builtins.print"):
+                comparison.main()
+            report = json.loads((output / "report.json").read_text())
+            self.assertTrue(os.access(output / "old", os.X_OK))
+            self.assertEqual(len(report["rows"]), 12)
+            self.assertTrue(report["results"][0]["eligible_for_speed_claim"])
+
     def test_separate_children_have_separate_peak_rss_and_failure_propagates(self):
         import subprocess
         with tempfile.TemporaryFile(mode="w+") as output:

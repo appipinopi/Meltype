@@ -26,7 +26,8 @@ def collect(directory):
         measurements.append(dict(
             os=HOSTS[host], backend=report.get("backend", "core"),
             machine=report["machine"], measured_at=report["measured_at"],
-            old_ref=report["old_ref"], new_ref=report["new_ref"],
+            old_ref=report["old_ref"], new_ref=report.get("new_commit", report["new_ref"]),
+            current_source=report.get("current_source", "not recorded"),
             old_version=report["old_version"], current_version=report["current_version"],
             fixtures_sha256=report["fixtures_sha256"], report=str(path.resolve()),
             cases=len(report["results"]), matching_cases=len(matching),
@@ -64,7 +65,7 @@ def main():
     for entry in report["measurements"]:
         rows += [f"## {entry['os']} / {entry['backend']}", "",
                  f"Rust {entry['old_version']} → {entry['current_version']}。状態一致 {entry['matching_cases']}/{entry['cases']}、現在版が速い入力 {entry['faster_cases']}/{entry['matching_cases']}。", "",
-                 f"環境: {entry['machine']}。現在版: `{entry['new_ref']}`。", "",
+                 f"環境: {entry['machine']}。現在版: `{entry['new_ref']}`（{entry['current_source']}。作業ツリーの場合は基点のコミット。実際のファイルのSHA-256は測定JSONに記録）。", "",
                  f"[測定JSON]({Path(entry['report']).as_posix()})", ""]
     (args.output / "README.md").write_text("\n".join(rows), encoding="utf-8")
     print("\n".join(rows))

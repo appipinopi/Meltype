@@ -150,7 +150,7 @@ def build_hosts(args, output):
         with (output / f"{label}-build.log").open("w", encoding="utf-8") as log:
             subprocess.run(command, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT, check=True)
         binary = output / f"{label}{SUFFIX}"
-        shutil.copyfile(target / "release/examples" / (("platform_benchmark" if args.backend == "native" else "benchmark") + SUFFIX), binary)
+        shutil.copy2(target / "release/examples" / (("platform_benchmark" if args.backend == "native" else "benchmark") + SUFFIX), binary)
         binaries[label] = binary
     dictionaries = {label: {p.name: sha(p) for p in sorted((root / "dictionaries").glob("*.txt"))} for label, root in roots.items()}
     version = tomllib.loads((current_root / "Cargo.toml").read_text(encoding="utf-8"))["workspace"]["package"]["version"]
@@ -231,10 +231,10 @@ def main():
         binaries = {}
         for label, path in (("old", args.old), ("new", args.new)):
             binaries[label] = output / f"{label}{SUFFIX}"
-            shutil.copyfile(path.resolve(), binaries[label])
+            shutil.copy2(path.resolve(), binaries[label])
         if args.csharp:
             binaries["csharp"] = output / ("csharp" + SUFFIX)
-            shutil.copyfile(args.csharp.resolve(), binaries["csharp"])
+            shutil.copy2(args.csharp.resolve(), binaries["csharp"])
         metadata = dict(old_ref=args.old_ref, new_ref=args.new_ref)
         if args.with_csharp:
             metadata.update(csharp_ref=args.csharp_ref, csharp_runtime="NativeAOT (prebuilt)")
