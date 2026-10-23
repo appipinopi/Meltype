@@ -3,8 +3,8 @@
 <a id="meltype-for-chromeos"></a>
 <p align="center"><img src="../assets/branding/readme/chromeos/hero.svg" alt="Meltype-flash for ChromeOS" width="1000"></p>
 <p align="center"><b>稲妻のように、言葉の壁を駆け抜ける日本語入力。</b></p>
-<p align="center"><a href="https://github.com/appipinopi/Meltype-Flash/releases/tag/flash-v0.1.0-preview.4"><img src="https://img.shields.io/badge/Flash-v0.1.0_Pre4-ffe34a" alt="Flash v0.1.0 Pre4"></a> <img src="https://img.shields.io/badge/status-開発プレビュー-666973" alt="開発プレビュー"></p>
-<p align="center"><a href="#インストール">ダウンロード・導入</a> · <a href="#使い方">使い方</a> · <a href="#困ったとき">困ったとき</a> · <a href="https://github.com/appipinopi/Meltype/issues/new/choose">不具合の報告・提案</a></p>
+<p align="center"><a href="https://github.com/appipinopi/Meltype-Flash/releases/tag/flash-v0.1.0-preview.5"><img src="https://img.shields.io/badge/Flash-v0.1.0_Pre5-ffe34a" alt="Flash v0.1.0 Pre5"></a> <img src="https://img.shields.io/badge/status-開発プレビュー-666973" alt="開発プレビュー"></p>
+<p align="center"><a href="#インストール">ダウンロード・導入</a> · <a href="#使い方">使い方</a> · <a href="#困ったとき">困ったとき</a> · <a href="https://github.com/appipinopi/Meltype-Flash/issues/new/choose">不具合の報告・提案</a></p>
 <p align="center">
   <a href="../rust/WINDOWS-PACKAGE.md"><img src="../assets/branding/readme/cards/os-windows.svg" alt="Windows" width="32%"></a>
   <a href="../linux/README.md"><img src="../assets/branding/readme/cards/os-linux.svg" alt="Linux" width="32%"></a>
@@ -27,7 +27,7 @@ ChromeOSの `chrome.input.ime` と共通Rust CoreのWASMを接続する、日本
 ローマ字・かな、英語・日本語の判定、漢字変換、予測候補、候補選択、設定と学習の保存を接続しています。
 漢字変換には、固定版Mozcの語彙と接続コストを同梱しています。「にほんご → 日本語」「きょうはいいてんきです → 今日はいい天気です」のように、端末内で変換します。Mozc本体とは異なる上限付きの探索処理であり、候補や順位はデスクトップ版と一致するとは限りません。
 設定画面では、通常入力とコード入力、サイトごとの切替、詳細JSON、スナップショットの保存を扱います。
-[導入画面の記録](docs/INSTALLATION.md) はありますが、Pre4の修正を含む実機での変換・各アプリ入力の確認は未完了です。
+[導入画面の記録](docs/INSTALLATION.md) はありますが、Pre5の修正を含む実機での変換・各アプリ入力の確認は未完了です。
 
 [動く環境](#動く環境) · [インストール](#インストール) · [使い方](#使い方) · [困ったとき](#困ったとき) · [アンインストール](#アンインストール) · [開発者向け](#開発者向け)
 
@@ -43,7 +43,7 @@ ChromeOSの `chrome.input.ime` と共通Rust CoreのWASMを接続する、日本
 <a id="インストール"></a>
 <h2><img src="../assets/branding/readme/chromeos/headings/4f36b3b314d8.svg" alt="インストール" width="1000"></h2>
 
-1. [FlashのPre4](https://github.com/appipinopi/Meltype-Flash/releases/tag/flash-v0.1.0-preview.4) から `Meltype-flash-ChromeOS.zip` を取得し、フォルダーへ全体展開します。
+1. [FlashのPre5](https://github.com/appipinopi/Meltype-Flash/releases/tag/flash-v0.1.0-preview.5) から `Meltype-flash-ChromeOS.zip` を取得し、フォルダーへ全体展開します。
 2. ChromeOSの `chrome://extensions` を開き、拡張機能の「デベロッパーモード」を有効にします。
 3. 「パッケージ化されていない拡張機能を読み込む」で、`manifest.json` のあるフォルダーを選びます。
 4. ChromeOSの言語・入力方法の設定からMeltypeを追加し、入力方法として選びます。
