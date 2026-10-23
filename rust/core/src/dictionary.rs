@@ -39,6 +39,7 @@ impl WordSet {
     fn contains<Q: AsRef<str> + ?Sized>(&self, word: &Q) -> bool {
         self.0.contains(word.as_ref())
     }
+    #[cfg(any(feature = "filesystem", test))]
     fn insert(&mut self, word: String) -> bool {
         self.0.insert(word.into_boxed_str())
     }
