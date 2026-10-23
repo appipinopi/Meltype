@@ -36,6 +36,7 @@ impl WordSet {
     fn new() -> Self {
         Self::default()
     }
+    #[inline]
     fn contains<Q: AsRef<str> + ?Sized>(&self, word: &Q) -> bool {
         self.0.contains(word.as_ref())
     }
