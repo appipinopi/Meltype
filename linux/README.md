@@ -3,8 +3,8 @@
 <a id="meltype-for-linux"></a>
 <p align="center"><img src="../assets/branding/readme/linux/hero.svg" alt="Meltype-flash for Linux" width="1000"></p>
 <p align="center"><b>稲妻のように、言葉の壁を駆け抜ける日本語入力。</b></p>
-<p align="center"><a href="https://github.com/appipinopi/Meltype-Flash/releases/tag/flash-v0.1.0-preview.4"><img src="https://img.shields.io/badge/Flash-v0.1.0_Pre4-ffe34a" alt="Flash v0.1.0 Pre4"></a> <img src="https://img.shields.io/badge/status-開発プレビュー-666973" alt="開発プレビュー"></p>
-<p align="center"><a href="#インストール">ダウンロード・導入</a> · <a href="#使い方">使い方</a> · <a href="#困ったとき">困ったとき</a> · <a href="https://github.com/appipinopi/Meltype/issues/new/choose">不具合の報告・提案</a></p>
+<p align="center"><a href="https://github.com/appipinopi/Meltype-Flash/releases/tag/flash-v0.1.0-preview.5"><img src="https://img.shields.io/badge/Flash-v0.1.0_Pre5-ffe34a" alt="Flash v0.1.0 Pre5"></a> <img src="https://img.shields.io/badge/status-開発プレビュー-666973" alt="開発プレビュー"></p>
+<p align="center"><a href="#インストール">ダウンロード・導入</a> · <a href="#使い方">使い方</a> · <a href="#困ったとき">困ったとき</a> · <a href="https://github.com/appipinopi/Meltype-Flash/issues/new/choose">不具合の報告・提案</a></p>
 <p align="center">
   <a href="../rust/WINDOWS-PACKAGE.md"><img src="../assets/branding/readme/cards/os-windows.svg" alt="Windows" width="32%"></a>
   <a href="README.md"><img src="../assets/branding/readme/cards/os-linux-active.svg" alt="Linux" width="32%"></a>
@@ -45,27 +45,15 @@ fcitx5を使う環境は、下記のソースビルドと開発状況を参照�
 <a id="ubuntu向けdeb"></a>
 <h3><img src="../assets/branding/readme/linux/headings/a3beabf6efc7.svg" alt="Ubuntu向けdeb" width="1000"></h3>
 
-[FlashのPre4](https://github.com/appipinopi/Meltype-Flash/releases/tag/flash-v0.1.0-preview.4) からCPUに合うdebを取得し、そのファイルがあるフォルダーで実行します。
+Pre5ではdebとARM64版を添付していません。次のx64向けtar.gzを使ってください。
+
+[Pre5](https://github.com/appipinopi/Meltype-Flash/releases/tag/flash-v0.1.0-preview.5)の`Meltype-flash-Linux-x64.tar.gz`を全体展開し、`Meltype-flash-linux`フォルダーで実行します。
 
 ```sh
-# x64
-sudo apt install ./meltype-flash_0.1.0-pre.3_amd64.deb
-# ARM64ではこちら
-# sudo apt install ./meltype-flash_0.1.0-pre.3_arm64.deb
+bash install.sh
 ```
 
-<a id="zipから入れる"></a>
-<h3><img src="../assets/branding/readme/linux/headings/49219135210e.svg" alt="ZIPから入れる" width="1000"></h3>
-
-`Meltype-flash-Linux-x64.zip` または `Meltype-flash-Linux-arm64.zip` を**全体展開**し、`install.sh` のあるフォルダーで実行します。
-
-```sh
-sudo bash install.sh --system
-```
-
-導入後はログアウト・ログインし、OSのキーボード設定またはIBusの入力ソースに **Meltype-flash** を追加して選びます。
-ZIP用インストーラーはIBusを自動再起動したり、既定の入力方法を変更したりしません。
-debとZIPの管理方法を混ぜず、どちらで導入したか記録してください。
+導入後はログアウト・ログインし、OSのIBus入力ソースにMeltype-flashを追加して選びます。標準の配布物は補助辞書による変換に制限があります。
 
 <a id="使い方"></a>
 <h2><img src="../assets/branding/readme/linux/headings/23ca31abc8fa.svg" alt="使い方" width="1000"></h2>

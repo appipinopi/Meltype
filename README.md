@@ -12,7 +12,7 @@ Windows・Mac・Linux・Android・ChromeOS・iOSで共通の入力コアを使�
 **現在は開発プレビューです。環境によって変換エンジン・設定・学習・操作が異なり、本家と同じ機能や精度を保証する完成版ではありません。**
 
 <p align="center">
-<a href="https://github.com/appipinopi/Meltype-Flash/releases/tag/flash-v0.1.0-preview.4"><b>ダウンロード</b></a> ·
+<a href="https://github.com/appipinopi/Meltype-Flash/releases/tag/flash-v0.1.0-preview.5"><b>ダウンロード</b></a> ·
 <a href="#使い始める">使い方</a> ·
 <a href="https://github.com/appipinopi/Meltype/issues/new/choose">不具合の報告・提案</a> ·
 <a href="rust/README.md">実装・検証の状況</a>
@@ -52,15 +52,15 @@ Windows・Mac・Linux・Android・ChromeOS・iOSで共通の入力コアを使�
 </p>
 <!-- meltype-flash-os-navigation:end -->
 
-公開済みのプレビューは [v0.1.0 Pre4](https://github.com/appipinopi/Meltype-Flash/releases/tag/flash-v0.1.0-preview.4) です。
+公開済みのプレビューは [v0.1.0 Pre5](https://github.com/appipinopi/Meltype-Flash/releases/tag/flash-v0.1.0-preview.5) です。
 [配布ファイルの選び方](rust/DOWNLOADS.md) で、OSとCPUに合うファイルを選んでください。
 ZIP・APK・IPAは互換ではありません。本家のC#版の配布ファイルをFlash用として案内していません。
 
 | 環境 | はじめの一歩 |
 | --- | --- |
-| Windows | `Meltype-flash-0.1.0-pre.3-setup.exe` を開く。登録不要のポータブル版もあります。 |
+| Windows | `Meltype-flash-Windows-x64.zip`を展開し、`Manage-Windows.ps1`で導入。登録不要の試用も同梱。 |
 | Mac | CPUに合うmacOS ZIPを全体展開し、`Install Meltype.command` を実行。 |
-| Linux | Ubuntu向けdeb、またはCPUに合うZIPを選び、IBusへ追加。 |
+| Linux | Linux x64向けtar.gzを展開して導入し、IBusへ追加。 |
 | Android | 開発用APKを導入し、システムのキーボード設定で有効化。 |
 | ChromeOS | ZIPを展開し、拡張機能として読み込んで入力方法に追加。 |
 | iOS | 未署名IPAを自分で署名、またはXcodeでビルドしてキーボードを追加。 |
