@@ -101,13 +101,20 @@ jobs:
         run: node .github/bot/pr-checks.mjs cases "$RUNNER_TEMP/cases.txt"
         env:
           GITHUB_TOKEN: ${{ github.token }}
-      - if: steps.cases.outputs.count != '0'
+      - if: steps.cases.outputs.count != '0' && github.event.pull_request.base.ref != 'rust'
         uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
         with:
           dotnet-version: 10.0.x
-      - if: steps.cases.outputs.count != '0'
+      - if: steps.cases.outputs.count != '0' && github.event.pull_request.base.ref != 'rust'
         run: |
           dotnet run --project src/Meltype.Core.Tests -c Release -- --expect "$RUNNER_TEMP/cases.txt" "$RUNNER_TEMP/cases.json"
+          node .github/bot/pr-checks.mjs expect "$RUNNER_TEMP/cases.json"
+      - if: steps.cases.outputs.count != '0' && github.event.pull_request.base.ref == 'rust'
+        uses: dtolnay/rust-toolchain@stable
+      - if: steps.cases.outputs.count != '0' && github.event.pull_request.base.ref == 'rust'
+        run: |
+          cargo test -p meltype-core --locked --example pr_expect
+          cargo run -p meltype-core --locked --example pr_expect -- "$RUNNER_TEMP/cases.txt" "$RUNNER_TEMP/cases.json"
           node .github/bot/pr-checks.mjs expect "$RUNNER_TEMP/cases.json"
   verify:
     name: Flash identity
