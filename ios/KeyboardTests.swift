@@ -20,6 +20,7 @@ final class Document: NSObject, UITextDocumentProxy {
 final class TestKeyboard: KeyboardViewController {
     let document = Document()
     override var initialFlickLayout: Bool? { false }
+    override var allowsSystemKeyboardSwitch: Bool { false }
     override var textDocumentProxy: UITextDocumentProxy { document }
 }
 final class KeyboardTests: XCTestCase {
