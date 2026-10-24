@@ -137,6 +137,14 @@ Mozcヘルパーがない場合は、補助辞書によるパッケージを作�
 fcitx5のRustアダプターは `linux/fcitx5` にあり、必要な開発用ライブラリとCMakeを使います。[Rust用CI](../.github/workflows/rust.yml) と [移行記録](../rust/MIGRATION.md) を参照してください。
 本家向けの `linux/build.sh` / `linux/install.sh` とFlashの上記スクリプトを取り違えないでください。
 
+### ターミナルと追加の切替キー
+
+ターミナルは英数のコード入力を既定にします。半角/全角でその入力行を日本語にし、もう一度押すと英数へ戻せます。カーソル移動・Tab・Ctrl操作で入力欄へキーを渡した場合や、フォーカスを移した場合は、コード入力へ戻ります。
+
+Rust版IBusとfcitx5では、既存の設定 `ToggleKeyboardShortcuts` に `Shift+Space; Ctrl+Space` のように指定すると、それらを切替キーとして処理します。切替時は表示中の入力を一度だけ確定し、余分な空白を挿入しません。設定が空なら、Shift+Spaceの従来の動作を保ちます。
+
+IBusはWSLの隔離したXvfb・D-Bus環境でも検証しています。通常のデスクトップや各アプリでの実機確認とは区別してください。
+
 <a id="ライセンス"></a>
 <h2><img src="../assets/branding/readme/linux/headings/c9f99e4fd56f.svg" alt="ライセンス" width="1000"></h2>
 

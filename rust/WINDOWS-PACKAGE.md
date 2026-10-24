@@ -3,7 +3,7 @@
 <a id="meltype-for-windows"></a>
 <p align="center"><img src="../assets/branding/readme/windows/hero.svg" alt="Meltype-flash for Windows" width="1000"></p>
 <p align="center"><b>稲妻のように、言葉の壁を駆け抜ける日本語入力。</b></p>
-<p align="center"><a href="https://github.com/appipinopi/Meltype-Flash/releases/tag/flash-v0.1.0-preview.5"><img src="https://img.shields.io/badge/Flash-v0.1.0_Pre5-ffe34a" alt="Flash v0.1.0 Pre5"></a> <img src="https://img.shields.io/badge/status-開発プレビュー-666973" alt="開発プレビュー"></p>
+<p align="center"><a href="https://github.com/appipinopi/Meltype-Flash/releases/tag/flash-v0.1.0-preview.6"><img src="https://img.shields.io/badge/Flash-v0.1.0_Pre6-ffe34a" alt="Flash v0.1.0 Pre6"></a> <img src="https://img.shields.io/badge/status-開発プレビュー-666973" alt="開発プレビュー"></p>
 <p align="center"><a href="#インストール">ダウンロード・導入</a> · <a href="#使い方">使い方</a> · <a href="#困ったとき">困ったとき</a> · <a href="https://github.com/appipinopi/Meltype-Flash/issues/new/choose">不具合の報告・提案</a></p>
 <p align="center">
   <a href="WINDOWS-PACKAGE.md"><img src="../assets/branding/readme/cards/os-windows-active.svg" alt="Windows" width="32%"></a>
@@ -47,14 +47,14 @@ Windows ARM64向けのネイティブ配布を案内するものではありま�
 <a id="セットアップ版"></a>
 <h3><img src="../assets/branding/readme/windows/headings/f361bd6b29a2.svg" alt="セットアップ版" width="1000"></h3>
 
-Pre5ではセットアップEXEは添付していません。次のZIPからの導入手順を使ってください。
+Pre6ではセットアップEXEは添付していません。次のZIPからの導入手順を使ってください。
 
 警告やセキュリティ製品の検出が出た場合は、配布元・ファイル名・チェックサムを確認し、保護機能の無効化を前提に進めないでください。
 
 <a id="zipから登録する"></a>
 <h3><img src="../assets/branding/readme/windows/headings/b7962eec4c15.svg" alt="ZIPから登録する" width="1000"></h3>
 
-[Pre5](https://github.com/appipinopi/Meltype-Flash/releases/tag/flash-v0.1.0-preview.5)の`Meltype-flash-Windows-x64.zip`を全体展開します。
+[Pre6](https://github.com/appipinopi/Meltype-Flash/releases/tag/flash-v0.1.0-preview.6)の`Meltype-flash-Windows-x64.zip`を全体展開します。
 管理者PowerShellで、そのフォルダーから実行します。
 
 ```powershell

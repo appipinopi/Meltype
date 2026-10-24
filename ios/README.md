@@ -64,6 +64,10 @@ IPAをファイルアプリで開いたり、ZIPの拡張子を変更したり�
 AltStore PALとは別の導入方法です。[更新と制限](https://faq.altstore.io/altstore-classic/your-altstore)、[App IDの説明](https://faq.altstore.io/altstore-classic/app-ids) も参照してください。
 この経路による実機入力は未検証です。署名・導入サービス側の画面や条件は公式の案内を優先してください。
 
+### AltStore PALでの配布準備
+
+Pre6以降に向けた[署名・公証・PALソースJSONの生成手順](ALTSTORE-PAL.md)を用意しています。PALへの公開はまだ完了していません。有料のApple Developer登録とAppleの公証が必要で、上記の未署名IPAはPALへ直接登録できません。この準備では版番号や公開タグを変更しません。
+
 <a id="キーボードを有効にする"></a>
 <h3><img src="../assets/branding/readme/ios/headings/819be477da10.svg" alt="キーボードを有効にする" width="1000"></h3>
 

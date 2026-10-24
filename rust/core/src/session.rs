@@ -4,6 +4,7 @@ mod clause_metadata;
 mod direct;
 mod engine_learning;
 mod misspelling;
+mod mode;
 mod reconversion;
 mod v130;
 #[cfg(feature = "filesystem")]
@@ -1335,6 +1336,14 @@ impl Session {
         if space_around {
             text = space_english(&text, &self.before, &self.after);
         }
+        if format_phrases
+            && self.settings.boolean("SpaceAroundNumbers")
+            && !self.direct
+            && !self.private
+            && !self.code_english()
+        {
+            text = crate::phrase_spacing::space_numbers(&text, &self.before, &self.after);
+        }
         let english =
             !text.trim().is_empty() && text.trim().bytes().all(|b| b.is_ascii_alphabetic());
         let after_english = self.dictionary().english_context(&self.before);
@@ -2352,6 +2361,25 @@ impl Session {
             result.consumed = false;
             return result;
         }
+        if self.settings.boolean("NumpadDirect")
+            && matches!(vk, 0x60..=0x69 | 0x6a | 0x6b | 0x6d..=0x6f)
+            && matches!(
+                char::from_u32(ch as u32),
+                Some('0'..='9' | '*' | '+' | '-' | '.' | '/')
+            )
+        {
+            let mut result = self.commit();
+            let text = char::from_u32(ch as u32).unwrap().to_string();
+            self.before.push_str(&text);
+            result.commits.push(TextEdit {
+                text,
+                delete_before: 0,
+                caret_back: 0,
+                expect: None,
+            });
+            result.consumed = true;
+            return result;
+        }
         if self.is_converting()
             && modifiers & 1 == 0
             && (matches!(vk, 0x31..=0x39) && !self.uses_kana() || matches!(vk, 0x61..=0x69))
@@ -2580,6 +2608,16 @@ impl Session {
                 self.begin_conversion(vec![]);
                 self.result(true)
             }
+            0x1d if self.settings.boolean("MuhenkanKatakanaCycle") && !self.raw.is_empty() => self
+                .key(
+                    match self.function_key {
+                        0x76 => 0x77,
+                        0x77 => 0x75,
+                        _ => 0x76,
+                    },
+                    0,
+                    modifiers,
+                ),
             0x1d if self.settings.boolean("SeparateKeyRoles") && !self.raw.is_empty() => {
                 self.key(0x79, 0, modifiers)
             }
@@ -2669,6 +2707,18 @@ impl Session {
                     };
                     self.sync_clause();
                 }
+                self.result(true)
+            }
+            0x21 | 0x22 if self.is_converting() => {
+                let pages = self.candidates.len().div_ceil(9);
+                let current = self.selected / 9;
+                let target_page = if vk == 0x21 {
+                    (current + pages - 1) % pages
+                } else {
+                    (current + 1) % pages
+                };
+                let target = (target_page * 9 + self.selected % 9).min(self.candidates.len() - 1);
+                self.cycle(target as i32 - self.selected as i32);
                 self.result(true)
             }
             0x26 | 0x28 | 0x09 if self.is_converting() => {
@@ -2827,6 +2877,7 @@ impl Session {
                 }
                 let character = char::from_u32(ch as u32).unwrap();
                 if self.edited_units.is_none()
+                    && !self.settings.boolean("DisableZShortcuts")
                     && !self.uses_kana()
                     && crate::protection::scan(&self.raw).is_empty()
                     && romaji::z_symbol(character).is_some()
@@ -2843,7 +2894,10 @@ impl Session {
                 }
                 if let Some(units) = self.edited_units.as_mut() {
                     if units.raw() == self.raw {
-                        units.push(&character.to_string());
+                        units.push(
+                            &character.to_string(),
+                            !self.settings.boolean("DisableZShortcuts"),
+                        );
                     } else {
                         self.edited_units = None;
                     }
