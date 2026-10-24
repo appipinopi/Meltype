@@ -99,7 +99,11 @@ final class KeyboardPreviewView: UIView {
         ])
         column.addArrangedSubview(composing)
         column.setCustomSpacing(10, after: composing)
-        for letters in [Array("qwertyuiop").map(String.init), Array("asdfghjkl").map(String.init), ["⇧"] + Array("zxcvbnm").map(String.init) + ["⌫"], ["123", "◎", "空白・変換", "確定 ↵"]] {
+        let top: [String] = "qwertyuiop".map { String($0) }
+        let middle: [String] = "asdfghjkl".map { String($0) }
+        let bottom: [String] = ["⇧"] + "zxcvbnm".map { String($0) } + ["⌫"]
+        let rows: [[String]] = [top, middle, bottom, ["123", "◎", "空白・変換", "確定 ↵"]]
+        for letters in rows {
             let row = UIStackView(); row.distribution = .fillEqually; row.spacing = 4
             row.heightAnchor.constraint(equalToConstant: 28).isActive = true
             for text in letters {
