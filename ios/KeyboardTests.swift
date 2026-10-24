@@ -19,9 +19,80 @@ final class Document: NSObject, UITextDocumentProxy {
 }
 final class TestKeyboard: KeyboardViewController {
     let document = Document()
+    override var initialFlickLayout: Bool? { false }
     override var textDocumentProxy: UITextDocumentProxy { document }
 }
 final class KeyboardTests: XCTestCase {
+    @MainActor
+    private func flickKey(_ center: String, keyboard: TestKeyboard) -> FlickKey {
+        func find(_ view: UIView) -> FlickKey? {
+            if let key = view as? FlickKey, key.kana[0] == center { return key }
+            return view.subviews.compactMap(find).first
+        }
+        return find(keyboard.view)!
+    }
+    @MainActor
+    func testFlickDirectionsCancelAndReturnToCenter() {
+        var output: [String] = []
+        let key = FlickKey(kana: FlickKana.groups[0]) { output.append($0) }
+        for offset in [CGPoint.zero, CGPoint(x: -20, y: 0), CGPoint(x: 0, y: -20), CGPoint(x: 20, y: 0), CGPoint(x: 0, y: 20)] {
+            key.updateSelection(offset: offset); key.sendActions(for: .touchUpOutside)
+        }
+        XCTAssertEqual(output, ["あ", "い", "う", "え", "お"])
+        key.updateSelection(offset: CGPoint(x: 30, y: 0)); key.cancelTracking(with: nil)
+        XCTAssertEqual(output.count, 5)
+        key.sendActions(for: .touchUpInside)
+        XCTAssertEqual(output.last, "あ")
+        XCTAssertEqual(FlickKana.direction(CGPoint(x: 11, y: -11)), 0)
+        XCTAssertEqual(FlickKana.direction(CGPoint(x: 5, y: -18)), 2)
+        key.updateSelection(offset: CGPoint(x: 20, y: 0)); key.updateSelection(offset: .zero)
+        key.sendActions(for: .touchUpInside); XCTAssertEqual(output.last, "あ")
+    }
+    @MainActor
+    func testFlickComposeVariantsAndLayoutSwitchThroughProxy() {
+        let keyboard = TestKeyboard(); keyboard.loadViewIfNeeded()
+        tap("かなフリックに切替", in: keyboard.view)
+        flickKey("は", keyboard: keyboard).sendActions(for: .touchUpInside)
+        tap("゛小゜", in: keyboard.view); tap("゛小゜", in: keyboard.view)
+        let tsu = flickKey("た", keyboard: keyboard)
+        tsu.updateSelection(offset: CGPoint(x: 0, y: -24)); tsu.sendActions(for: .touchUpInside)
+        tap("゛小゜", in: keyboard.view)
+        let ya = flickKey("や", keyboard: keyboard)
+        ya.updateSelection(offset: CGPoint(x: 0, y: -24)); ya.sendActions(for: .touchUpInside)
+        tap("゛小゜", in: keyboard.view)
+        tap("ABC・QWERTYに切替", in: keyboard.view)
+        XCTAssertEqual(keyboard.document.text, "ぱっゅ")
+        tap("a", in: keyboard.view); tap("確定 ↵", in: keyboard.view)
+        XCTAssertTrue(keyboard.document.text.hasSuffix("あ"))
+        let before = keyboard.document.text
+        tap("かなフリックに切替", in: keyboard.view)
+        tap("゛小゜", in: keyboard.view)
+        XCTAssertEqual(keyboard.document.text, before)
+        tap("⌫", in: keyboard.view)
+        XCTAssertEqual(keyboard.document.text, String(before.dropLast()))
+    }
+    @MainActor
+    func testFlickCandidateSelectionCommitsToHost() {
+        let keyboard = TestKeyboard(); keyboard.loadViewIfNeeded()
+        tap("かなフリックに切替", in: keyboard.view)
+        let ni = flickKey("な", keyboard: keyboard)
+        ni.updateSelection(offset: CGPoint(x: -24, y: 0)); ni.sendActions(for: .touchUpInside)
+        let ho = flickKey("は", keyboard: keyboard)
+        ho.updateSelection(offset: CGPoint(x: 0, y: 24)); ho.sendActions(for: .touchUpInside)
+        let n = flickKey("わ", keyboard: keyboard)
+        n.updateSelection(offset: CGPoint(x: 0, y: -24)); n.sendActions(for: .touchUpInside)
+        flickKey("か", keyboard: keyboard).updateSelection(offset: CGPoint(x: 0, y: 24))
+        flickKey("か", keyboard: keyboard).sendActions(for: .touchUpInside)
+        tap("゛小゜", in: keyboard.view)
+        tap("空白・変換", in: keyboard.view)
+        func buttons(_ view: UIView) -> [UIButton] {
+            (view as? UIButton).map { [$0] } ?? view.subviews.flatMap(buttons)
+        }
+        let candidate = buttons(keyboard.view).first { $0.title(for: .normal)?.contains("ニホンゴ") == true }
+        XCTAssertNotNil(candidate)
+        candidate?.sendActions(for: .touchUpInside)
+        XCTAssertEqual(keyboard.document.text, "ニホンゴ")
+    }
     @MainActor
     func testAppearanceImagePreparationAndRemovalPreserveTheme() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)

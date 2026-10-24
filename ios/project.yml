@@ -8,14 +8,14 @@ settings:
     SWIFT_VERSION: '5.0'
     ARCHS: arm64
     MARKETING_VERSION: '0.1.0'
-    CURRENT_PROJECT_VERSION: '7'
+    CURRENT_PROJECT_VERSION: '8'
     CODE_SIGNING_ALLOWED: NO
     MELTYPE_APP_GROUP: group.com.appipinopi.meltypeflash
 targets:
   MeltypeFlash:
     type: application
     platform: iOS
-    sources: [App.swift, AppStyle.swift, KeyboardAppearance.swift, AppearanceViewController.swift, Assets.xcassets]
+    sources: [App.swift, AppStyle.swift, KeyboardAppearance.swift, AppearanceViewController.swift, KeyboardDemoViewController.swift, KeyboardViewController.swift, FlickKey.swift, Assets.xcassets]
     entitlements:
       path: generated/App.entitlements
       properties:
@@ -24,6 +24,9 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.appipinopi.meltypeflash
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        SWIFT_OBJC_BRIDGING_HEADER: Bridge.h
+        LIBRARY_SEARCH_PATHS: ['$(inherited)', '$(PROJECT_DIR)/lib/$(PLATFORM_NAME)']
+        OTHER_LDFLAGS: ['$(inherited)', '-lmeltype_ios', '-liconv']
         TARGETED_DEVICE_FAMILY: '1,2'
     info:
       path: generated/App-Info.plist
@@ -39,7 +42,7 @@ targets:
   MeltypeFlashKeyboard:
     type: app-extension
     platform: iOS
-    sources: [KeyboardViewController.swift, KeyboardAppearance.swift]
+    sources: [KeyboardViewController.swift, FlickKey.swift, KeyboardAppearance.swift]
     entitlements:
       path: generated/Keyboard.entitlements
       properties:
@@ -80,7 +83,7 @@ targets:
   KeyboardTests:
     type: bundle.unit-test
     platform: iOS
-    sources: [KeyboardViewController.swift, KeyboardAppearance.swift, KeyboardTests.swift]
+    sources: [KeyboardViewController.swift, FlickKey.swift, KeyboardAppearance.swift, KeyboardTests.swift]
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES

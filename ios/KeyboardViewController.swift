@@ -17,6 +17,8 @@ struct EngineReply: Decodable {
 }
 
 class KeyboardViewController: UIInputViewController {
+    var initialFlickLayout: Bool? { nil }
+    var allowsSystemKeyboardSwitch: Bool { needsInputModeSwitchKey }
     private var session: UInt64 = 0
     private let preedit = PreeditLabel()
     private let candidates = UIStackView()
@@ -25,6 +27,10 @@ class KeyboardViewController: UIInputViewController {
     private var upper = false
     private var letters = [UIButton]()
     private var globe: UIButton?
+    private let keyArea = UIStackView()
+    private var flick = false
+    private var modeKey: UIButton?
+    private var lastFlick: String?
     private let appearanceStore = KeyboardAppearanceStore()
     private let backdrop = KeyboardBackdrop()
     private var appearance = KeyboardAppearance()
@@ -72,6 +78,22 @@ class KeyboardViewController: UIInputViewController {
             candidates.heightAnchor.constraint(equalTo: scroll.frameLayoutGuide.heightAnchor)
         ])
         column.addArrangedSubview(scroll)
+        let mode = button("かなフリック") { [weak self] in self?.toggleLayout() }
+        mode.accessibilityIdentifier = "keyboard-layout-toggle"
+        mode.heightAnchor.constraint(equalToConstant: 34).isActive = true
+        modeKey = mode; column.addArrangedSubview(mode)
+        keyArea.axis = .vertical; keyArea.spacing = 7
+        column.addArrangedSubview(keyArea)
+        flick = initialFlickLayout ?? (UserDefaults.standard.string(forKey: "keyboard-layout") == "flick")
+        rebuildKeys()
+        reloadAppearance()
+    }
+    private func rebuildKeys() {
+        for child in keyArea.arrangedSubviews { keyArea.removeArrangedSubview(child); child.removeFromSuperview() }
+        letters.removeAll(); globe = nil
+        modeKey?.setTitle(flick ? "ABC・QWERTYに切替" : "かなフリックに切替", for: .normal)
+        modeKey?.accessibilityValue = flick ? "かなフリック" : "QWERTY"
+        if flick { buildFlickKeys(); applyAppearance(); return }
         for row in ["qwertyuiop", "asdfghjkl", "zxcvbnm", "1234567890", "-@/.,?!"] {
             let line = makeRow()
             for character in row {
@@ -83,7 +105,7 @@ class KeyboardViewController: UIInputViewController {
                 if character.isLetter { letters.append(key) }
                 line.addArrangedSubview(key)
             }
-            column.addArrangedSubview(line)
+            keyArea.addArrangedSubview(line)
         }
         let actions = makeRow()
         let switchKey = button("🌐") { }
@@ -101,18 +123,62 @@ class KeyboardViewController: UIInputViewController {
             self.applyAppearance()
         })
         actions.addArrangedSubview(button("空白・変換") { [weak self] in self?.type(" ") })
-        actions.addArrangedSubview(button("⌫") { [weak self] in
-            guard let self = self else { return }
-            if self.composing { self.apply(meltype_ios_key(self.session, 8, 0, 0)) }
-            else { self.textDocumentProxy.deleteBackward() }
-        })
-        actions.addArrangedSubview(button("確定 ↵") { [weak self] in
-            guard let self = self else { return }
-            if self.composing { self.apply(meltype_ios_commit(self.session)) }
-            else { self.textDocumentProxy.insertText("\n") }
-        })
-        column.addArrangedSubview(actions)
-        reloadAppearance()
+        actions.addArrangedSubview(button("⌫") { [weak self] in self?.deleteCharacter() })
+        actions.addArrangedSubview(button("確定 ↵") { [weak self] in self?.confirm() })
+        keyArea.addArrangedSubview(actions)
+        applyAppearance()
+    }
+    private func toggleLayout() {
+        if composing { apply(meltype_ios_commit(session)) }
+        lastFlick = nil; upper = false; flick.toggle()
+        UserDefaults.standard.set(flick ? "flick" : "qwerty", forKey: "keyboard-layout")
+        rebuildKeys()
+    }
+    private func buildFlickKeys() {
+        for rowIndex in 0..<4 {
+            let row = makeRow(height: 58)
+            for column in 0..<3 {
+                if rowIndex == 3 && column == 0 {
+                    let variant = button("゛小゜") { [weak self] in self?.changeVariant() }
+                    variant.accessibilityLabel = "濁点・半濁点・小文字を切替"
+                    row.addArrangedSubview(variant)
+                } else {
+                    let index = rowIndex == 3 ? 8 + column : rowIndex * 3 + column
+                    let key = FlickKey(kana: FlickKana.groups[index]) { [weak self] in self?.inputKana($0) }
+                    decorate(key); row.addArrangedSubview(key)
+                }
+            }
+            switch rowIndex {
+            case 0: row.addArrangedSubview(button("⌫") { [weak self] in self?.deleteCharacter() })
+            case 1: row.addArrangedSubview(button("空白・変換") { [weak self] in self?.type(" ") })
+            case 2: row.addArrangedSubview(button("確定 ↵") { [weak self] in self?.confirm() })
+            default:
+                let switchKey = button("🌐") { }
+                switchKey.addTarget(self, action: #selector(handleInputModeList(from:with:)), for: .allTouchEvents)
+                switchKey.accessibilityLabel = "次のキーボード"; globe = switchKey
+                row.addArrangedSubview(switchKey)
+            }
+            keyArea.addArrangedSubview(row)
+        }
+    }
+    private func inputKana(_ text: String) {
+        type(text)
+        lastFlick = composing ? text : nil
+    }
+    private func changeVariant() {
+        guard composing, let last = lastFlick, let changed = FlickKana.variant(last) else { return }
+        apply(meltype_ios_key(session, 8, 0, 0))
+        inputKana(changed)
+    }
+    private func deleteCharacter() {
+        lastFlick = nil
+        if composing { apply(meltype_ios_key(session, 8, 0, 0)) }
+        else { textDocumentProxy.deleteBackward() }
+    }
+    private func confirm() {
+        lastFlick = nil
+        if composing { apply(meltype_ios_commit(session)) }
+        else { textDocumentProxy.insertText("\n") }
     }
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
@@ -137,6 +203,7 @@ class KeyboardViewController: UIInputViewController {
                 let accent = title == "確定 ↵" || (title == "⇧" && upper)
                 key.backgroundColor = accent ? UIColor(red: 1, green: 0.86, blue: 0.16, alpha: 1) : appearance.theme.key
                 key.setTitleColor(accent ? UIColor(white: 0.1, alpha: 1) : appearance.theme.text, for: .normal)
+                (key as? FlickKey)?.setHintColor(appearance.theme.text)
             }
             parent.subviews.forEach(style)
         }
@@ -148,7 +215,9 @@ class KeyboardViewController: UIInputViewController {
     }
     override func viewWillLayoutSubviews() {
         super.viewWillLayoutSubviews()
-        globe?.isHidden = !needsInputModeSwitchKey
+        globe?.isHidden = !flick && !allowsSystemKeyboardSwitch
+        globe?.isEnabled = allowsSystemKeyboardSwitch
+        globe?.alpha = allowsSystemKeyboardSwitch ? 1 : 0
     }
     override func textWillChange(_ textInput: UITextInput?) {
         super.textWillChange(textInput)
@@ -160,11 +229,11 @@ class KeyboardViewController: UIInputViewController {
     }
     deinit { if session != 0 { meltype_ios_destroy(session) } }
 
-    private func makeRow() -> UIStackView {
+    private func makeRow(height: CGFloat = 44) -> UIStackView {
         let row = UIStackView()
         row.distribution = .fillEqually
         row.spacing = 5
-        row.heightAnchor.constraint(equalToConstant: 44).isActive = true
+        row.heightAnchor.constraint(equalToConstant: height).isActive = true
         return row
     }
     private func button(_ title: String, action: @escaping () -> Void) -> UIButton {
@@ -175,6 +244,11 @@ class KeyboardViewController: UIInputViewController {
         key.titleLabel?.textAlignment = .center
         key.titleLabel?.adjustsFontSizeToFitWidth = true
         key.titleLabel?.minimumScaleFactor = 0.8
+        decorate(key)
+        key.addAction(UIAction { _ in action() }, for: .touchUpInside)
+        return key
+    }
+    private func decorate(_ key: UIButton) {
         key.backgroundColor = appearance.theme.key
         key.setTitleColor(appearance.theme.text, for: .normal)
         key.layer.cornerRadius = 8
@@ -183,10 +257,9 @@ class KeyboardViewController: UIInputViewController {
         key.layer.shadowOpacity = 0.12
         key.layer.shadowOffset = CGSize(width: 0, height: 1)
         key.layer.shadowRadius = 0
-        key.addAction(UIAction { _ in action() }, for: .touchUpInside)
-        return key
     }
     private func type(_ text: String) {
+        lastFlick = nil
         guard let scalar = text.unicodeScalars.first else { return }
         let vk = text == " " ? 32 : Int32(text.uppercased().unicodeScalars.first!.value)
         if !apply(meltype_ios_key(session, vk, Int32(scalar.value), upper ? 1 : 0)) {
@@ -195,6 +268,7 @@ class KeyboardViewController: UIInputViewController {
     }
     @discardableResult
     private func apply(_ pointer: UnsafeMutablePointer<CChar>?) -> Bool {
+        lastFlick = nil
         guard let pointer = pointer else { return false }
         defer { meltype_ios_free(pointer) }
         guard let reply = try? JSONDecoder().decode(EngineReply.self, from: Data(String(cString: pointer).utf8)) else { return false }

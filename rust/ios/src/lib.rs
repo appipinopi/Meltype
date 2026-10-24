@@ -96,6 +96,37 @@ mod tests {
         value
     }
     #[test]
+    fn flick_kana_composes_converts_and_replaces_without_host_deletion() {
+        let handle = meltype_ios_create();
+        let mut last = serde_json::Value::Null;
+        for ch in "にほんご".chars() {
+            last = read(meltype_ios_key(handle, ch as i32, ch as i32, 0));
+            assert!(last["commits"].as_array().unwrap().is_empty());
+        }
+        assert_eq!(last["view"]["text"], "にほんご");
+        let conversion = read(meltype_ios_key(handle, 32, 32, 0));
+        assert!(
+            conversion["view"]["candidates"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|s| s == "ニホンゴ"),
+            "{conversion}"
+        );
+        read(meltype_ios_reset(handle));
+        for ch in "は".chars() {
+            read(meltype_ios_key(handle, ch as i32, ch as i32, 0));
+        }
+        read(meltype_ios_key(handle, 8, 0, 0));
+        for ch in "ぱっゅ".chars() {
+            read(meltype_ios_key(handle, ch as i32, ch as i32, 0));
+        }
+        let result = read(meltype_ios_commit(handle));
+        assert_eq!(result["commits"][0]["text"], "ぱっゅ");
+        assert_eq!(result["commits"][0]["deleteBefore"], 0);
+        meltype_ios_destroy(handle);
+    }
+    #[test]
     fn input_commit_reset_and_stale_handles() {
         let handle = meltype_ios_create();
         let mut last = serde_json::Value::Null;

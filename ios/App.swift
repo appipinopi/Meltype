@@ -79,6 +79,11 @@ final class SetupViewController: UIViewController, UITextViewDelegate {
         let customize = AppStyle.button("自分らしいキーボードに", symbol: "paintpalette") { [weak self] in self?.openAppearance() }
         customize.accessibilityIdentifier = "open-appearance"
         stack.addArrangedSubview(customize)
+        let flickDemo = AppStyle.button("フリック入力を試す", symbol: "hand.draw") { [weak self] in
+            self?.navigationController?.pushViewController(KeyboardDemoViewController(), animated: true)
+        }
+        flickDemo.accessibilityIdentifier = "open-flick-demo"
+        stack.addArrangedSubview(flickDemo)
         let test = AppStyle.column(spacing: 12)
         test.addArrangedSubview(AppStyle.row([AppStyle.symbol("square.and.pencil"), AppStyle.label("さっそく、書いてみよう", .headline)]))
         test.addArrangedSubview(AppStyle.label("入力欄で🌐を長押しして、Meltype-flashへ。", .footnote, color: .secondaryLabel))
