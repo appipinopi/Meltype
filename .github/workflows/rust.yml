@@ -1,6 +1,12 @@
 name: 全OSビルド・テスト
 on:
   workflow_dispatch:
+    inputs:
+      platform:
+        description: ビルド対象（iosでiOS版だけを実行）
+        type: choice
+        options: [all, ios]
+        default: all
   workflow_call:
     inputs:
       packages_only:
@@ -39,7 +45,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   desktop:
-    if: ${{ !inputs.packages_only }}
+    if: ${{ !inputs.packages_only && inputs.platform != 'ios' }}
     strategy:
       fail-fast: false
       matrix:
@@ -460,6 +466,7 @@ jobs:
             rust/README.md
             quality-report.json
   android:
+    if: ${{ inputs.platform != 'ios' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     concurrency:
@@ -525,6 +532,7 @@ jobs:
             LICENSE
             THIRD-PARTY-NOTICES.md
   extension:
+    if: ${{ inputs.platform != 'ios' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -551,7 +559,7 @@ jobs:
           name: Meltype-ChromeOS-preview
           path: dist/chromeos-preview.zip
   fcitx-sdk:
-    if: ${{ !inputs.packages_only }}
+    if: ${{ !inputs.packages_only && inputs.platform != 'ios' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -588,7 +596,7 @@ jobs:
           path: dist/fcitx-abi
           if-no-files-found: ignore
   macos-sdk:
-    if: ${{ !inputs.packages_only }}
+    if: ${{ !inputs.packages_only && inputs.platform != 'ios' }}
     runs-on: macos-15
     timeout-minutes: 15
     steps:
@@ -632,7 +640,7 @@ jobs:
           path: dist/macos-sdk
           if-no-files-found: ignore
   production-swift:
-    if: ${{ !inputs.packages_only }}
+    if: ${{ !inputs.packages_only && inputs.platform != 'ios' }}
     runs-on: macos-15
     timeout-minutes: 30
     steps:
@@ -679,11 +687,44 @@ jobs:
       - run: brew install xcodegen
       - run: cargo test -p meltype-ios --locked
       - run: cargo clippy -p meltype-ios --all-targets --locked -- -D warnings
+      - run: python3 -m unittest discover -s tools -p test_flash_distributions.py -v
       - run: bash ios/build.sh
       - name: Exercise keyboard controller on iOS Simulator
+        id: keyboard_tests
+        timeout-minutes: 15
         run: |
           DEVICE=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; print(next(d["udid"] for devices in json.load(sys.stdin)["devices"].values() for d in devices if d["name"].startswith("iPhone")))')
-          xcodebuild -project ios/MeltypeFlash.xcodeproj -scheme MeltypeFlash -destination "platform=iOS Simulator,id=$DEVICE" -derivedDataPath ios/build/tests CODE_SIGNING_ALLOWED=NO test
+          # Run every unit and UI test, in separate simulator sessions.
+          xcodebuild -project ios/MeltypeFlash.xcodeproj -scheme MeltypeFlash -destination "platform=iOS Simulator,id=$DEVICE" -only-testing:KeyboardTests -test-timeouts-enabled YES -maximum-test-execution-time-allowance 120 -derivedDataPath ios/build/tests CODE_SIGNING_ALLOWED=NO test
+          xcrun simctl shutdown "$DEVICE" || true
+          xcrun simctl boot "$DEVICE"
+          xcrun simctl bootstatus "$DEVICE" -b
+          xcodebuild -project ios/MeltypeFlash.xcodeproj -scheme MeltypeFlash -destination "platform=iOS Simulator,id=$DEVICE" -only-testing:AppUITests -parallel-testing-enabled NO -test-timeouts-enabled YES -maximum-test-execution-time-allowance 120 -derivedDataPath ios/build/tests CODE_SIGNING_ALLOWED=NO test
+      - name: Capture iPhone UI previews
+        if: always() && steps.keyboard_tests.outcome != 'skipped'
+        timeout-minutes: 3
+        run: |
+          mkdir -p output/ios-ui
+          for RESULT in ios/build/tests/Logs/Test/*.xcresult; do
+            [ -d "$RESULT" ] || continue
+            xcrun xcresulttool export attachments --path "$RESULT" --output-path "output/ios-ui/$(basename "$RESULT" .xcresult)"
+          done
+          DEVICE=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; print(next(d["udid"] for ds in json.load(sys.stdin)["devices"].values() for d in ds if d["name"].startswith("iPhone")))')
+          xcrun simctl boot "$DEVICE" || true
+          xcrun simctl bootstatus "$DEVICE" -b
+          xcrun simctl ui "$DEVICE" appearance dark
+          xcrun simctl install "$DEVICE" ios/build/iphonesimulator/Build/Products/Release-iphonesimulator/MeltypeFlash.app
+          xcrun simctl terminate "$DEVICE" com.appipinopi.meltypeflash || true
+          xcrun simctl launch "$DEVICE" com.appipinopi.meltypeflash
+          sleep 3
+          xcrun simctl io "$DEVICE" screenshot output/ios-ui/home-dark.png
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-ui-previews
+          path: output/ios-ui
+          retention-days: 3
+          if-no-files-found: warn
       - name: Export source for locally signed device builds
         run: |
           git archive --format=zip --output=dist/Meltype-flash-iOS-source.zip HEAD
