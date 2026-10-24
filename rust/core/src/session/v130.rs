@@ -290,14 +290,21 @@ impl Session {
                 Some(clause.reading.clone())
             } else if (0x75..=0x79).contains(&vk)
                 && self.settings.boolean("FunctionKeysAffectSelectedClause")
-                && !clause.english
             {
+                let reading = clause.kana.as_deref().unwrap_or(&clause.reading);
+                let raw = clause.raw.as_deref().or_else(|| {
+                    (clause.english && clause.kana.is_some()).then_some(clause.reading.as_str())
+                });
                 match vk {
-                    0x75 => Some(clause.reading.clone()),
-                    0x76 => Some(romaji::katakana(&clause.reading)),
-                    0x77 => Some(crate::kana::halfwidth(&romaji::katakana(&clause.reading))),
-                    0x78 => clause.raw.as_ref().map(|s| crate::kana::fullwidth(s)),
-                    _ => clause.raw.clone(),
+                    0x75 => Some(reading.to_owned()),
+                    0x76 => Some(romaji::katakana(reading)),
+                    0x77 => Some(crate::kana::halfwidth(&romaji::katakana(reading))),
+                    // Missing original keys must not fall through to the
+                    // whole-composition handler (#1095).
+                    0x78 => {
+                        Some(raw.map_or_else(|| clause.text().to_owned(), crate::kana::fullwidth))
+                    }
+                    _ => Some(raw.unwrap_or_else(|| clause.text()).to_owned()),
                 }
             } else {
                 None

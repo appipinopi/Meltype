@@ -101,7 +101,11 @@ impl Units {
     pub fn kana(&self, final_input: bool) -> String {
         self.kana_range(0, self.raw.len(), final_input)
     }
-    pub fn push(&mut self, text: &str) {
+    pub fn push(&mut self, text: &str, z_symbols: bool) {
+        if !z_symbols {
+            self.push_plain(text);
+            return;
+        }
         self.japanese_edit = false;
         if !self.raw.contains(['/', '\\', ':', '@'])
             && self.pending.is_empty()

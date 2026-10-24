@@ -53,6 +53,7 @@ Windows・Mac・Linux・Android・ChromeOS・iOSで共通の入力コアを使�
 <!-- meltype-flash-os-navigation:end -->
 
 公開済みのプレビューは [v0.1.0 Pre5](https://github.com/appipinopi/Meltype-Flash/releases/tag/flash-v0.1.0-preview.5) です。
+開発中のソースはPre6（`0.1.0-pre.6`）です。[Pre6の変更と確認範囲](rust/RELEASE-NOTES.md)を参照してください。Pre6の配布物はまだ公開していません。
 [配布ファイルの選び方](rust/DOWNLOADS.md) で、OSとCPUに合うファイルを選んでください。
 ZIP・APK・IPAは互換ではありません。本家のC#版の配布ファイルをFlash用として案内していません。
 
