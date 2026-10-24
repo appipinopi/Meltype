@@ -40,7 +40,7 @@ final class AppUITests: XCTestCase {
                 let item = app.menuItems[name]
                 if item.exists && item.isHittable { item.tap(); return }
             }
-            let next = app.buttons.matching(NSPredicate(format: "label IN %@", ["Next", "More", "Show more items", "次へ", "その他", "次のメニュー項目を表示"])).firstMatch
+            let next = app.buttons.matching(NSPredicate(format: "label IN %@", ["Forward", "Next", "More", "Show more items", "次へ", "その他", "次のメニュー項目を表示"])).firstMatch
             guard next.exists else { break }
             next.tap()
         }
@@ -62,13 +62,19 @@ final class AppUITests: XCTestCase {
         let output = app.textViews["flick-demo-output"]
         XCTAssertEqual(output.value as? String, "にほんご")
         output.doubleTap()
-        XCTAssertTrue(app.buttons["Meltypeで変換"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.menuItems["Meltypeで変換"].waitForExistence(timeout: 5))
         capture("native-selection-menu")
         nativeMenuAction(["Meltypeで変換"], in: app)
-        XCTAssertTrue(app.sheets.buttons["ニホンゴ"].waitForExistence(timeout: 5))
+        // UIKit selects 「にほん」 within 「にほんご」: preserve the unselected suffix.
+        XCTAssertTrue(app.sheets.buttons["ニホン"].waitForExistence(timeout: 5))
         XCTAssertEqual(output.value as? String, "にほんご")
-        app.sheets.buttons["ニホンゴ"].tap()
-        XCTAssertEqual(output.value as? String, "ニホンゴ")
+        app.sheets.buttons["ニホン"].tap()
+        XCTAssertEqual(output.value as? String, "ニホンご")
+    }
+    func testNativeCopyDeleteAndPaste() {
+        let app = XCUIApplication(); app.launch(); app.swipeUp()
+        let output = app.textViews["input-test"]
+        output.tap(); output.typeText("hello")
         output.doubleTap()
         nativeMenuAction(["Copy", "コピー"], in: app)
         output.doubleTap()
@@ -76,7 +82,7 @@ final class AppUITests: XCTestCase {
         XCTAssertEqual(output.value as? String, "")
         output.press(forDuration: 1.0)
         nativeMenuAction(["Paste", "ペースト", "貼り付け"], in: app)
-        XCTAssertEqual(output.value as? String, "ニホンゴ")
+        XCTAssertEqual(output.value as? String, "hello")
     }
     func testHomeInputUsesNativeMeltypeMenu() {
         let app = XCUIApplication(); app.launch(); app.swipeUp()
