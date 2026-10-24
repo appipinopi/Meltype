@@ -2,7 +2,7 @@
 
 ## リリース本文と配布物の自動作成
 
-GitHub Actionsの **Meltype-flash release** を `rust` ブランチで実行し、`tag` に次の版（例: `flash-v0.1.0-preview.5`）を指定します。Cargoの版も対応する `0.1.0-pre.5` に更新しておく必要があります。比較元は既定の `auto` で現在版より前の最新タグを選びます。
+GitHub Actionsの **Meltype-flash release** を `rust` ブランチで実行し、`tag` に次の版（例: `flash-v0.1.0-preview.6`）を指定します。Cargoの版も対応する `0.1.0-pre.6` に更新しておく必要があります。比較元は既定の `auto` で現在版より前の最新タグを選びます。
 
 Windows・Linux・macOS（Apple Silicon / Intel）・Android・ChromeOS・iOSのビルドと検証が全て成功すると、全OSの配布ファイルを添付したリリースの**下書き**を自動作成します。既存の同じタグのリリースは上書きしません。公開は下書きの内容を確認してから行います。
 
