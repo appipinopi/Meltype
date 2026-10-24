@@ -398,8 +398,12 @@ class KeyboardViewController: UIInputViewController {
             preedit.text = ""
             return true
         }
+        let replacesSelection = selectionConversion != nil
         for edit in reply.commits { textDocumentProxy.insertText(edit.text) }
-        if !reply.commits.isEmpty { selectionConversion = nil }
+        if !reply.commits.isEmpty {
+            selectionConversion = nil
+            if replacesSelection { commandStatus.text = "選択範囲を置き換えました。" }
+        }
         composing = !(reply.view?.text.isEmpty ?? true)
         preedit.text = reply.view?.text ?? ""
         if !composing { selectionConversion = nil }

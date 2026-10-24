@@ -48,13 +48,16 @@ final class AppUITests: XCTestCase {
         app.buttons["demo-select-all"].tap()
         app.buttons["空白・変換"].tap()
         XCTAssertEqual(output.value as? String, "にほんご")
-        app.buttons["  ニホンゴ  "].tap()
+        app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "ニホンゴ")).firstMatch.tap()
         XCTAssertEqual(output.value as? String, "ニホンゴ")
         app.buttons["demo-select-all"].tap()
         XCTAssertTrue(app.buttons["edit-選択を削除"].exists)
         capture("selection-commands")
+        app.buttons["edit-コピー"].tap()
         app.buttons["edit-選択を削除"].tap()
         XCTAssertEqual(output.value as? String, "")
+        app.buttons["edit-貼り付け"].tap()
+        XCTAssertEqual(output.value as? String, "ニホンゴ")
     }
     func testSetupAndAppearanceScreens() {
         let app = XCUIApplication()
