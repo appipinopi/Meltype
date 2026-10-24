@@ -168,3 +168,18 @@ fn issue_960_foreign_kw_syllables_do_not_split_before_wo() {
         assert_eq!(type_and_commit(raw, false), expected);
     }
 }
+
+#[test]
+fn trailing_capital_keeps_an_established_japanese_reading_while_typing() {
+    let mut session = Session::default();
+    for c in "tanni".chars() {
+        session.key(0, c as i32, 0);
+    }
+    assert_eq!(session.display(false), "たんい");
+    session.key(0x47, 'G' as i32, 1);
+    assert_eq!(session.display(false), "たんいG");
+    for c in "ithubde".chars() {
+        session.key(0, c as i32, 0);
+    }
+    assert_eq!(session.commit().commits[0].text, "たんいGithubで");
+}
