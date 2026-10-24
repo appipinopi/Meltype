@@ -8,14 +8,14 @@ settings:
     SWIFT_VERSION: '5.0'
     ARCHS: arm64
     MARKETING_VERSION: '0.1.0'
-    CURRENT_PROJECT_VERSION: '6'
+    CURRENT_PROJECT_VERSION: '7'
     CODE_SIGNING_ALLOWED: NO
     MELTYPE_APP_GROUP: group.com.appipinopi.meltypeflash
 targets:
   MeltypeFlash:
     type: application
     platform: iOS
-    sources: [App.swift, KeyboardAppearance.swift, AppearanceViewController.swift, Assets.xcassets]
+    sources: [App.swift, AppStyle.swift, KeyboardAppearance.swift, AppearanceViewController.swift, Assets.xcassets]
     entitlements:
       path: generated/App.entitlements
       properties:
@@ -67,6 +67,16 @@ targets:
             PrefersRightToLeft: false
             PrimaryLanguage: ja-JP
             RequestsOpenAccess: false
+  AppUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [AppUITests.swift]
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: MeltypeFlash
+    dependencies:
+      - target: MeltypeFlash
   KeyboardTests:
     type: bundle.unit-test
     platform: iOS
@@ -83,4 +93,4 @@ schemes:
       targets:
         MeltypeFlash: all
     test:
-      targets: [KeyboardTests]
+      targets: [KeyboardTests, AppUITests]

@@ -2,6 +2,12 @@
 // Copyright (C) 2026 appipinopi
 import UIKit
 
+private final class PreeditLabel: UILabel {
+    override func drawText(in rect: CGRect) {
+        super.drawText(in: rect.insetBy(dx: 10, dy: 0))
+    }
+}
+
 struct EngineReply: Decodable {
     struct Edit: Decodable { let text: String; let deleteBefore: Int }
     struct View: Decodable { let text: String; let candidates: [String] }
@@ -12,7 +18,7 @@ struct EngineReply: Decodable {
 
 class KeyboardViewController: UIInputViewController {
     private var session: UInt64 = 0
-    private let preedit = UILabel()
+    private let preedit = PreeditLabel()
     private let candidates = UIStackView()
     private var composing = false
     private var applying = false
@@ -46,9 +52,11 @@ class KeyboardViewController: UIInputViewController {
             column.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -7)
         ])
         preedit.text = "Meltype-flash"
-        preedit.font = .preferredFont(forTextStyle: .body)
+        preedit.font = .systemFont(ofSize: 16, weight: .medium)
+        preedit.layer.cornerRadius = 10
+        preedit.clipsToBounds = true
         preedit.accessibilityIdentifier = "preedit"
-        preedit.heightAnchor.constraint(equalToConstant: 28).isActive = true
+        preedit.heightAnchor.constraint(equalToConstant: 34).isActive = true
         column.addArrangedSubview(preedit)
         let scroll = UIScrollView()
         scroll.heightAnchor.constraint(equalToConstant: 36).isActive = true
@@ -90,6 +98,7 @@ class KeyboardViewController: UIInputViewController {
                 let title = key.title(for: .normal) ?? ""
                 key.setTitle(self.upper ? title.uppercased() : title.lowercased(), for: .normal)
             }
+            self.applyAppearance()
         })
         actions.addArrangedSubview(button("空白・変換") { [weak self] in self?.type(" ") })
         actions.addArrangedSubview(button("⌫") { [weak self] in
@@ -123,7 +132,12 @@ class KeyboardViewController: UIInputViewController {
         preedit.textColor = appearance.theme.text
         preedit.backgroundColor = appearance.theme.key
         func style(_ parent: UIView) {
-            if let key = parent as? UIButton { key.backgroundColor = appearance.theme.key; key.setTitleColor(appearance.theme.text, for: .normal) }
+            if let key = parent as? UIButton {
+                let title = key.title(for: .normal) ?? ""
+                let accent = title == "確定 ↵" || (title == "⇧" && upper)
+                key.backgroundColor = accent ? UIColor(red: 1, green: 0.86, blue: 0.16, alpha: 1) : appearance.theme.key
+                key.setTitleColor(accent ? UIColor(white: 0.1, alpha: 1) : appearance.theme.text, for: .normal)
+            }
             parent.subviews.forEach(style)
         }
         style(view)
@@ -150,16 +164,25 @@ class KeyboardViewController: UIInputViewController {
         let row = UIStackView()
         row.distribution = .fillEqually
         row.spacing = 5
-        row.heightAnchor.constraint(equalToConstant: 38).isActive = true
+        row.heightAnchor.constraint(equalToConstant: 44).isActive = true
         return row
     }
     private func button(_ title: String, action: @escaping () -> Void) -> UIButton {
         let key = UIButton(type: .system)
         key.setTitle(title, for: .normal)
-        key.titleLabel?.font = .systemFont(ofSize: 16)
+        key.titleLabel?.font = .systemFont(ofSize: title.count > 2 ? 14 : 19, weight: title.count > 2 ? .medium : .regular)
+        key.titleLabel?.numberOfLines = title.count > 2 ? 2 : 1
+        key.titleLabel?.textAlignment = .center
+        key.titleLabel?.adjustsFontSizeToFitWidth = true
+        key.titleLabel?.minimumScaleFactor = 0.8
         key.backgroundColor = appearance.theme.key
         key.setTitleColor(appearance.theme.text, for: .normal)
-        key.layer.cornerRadius = 5
+        key.layer.cornerRadius = 8
+        key.layer.cornerCurve = .continuous
+        key.layer.shadowColor = UIColor.black.cgColor
+        key.layer.shadowOpacity = 0.12
+        key.layer.shadowOffset = CGSize(width: 0, height: 1)
+        key.layer.shadowRadius = 0
         key.addAction(UIAction { _ in action() }, for: .touchUpInside)
         return key
     }

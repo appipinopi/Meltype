@@ -4,93 +4,121 @@ import UIKit
 import PhotosUI
 import UniformTypeIdentifiers
 
+final class ThemeChoice: UIControl {
+    let theme: KeyboardTheme
+    private let check = AppStyle.symbol("checkmark.circle.fill", color: AppStyle.ink)
+    init(_ theme: KeyboardTheme) {
+        self.theme = theme
+        super.init(frame: .zero)
+        layer.cornerRadius = 16; layer.cornerCurve = .continuous
+        let column = AppStyle.column(spacing: 10); column.isUserInteractionEnabled = false
+        column.translatesAutoresizingMaskIntoConstraints = false; addSubview(column)
+        let swatches = UIStackView(); swatches.spacing = 4; swatches.distribution = .fillEqually
+        for _ in 0..<5 {
+            let key = UIView(); key.backgroundColor = theme.key; key.layer.cornerRadius = 3
+            swatches.addArrangedSubview(key)
+        }
+        swatches.backgroundColor = theme.background; swatches.isLayoutMarginsRelativeArrangement = true
+        swatches.layoutMargins = UIEdgeInsets(top: 6, left: 6, bottom: 6, right: 6)
+        swatches.layer.cornerRadius = 7
+        swatches.heightAnchor.constraint(equalToConstant: 30).isActive = true
+        column.addArrangedSubview(swatches)
+        column.addArrangedSubview(AppStyle.row([AppStyle.label(theme.label, .caption1), check], spacing: 4))
+        NSLayoutConstraint.activate([
+            column.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12), column.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
+            column.topAnchor.constraint(equalTo: topAnchor, constant: 12), column.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -12)
+        ])
+        isAccessibilityElement = true; accessibilityLabel = theme.label; accessibilityTraits = .button
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    func select(_ selected: Bool) {
+        backgroundColor = selected ? AppStyle.yellow.withAlphaComponent(0.14) : AppStyle.canvas
+        layer.borderWidth = selected ? 2 : 0
+        layer.borderColor = AppStyle.yellow.cgColor
+        check.alpha = selected ? 1 : 0
+        check.tintColor = .label
+        accessibilityTraits = selected ? [.button, .selected] : [.button]
+        accessibilityValue = selected ? "選択中" : ""
+    }
+}
+
 final class AppearanceViewController: UIViewController, PHPickerViewControllerDelegate {
     private let store = KeyboardAppearanceStore()
-    private let status = UILabel()
-    private let backdrop = KeyboardBackdrop()
-    private let preview = UIStackView()
-    private var themes: [KeyboardTheme: UIButton] = [:]
-    private let choose = UIButton(type: .system)
-    private let remove = UIButton(type: .system)
+    private let status = AppStyle.label("キーボードを開き直すと反映されます。", .footnote, color: .secondaryLabel)
+    private let preview = KeyboardPreviewView()
+    private var themes: [KeyboardTheme: ThemeChoice] = [:]
+    private var choose: UIButton!
+    private var remove: UIButton!
     private var importing = false
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "背景・テーマ"; view.backgroundColor = .systemBackground
-        let scroll = UIScrollView(); scroll.translatesAutoresizingMaskIntoConstraints = false; view.addSubview(scroll)
-        let column = UIStackView(); column.axis = .vertical; column.spacing = 12; column.translatesAutoresizingMaskIntoConstraints = false
-        scroll.addSubview(column)
-        NSLayoutConstraint.activate([
-            scroll.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor), scroll.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
-            scroll.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor), scroll.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            column.leadingAnchor.constraint(equalTo: scroll.contentLayoutGuide.leadingAnchor, constant: 20),
-            column.trailingAnchor.constraint(equalTo: scroll.contentLayoutGuide.trailingAnchor, constant: -20),
-            column.topAnchor.constraint(equalTo: scroll.contentLayoutGuide.topAnchor, constant: 20),
-            column.bottomAnchor.constraint(equalTo: scroll.contentLayoutGuide.bottomAnchor, constant: -20),
-            column.widthAnchor.constraint(equalTo: scroll.frameLayoutGuide.widthAnchor, constant: -40)
-        ])
-        let help = UILabel(); help.numberOfLines = 0
-        help.text = "背景色と好きな画像を選べます。画像は端末内で縮小保存し、中央を基準に表示します。キーボードを開き直すと反映されます。"
-        column.addArrangedSubview(help)
-        for theme in KeyboardTheme.allCases {
-            let button = UIButton(type: .system); button.contentHorizontalAlignment = .leading
-            button.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
-            button.addAction(UIAction { [weak self] _ in
-                guard let self = self else { return }
-                self.perform { try self.store.setTheme(theme) }
-            }, for: .touchUpInside)
-            column.addArrangedSubview(button); themes[theme] = button
+        title = "背景・テーマ"
+        navigationItem.largeTitleDisplayMode = .never
+        let column = AppStyle.scrollColumn(in: self)
+        let intro = AppStyle.column(spacing: 6)
+        intro.addArrangedSubview(AppStyle.label("あなたの色で、\nあなたの言葉を。", .title1))
+        intro.addArrangedSubview(AppStyle.label("毎日ふれる場所を、好きなデザインに。", .subheadline, color: .secondaryLabel))
+        column.addArrangedSubview(intro)
+        column.addArrangedSubview(preview)
+        let colors = AppStyle.column(spacing: 14)
+        colors.addArrangedSubview(AppStyle.row([AppStyle.symbol("circle.lefthalf.filled"), AppStyle.label("カラーを選ぶ", .headline)]))
+        let all = KeyboardTheme.allCases
+        for start in stride(from: 0, to: all.count, by: 2) {
+            let row = UIStackView(); row.spacing = 10; row.distribution = .fillEqually; row.alignment = .fill
+            for theme in all[start..<min(start + 2, all.count)] {
+                let button = ThemeChoice(theme)
+                button.addAction(UIAction { [weak self] _ in
+                    guard let self = self else { return }
+                    self.perform { try self.store.setTheme(theme) }
+                }, for: .touchUpInside)
+                row.addArrangedSubview(button); themes[theme] = button
+            }
+            colors.addArrangedSubview(row)
         }
-        choose.setTitle("好きな画像を選ぶ", for: .normal)
-        choose.addAction(UIAction { [weak self] _ in
-            guard let self = self else { return }
-            var configuration = PHPickerConfiguration(); configuration.filter = .images; configuration.selectionLimit = 1
-            let picker = PHPickerViewController(configuration: configuration); picker.delegate = self
-            self.present(picker, animated: true)
-        }, for: .touchUpInside)
-        column.addArrangedSubview(choose)
-        remove.setTitle("背景画像を外す（テーマは保持）", for: .normal)
-        remove.addAction(UIAction { [weak self] _ in
+        column.addArrangedSubview(AppStyle.card(colors))
+        let photo = AppStyle.column(spacing: 12)
+        photo.addArrangedSubview(AppStyle.row([AppStyle.symbol("photo.on.rectangle.angled"), AppStyle.label("お気に入りの一枚を", .headline)]))
+        photo.addArrangedSubview(AppStyle.label("写真をキーボードの背景に。画像はこの端末内に保存されます。", .subheadline, color: .secondaryLabel))
+        choose = AppStyle.button("写真から選ぶ", symbol: "plus", primary: true) { [weak self] in self?.choosePhoto() }
+        choose.accessibilityIdentifier = "choose-background"
+        photo.addArrangedSubview(choose)
+        remove = AppStyle.button("背景画像を外す", symbol: "trash") { [weak self] in
             guard let self = self else { return }
             self.perform { try self.store.removeImage() }
-        }, for: .touchUpInside)
-        column.addArrangedSubview(remove)
-        status.numberOfLines = 0; status.accessibilityIdentifier = "appearance-status"; column.addArrangedSubview(status)
-        let panel = UIView(); panel.heightAnchor.constraint(equalToConstant: 160).isActive = true
-        backdrop.translatesAutoresizingMaskIntoConstraints = false; panel.addSubview(backdrop)
-        preview.axis = .horizontal; preview.distribution = .fillEqually; preview.spacing = 8
-        preview.translatesAutoresizingMaskIntoConstraints = false; panel.addSubview(preview)
-        NSLayoutConstraint.activate([
-            backdrop.leadingAnchor.constraint(equalTo: panel.leadingAnchor), backdrop.trailingAnchor.constraint(equalTo: panel.trailingAnchor),
-            backdrop.topAnchor.constraint(equalTo: panel.topAnchor), backdrop.bottomAnchor.constraint(equalTo: panel.bottomAnchor),
-            preview.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 12), preview.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -12),
-            preview.centerYAnchor.constraint(equalTo: panel.centerYAnchor), preview.heightAnchor.constraint(equalToConstant: 48)
-        ])
-        for label in ["あ", "か", "さ"] { let key = UIButton(type: .system); key.setTitle(label, for: .normal); key.layer.cornerRadius = 5; preview.addArrangedSubview(key) }
-        column.addArrangedSubview(panel)
+        }
+        photo.addArrangedSubview(remove)
+        column.addArrangedSubview(AppStyle.card(photo))
+        status.accessibilityIdentifier = "appearance-status"; column.addArrangedSubview(status)
         refresh()
         if store.directory == nil {
             status.text = "背景設定を共有できません。本体アプリとキーボードのApp Groupsの署名設定を確認してください。"
+            status.textColor = .systemRed
             choose.isEnabled = false; remove.isEnabled = false; themes.values.forEach { $0.isEnabled = false }
         }
     }
+    private func choosePhoto() {
+        var configuration = PHPickerConfiguration(); configuration.filter = .images; configuration.selectionLimit = 1
+        let picker = PHPickerViewController(configuration: configuration); picker.delegate = self
+        present(picker, animated: true)
+    }
     private func refresh() {
-        let settings = store.load(); backdrop.apply(settings.theme, image: store.image(for: settings))
-        for (theme, button) in themes {
-            button.setTitle((settings.theme == theme ? "✓ " : "　 ") + theme.label, for: .normal)
-            button.accessibilityValue = settings.theme == theme ? "選択中" : ""
-        }
-        for case let key as UIButton in preview.arrangedSubviews { key.backgroundColor = settings.theme.key; key.setTitleColor(settings.theme.text, for: .normal) }
+        let settings = store.load()
+        preview.apply(settings, image: store.image(for: settings))
+        for (theme, button) in themes { button.select(settings.theme == theme) }
+        remove?.isHidden = settings.imageName == nil
     }
     private func perform(_ operation: () throws -> Void) {
-        do { try operation(); refresh(); status.text = "保存しました。キーボードを開き直すと反映されます。" }
-        catch { status.text = "保存できませんでした。署名設定や空き容量を確認してください。" }
+        do {
+            try operation(); refresh()
+            status.text = "保存しました。キーボードを開き直すと反映されます。"; status.textColor = .secondaryLabel
+            UIAccessibility.post(notification: .announcement, argument: "保存しました")
+        } catch { status.text = "保存できませんでした。署名設定や空き容量を確認してください。"; status.textColor = .systemRed }
     }
     func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
         picker.dismiss(animated: true)
         guard !importing, let provider = results.first?.itemProvider else { return }
         importing = true; choose.isEnabled = false; remove.isEnabled = false; status.text = "画像を準備中…"
-        // The provider's temporary file is valid only inside its completion handler.
         provider.loadFileRepresentation(forTypeIdentifier: UTType.image.identifier) { [weak self] file, _ in
             let result = Result<Data, Error> {
                 guard let file = file else { throw CocoaError(.fileReadCorruptFile) }
@@ -101,7 +129,7 @@ final class AppearanceViewController: UIViewController, PHPickerViewControllerDe
                 self.importing = false; self.choose.isEnabled = true; self.remove.isEnabled = true
                 switch result {
                 case .success(let data): self.perform { try self.store.installImage(data) }
-                case .failure: self.status.text = "画像を読み込めませんでした。別の画像を選んでください。"
+                case .failure: self.status.text = "画像を読み込めませんでした。別の画像を選んでください。"; self.status.textColor = .systemRed
                 }
             }
         }
