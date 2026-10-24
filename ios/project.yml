@@ -8,14 +8,14 @@ settings:
     SWIFT_VERSION: '5.0'
     ARCHS: arm64
     MARKETING_VERSION: '0.1.0'
-    CURRENT_PROJECT_VERSION: '8'
+    CURRENT_PROJECT_VERSION: '9'
     CODE_SIGNING_ALLOWED: NO
     MELTYPE_APP_GROUP: group.com.appipinopi.meltypeflash
 targets:
   MeltypeFlash:
     type: application
     platform: iOS
-    sources: [App.swift, AppStyle.swift, KeyboardAppearance.swift, AppearanceViewController.swift, KeyboardDemoViewController.swift, KeyboardViewController.swift, FlickKey.swift, Assets.xcassets]
+    sources: [App.swift, AppStyle.swift, KeyboardAppearance.swift, AppearanceViewController.swift, KeyboardDemoViewController.swift, KeyboardViewController.swift, KeyboardEditing.swift, FlickKey.swift, Assets.xcassets]
     entitlements:
       path: generated/App.entitlements
       properties:
@@ -42,7 +42,7 @@ targets:
   MeltypeFlashKeyboard:
     type: app-extension
     platform: iOS
-    sources: [KeyboardViewController.swift, FlickKey.swift, KeyboardAppearance.swift]
+    sources: [KeyboardViewController.swift, KeyboardEditing.swift, FlickKey.swift, KeyboardAppearance.swift]
     entitlements:
       path: generated/Keyboard.entitlements
       properties:
@@ -69,7 +69,7 @@ targets:
             IsASCIICapable: true
             PrefersRightToLeft: false
             PrimaryLanguage: ja-JP
-            RequestsOpenAccess: false
+            RequestsOpenAccess: true
   AppUITests:
     type: bundle.ui-testing
     platform: iOS
@@ -83,7 +83,7 @@ targets:
   KeyboardTests:
     type: bundle.unit-test
     platform: iOS
-    sources: [KeyboardViewController.swift, FlickKey.swift, KeyboardAppearance.swift, KeyboardTests.swift]
+    sources: [KeyboardViewController.swift, KeyboardEditing.swift, FlickKey.swift, KeyboardAppearance.swift, KeyboardTests.swift]
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES

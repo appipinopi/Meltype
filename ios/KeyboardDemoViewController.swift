@@ -5,15 +5,32 @@ import UIKit
 // This demo uses the same controller and engine as the system keyboard.
 private final class DemoDocument: NSObject, UITextDocumentProxy {
     weak var field: UITextView?
-    var text = "" { didSet { field?.text = text } }
-    var documentContextBeforeInput: String? { text }
-    var documentContextAfterInput: String? { "" }
-    var selectedText: String? { nil }
+    var text: String { get { field?.text ?? "" } set { field?.text = newValue } }
+    private var range: NSRange {
+        let range = field?.selectedRange ?? NSRange(location: text.utf16.count, length: 0)
+        return range.location <= text.utf16.count && range.length <= text.utf16.count - range.location
+            ? range : NSRange(location: text.utf16.count, length: 0)
+    }
+    var documentContextBeforeInput: String? { (text as NSString).substring(to: range.location) }
+    var documentContextAfterInput: String? { (text as NSString).substring(from: NSMaxRange(range)) }
+    var selectedText: String? { range.length > 0 ? (text as NSString).substring(with: range) : nil }
     var documentInputMode: UITextInputMode? { nil }
     let documentIdentifier = UUID()
     var hasText: Bool { !text.isEmpty }
-    func insertText(_ text: String) { self.text += text }
-    func deleteBackward() { if !text.isEmpty { text.removeLast() } }
+    func insertText(_ value: String) {
+        let range = self.range
+        text = (text as NSString).replacingCharacters(in: range, with: value)
+        field?.selectedRange = NSRange(location: range.location + value.utf16.count, length: 0)
+    }
+    func deleteBackward() {
+        let range = self.range
+        if range.length > 0 { insertText(""); return }
+        let before = (text as NSString).substring(to: range.location)
+        guard let last = before.last else { return }
+        let count = String(last).utf16.count
+        field?.selectedRange = NSRange(location: range.location - count, length: count)
+        insertText("")
+    }
     func adjustTextPosition(byCharacterOffset offset: Int) { }
     func setMarkedText(_ markedText: String, selectedRange: NSRange) { }
     func unmarkText() { }
@@ -21,11 +38,13 @@ private final class DemoDocument: NSObject, UITextDocumentProxy {
 private final class DemoKeyboard: KeyboardViewController {
     let document = DemoDocument()
     override var textDocumentProxy: UITextDocumentProxy { document }
+    override var clipboardAccessAllowed: Bool { true }
     override var initialFlickLayout: Bool? { true }
     override var allowsSystemKeyboardSwitch: Bool { false }
 }
-final class KeyboardDemoViewController: UIViewController {
+final class KeyboardDemoViewController: UIViewController, UITextViewDelegate {
     private let keyboard = DemoKeyboard()
+    private weak var output: UITextView?
     override func viewDidLoad() {
         super.viewDidLoad(); title = "フリックを試す"
         let column = AppStyle.scrollColumn(in: self)
@@ -40,10 +59,24 @@ final class KeyboardDemoViewController: UIViewController {
         field.textContainerInset = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
         field.heightAnchor.constraint(equalToConstant: 86).isActive = true
         field.accessibilityIdentifier = "flick-demo-output"; field.accessibilityLabel = "確定した文字"
-        keyboard.document.field = field
+        keyboard.document.field = field; field.delegate = self
+        output = field
+        navigationItem.rightBarButtonItem = UIBarButtonItem(title: "全選択", style: .plain, target: self, action: #selector(selectAll))
+        navigationItem.rightBarButtonItem?.accessibilityIdentifier = "demo-select-all"
         column.addArrangedSubview(field)
         addChild(keyboard)
         column.addArrangedSubview(keyboard.view); keyboard.didMove(toParent: self)
         column.addArrangedSubview(AppStyle.label("アプリ内のお試し入力です。ほかのアプリで使うには、設定からキーボードを追加してください。", .footnote, color: .secondaryLabel))
     }
+    @objc private func selectAll() {
+        guard let field = output else { return }
+        keyboard.selectionWillChange(nil)
+        field.becomeFirstResponder()
+        field.selectedRange = NSRange(location: 0, length: field.text.utf16.count)
+        keyboard.selectionDidChange(nil)
+    }
+    func textViewDidChangeSelection(_ textView: UITextView) {
+        keyboard.selectionWillChange(nil); keyboard.selectionDidChange(nil)
+    }
+
 }

@@ -26,8 +26,8 @@ def package(app, archive):
             extension = info['NSExtension']
             if extension['NSExtensionPointIdentifier'] != 'com.apple.keyboard-service':
                 raise ValueError('Keyboard extension missing')
-            if extension['NSExtensionAttributes'].get('RequestsOpenAccess', True):
-                raise ValueError('Keyboard must not require full access')
+            if type(extension['NSExtensionAttributes'].get('RequestsOpenAccess')) is not bool:
+                raise ValueError('Keyboard open-access capability must be explicit')
             if not extension.get('NSExtensionPrincipalClass', '').endswith('.KeyboardViewController'):
                 raise ValueError('Keyboard entry point missing')
             if not info.get('CFBundleIdentifier', '').startswith(app_info['CFBundleIdentifier'] + '.'):

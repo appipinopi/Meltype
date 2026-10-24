@@ -104,7 +104,7 @@ final class SetupViewController: UIViewController, UITextViewDelegate {
             placeholder.topAnchor.constraint(equalTo: field.frameLayoutGuide.topAnchor, constant: 14)
         ])
         test.addArrangedSubview(field); stack.addArrangedSubview(AppStyle.card(test))
-        let privacy = AppStyle.label("フルアクセス不要\n入力内容の通信・履歴保存は行いません。", .caption1, color: .secondaryLabel)
+        let privacy = AppStyle.label("入力・変換はフルアクセス不要\nコピー・貼り付けのみ任意の許可が必要です。", .caption1, color: .secondaryLabel)
         let privacyRow = AppStyle.row([AppStyle.symbol("lock.shield", color: .secondaryLabel), privacy])
         stack.addArrangedSubview(privacyRow)
         refresh()
@@ -129,7 +129,7 @@ final class SetupViewController: UIViewController, UITextViewDelegate {
     }
     private func showSetupHelp() {
         let message = Self.hasKeyboardExtension()
-            ? "1. 設定 → 一般 → キーボード → キーボード → 新しいキーボードを追加 → Meltype-flash\n\n2. 入力欄で🌐を長押ししてMeltype-flashを選択。\n\n「設定を開く」はアプリの設定を開きます。「キーボード」があれば、そこからも追加できます。フルアクセスは不要です。"
+            ? "1. 設定 → 一般 → キーボード → キーボード → 新しいキーボードを追加 → Meltype-flash\n\n2. 入力欄で🌐を長押ししてMeltype-flashを選択。\n\n「設定を開く」はアプリの設定を開きます。「キーボード」があれば、そこからも追加できます。入力・変換はフルアクセス不要です。コピー・貼り付けを使う場合だけ、任意でフルアクセスを許可してください。"
             : "キーボード拡張が削除されているため、設定から追加できません。iPASideなどの導入ツールで拡張を削除せず、本体と拡張（.appex）の両方を署名できる方法で再導入してください。"
         let alert = UIAlertController(title: "キーボードの追加方法", message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "閉じる", style: .default)); present(alert, animated: true)

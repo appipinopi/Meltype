@@ -14,9 +14,21 @@ struct EngineReply: Decodable {
     let consumed: Bool
     let commits: [Edit]
     let view: View?
+    let selectionExpect: String?
 }
 
 class KeyboardViewController: UIInputViewController {
+    var clipboardAccessAllowed: Bool { hasFullAccess }
+    var clipboardText: String? {
+        get { UIPasteboard.general.string }
+        set {
+            if let text = newValue { UIPasteboard.general.setItems([["public.utf8-plain-text": text]], options: [.localOnly: true]) }
+        }
+    }
+    private let commands = UIStackView()
+    private let commandStatus = UILabel()
+    private var commandButtons: [String: UIButton] = [:]
+    private var selectionConversion: EditingSelection?
     var initialFlickLayout: Bool? { nil }
     var allowsSystemKeyboardSwitch: Bool { needsInputModeSwitchKey }
     private var session: UInt64 = 0
@@ -81,7 +93,30 @@ class KeyboardViewController: UIInputViewController {
         let mode = button("かなフリック") { [weak self] in self?.toggleLayout() }
         mode.accessibilityIdentifier = "keyboard-layout-toggle"
         mode.heightAnchor.constraint(equalToConstant: 34).isActive = true
-        modeKey = mode; column.addArrangedSubview(mode)
+        modeKey = mode
+        let edit = button("編集") { [weak self] in
+            guard let self = self else { return }
+            self.commands.isHidden.toggle(); self.refreshCommands()
+        }
+        edit.accessibilityIdentifier = "keyboard-edit-toggle"
+        edit.widthAnchor.constraint(equalToConstant: 64).isActive = true
+        let toolbar = UIStackView(arrangedSubviews: [mode, edit]); toolbar.spacing = 5
+        column.addArrangedSubview(toolbar)
+        commands.axis = .vertical; commands.spacing = 5; commands.isHidden = true
+        for titles in [["コピー", "切り取り", "貼り付け"], ["選択を変換", "選択を削除", "変換取消"]] {
+            let row = makeRow(height: 36)
+            for title in titles {
+                let key = button(title) { [weak self] in self?.performEditingCommand(title) }
+                key.accessibilityIdentifier = "edit-" + title
+                row.addArrangedSubview(key); commandButtons[title] = key
+            }
+            commands.addArrangedSubview(row)
+        }
+        commandStatus.font = .preferredFont(forTextStyle: .caption1)
+        commandStatus.textColor = .secondaryLabel; commandStatus.numberOfLines = 0
+        commandStatus.accessibilityIdentifier = "editing-status"
+        commands.addArrangedSubview(commandStatus)
+        column.addArrangedSubview(commands)
         keyArea.axis = .vertical; keyArea.spacing = 7
         column.addArrangedSubview(keyArea)
         flick = initialFlickLayout ?? (UserDefaults.standard.string(forKey: "keyboard-layout") == "flick")
@@ -122,11 +157,83 @@ class KeyboardViewController: UIInputViewController {
             }
             self.applyAppearance()
         })
-        actions.addArrangedSubview(button("空白・変換") { [weak self] in self?.type(" ") })
+        actions.addArrangedSubview(button("空白・変換") { [weak self] in self?.convertOrSpace() })
         actions.addArrangedSubview(button("⌫") { [weak self] in self?.deleteCharacter() })
         actions.addArrangedSubview(button("確定 ↵") { [weak self] in self?.confirm() })
         keyArea.addArrangedSubview(actions)
         applyAppearance()
+    }
+    private func refreshCommands() {
+        guard isViewLoaded, session != 0, !commands.isHidden else { return }
+        let selected = !(textDocumentProxy.selectedText?.isEmpty ?? true)
+        for title in ["コピー", "切り取り", "選択を変換", "選択を削除"] {
+            commandButtons[title]?.isEnabled = selected && !composing
+        }
+        commandButtons["変換取消"]?.isEnabled = composing
+        if commandStatus.text?.isEmpty ?? true { commandStatus.text = "入力欄で文字を選択してから操作できます。" }
+    }
+    private func resetComposition() {
+        selectionConversion = nil
+        apply(meltype_ios_reset(session))
+    }
+    func performEditingCommand(_ command: String) {
+        commands.isHidden = false
+        if command == "変換取消" {
+            resetComposition(); commandStatus.text = "変換を取り消しました。選択した文字は変更していません。"; refreshCommands(); return
+        }
+        guard !composing else {
+            commandStatus.text = "入力中の文字を確定するか、変換を取り消してから操作してください。"; return
+        }
+        if ["コピー", "切り取り", "貼り付け"].contains(command), !clipboardAccessAllowed {
+            commandStatus.text = "コピー・貼り付けには設定で任意の「フルアクセス」を許可してください。入力・変換・選択削除は許可なしで使えます。"; return
+        }
+        if command == "貼り付け" {
+            let document = textDocumentProxy.documentIdentifier
+            let before = textDocumentProxy.documentContextBeforeInput
+            let after = textDocumentProxy.documentContextAfterInput
+            let selection = textDocumentProxy.selectedText
+            guard let text = clipboardText, !text.isEmpty else { commandStatus.text = "貼り付ける文字がありません。"; return }
+            guard document == textDocumentProxy.documentIdentifier, before == textDocumentProxy.documentContextBeforeInput,
+                  after == textDocumentProxy.documentContextAfterInput, selection == textDocumentProxy.selectedText else {
+                commandStatus.text = "入力欄や選択範囲が変わったため、貼り付けを中止しました。"; return
+            }
+            applying = true; textDocumentProxy.insertText(text); applying = false
+            commandStatus.text = "貼り付けました。"; refreshCommands(); return
+        }
+        guard let selected = EditingSelection(textDocumentProxy) else { commandStatus.text = "先に入力欄の文字を選択してください。"; return }
+        switch command {
+        case "コピー", "切り取り":
+            clipboardText = selected.text
+            if command == "切り取り" {
+                guard selected.matches(textDocumentProxy) else { commandStatus.text = "コピーしましたが、選択範囲が変わったため削除していません。"; return }
+                applying = true; textDocumentProxy.deleteBackward(); applying = false
+            }
+            commandStatus.text = command == "コピー" ? "選択範囲をコピーしました。" : "選択範囲を切り取りました。"
+        case "選択を削除":
+            guard selected.matches(textDocumentProxy) else { commandStatus.text = "選択範囲が変わったため、削除を中止しました。"; return }
+            applying = true; textDocumentProxy.deleteBackward(); applying = false
+            commandStatus.text = "選択範囲を削除しました。"
+        case "選択を変換":
+            guard selected.text.utf8.count <= 4096 else { commandStatus.text = "選択範囲が長すぎます。短く選択し直してください。"; return }
+            selectionConversion = selected
+            let consumed = selected.text.withCString { apply(meltype_ios_reconvert(session, $0, UInt32(selected.text.utf8.count))) }
+            if !consumed { resetComposition(); commandStatus.text = "この選択範囲の読みを取得できませんでした。元の文字は変更していません。" }
+            else { commandStatus.text = "候補を選ぶか確定で置き換えます。変換取消で元のまま戻れます。" }
+        default: break
+        }
+        refreshCommands()
+    }
+    override func selectionWillChange(_ textInput: UITextInput?) {
+        super.selectionWillChange(textInput)
+        if !applying, selectionConversion != nil {
+            resetComposition(); commandStatus.text = "選択範囲が変わったため、変換を取り消しました。"
+        }
+    }
+    override func selectionDidChange(_ textInput: UITextInput?) {
+        super.selectionDidChange(textInput); refreshCommands()
+    }
+    override func textDidChange(_ textInput: UITextInput?) {
+        super.textDidChange(textInput); refreshCommands()
     }
     private func toggleLayout() {
         if composing { apply(meltype_ios_commit(session)) }
@@ -150,7 +257,7 @@ class KeyboardViewController: UIInputViewController {
             }
             switch rowIndex {
             case 0: row.addArrangedSubview(button("⌫") { [weak self] in self?.deleteCharacter() })
-            case 1: row.addArrangedSubview(button("空白・変換") { [weak self] in self?.type(" ") })
+            case 1: row.addArrangedSubview(button("空白・変換") { [weak self] in self?.convertOrSpace() })
             case 2: row.addArrangedSubview(button("確定 ↵") { [weak self] in self?.confirm() })
             default:
                 let switchKey = button("🌐") { }
@@ -160,6 +267,10 @@ class KeyboardViewController: UIInputViewController {
             }
             keyArea.addArrangedSubview(row)
         }
+    }
+    private func convertOrSpace() {
+        if !composing, !(textDocumentProxy.selectedText?.isEmpty ?? true) { performEditingCommand("選択を変換") }
+        else { type(" ") }
     }
     private func inputKana(_ text: String) {
         type(text)
@@ -221,11 +332,11 @@ class KeyboardViewController: UIInputViewController {
     }
     override func textWillChange(_ textInput: UITextInput?) {
         super.textWillChange(textInput)
-        if !applying && session != 0 { apply(meltype_ios_reset(session)) }
+        if !applying && session != 0 { resetComposition() }
     }
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-        if session != 0 { apply(meltype_ios_reset(session)) }
+        if session != 0 { resetComposition() }
     }
     deinit { if session != 0 { meltype_ios_destroy(session) } }
 
@@ -272,8 +383,14 @@ class KeyboardViewController: UIInputViewController {
         guard let pointer = pointer else { return false }
         defer { meltype_ios_free(pointer) }
         guard let reply = try? JSONDecoder().decode(EngineReply.self, from: Data(String(cString: pointer).utf8)) else { return false }
+        if let selection = selectionConversion {
+            guard selection.matches(textDocumentProxy), reply.selectionExpect == nil || reply.selectionExpect == selection.text,
+                  reply.commits.count <= 1 else {
+                resetComposition(); commandStatus.text = "選択範囲または入力欄が変わったため、変換を取り消しました。"; return true
+            }
+        }
         applying = true
-        defer { applying = false }
+        defer { applying = false; refreshCommands() }
         // The Rust host disables backward corrections. Never delete host text here.
         guard reply.commits.allSatisfy({ $0.deleteBefore == 0 }) else {
             if let reset = meltype_ios_reset(session) { meltype_ios_free(reset) }
@@ -282,8 +399,10 @@ class KeyboardViewController: UIInputViewController {
             return true
         }
         for edit in reply.commits { textDocumentProxy.insertText(edit.text) }
+        if !reply.commits.isEmpty { selectionConversion = nil }
         composing = !(reply.view?.text.isEmpty ?? true)
         preedit.text = reply.view?.text ?? ""
+        if !composing { selectionConversion = nil }
         for child in candidates.arrangedSubviews { candidates.removeArrangedSubview(child); child.removeFromSuperview() }
         for (index, text) in (reply.view?.candidates ?? []).prefix(20).enumerated() {
             candidates.addArrangedSubview(button("  \(text)  ") { [weak self] in

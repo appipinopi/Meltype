@@ -5,25 +5,104 @@ import UIKit
 
 final class Document: NSObject, UITextDocumentProxy {
     var text = ""
-    var documentContextBeforeInput: String? { text }
-    var documentContextAfterInput: String? { "" }
-    var selectedText: String? { nil }
+    var selection: NSRange?
+    private var range: NSRange { selection ?? NSRange(location: text.utf16.count, length: 0) }
+    var documentContextBeforeInput: String? { (text as NSString).substring(to: range.location) }
+    var documentContextAfterInput: String? { (text as NSString).substring(from: NSMaxRange(range)) }
+    var selectedText: String? { range.length > 0 ? (text as NSString).substring(with: range) : nil }
     var documentInputMode: UITextInputMode? { nil }
-    let documentIdentifier = UUID()
+    var documentIdentifier = UUID()
     var hasText: Bool { !text.isEmpty }
-    func insertText(_ text: String) { self.text += text }
-    func deleteBackward() { if !text.isEmpty { text.removeLast() } }
+    func insertText(_ value: String) {
+        let range = self.range
+        text = (text as NSString).replacingCharacters(in: range, with: value)
+        selection = NSRange(location: range.location + value.utf16.count, length: 0)
+    }
+    func deleteBackward() {
+        let range = self.range
+        if range.length > 0 { insertText(""); return }
+        guard let last = (text as NSString).substring(to: range.location).last else { return }
+        let count = String(last).utf16.count
+        selection = NSRange(location: range.location - count, length: count); insertText("")
+    }
     func adjustTextPosition(byCharacterOffset offset: Int) { }
     func setMarkedText(_ markedText: String, selectedRange: NSRange) { }
     func unmarkText() { }
 }
 final class TestKeyboard: KeyboardViewController {
     let document = Document()
+    var allowClipboard = false
+    var clipboard: String?
+    var clipboardReads = 0
+    override var clipboardAccessAllowed: Bool { allowClipboard }
+    override var clipboardText: String? {
+        get { clipboardReads += 1; return clipboard }
+        set { clipboard = newValue }
+    }
     override var initialFlickLayout: Bool? { false }
     override var allowsSystemKeyboardSwitch: Bool { false }
     override var textDocumentProxy: UITextDocumentProxy { document }
 }
 final class KeyboardTests: XCTestCase {
+    @MainActor
+    func testSelectionDeleteCopyCutAndExplicitPaste() {
+        let keyboard = TestKeyboard(); keyboard.loadViewIfNeeded()
+        XCTAssertEqual(keyboard.clipboardReads, 0)
+        let cluster = "👨‍👩‍👧‍👦a\u{301}"
+        keyboard.document.text = "前" + cluster + "後"
+        keyboard.document.selection = NSRange(location: 1, length: cluster.utf16.count)
+        keyboard.performEditingCommand("コピー")
+        XCTAssertNil(keyboard.clipboard)
+        keyboard.allowClipboard = true
+        keyboard.performEditingCommand("コピー")
+        XCTAssertEqual(keyboard.clipboard, cluster)
+        XCTAssertEqual(keyboard.clipboardReads, 0)
+        keyboard.performEditingCommand("切り取り")
+        XCTAssertEqual(keyboard.document.text, "前後")
+        keyboard.document.selection = NSRange(location: 1, length: 1)
+        keyboard.performEditingCommand("貼り付け")
+        XCTAssertEqual(keyboard.document.text, "前" + cluster)
+        XCTAssertEqual(keyboard.clipboardReads, 1)
+        keyboard.document.selection = NSRange(location: 1, length: cluster.utf16.count)
+        keyboard.allowClipboard = false
+        keyboard.performEditingCommand("選択を削除")
+        XCTAssertEqual(keyboard.document.text, "前")
+        keyboard.performEditingCommand("選択を削除")
+        XCTAssertEqual(keyboard.document.text, "前")
+    }
+    @MainActor
+    func testSelectionConversionPreservesOriginalUntilCommitAndCancelsOnContextChange() {
+        let keyboard = TestKeyboard(); keyboard.loadViewIfNeeded()
+        keyboard.document.text = "前にほんご後"
+        keyboard.document.selection = NSRange(location: 1, length: 4)
+        tap("空白・変換", in: keyboard.view)
+        XCTAssertEqual(keyboard.document.text, "前にほんご後")
+        keyboard.performEditingCommand("変換取消")
+        XCTAssertEqual(keyboard.document.selectedText, "にほんご")
+        keyboard.performEditingCommand("選択を変換")
+        tap("  ニホンゴ  ", in: keyboard.view)
+        XCTAssertEqual(keyboard.document.text, "前ニホンゴ後")
+        keyboard.document.selection = NSRange(location: 1, length: 4)
+        keyboard.performEditingCommand("選択を変換")
+        keyboard.document.selection = NSRange(location: 0, length: 1)
+        tap("確定 ↵", in: keyboard.view)
+        XCTAssertEqual(keyboard.document.text, "前ニホンゴ後")
+        keyboard.document.selection = NSRange(location: 1, length: 4)
+        keyboard.performEditingCommand("選択を変換")
+        keyboard.document.documentIdentifier = UUID()
+        tap("確定 ↵", in: keyboard.view)
+        XCTAssertEqual(keyboard.document.text, "前ニホンゴ後")
+    }
+    @MainActor
+    func testPendingInputIsNotDiscardedByEditingCommands() {
+        let keyboard = TestKeyboard(); keyboard.loadViewIfNeeded()
+        keyboard.allowClipboard = true; keyboard.clipboard = "paste"
+        tap("a", in: keyboard.view)
+        keyboard.performEditingCommand("貼り付け")
+        XCTAssertEqual(keyboard.clipboardReads, 0)
+        tap("確定 ↵", in: keyboard.view)
+        XCTAssertEqual(keyboard.document.text, "あ")
+    }
     @MainActor
     private func flickKey(_ center: String, keyboard: TestKeyboard) -> FlickKey {
         func find(_ view: UIView) -> FlickKey? {

@@ -32,6 +32,30 @@ final class AppUITests: XCTestCase {
         app.buttons["かなフリックに切替"].tap()
         XCTAssertTrue(app.buttons["flick-あ"].exists)
     }
+    func testSelectedTextConversionAndDeletion() {
+        let app = XCUIApplication(); app.launch(); app.swipeUp()
+        app.buttons["open-flick-demo"].tap()
+        XCTAssertTrue(app.buttons["flick-な"].waitForExistence(timeout: 10))
+        let keys: [(String, CGVector)] = [("flick-な", CGVector(dx: -30, dy: 0)), ("flick-は", CGVector(dx: 0, dy: 30)), ("flick-わ", CGVector(dx: 0, dy: -30)), ("flick-か", CGVector(dx: 0, dy: 30))]
+        for (name, offset) in keys {
+            let start = app.buttons[name].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            start.press(forDuration: 0.05, thenDragTo: start.withOffset(offset))
+        }
+        app.buttons["濁点・半濁点・小文字を切替"].tap()
+        app.buttons["確定 ↵"].tap()
+        let output = app.textViews["flick-demo-output"]
+        XCTAssertEqual(output.value as? String, "にほんご")
+        app.buttons["demo-select-all"].tap()
+        app.buttons["空白・変換"].tap()
+        XCTAssertEqual(output.value as? String, "にほんご")
+        app.buttons["  ニホンゴ  "].tap()
+        XCTAssertEqual(output.value as? String, "ニホンゴ")
+        app.buttons["demo-select-all"].tap()
+        XCTAssertTrue(app.buttons["edit-選択を削除"].exists)
+        capture("selection-commands")
+        app.buttons["edit-選択を削除"].tap()
+        XCTAssertEqual(output.value as? String, "")
+    }
     func testSetupAndAppearanceScreens() {
         let app = XCUIApplication()
         app.launchArguments = ["-AppleLanguages", "(ja)", "-AppleLocale", "ja_JP"]
