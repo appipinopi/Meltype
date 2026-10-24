@@ -43,6 +43,7 @@ final class SetupViewController: UIViewController, UITextViewDelegate {
         super.viewDidLoad()
         let brand = AppStyle.label("Meltype", .headline)
         navigationItem.leftBarButtonItem = UIBarButtonItem(customView: brand)
+        navigationItem.backButtonDisplayMode = .minimal
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(systemName: "slider.horizontal.3"), style: .plain, target: self, action: #selector(openAppearance))
         navigationItem.rightBarButtonItem?.accessibilityLabel = "背景・テーマ"
         let stack = AppStyle.scrollColumn(in: self)

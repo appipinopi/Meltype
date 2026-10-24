@@ -702,7 +702,9 @@ jobs:
           if [ -n "$RESULT" ]; then
             xcrun xcresulttool export attachments --path "$RESULT" --output-path output/ios-ui
           fi
-          DEVICE=$(xcrun simctl list devices booted -j | python3 -c 'import json,sys; print(next(d["udid"] for ds in json.load(sys.stdin)["devices"].values() for d in ds if d["name"].startswith("iPhone")))')
+          DEVICE=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; print(next(d["udid"] for ds in json.load(sys.stdin)["devices"].values() for d in ds if d["name"].startswith("iPhone")))')
+          xcrun simctl boot "$DEVICE" || true
+          xcrun simctl bootstatus "$DEVICE" -b
           xcrun simctl ui "$DEVICE" appearance dark
           xcrun simctl install "$DEVICE" ios/build/iphonesimulator/Build/Products/Release-iphonesimulator/MeltypeFlash.app
           xcrun simctl terminate "$DEVICE" com.appipinopi.meltypeflash || true
