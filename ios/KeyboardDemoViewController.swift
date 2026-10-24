@@ -61,14 +61,14 @@ final class KeyboardDemoViewController: UIViewController, UITextViewDelegate {
         field.accessibilityIdentifier = "flick-demo-output"; field.accessibilityLabel = "確定した文字"
         keyboard.document.field = field; field.delegate = self
         output = field
-        navigationItem.rightBarButtonItem = UIBarButtonItem(title: "全選択", style: .plain, target: self, action: #selector(selectAll))
+        navigationItem.rightBarButtonItem = UIBarButtonItem(title: "全選択", style: .plain, target: self, action: #selector(selectDemoText))
         navigationItem.rightBarButtonItem?.accessibilityIdentifier = "demo-select-all"
         column.addArrangedSubview(field)
         addChild(keyboard)
         column.addArrangedSubview(keyboard.view); keyboard.didMove(toParent: self)
         column.addArrangedSubview(AppStyle.label("アプリ内のお試し入力です。ほかのアプリで使うには、設定からキーボードを追加してください。", .footnote, color: .secondaryLabel))
     }
-    @objc private func selectAll() {
+    @objc private func selectDemoText() {
         guard let field = output else { return }
         keyboard.selectionWillChange(nil)
         field.becomeFirstResponder()
