@@ -17,7 +17,7 @@ struct EngineReply: Decodable {
     let selectionExpect: String?
 }
 
-class KeyboardViewController: UIInputViewController {
+class KeyboardViewController: UIInputViewController, UIContextMenuInteractionDelegate {
     var clipboardAccessAllowed: Bool { hasFullAccess }
     var clipboardText: String? {
         get { UIPasteboard.general.string }
@@ -25,9 +25,7 @@ class KeyboardViewController: UIInputViewController {
             if let text = newValue { UIPasteboard.general.setItems([["public.utf8-plain-text": text]], options: [.localOnly: true]) }
         }
     }
-    private let commands = UIStackView()
     private let commandStatus = UILabel()
-    private var commandButtons: [String: UIButton] = [:]
     private var selectionConversion: EditingSelection?
     var initialFlickLayout: Bool? { nil }
     var allowsSystemKeyboardSwitch: Bool { needsInputModeSwitchKey }
@@ -74,6 +72,8 @@ class KeyboardViewController: UIInputViewController {
         preedit.layer.cornerRadius = 10
         preedit.clipsToBounds = true
         preedit.accessibilityIdentifier = "preedit"
+        preedit.isUserInteractionEnabled = true
+        preedit.addInteraction(UIContextMenuInteraction(delegate: self))
         preedit.heightAnchor.constraint(equalToConstant: 34).isActive = true
         column.addArrangedSubview(preedit)
         let scroll = UIScrollView()
@@ -94,29 +94,12 @@ class KeyboardViewController: UIInputViewController {
         mode.accessibilityIdentifier = "keyboard-layout-toggle"
         mode.heightAnchor.constraint(equalToConstant: 34).isActive = true
         modeKey = mode
-        let edit = button("編集") { [weak self] in
-            guard let self = self else { return }
-            self.commands.isHidden.toggle(); self.refreshCommands()
-        }
-        edit.accessibilityIdentifier = "keyboard-edit-toggle"
-        edit.widthAnchor.constraint(equalToConstant: 64).isActive = true
-        let toolbar = UIStackView(arrangedSubviews: [mode, edit]); toolbar.spacing = 5
-        column.addArrangedSubview(toolbar)
-        commands.axis = .vertical; commands.spacing = 5; commands.isHidden = true
-        for titles in [["コピー", "切り取り", "貼り付け"], ["選択を変換", "選択を削除", "変換取消"]] {
-            let row = makeRow(height: 36)
-            for title in titles {
-                let key = button(title) { [weak self] in self?.performEditingCommand(title) }
-                key.accessibilityIdentifier = "edit-" + title
-                row.addArrangedSubview(key); commandButtons[title] = key
-            }
-            commands.addArrangedSubview(row)
-        }
+        column.addArrangedSubview(mode)
         commandStatus.font = .preferredFont(forTextStyle: .caption1)
         commandStatus.textColor = .secondaryLabel; commandStatus.numberOfLines = 0
         commandStatus.accessibilityIdentifier = "editing-status"
-        commands.addArrangedSubview(commandStatus)
-        column.addArrangedSubview(commands)
+        commandStatus.isHidden = true
+        column.addArrangedSubview(commandStatus)
         keyArea.axis = .vertical; keyArea.spacing = 7
         column.addArrangedSubview(keyArea)
         flick = initialFlickLayout ?? (UserDefaults.standard.string(forKey: "keyboard-layout") == "flick")
@@ -163,21 +146,23 @@ class KeyboardViewController: UIInputViewController {
         keyArea.addArrangedSubview(actions)
         applyAppearance()
     }
+    var hasPendingComposition: Bool { composing }
     private func refreshCommands() {
-        guard isViewLoaded, session != 0, !commands.isHidden else { return }
-        let selected = !(textDocumentProxy.selectedText?.isEmpty ?? true)
-        for title in ["コピー", "切り取り", "選択を変換", "選択を削除"] {
-            commandButtons[title]?.isEnabled = selected && !composing
+        commandStatus.isHidden = commandStatus.text?.isEmpty ?? true
+    }
+    func contextMenuInteraction(_ interaction: UIContextMenuInteraction, configurationForMenuAtLocation location: CGPoint) -> UIContextMenuConfiguration? {
+        guard composing else { return nil }
+        return UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { [weak self] _ in
+            UIMenu(children: [UIAction(title: "変換を取り消す", image: UIImage(systemName: "xmark")) { _ in
+                self?.performEditingCommand("変換取消")
+            }])
         }
-        commandButtons["変換取消"]?.isEnabled = composing
-        if commandStatus.text?.isEmpty ?? true { commandStatus.text = "入力欄で文字を選択してから操作できます。" }
     }
     private func resetComposition() {
         selectionConversion = nil
         apply(meltype_ios_reset(session))
     }
     func performEditingCommand(_ command: String) {
-        commands.isHidden = false
         if command == "変換取消" {
             resetComposition(); commandStatus.text = "変換を取り消しました。選択した文字は変更していません。"; refreshCommands(); return
         }
@@ -218,7 +203,7 @@ class KeyboardViewController: UIInputViewController {
             selectionConversion = selected
             let consumed = selected.text.withCString { apply(meltype_ios_reconvert(session, $0, UInt32(selected.text.utf8.count))) }
             if !consumed { resetComposition(); commandStatus.text = "この選択範囲の読みを取得できませんでした。元の文字は変更していません。" }
-            else { commandStatus.text = "候補を選ぶか確定で置き換えます。変換取消で元のまま戻れます。" }
+            else { commandStatus.text = "候補か確定で置き換えます。未確定欄を長押しすると取り消せます。" }
         default: break
         }
         refreshCommands()

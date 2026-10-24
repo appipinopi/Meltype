@@ -44,7 +44,6 @@ private final class DemoKeyboard: KeyboardViewController {
 }
 final class KeyboardDemoViewController: UIViewController, UITextViewDelegate {
     private let keyboard = DemoKeyboard()
-    private weak var output: UITextView?
     override func viewDidLoad() {
         super.viewDidLoad(); title = "フリックを試す"
         let column = AppStyle.scrollColumn(in: self)
@@ -52,28 +51,26 @@ final class KeyboardDemoViewController: UIViewController, UITextViewDelegate {
             scroll.canCancelContentTouches = false; scroll.delaysContentTouches = false
         }
         column.addArrangedSubview(AppStyle.label("タップで「あ」、左へ「い」。", .title2))
-        column.addArrangedSubview(AppStyle.label("かなキーを上下左右へフリック。゛小゜で濁点・半濁点・小文字を切り替えます。", .subheadline, color: .secondaryLabel))
-        let field = UITextView(); field.font = .preferredFont(forTextStyle: .body)
-        field.adjustsFontForContentSizeCategory = true; field.isEditable = false
+        column.addArrangedSubview(AppStyle.label("かなキーを上下左右へフリック。入力した文字を長押しすると、コピーやMeltypeでの変換を使えます。", .subheadline, color: .secondaryLabel))
+        let field = MeltypeTextView(); field.font = .preferredFont(forTextStyle: .body)
+        field.adjustsFontForContentSizeCategory = true; field.isEditable = true
         field.backgroundColor = .secondarySystemGroupedBackground; field.layer.cornerRadius = 14
         field.textContainerInset = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
         field.heightAnchor.constraint(equalToConstant: 86).isActive = true
         field.accessibilityIdentifier = "flick-demo-output"; field.accessibilityLabel = "確定した文字"
         keyboard.document.field = field; field.delegate = self
-        output = field
-        navigationItem.rightBarButtonItem = UIBarButtonItem(title: "全選択", style: .plain, target: self, action: #selector(selectDemoText))
-        navigationItem.rightBarButtonItem?.accessibilityIdentifier = "demo-select-all"
+        field.inputView = UIView(frame: CGRect(x: 0, y: 0, width: 1, height: 1))
+        field.canConvertSelection = { [weak self] in self?.keyboard.hasPendingComposition != true }
+        field.hasPendingInput = { [weak self] in self?.keyboard.hasPendingComposition == true }
+        field.cancelPendingInput = { [weak self] in self?.keyboard.performEditingCommand("変換取消") }
         column.addArrangedSubview(field)
         addChild(keyboard)
         column.addArrangedSubview(keyboard.view); keyboard.didMove(toParent: self)
         column.addArrangedSubview(AppStyle.label("アプリ内のお試し入力です。ほかのアプリで使うには、設定からキーボードを追加してください。", .footnote, color: .secondaryLabel))
     }
-    @objc private func selectDemoText() {
-        guard let field = output else { return }
-        keyboard.selectionWillChange(nil)
-        field.becomeFirstResponder()
-        field.selectedRange = NSRange(location: 0, length: field.text.utf16.count)
-        keyboard.selectionDidChange(nil)
+    @available(iOS 16.0, *)
+    func textView(_ textView: UITextView, editMenuForTextIn range: NSRange, suggestedActions: [UIMenuElement]) -> UIMenu? {
+        (textView as? MeltypeTextView)?.selectionMenu(suggestedActions: suggestedActions)
     }
     func textViewDidChangeSelection(_ textView: UITextView) {
         keyboard.selectionWillChange(nil); keyboard.selectionDidChange(nil)

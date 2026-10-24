@@ -89,7 +89,7 @@ class DistributionTests(unittest.TestCase):
                 if bundle == extension:
                     info['NSExtension'] = {'NSExtensionPointIdentifier': 'com.apple.keyboard-service',
                                           'NSExtensionPrincipalClass': 'Keyboard.KeyboardViewController',
-                                          'NSExtensionAttributes': {'RequestsOpenAccess': True}}
+                                          'NSExtensionAttributes': {'RequestsOpenAccess': False}}
                 else:
                     info['CFBundleIcons'] = {'CFBundlePrimaryIcon': {'CFBundleIconName': 'AppIcon'}}
                     (bundle / 'Assets.car').write_bytes(b'fixture')

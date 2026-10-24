@@ -32,10 +32,26 @@ final class AppUITests: XCTestCase {
         app.buttons["かなフリックに切替"].tap()
         XCTAssertTrue(app.buttons["flick-あ"].exists)
     }
+    private func nativeMenuAction(_ names: [String], in app: XCUIApplication) {
+        for _ in 0..<8 {
+            for name in names {
+                let button = app.buttons[name]
+                if button.exists && button.isHittable { button.tap(); return }
+                let item = app.menuItems[name]
+                if item.exists && item.isHittable { item.tap(); return }
+            }
+            let next = app.buttons.matching(NSPredicate(format: "label IN %@", ["Next", "More", "Show more items", "次へ", "その他", "次のメニュー項目を表示"])).firstMatch
+            guard next.exists else { break }
+            next.tap()
+        }
+        XCTFail("Native menu item missing: " + names.joined(separator: ", "))
+    }
     func testSelectedTextConversionAndDeletion() {
         let app = XCUIApplication(); app.launch(); app.swipeUp()
         app.buttons["open-flick-demo"].tap()
         XCTAssertTrue(app.buttons["flick-な"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["keyboard-edit-toggle"].exists)
+        XCTAssertFalse(app.buttons["demo-select-all"].exists)
         let keys: [(String, CGVector)] = [("flick-な", CGVector(dx: -30, dy: 0)), ("flick-は", CGVector(dx: 0, dy: 30)), ("flick-わ", CGVector(dx: 0, dy: -30)), ("flick-か", CGVector(dx: 0, dy: 30))]
         for (name, offset) in keys {
             let start = app.buttons[name].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
@@ -45,19 +61,32 @@ final class AppUITests: XCTestCase {
         app.buttons["確定 ↵"].tap()
         let output = app.textViews["flick-demo-output"]
         XCTAssertEqual(output.value as? String, "にほんご")
-        app.buttons["demo-select-all"].tap()
-        app.buttons["空白・変換"].tap()
+        output.doubleTap()
+        XCTAssertTrue(app.buttons["Meltypeで変換"].waitForExistence(timeout: 5))
+        capture("native-selection-menu")
+        nativeMenuAction(["Meltypeで変換"], in: app)
+        XCTAssertTrue(app.sheets.buttons["ニホンゴ"].waitForExistence(timeout: 5))
         XCTAssertEqual(output.value as? String, "にほんご")
-        app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "ニホンゴ")).firstMatch.tap()
+        app.sheets.buttons["ニホンゴ"].tap()
         XCTAssertEqual(output.value as? String, "ニホンゴ")
-        app.buttons["demo-select-all"].tap()
-        XCTAssertTrue(app.buttons["edit-選択を削除"].exists)
-        capture("selection-commands")
-        app.buttons["edit-コピー"].tap()
-        app.buttons["edit-選択を削除"].tap()
+        output.doubleTap()
+        nativeMenuAction(["Copy", "コピー"], in: app)
+        output.doubleTap()
+        nativeMenuAction(["選択範囲を削除"], in: app)
         XCTAssertEqual(output.value as? String, "")
-        app.buttons["edit-貼り付け"].tap()
+        output.press(forDuration: 1.0)
+        nativeMenuAction(["Paste", "ペースト", "貼り付け"], in: app)
         XCTAssertEqual(output.value as? String, "ニホンゴ")
+    }
+    func testHomeInputUsesNativeMeltypeMenu() {
+        let app = XCUIApplication(); app.launch(); app.swipeUp()
+        let input = app.textViews["input-test"]
+        input.tap(); input.typeText("nihongo")
+        input.doubleTap()
+        nativeMenuAction(["Meltypeで変換"], in: app)
+        XCTAssertTrue(app.sheets.buttons["ニホンゴ"].waitForExistence(timeout: 5))
+        app.sheets.buttons["ニホンゴ"].tap()
+        XCTAssertEqual(input.value as? String, "ニホンゴ")
     }
     func testSetupAndAppearanceScreens() {
         let app = XCUIApplication()
